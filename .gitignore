@@ -15,6 +15,7 @@
 # Sistema operativo
 .DS_Store
 Thumbs.db
+desktop.ini
 
 # Registros y temporales
 *.log
