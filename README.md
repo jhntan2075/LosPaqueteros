@@ -48,6 +48,43 @@ tener el instante de registro en minutos absolutos del mes):
 java -cp ../out pe.pucp.paqtracker.servicio.SimulacionDinamica ventas_abs.txt bloqueo_2601.txt 7
 ```
 
+Tambien se pueden usar carpetas versionadas. Para una estructura como:
+
+```
+ventas.v20260909/
+	ventas.202601.txt
+	ventas.202602.txt
+bloqueos.v20260909/
+	bloqueos/
+		bloqueo.202601.txt
+		bloqueo.202602.txt
+```
+
+Desde la raiz del proyecto, compilar y ejecutar un mes especifico con:
+
+```
+javac -d out $(find src -name "*.java")
+java -cp out pe.pucp.paqtracker.servicio.SimulacionDinamica ventas.v20260909 bloqueos.v20260909 7 202601
+```
+
+Los argumentos son `ventas bloqueos dias mes`. El cuarto argumento (`dias`)
+define el horizonte de lectura desde el minuto cero; el quinto (`mes`) es
+opcional y selecciona los archivos `ventas.YYYYMM.txt` y `bloqueo.YYYYMM.txt`.
+Por ejemplo, `202601` lee enero de 2026. Si se omite `mes`, se leen todos los
+archivos encontrados, pero como los tiempos de cada archivo comienzan en el
+dia 1, se recomienda ejecutar cada mes por separado.
+
+Para simular un rango continuo entre fechas, se pueden leer varios archivos
+mensuales con fechas inclusivas en formato `dd-MM-yyyy`:
+
+```
+java -cp out pe.pucp.paqtracker.servicio.SimulacionDinamica ventas.v20260909 bloqueos.v20260909 01-01-2026 28-02-2026
+```
+
+En este modo se leen `ventas.202601.txt`, `ventas.202602.txt` y sus archivos
+de bloqueos correspondientes. Los minutos de febrero se desplazan despues de
+enero para que la simulacion use una sola linea temporal continua.
+
 ## Comandos principales
 
 | Comando                                                             | Efecto                                  |
