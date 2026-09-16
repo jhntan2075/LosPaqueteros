@@ -50,6 +50,11 @@ compilación o, peor, una confusión silenciosa de tipos.
 
 Lo único que comparten es el dataset de `datos/` y los scripts de `scripts/`.
 
+La versión del IACO que se compara con el GA en igualdad de condiciones no está
+en `iaco`: es `planificador.PlanificadorIACO` (con `OperadoresColonia` y
+`MemoriaFeromonas`), que vive en el árbol del GA y respeta sus capas. Ver
+[`comparacion_ga_iaco.md`](comparacion_ga_iaco.md).
+
 ## Regla al añadir código
 
 - Código del GA: bajo `pe.pucp.paqtracker`, fuera de `iaco`.

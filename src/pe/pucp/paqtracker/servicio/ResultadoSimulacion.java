@@ -17,6 +17,7 @@ public final class ResultadoSimulacion {
     private int replanificaciones;
     private int picoUnidadesEnUso;
     private int instanteColapso;
+    private int urgentesRepartidos;
     private final Map<String, Integer> usoPorTipo;
     private final List<String> detalleIncumplimientos;
 
@@ -77,6 +78,18 @@ public final class ResultadoSimulacion {
         if (this.instanteColapso < 0) {
             this.instanteColapso = instante;
         }
+    }
+
+    public int getUrgentesRepartidos() {
+        return urgentesRepartidos;
+    }
+
+    /**
+     * Registra un pedido urgente que se repartio entre varias unidades para
+     * llegar dentro del plazo.
+     */
+    public void registrarReparto() {
+        this.urgentesRepartidos++;
     }
 
     public Map<String, Integer> getUsoPorTipo() {

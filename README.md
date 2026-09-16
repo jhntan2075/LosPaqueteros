@@ -16,6 +16,14 @@ Cada algoritmo es autónomo: trae su propio modelo de dominio, sus lectores de
 datos y su simulador. **No comparten código**, y esa separación es deliberada
 (ver [Por qué están separados](#por-qué-están-separados)).
 
+Como los dos árboles usan parámetros de negocio distintos, sus resultados no se
+pueden comparar directamente. Para compararlos en igualdad de condiciones existe
+además un **IACO adaptado al contexto del GA**:
+`planificador.PlanificadorIACO` implementa `AlgoritmoMetaheuristico` y corre en el
+mismo orquestador, con los mismos datos, la misma flota y los mismos bloques
+comunes que el GA. Las diferencias y los cambios están en
+[`docs/comparacion_ga_iaco.md`](docs/comparacion_ga_iaco.md).
+
 ## Requisitos previos
 
 - JDK 17 o superior (se requiere el compilador `javac`, no solo el runtime).
@@ -92,10 +100,10 @@ Convivir en el mismo paquete haría imposible la compilación. Aislar el IACO ba
 `pe.pucp.paqtracker.iaco` permite que los dos evolucionen sin romperse y que el
 árbol completo compile de una sola pasada.
 
-La unificación sobre un modelo común —que el IACO implemente
-`planificador.AlgoritmoMetaheuristico` y reutilice `planificador.comun`— sigue
-siendo el objetivo a futuro, pero es un refactor del algoritmo, no una
-reorganización de carpetas, y queda pendiente.
+La unificación sobre un modelo común ya tiene una primera versión:
+`planificador.PlanificadorIACO` implementa `planificador.AlgoritmoMetaheuristico`
+y reutiliza `planificador.comun`. El paquete `iaco` se conserva intacto como
+referencia del IACO v3.0 y de sus resultados publicados.
 
 ## Cómo levantarlo localmente
 
@@ -131,6 +139,15 @@ powershell -ExecutionPolicy Bypass -File scripts\ga.ps1 datos\ventas.v20260909 d
 
 Los minutos de febrero se desplazan después de enero para que la simulación use
 una sola línea temporal continua.
+
+### Ejecutar el IACO adaptado en el contexto del GA
+
+Los mismos argumentos que el GA, más `--algoritmo iaco` al final (por defecto es
+`ga`):
+
+```
+powershell -ExecutionPolicy Bypass -File scripts\ga.ps1 datos\ventas.v20260909 datos\bloqueos.v20260909 7 202601 --algoritmo iaco
+```
 
 ### Ejecutar el IACO
 

@@ -2,6 +2,27 @@
 
 Formato basado en Keep a Changelog; versionado semántico (MAJOR.MINOR.PATCH).
 
+## [0.4.0] — 2026-09-16
+
+### Añadido
+- `planificador.PlanificadorIACO`, `OperadoresColonia` y `MemoriaFeromonas`: la
+  colonia de hormigas IACO v3.0 adaptada al contexto del GA. Implementa
+  `AlgoritmoMetaheuristico` y reutiliza `Reparador`, `BusquedaLocal` y
+  `EvaluadorFitness` sin modificarlos.
+- Opción `--algoritmo ga|iaco` en `SimulacionDinamica`.
+- Informe `docs/comparacion_ga_iaco.md` con las diferencias entre ambos
+  contextos, los cambios de la adaptación y los resultados comparados.
+
+### Corregido
+- Despacho directo de urgentes: si ninguna unidad sola llega a tiempo, el pedido
+  se reparte entre varias unidades libres que lleguen todas dentro del plazo. Un
+  pedido de 9 paquetes con plazo de 4 h dependía de un único auto libre en el
+  almacén más lejano y llegaba 33 min tarde (IACO, enero–junio 2026).
+
+### Cambiado
+- `Orquestador` recibe una fábrica de `AlgoritmoMetaheuristico`; el constructor
+  anterior se conserva y sigue usando el GA, con resultados idénticos.
+
 ## [0.3.0] — 2026-09-15
 
 ### Añadido
