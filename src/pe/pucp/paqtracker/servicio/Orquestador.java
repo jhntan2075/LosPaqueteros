@@ -9,6 +9,7 @@ import pe.pucp.paqtracker.modelo.Ruta;
 import pe.pucp.paqtracker.modelo.SolucionRuteo;
 import pe.pucp.paqtracker.modelo.TipoVehiculo;
 import pe.pucp.paqtracker.modelo.Vehiculo;
+import pe.pucp.paqtracker.planificador.AlgoritmoMetaheuristico;
 import pe.pucp.paqtracker.planificador.PlanificadorGA;
 import pe.pucp.paqtracker.planificador.comun.Fragmentador;
 import pe.pucp.paqtracker.planificador.comun.InventarioProyectado;
@@ -17,6 +18,7 @@ import pe.pucp.paqtracker.util.CalculadoraTiempos;
 import pe.pucp.paqtracker.util.Malla;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -24,6 +26,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
+import java.util.function.LongFunction;
 
 /**
  * Orquestador dinamico del planificador. Simula la operacion en el tiempo: el
@@ -48,8 +51,11 @@ public final class Orquestador {
     private final int plazoMaximo;
     private final int plazoDespachoDirecto;
     private final long semilla;
+    private final LongFunction<AlgoritmoMetaheuristico> fabricaAlgoritmo;
 
     /**
+     * Crea un orquestador que planifica con el algoritmo genetico.
+     *
      * @param almacenes            almacenes del sistema
      * @param flota                flota completa
      * @param pedidos              pedidos del horizonte, con registro absoluto
@@ -63,6 +69,29 @@ public final class Orquestador {
     public Orquestador(List<Almacen> almacenes, List<Vehiculo> flota, List<Pedido> pedidos,
                        Malla malla, int saMinutos, int tiempoServicio, int plazoMaximo,
                        int plazoDespachoDirecto, long semilla) {
+        this(almacenes, flota, pedidos, malla, saMinutos, tiempoServicio, plazoMaximo,
+                plazoDespachoDirecto, semilla, PlanificadorGA::new);
+    }
+
+    /**
+     * Crea un orquestador que planifica con el algoritmo indicado.
+     *
+     * @param almacenes            almacenes del sistema
+     * @param flota                flota completa
+     * @param pedidos              pedidos del horizonte, con registro absoluto
+     * @param malla                malla con bloqueos programados
+     * @param saMinutos            paso del reloj en minutos
+     * @param tiempoServicio       acondicionamiento por entrega en minutos
+     * @param plazoMaximo          plazo maximo del catalogo, para ponderar urgencia
+     * @param plazoDespachoDirecto plazo maximo, en minutos, para despacho directo sin pasar por el planificador
+     * @param semilla              semilla base para reproducibilidad
+     * @param fabricaAlgoritmo     crea el algoritmo de cada ciclo a partir de su semilla
+     */
+    public Orquestador(List<Almacen> almacenes, List<Vehiculo> flota, List<Pedido> pedidos,
+                       Malla malla, int saMinutos, int tiempoServicio, int plazoMaximo,
+                       int plazoDespachoDirecto, long semilla,
+                       LongFunction<AlgoritmoMetaheuristico> fabricaAlgoritmo) {
+        this.fabricaAlgoritmo = fabricaAlgoritmo;
         this.almacenes = almacenes;
         this.flota = flota;
         this.pedidos = new ArrayList<>(pedidos);
@@ -184,43 +213,142 @@ public final class Orquestador {
         urgentes.sort(Comparator.comparingInt(Pedido::getHoraLimite));
         int despachados = 0;
         for (Pedido pedido : urgentes) {
-            if (despacharPedidoDirecto(pedido, instante, enRuta, resultado)) {
+            int unidades = despacharPedidoDirecto(pedido, instante, enRuta, resultado);
+            if (unidades > 0) {
                 cola.remove(pedido);
-                despachados++;
+                despachados += unidades;
             }
         }
         return despachados;
     }
 
     /**
-     * Intenta despachar un pedido urgente completo en una sola unidad. Los
-     * pedidos que exceden la capacidad maxima de la flota (y por lo tanto
-     * requieren fragmentarse en varias unidades) no se manejan aqui: quedan
-     * para la coordinacion multi-unidad del GA.
+     * Intenta despachar un pedido urgente. Si una sola unidad llega dentro del
+     * plazo, se despacha en ella. Si ninguna llega a tiempo (o ninguna libre
+     * tiene capacidad suficiente), se intenta repartir el pedido entre varias
+     * unidades libres que lleguen todas dentro del plazo: un pedido de 9
+     * paquetes solo cabe en un AUTO, la unidad lenta, pero dos motocicletas lo
+     * entregan en menos de la mitad del tiempo. Si tampoco es posible, se
+     * despacha en la unidad que llega antes, aunque sea tarde.
+     *
+     * Los pedidos que exceden la capacidad maxima de la flota no se manejan
+     * aqui: quedan para la coordinacion multi-unidad del planificador.
      *
      * @param pedido    pedido urgente a despachar
      * @param instante  instante actual del reloj
-     * @param enRuta    unidades en transito (se agrega la despachada)
+     * @param enRuta    unidades en transito (se agregan las despachadas)
      * @param resultado resultado agregado a actualizar
-     * @return verdadero si el pedido se pudo despachar
+     * @return cantidad de unidades despachadas; cero si el pedido no se despacho
      */
-    private boolean despacharPedidoDirecto(Pedido pedido, int instante,
-                                           List<UnidadEnTransito> enRuta, ResultadoSimulacion resultado) {
+    private int despacharPedidoDirecto(Pedido pedido, int instante,
+                                       List<UnidadEnTransito> enRuta, ResultadoSimulacion resultado) {
         if (pedido.getCantidad() > TipoVehiculo.capacidadMaxima()) {
-            return false;
+            return 0;
         }
         EscenarioOperativo escenario = escenarioDirecto(instante);
         Vehiculo vehiculo = buscarVehiculoDirecto(pedido, instante, escenario);
-        if (vehiculo == null) {
-            return false;
+        boolean aTiempo = vehiculo != null
+                && estimarLlegada(vehiculo, pedido, instante, escenario) <= pedido.getHoraLimite();
+        if (!aTiempo) {
+            List<Vehiculo> reparto = buscarRepartoATiempo(pedido, instante, escenario);
+            if (!reparto.isEmpty()) {
+                despacharReparto(pedido, reparto, instante, escenario, enRuta, resultado);
+                return reparto.size();
+            }
         }
-        Entrega entrega = new Entrega(0, pedido.getId(), pedido.getDestino(), pedido.getCantidad(),
+        if (vehiculo == null) {
+            return 0;
+        }
+        despacharFragmento(pedido, vehiculo, pedido.getCantidad(), instante, escenario, enRuta, resultado);
+        resultado.sumarEntregas(1);
+        return 1;
+    }
+
+    /**
+     * Busca un conjunto de unidades libres que, sumando capacidad, cubran el
+     * pedido y lleguen todas dentro del plazo. Entre las que llegan a tiempo
+     * toma primero las de mayor capacidad, para usar el menor numero de
+     * unidades, y respeta el stock de cada almacen de salida.
+     *
+     * @param pedido    pedido urgente a repartir
+     * @param instante  instante actual del reloj
+     * @param escenario escenario con la malla vigente
+     * @return unidades del reparto, o lista vacia si no se puede cubrir a tiempo
+     */
+    private List<Vehiculo> buscarRepartoATiempo(Pedido pedido, int instante, EscenarioOperativo escenario) {
+        List<Vehiculo> candidatas = new ArrayList<>();
+        for (Vehiculo vehiculo : flota) {
+            if (vehiculo.estaDisponible()
+                    && estimarLlegada(vehiculo, pedido, instante, escenario) <= pedido.getHoraLimite()) {
+                candidatas.add(vehiculo);
+            }
+        }
+        candidatas.sort(Comparator.comparingInt(Vehiculo::getCapacidad).reversed()
+                .thenComparingInt(vehiculo -> estimarLlegada(vehiculo, pedido, instante, escenario)));
+        Map<Integer, Integer> stockUsado = new HashMap<>();
+        List<Vehiculo> reparto = new ArrayList<>();
+        int restante = pedido.getCantidad();
+        for (Vehiculo vehiculo : candidatas) {
+            if (restante <= 0) {
+                break;
+            }
+            Almacen origen = vehiculo.getPosicion();
+            int carga = Math.min(restante, vehiculo.getCapacidad());
+            int usado = stockUsado.getOrDefault(origen.getId(), 0);
+            if (!origen.esIlimitado() && origen.getStockInicial() - usado < carga) {
+                continue;
+            }
+            stockUsado.put(origen.getId(), usado + carga);
+            reparto.add(vehiculo);
+            restante -= carga;
+        }
+        return restante <= 0 ? reparto : List.of();
+    }
+
+    /**
+     * Despacha un pedido repartido: cada unidad lleva la mayor porcion que le
+     * cabe. El pedido cuenta como una sola entrega en el resultado.
+     *
+     * @param pedido    pedido urgente repartido
+     * @param reparto   unidades que lo transportan
+     * @param instante  instante actual del reloj
+     * @param escenario escenario con la malla vigente
+     * @param enRuta    unidades en transito (se agregan las despachadas)
+     * @param resultado resultado agregado a actualizar
+     */
+    private void despacharReparto(Pedido pedido, List<Vehiculo> reparto, int instante,
+                                  EscenarioOperativo escenario, List<UnidadEnTransito> enRuta,
+                                  ResultadoSimulacion resultado) {
+        int restante = pedido.getCantidad();
+        for (Vehiculo vehiculo : reparto) {
+            int carga = Math.min(restante, vehiculo.getCapacidad());
+            despacharFragmento(pedido, vehiculo, carga, instante, escenario, enRuta, resultado);
+            restante -= carga;
+        }
+        resultado.sumarEntregas(1);
+        resultado.registrarReparto();
+    }
+
+    /**
+     * Despacha en una unidad una porcion de un pedido urgente.
+     *
+     * @param pedido    pedido de origen
+     * @param vehiculo  unidad que transporta la porcion
+     * @param cantidad  paquetes de la porcion
+     * @param instante  instante actual del reloj
+     * @param escenario escenario con la malla vigente
+     * @param enRuta    unidades en transito (se agrega la despachada)
+     * @param resultado resultado agregado a actualizar
+     */
+    private void despacharFragmento(Pedido pedido, Vehiculo vehiculo, int cantidad, int instante,
+                                    EscenarioOperativo escenario, List<UnidadEnTransito> enRuta,
+                                    ResultadoSimulacion resultado) {
+        Entrega entrega = new Entrega(0, pedido.getId(), pedido.getDestino(), cantidad,
                 pedido.getInstanteRegistro(), pedido.getPlazo());
         Ruta ruta = new Ruta(vehiculo, vehiculo.getPosicion());
         ruta.getSecuencia().add(entrega);
         ruta.setDestino(almacenDestinoDirecto(entrega.getDestino(), escenario));
         despacharRutaDirecta(ruta, instante, escenario, enRuta, resultado);
-        return true;
     }
 
     /**
@@ -342,7 +470,9 @@ public final class Orquestador {
 
     /**
      * Despacha una ruta de un solo pedido urgente, registrando distancia,
-     * incumplimientos y uso de flota como lo haria el despacho regular.
+     * incumplimientos y uso de flota como lo haria el despacho regular. Las
+     * entregas las cuenta quien la invoca, para que un pedido repartido en
+     * varias unidades cuente una sola vez.
      *
      * @param ruta      ruta a despachar
      * @param instante  instante actual del reloj
@@ -360,7 +490,6 @@ public final class Orquestador {
             resultado.registrarColapso(instante);
             registrarDetalle(escenario, ruta, instante, resultado);
         }
-        resultado.sumarEntregas(ruta.getSecuencia().size());
         ruta.getVehiculo().setDisponible(false);
         enRuta.add(new UnidadEnTransito(ruta.getVehiculo(),
                 recorrido[CalculadoraTiempos.INDICE_FIN], ruta.getDestino()));
@@ -376,7 +505,7 @@ public final class Orquestador {
      */
     public SolucionRuteo replanificar(List<Pedido> cola, int instante) {
         EscenarioOperativo escenario = construirEscenario(cola, instante);
-        PlanificadorGA planificador = new PlanificadorGA(semilla + instante);
+        AlgoritmoMetaheuristico planificador = fabricaAlgoritmo.apply(semilla + instante);
         return planificador.planificar(escenario);
     }
 
