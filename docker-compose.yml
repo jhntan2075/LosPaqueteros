@@ -1,0 +1,10 @@
+services:
+  planificador:
+    build: .
+    image: paqtracker-planificador:local
+    environment:
+      - PAQTRACKER_SEMILLA=1
+      - PAQTRACKER_SA_MINUTOS=30
+      - PAQTRACKER_LOG_NIVEL=INFO
+    volumes:
+      - ./datos:/app/datos:ro

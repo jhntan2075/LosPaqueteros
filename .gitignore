@@ -1,0 +1,24 @@
+# Compilados de Java
+*.class
+/out/
+/bin/
+/target/
+
+# Herramientas y IDE
+.idea/
+*.iml
+.vscode/
+.settings/
+.classpath
+.project
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+
+# Registros y temporales
+*.log
+/tmp/
+
+# Variables de entorno con valores reales
+.env
