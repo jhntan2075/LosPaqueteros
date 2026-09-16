@@ -25,6 +25,23 @@ public final class Bloqueo {
         this.nodosBloqueados = nodosBloqueados;
     }
 
+    /**
+     * @return minuto absoluto en que inicia el bloqueo
+     */
+    public int getInstanteInicio() {
+        return instanteInicio;
+    }
+
+    /**
+     * @return minuto absoluto en que termina el bloqueo
+     */
+    public int getInstanteFin() {
+        return instanteFin;
+    }
+
+    /**
+     * @return nodos intransitables, codificados como clave larga
+     */
     public Set<Long> getNodosBloqueados() {
         return nodosBloqueados;
     }

@@ -110,9 +110,15 @@ public final class EvaluadorFitness {
         return resultado;
     }
 
+    /** Piso de holgura restante, en minutos, para evitar dividir entre cero o valores negativos. */
+    private static final int HOLGURA_RESTANTE_MINIMA = 1;
+
     /**
-     * Penalizacion por entregas en espera, ponderada por urgencia. Postergar un
-     * pedido urgente cuesta mas que postergar uno holgado.
+     * Penalizacion por entregas en espera, ponderada por la holgura restante
+     * hasta su plazo (no por el plazo original del pedido): postergar una
+     * entrega cuesta mas a medida que se acerca su vencimiento, de modo que la
+     * presion por despacharla crece en cada ciclo de replanificacion en vez de
+     * quedar fija mientras el pedido permanece huerfano en la cola.
      *
      * @param solucion solucion con su cola de espera
      * @return penalizacion total de espera
@@ -120,7 +126,9 @@ public final class EvaluadorFitness {
     private double calcularPenalizacionEspera(SolucionRuteo solucion) {
         double penalizacion = 0.0;
         for (Entrega entrega : solucion.getEspera()) {
-            penalizacion += (double) escenario.getPlazoMaximo() / entrega.getPlazo();
+            int holguraRestante = entrega.getHoraLimite() - escenario.getInstanteActual();
+            penalizacion += (double) escenario.getPlazoMaximo()
+                    / Math.max(HOLGURA_RESTANTE_MINIMA, holguraRestante);
         }
         return penalizacion;
     }
