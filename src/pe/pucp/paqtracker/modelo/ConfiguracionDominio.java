@@ -23,6 +23,15 @@ public final class ConfiguracionDominio {
     /** Plazo maximo del catalogo de pedidos, en minutos (36 horas). */
     public static final int PLAZO_MAXIMO_MINUTOS = 2160;
 
+    /**
+     * Plazo, en minutos, a partir del cual un pedido se considera urgente y se
+     * despacha de inmediato en la primera unidad libre con capacidad
+     * suficiente, sin competir por la funcion de fitness del planificador
+     * (8 horas). Para una ventana de entrega tan corta, esperar un ciclo de
+     * optimizacion consume una porcion demasiado grande de su plazo.
+     */
+    public static final int PLAZO_DESPACHO_DIRECTO_MINUTOS = 480;
+
     /** Stock inicial de cada almacen intermedio. */
     public static final int STOCK_INTERMEDIO = 1000;
 
