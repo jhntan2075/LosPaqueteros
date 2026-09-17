@@ -10,13 +10,13 @@ $ErrorActionPreference = "Stop"
 $raiz = Split-Path -Parent $PSScriptRoot
 Push-Location $raiz
 try {
-    if (-not (Test-Path "out\pe\pucp\paqtracker\iaco\app\Main.class")) {
+    if (-not (Test-Path "out\pe\pucp\paqtracker\bancopruebasiaco\app\Main.class")) {
         & (Join-Path $PSScriptRoot "compilar.ps1")
     }
     $argumentos = @($args)
     if ($argumentos -notcontains "--datos") { $argumentos += @("--datos", "datos") }
     [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-    java -Xmx4g -cp out pe.pucp.paqtracker.iaco.app.Main @argumentos
+    java -Xmx4g -cp out pe.pucp.paqtracker.bancopruebasiaco.app.Main @argumentos
 }
 finally {
     Pop-Location

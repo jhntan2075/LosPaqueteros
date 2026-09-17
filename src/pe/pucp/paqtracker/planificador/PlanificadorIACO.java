@@ -26,25 +26,25 @@ import java.util.Random;
 public final class PlanificadorIACO implements AlgoritmoMetaheuristico {
 
     /** Hormigas por iteracion. */
-    public static final int HORMIGAS = 20;
+    public static final int HORMIGAS = 50;
 
     /** Iteraciones maximas de la colonia por ciclo. */
-    public static final int ITERACIONES = 30;
+    public static final int ITERACIONES = 100;
 
     /** Peso de la feromona. */
     public static final double ALFA = 1.0;
 
     /** Peso de la visibilidad. */
-    public static final double BETA = 2.0;
+    public static final double BETA = 3.0;
 
     /** Exponente de la urgencia en la visibilidad. */
     public static final double GAMMA = 1.0;
 
     /** Tasa de evaporacion global. */
-    public static final double RHO = 0.10;
+    public static final double RHO = 0.30;
 
     /** Hormigas que depositan feromona en cada iteracion. */
-    public static final int ELITE = 5;
+    public static final int ELITE = 10;
 
     /** Cota inferior de los rastros. */
     public static final double TAU_MIN = 0.05;
@@ -53,7 +53,7 @@ public final class PlanificadorIACO implements AlgoritmoMetaheuristico {
     public static final double TAU_MAX = 1.0;
 
     /** Tamano de la lista de candidatos. */
-    public static final int CANDIDATOS = 12;
+    public static final int CANDIDATOS = 3;
 
     /** Mejores hormigas de cada iteracion que reciben busqueda local. */
     public static final int BUSQUEDA_LOCAL_TOP = 4;

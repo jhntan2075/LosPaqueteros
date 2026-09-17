@@ -12,7 +12,7 @@ Corridas en JDK 25, colonia paralela sobre los núcleos disponibles.
 ## 1. Qué traen los datos
 
 ```
-java -cp out pe.pucp.paqtracker.iaco.app.Main datos --datos datos
+java -cp out pe.pucp.paqtracker.bancopruebasiaco.app.Main datos --datos datos
 ```
 
 - **36 meses de ventas y 36 de bloqueos**: enero 2026 – diciembre 2028. Están todos.

@@ -40,6 +40,41 @@ public final class ConfiguracionDominio {
     public static final int CANTIDAD_MOTOS = 15;
     public static final int CANTIDAD_BICICLETAS = 12;
 
+    /** Minuto del dia en que inicia cada turno de 8 horas (LE-023). */
+    private static final int[] INICIOS_TURNO_MINUTOS = {7 * 60, 15 * 60, 23 * 60};
+
+    /** Duracion de cada turno, en minutos. */
+    public static final int DURACION_TURNO_MINUTOS = 480;
+
+    /** Duracion del refrigerio, en minutos (LE-024). */
+    public static final int MINUTOS_REFRIGERIO = 60;
+
+    /**
+     * Minutos desde el inicio del turno hasta el refrigerio del primer grupo
+     * de unidades. Deja al menos una hora de margen con el inicio del turno.
+     */
+    public static final int DESFASE_REFRIGERIO_MINUTOS = 180;
+
+    /**
+     * Minutos entre el refrigerio de un grupo de unidades y el siguiente. Con
+     * {@link #GRUPOS_REFRIGERIO} grupos y este paso, el ultimo grupo sale a
+     * refrigerio con al menos una hora de margen antes del fin del turno.
+     */
+    public static final int PASO_REFRIGERIO_MINUTOS = 60;
+
+    /**
+     * Cantidad de grupos entre los que se escalona el refrigerio, para que no
+     * toda la flota se detenga a la vez.
+     */
+    public static final int GRUPOS_REFRIGERIO = 3;
+
+    /**
+     * @return minutos del dia en que inicia cada turno
+     */
+    public static int[] iniciosTurno() {
+        return INICIOS_TURNO_MINUTOS.clone();
+    }
+
     /**
      * Construye los tres almacenes del proyecto en sus posiciones reales.
      *

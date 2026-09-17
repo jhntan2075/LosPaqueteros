@@ -10,7 +10,7 @@ problema sobre los mismos datos, para poder compararlos:
 | Algoritmo | Paquete raíz                 | Punto de entrada                            |
 |-----------|------------------------------|---------------------------------------------|
 | **GA** — Algoritmo Genético memético | `pe.pucp.paqtracker`      | `servicio.SimulacionDinamica`               |
-| **IACO** — Improved Ant Colony Optimization | `pe.pucp.paqtracker.iaco` | `iaco.app.Main`                             |
+| **IACO** — Improved Ant Colony Optimization | `pe.pucp.paqtracker.bancopruebasiaco` | `bancopruebasiaco.app.Main`      |
 
 Cada algoritmo es autónomo: trae su propio modelo de dominio, sus lectores de
 datos y su simulador. **No comparten código**, y esa separación es deliberada
@@ -41,7 +41,7 @@ src/pe/pucp/paqtracker/
 ├── servicio/          │
 ├── repositorio/       │
 ├── util/             ─┘
-└── iaco/             ─┐
+└── bancopruebasiaco/  ─┐
     ├── modelo/        │
     ├── datos/         ├─ ALGORITMO IACO
     ├── servicio/      │
@@ -78,10 +78,10 @@ tests/                 Pruebas del GA
 
 | Paquete              | Contenido                                                        |
 |----------------------|------------------------------------------------------------------|
-| `iaco.modelo`        | Entidades y configuración propias del IACO.                      |
-| `iaco.datos`         | Catálogo y lectores de ventas, bloqueos y mantenimiento.         |
-| `iaco.servicio`      | Colonia de hormigas, feromonas, búsqueda local, simulador, métricas. |
-| `iaco.app`           | Banco de pruebas por línea de comandos.                          |
+| `bancopruebasiaco.modelo`        | Entidades y configuración propias del IACO.                      |
+| `bancopruebasiaco.datos`         | Catálogo y lectores de ventas, bloqueos y mantenimiento.         |
+| `bancopruebasiaco.servicio`      | Colonia de hormigas, feromonas, búsqueda local, simulador, métricas. |
+| `bancopruebasiaco.app`           | Banco de pruebas por línea de comandos.                          |
 
 ## Por qué están separados
 
@@ -92,17 +92,17 @@ distintos e incompatibles. Por ejemplo, la ruta:
 // GA   — pe.pucp.paqtracker.modelo.Ruta
 new Ruta(Vehiculo, Almacen);                       // destino y entregas mutables
 
-// IACO — pe.pucp.paqtracker.iaco.modelo.Ruta
+// IACO — pe.pucp.paqtracker.bancopruebasiaco.modelo.Ruta
 new Ruta(Unidad, Nodo, List<Pedido>, double);      // cronograma incrustado
 ```
 
 Convivir en el mismo paquete haría imposible la compilación. Aislar el IACO bajo
-`pe.pucp.paqtracker.iaco` permite que los dos evolucionen sin romperse y que el
+`pe.pucp.paqtracker.bancopruebasiaco` permite que los dos evolucionen sin romperse y que el
 árbol completo compile de una sola pasada.
 
 La unificación sobre un modelo común ya tiene una primera versión:
 `planificador.PlanificadorIACO` implementa `planificador.AlgoritmoMetaheuristico`
-y reutiliza `planificador.comun`. El paquete `iaco` se conserva intacto como
+y reutiliza `planificador.comun`. El paquete `bancopruebasiaco` se conserva intacto como
 referencia del IACO v3.0 y de sus resultados publicados.
 
 ## Cómo levantarlo localmente
@@ -174,7 +174,7 @@ concreta de la v3.0 y mide su aporte por separado.
 El planificador no requiere variables de entorno propias. Los parámetros de
 negocio y del algoritmo se centralizan en `modelo.ConfiguracionDominio` y las
 constantes de `planificador.PlanificadorGA` para el GA, y en
-`iaco.modelo.ConfiguracionDominio` y `iaco.servicio.ParametrosIACO` para el
+`bancopruebasiaco.modelo.ConfiguracionDominio` y `bancopruebasiaco.servicio.ParametrosIACO` para el
 IACO. Ver `.env.example` para las variables previstas al integrarse con la API.
 
 ## Formato de datos

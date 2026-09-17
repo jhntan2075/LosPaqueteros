@@ -6,6 +6,7 @@ import pe.pucp.paqtracker.modelo.Nodo;
 import pe.pucp.paqtracker.modelo.Ruta;
 import pe.pucp.paqtracker.modelo.SolucionRuteo;
 import pe.pucp.paqtracker.util.CalculadoraTiempos;
+import pe.pucp.paqtracker.util.CalendarioTurnos;
 
 /**
  * Funcion de fitness del planificador. A menor valor, mejor solucion.
@@ -89,10 +90,12 @@ public final class EvaluadorFitness {
         ResultadoRuta resultado = new ResultadoRuta();
         Nodo actual = ruta.getOrigen().getUbicacion();
         int reloj = escenario.getInstanteActual();
+        int idVehiculo = ruta.getVehiculo().getId();
         for (Entrega entrega : ruta.getSecuencia()) {
             int tramo = CalculadoraTiempos.distancia(escenario, actual, entrega.getDestino(), reloj);
             resultado.distancia += tramo;
-            reloj += CalculadoraTiempos.minutosDeViaje(tramo, ruta.getVehiculo().getTipo());
+            reloj = CalendarioTurnos.avanzarConPausa(idVehiculo, reloj,
+                    CalculadoraTiempos.minutosDeViaje(tramo, ruta.getVehiculo().getTipo()));
             int holgura = entrega.getHoraLimite() - reloj;
             if (holgura < 0) {
                 resultado.incumplimientos++;
@@ -100,7 +103,7 @@ public final class EvaluadorFitness {
                 double faltante = UMBRAL_HOLGURA_MINUTOS - holgura;
                 resultado.penalizacionHolgura += faltante * faltante;
             }
-            reloj += escenario.getTiempoServicio();
+            reloj = CalendarioTurnos.avanzarConPausa(idVehiculo, reloj, escenario.getTiempoServicio());
             actual = entrega.getDestino();
         }
         if (ruta.getDestino() != null) {

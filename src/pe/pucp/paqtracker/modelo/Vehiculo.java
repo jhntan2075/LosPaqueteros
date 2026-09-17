@@ -14,7 +14,7 @@ public final class Vehiculo {
     private final int id;
     private final TipoVehiculo tipo;
     private Almacen posicion;
-    private boolean disponible;
+    private EstadoVehiculo estado;
 
     /**
      * @param id       identificador de la unidad
@@ -25,7 +25,7 @@ public final class Vehiculo {
         this.id = id;
         this.tipo = tipo;
         this.posicion = posicion;
-        this.disponible = true;
+        this.estado = EstadoVehiculo.DISPONIBLE_EN_ALMACEN;
     }
 
     public int getId() {
@@ -44,12 +44,19 @@ public final class Vehiculo {
         this.posicion = posicion;
     }
 
-    public boolean estaDisponible() {
-        return disponible;
+    public EstadoVehiculo getEstado() {
+        return estado;
     }
 
-    public void setDisponible(boolean disponible) {
-        this.disponible = disponible;
+    public void setEstado(EstadoVehiculo estado) {
+        this.estado = estado;
+    }
+
+    /**
+     * @return verdadero si la unidad esta libre en un almacen para planificar
+     */
+    public boolean estaDisponible() {
+        return estado == EstadoVehiculo.DISPONIBLE_EN_ALMACEN;
     }
 
     public int getCapacidad() {

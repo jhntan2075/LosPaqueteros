@@ -60,7 +60,9 @@ public final class CalculadoraTiempos {
      *
      * El plazo se evalua con la hora de llegada a cada entrega, antes de sumar
      * el tiempo de acondicionamiento: una entrega que llega dentro de plazo se
-     * considera cumplida aunque la unidad parta despues del vencimiento.
+     * considera cumplida aunque la unidad parta despues del vencimiento. Si un
+     * tramo cruza el refrigerio de la unidad, el reloj incluye esa pausa
+     * (LE-024), de modo que el instante de retorno sea el real.
      *
      * @param escenario escenario operativo con malla y tiempo de servicio
      * @param ruta      ruta a recorrer
@@ -75,11 +77,13 @@ public final class CalculadoraTiempos {
         int reloj = salida;
         int incumplimientos = 0;
         int holguraMinima = Integer.MAX_VALUE;
+        int idVehiculo = ruta.getVehiculo().getId();
         Nodo actual = ruta.getOrigen().getUbicacion();
         for (Entrega entrega : ruta.getSecuencia()) {
             int tramo = distancia(escenario, actual, entrega.getDestino(), reloj);
             distanciaTotal += tramo;
-            reloj += minutosDeViaje(tramo, ruta.getVehiculo().getTipo());
+            reloj = CalendarioTurnos.avanzarConPausa(idVehiculo, reloj,
+                    minutosDeViaje(tramo, ruta.getVehiculo().getTipo()));
             int holgura = entrega.getHoraLimite() - reloj;
             if (holgura < 0) {
                 incumplimientos++;
@@ -87,13 +91,14 @@ public final class CalculadoraTiempos {
             if (holgura < holguraMinima) {
                 holguraMinima = holgura;
             }
-            reloj += escenario.getTiempoServicio();
+            reloj = CalendarioTurnos.avanzarConPausa(idVehiculo, reloj, escenario.getTiempoServicio());
             actual = entrega.getDestino();
         }
         if (ruta.getDestino() != null) {
             int tramoFinal = distancia(escenario, actual, ruta.getDestino().getUbicacion(), reloj);
             distanciaTotal += tramoFinal;
-            reloj += minutosDeViaje(tramoFinal, ruta.getVehiculo().getTipo());
+            reloj = CalendarioTurnos.avanzarConPausa(idVehiculo, reloj,
+                    minutosDeViaje(tramoFinal, ruta.getVehiculo().getTipo()));
         }
         int holgura = holguraMinima == Integer.MAX_VALUE ? 0 : holguraMinima;
         return new int[]{distanciaTotal, reloj, incumplimientos, holgura};

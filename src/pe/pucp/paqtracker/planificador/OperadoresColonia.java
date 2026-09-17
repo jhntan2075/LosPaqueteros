@@ -8,6 +8,7 @@ import pe.pucp.paqtracker.modelo.Ruta;
 import pe.pucp.paqtracker.modelo.SolucionRuteo;
 import pe.pucp.paqtracker.modelo.Vehiculo;
 import pe.pucp.paqtracker.util.CalculadoraTiempos;
+import pe.pucp.paqtracker.util.CalendarioTurnos;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -131,7 +132,8 @@ public final class OperadoresColonia {
         asignada[semilla] = true;
         int carga = orden.get(semilla).getCantidad();
         int ultima = semilla;
-        int reloj = elegida.llegada + escenario.getTiempoServicio();
+        int reloj = CalendarioTurnos.avanzarConPausa(vehiculo.getId(), elegida.llegada,
+                escenario.getTiempoServicio());
         int[] factibles = new int[candidatos];
         int[] llegadas = new int[candidatos];
         while (true) {
@@ -146,7 +148,8 @@ public final class OperadoresColonia {
                     continue;
                 }
                 int tramo = orden.get(ultima).getDestino().distanciaManhattan(entrega.getDestino());
-                int llegada = reloj + CalculadoraTiempos.minutosDeViaje(tramo, vehiculo.getTipo());
+                int llegada = CalendarioTurnos.avanzarConPausa(vehiculo.getId(), reloj,
+                        CalculadoraTiempos.minutosDeViaje(tramo, vehiculo.getTipo()));
                 if (llegada + bufferMinutos <= entrega.getHoraLimite()) {
                     factibles[cantidad] = indice;
                     llegadas[cantidad] = llegada;
@@ -162,7 +165,8 @@ public final class OperadoresColonia {
             ruta.getSecuencia().add(orden.get(indice));
             asignada[indice] = true;
             carga += orden.get(indice).getCantidad();
-            reloj = llegadas[elegido] + escenario.getTiempoServicio();
+            reloj = CalendarioTurnos.avanzarConPausa(vehiculo.getId(), llegadas[elegido],
+                    escenario.getTiempoServicio());
             ultima = indice;
         }
         if (!origen.esIlimitado()) {
@@ -189,8 +193,8 @@ public final class OperadoresColonia {
             if (distancia >= DISTANCIA_INALCANZABLE) {
                 continue;
             }
-            int llegada = escenario.getInstanteActual()
-                    + CalculadoraTiempos.minutosDeViaje(distancia, vehiculo.getTipo());
+            int llegada = CalendarioTurnos.avanzarConPausa(vehiculo.getId(), escenario.getInstanteActual(),
+                    CalculadoraTiempos.minutosDeViaje(distancia, vehiculo.getTipo()));
             opciones.add(new Opcion(vehiculo, llegada, entrega.getHoraLimite() - llegada, distancia));
         }
         if (opciones.isEmpty()) {
