@@ -22,7 +22,7 @@ maquinaria compartida; el repositorio lee datos; util calcula distancias y
 tiempos; el modelo son las entidades. Ninguna capa inferior conoce a una
 superior.
 
-## Algoritmo IACO — `pe.pucp.paqtracker.iaco`
+## Algoritmo IACO — `pe.pucp.paqtracker.bancopruebasiaco`
 
 ```
 app             → servicio, datos, modelo
@@ -39,8 +39,8 @@ simulador y las métricas; `modelo` son las entidades.
 ## Frontera entre ambos
 
 ```
-pe.pucp.paqtracker        ✗→  pe.pucp.paqtracker.iaco
-pe.pucp.paqtracker.iaco   ✗→  pe.pucp.paqtracker
+pe.pucp.paqtracker                  ✗→  pe.pucp.paqtracker.bancopruebasiaco
+pe.pucp.paqtracker.bancopruebasiaco  ✗→  pe.pucp.paqtracker
 ```
 
 No hay ni debe haber imports cruzados. Los dos algoritmos definen clases
@@ -58,5 +58,5 @@ en `iaco`: es `planificador.PlanificadorIACO` (con `OperadoresColonia` y
 ## Regla al añadir código
 
 - Código del GA: bajo `pe.pucp.paqtracker`, fuera de `iaco`.
-- Código del IACO: bajo `pe.pucp.paqtracker.iaco`.
+- Código del IACO: bajo `pe.pucp.paqtracker.bancopruebasiaco`.
 - Nada que importe de un lado al otro.

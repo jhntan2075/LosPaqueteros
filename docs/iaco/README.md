@@ -1,7 +1,7 @@
 # Documentación del algoritmo IACO
 
 Resultados y calibración del planificador por colonia de hormigas
-(`pe.pucp.paqtracker.iaco`).
+(`pe.pucp.paqtracker.bancopruebasiaco`).
 
 | Archivo | Contenido |
 |---|---|

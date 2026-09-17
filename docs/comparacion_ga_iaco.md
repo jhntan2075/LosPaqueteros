@@ -7,7 +7,8 @@ Informe del 16-09-2026, rama `hotfix/Comparacion-IACO`.
 - **Estado previo:** los dos algoritmos están desarrollados y cada uno corre por
   separado, pero **no se podían probar con los mismos parámetros ni en el mismo
   contexto de uso**. El IACO (PR #8) es un árbol paralelo,
-  `pe.pucp.paqtracker.iaco`. Tiene su propio modelo, sus propios lectores de datos,
+  `pe.pucp.paqtracker.bancopruebasiaco` (paquete `iaco` original, renombrado el
+  17-09-2026 para no confundirse con el resto del código). Tiene su propio modelo, sus propios lectores de datos,
   su propio simulador y sus propias métricas, y no implementa
   `planificador.AlgoritmoMetaheuristico`. Aunque lea los mismos archivos de
   `datos/`, resuelve otro problema: otra flota, otros almacenes, turnos,
@@ -18,14 +19,14 @@ Informe del 16-09-2026, rama `hotfix/Comparacion-IACO`.
   `Orquestador`. Usa la misma fragmentación, reparación, búsqueda local y función
   de fitness que el GA, **sin modificarlas**. Entre GA e IACO solo cambia la
   metaheurística.
-- **Qué se conservó:** el paquete `pe.pucp.paqtracker.iaco` queda intacto, como
+- **Qué se conservó:** el paquete `pe.pucp.paqtracker.bancopruebasiaco` queda intacto, como
   referencia del IACO original y de los resultados de `docs/iaco/resultados.md`.
 
 ## 2. Verificación: por qué no eran comparables
 
 ### 2.1 Parámetros de negocio
 
-| Aspecto | GA (`pe.pucp.paqtracker`) | IACO original (`pe.pucp.paqtracker.iaco`) |
+| Aspecto | GA (`pe.pucp.paqtracker`) | IACO original (`pe.pucp.paqtracker.bancopruebasiaco`) |
 |---|---|---|
 | Almacén central | (27,14), ilimitado | (25,15), ilimitado |
 | Almacenes intermedios | (12,38) y (57,27), 1000 paquetes | (12,38) y (55,27), 1000 paquetes |

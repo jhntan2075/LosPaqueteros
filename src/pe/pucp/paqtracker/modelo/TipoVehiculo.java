@@ -10,7 +10,7 @@ package pe.pucp.paqtracker.modelo;
  * unidad de capacidad mayor a 8 y a la vez una de las mas lentas, de modo que
  * todo pedido urgente de cantidad alta queda obligado a la unidad lenta:
  *
- * - Oficial (BICICLETA 14, MOTOCICLETA 40, AUTO 20): en octubre 2026 deja 6
+ * - Oficial (BICICLETA 12, MOTOCICLETA 25, AUTO 40): en octubre 2026 deja 6
  *   incumplimientos, todos en AUTO, y el colapso ocurre el dia 3.
  * - Variante evaluada (BICICLETA 12, MOTOCICLETA 25, AUTO 40): en octubre 2026
  *   deja cero incumplimientos y sin colapso, con 2,5% menos de distancia. Pierde
@@ -20,9 +20,9 @@ package pe.pucp.paqtracker.modelo;
  */
 public enum TipoVehiculo {
 
-    BICICLETA(4, 14),
-    MOTOCICLETA(8, 40),
-    AUTO(24, 20);
+    BICICLETA(4, 12),
+    MOTOCICLETA(8, 25),
+    AUTO(24, 40);
 
     private final int capacidad;
     private final int velocidad;

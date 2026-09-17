@@ -8,6 +8,7 @@ import pe.pucp.paqtracker.modelo.Ruta;
 import pe.pucp.paqtracker.modelo.SolucionRuteo;
 import pe.pucp.paqtracker.modelo.Vehiculo;
 import pe.pucp.paqtracker.util.CalculadoraTiempos;
+import pe.pucp.paqtracker.util.CalendarioTurnos;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -22,6 +23,13 @@ import java.util.Set;
  * del almacen de destino y reordenamiento por plazo. Las tres primeras siempre
  * son reparables (se mueve una entrega o se cambia el almacen), por lo que no
  * aparecen en la funcion de fitness. La cuarta se aplica de forma condicional.
+ *
+ * No hay una fase de cierre de turno: ante un cambio de turno el conductor
+ * alcanza a la unidad en el punto en que se encuentre, con tiempo de relevo
+ * despreciable, asi que una ruta puede cruzar el cambio de turno sin volver a
+ * un almacen. El refrigerio si detiene la unidad (ver
+ * {@link pe.pucp.paqtracker.util.CalendarioTurnos}), pero es una restriccion
+ * de tiempo, no de cierre de ruta, y ya la aplica {@link CalculadoraTiempos}.
  *
  * Este bloque es compartido por todos los algoritmos metaheuristicos y no debe
  * duplicarse ni modificarse localmente.
@@ -276,14 +284,16 @@ public final class Reparador {
     private int contarIncumplimientos(List<Entrega> secuencia, Ruta ruta) {
         Nodo actual = ruta.getOrigen().getUbicacion();
         int reloj = escenario.getInstanteActual();
+        int idVehiculo = ruta.getVehiculo().getId();
         int incumplimientos = 0;
         for (Entrega entrega : secuencia) {
             int tramo = CalculadoraTiempos.distancia(escenario, actual, entrega.getDestino(), reloj);
-            reloj += CalculadoraTiempos.minutosDeViaje(tramo, ruta.getVehiculo().getTipo());
+            reloj = CalendarioTurnos.avanzarConPausa(idVehiculo, reloj,
+                    CalculadoraTiempos.minutosDeViaje(tramo, ruta.getVehiculo().getTipo()));
             if (reloj > entrega.getHoraLimite()) {
                 incumplimientos++;
             }
-            reloj += escenario.getTiempoServicio();
+            reloj = CalendarioTurnos.avanzarConPausa(idVehiculo, reloj, escenario.getTiempoServicio());
             actual = entrega.getDestino();
         }
         return incumplimientos;

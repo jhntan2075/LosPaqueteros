@@ -3,6 +3,7 @@ package pe.pucp.paqtracker.servicio;
 import pe.pucp.paqtracker.modelo.Almacen;
 import pe.pucp.paqtracker.modelo.Entrega;
 import pe.pucp.paqtracker.modelo.EscenarioOperativo;
+import pe.pucp.paqtracker.modelo.EstadoVehiculo;
 import pe.pucp.paqtracker.modelo.Nodo;
 import pe.pucp.paqtracker.modelo.Pedido;
 import pe.pucp.paqtracker.modelo.Ruta;
@@ -15,6 +16,7 @@ import pe.pucp.paqtracker.planificador.comun.Fragmentador;
 import pe.pucp.paqtracker.planificador.comun.InventarioProyectado;
 import pe.pucp.paqtracker.planificador.comun.Reparador;
 import pe.pucp.paqtracker.util.CalculadoraTiempos;
+import pe.pucp.paqtracker.util.CalendarioTurnos;
 import pe.pucp.paqtracker.util.Malla;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -117,6 +119,7 @@ public final class Orquestador {
         List<UnidadEnTransito> enRuta = new ArrayList<>();
         for (int instante = 0; instante <= horizonteMinutos; instante += saMinutos) {
             liberarUnidades(enRuta, instante);
+            actualizarEstadosPorTurno(instante);
             incorporarPedidos(porLlegar, cola, instante);
             int unidadesUrgentes = despacharUrgentes(cola, enRuta, instante, resultado);
             if (cola.isEmpty()) {
@@ -168,9 +171,27 @@ public final class Orquestador {
         while (iterador.hasNext()) {
             UnidadEnTransito unidad = iterador.next();
             if (unidad.getLibreEn() <= instante) {
-                unidad.getVehiculo().setDisponible(true);
+                unidad.getVehiculo().setEstado(EstadoVehiculo.DISPONIBLE_EN_ALMACEN);
                 unidad.getVehiculo().setPosicion(unidad.getDestino());
                 iterador.remove();
+            }
+        }
+    }
+
+    /**
+     * Pone en refrigerio a las unidades ociosas cuya ventana de refrigerio
+     * esta vigente, y las devuelve a disponible cuando termina (LE-024). Solo
+     * toca unidades que ya estaban disponibles o en refrigerio: nunca una que
+     * este en ruta, averiada o fuera de turno.
+     *
+     * @param instante instante actual del reloj
+     */
+    private void actualizarEstadosPorTurno(int instante) {
+        for (Vehiculo vehiculo : flota) {
+            if (vehiculo.getEstado() == EstadoVehiculo.DISPONIBLE_EN_ALMACEN
+                    || vehiculo.getEstado() == EstadoVehiculo.EN_REFRIGERIO) {
+                vehiculo.setEstado(CalendarioTurnos.enRefrigerio(vehiculo.getId(), instante)
+                        ? EstadoVehiculo.EN_REFRIGERIO : EstadoVehiculo.DISPONIBLE_EN_ALMACEN);
             }
         }
     }
@@ -490,7 +511,7 @@ public final class Orquestador {
             resultado.registrarColapso(instante);
             registrarDetalle(escenario, ruta, instante, resultado);
         }
-        ruta.getVehiculo().setDisponible(false);
+        ruta.getVehiculo().setEstado(EstadoVehiculo.EN_RUTA);
         enRuta.add(new UnidadEnTransito(ruta.getVehiculo(),
                 recorrido[CalculadoraTiempos.INDICE_FIN], ruta.getDestino()));
     }
@@ -542,7 +563,7 @@ public final class Orquestador {
             for (Entrega entrega : ruta.getSecuencia()) {
                 despachados.add(entrega.getIdPedido());
             }
-            ruta.getVehiculo().setDisponible(false);
+            ruta.getVehiculo().setEstado(EstadoVehiculo.EN_RUTA);
             enRuta.add(new UnidadEnTransito(ruta.getVehiculo(),
                     recorrido[CalculadoraTiempos.INDICE_FIN], ruta.getDestino()));
         }
@@ -580,10 +601,12 @@ public final class Orquestador {
     private void registrarDetalle(EscenarioOperativo escenario, Ruta ruta, int salida,
                                   ResultadoSimulacion resultado) {
         int reloj = salida;
+        int idVehiculo = ruta.getVehiculo().getId();
         Nodo actual = ruta.getOrigen().getUbicacion();
         for (Entrega entrega : ruta.getSecuencia()) {
             int tramo = CalculadoraTiempos.distancia(escenario, actual, entrega.getDestino(), reloj);
-            reloj += CalculadoraTiempos.minutosDeViaje(tramo, ruta.getVehiculo().getTipo());
+            reloj = CalendarioTurnos.avanzarConPausa(idVehiculo, reloj,
+                    CalculadoraTiempos.minutosDeViaje(tramo, ruta.getVehiculo().getTipo()));
             int holgura = entrega.getHoraLimite() - reloj;
             if (holgura < 0) {
                 resultado.getDetalleIncumplimientos().add(String.format(
@@ -591,7 +614,7 @@ public final class Orquestador {
                         salida, salida / 1440 + 1, ruta.getVehiculo().getTipo(),
                         entrega.getHoraLimite(), reloj, -holgura));
             }
-            reloj += escenario.getTiempoServicio();
+            reloj = CalendarioTurnos.avanzarConPausa(idVehiculo, reloj, escenario.getTiempoServicio());
             actual = entrega.getDestino();
         }
     }
