@@ -1,10 +1,15 @@
 services:
-  planificador:
+  paqtracker-planificador:
     build: .
-    image: paqtracker-planificador:local
-    environment:
-      - PAQTRACKER_SEMILLA=1
-      - PAQTRACKER_SA_MINUTOS=30
-      - PAQTRACKER_LOG_NIVEL=INFO
+    image: paqtracker-planificador:0.5.0
+    env_file:
+      - path: .env
+        required: false
     volumes:
       - ./datos:/app/datos:ro
+    networks:
+      - paqtracker-red
+
+networks:
+  paqtracker-red:
+    name: paqtracker-red

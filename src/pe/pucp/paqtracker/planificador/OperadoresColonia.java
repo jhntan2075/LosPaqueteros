@@ -92,7 +92,7 @@ public final class OperadoresColonia {
         SolucionRuteo solucion = new SolucionRuteo();
         boolean[] asignada = new boolean[orden.size()];
         Set<Integer> usadas = new HashSet<>();
-        Map<Integer, Integer> stock = stockInicial();
+        Map<Integer, Integer> stock = stockDisponible();
         for (int semilla = 0; semilla < orden.size(); semilla++) {
             if (asignada[semilla]) {
                 continue;
@@ -318,13 +318,13 @@ public final class OperadoresColonia {
     }
 
     /**
-     * @return stock inicial de cada almacen, ilimitado para el central
+     * @return stock disponible de cada almacen, ilimitado para el central
      */
-    private Map<Integer, Integer> stockInicial() {
+    private Map<Integer, Integer> stockDisponible() {
         Map<Integer, Integer> stock = new HashMap<>();
         for (Almacen almacen : escenario.getAlmacenes()) {
             stock.put(almacen.getId(),
-                    almacen.esIlimitado() ? Integer.MAX_VALUE : almacen.getStockInicial());
+                    almacen.esIlimitado() ? Integer.MAX_VALUE : almacen.getStockDisponible());
         }
         return stock;
     }

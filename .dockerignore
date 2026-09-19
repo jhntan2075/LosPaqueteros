@@ -1,0 +1,11 @@
+.git
+.gitignore
+.gitattributes
+.env
+out/
+out-tests/
+docs/
+tests/
+lib/
+scripts/
+*.md

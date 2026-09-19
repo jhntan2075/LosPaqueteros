@@ -85,7 +85,7 @@ public final class Reparador {
         Map<Integer, Integer> stock = new HashMap<>();
         for (Almacen almacen : escenario.getAlmacenes()) {
             stock.put(almacen.getId(),
-                    almacen.esIlimitado() ? Integer.MAX_VALUE : almacen.getStockInicial());
+                    almacen.esIlimitado() ? Integer.MAX_VALUE : almacen.getStockDisponible());
         }
         for (Ruta ruta : new ArrayList<>(solucion.getRutas())) {
             if (ruta.getOrigen().esIlimitado()) {

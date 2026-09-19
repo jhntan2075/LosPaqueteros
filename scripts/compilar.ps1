@@ -14,7 +14,7 @@ try {
            ForEach-Object { $_.FullName.Substring($raiz.Length + 1) }
     [System.IO.File]::WriteAllLines($lista, $rel)
 
-    javac -encoding UTF-8 -d out "@$lista"
+    javac --release 21 -encoding UTF-8 -d out "@$lista"
     if ($LASTEXITCODE -ne 0) { throw "javac devolvio $LASTEXITCODE" }
     Write-Host "Compilados $($rel.Count) archivos en .\out"
 }

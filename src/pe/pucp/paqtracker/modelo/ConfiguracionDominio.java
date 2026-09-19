@@ -35,6 +35,25 @@ public final class ConfiguracionDominio {
     /** Stock inicial de cada almacen intermedio. */
     public static final int STOCK_INTERMEDIO = 1000;
 
+    /** Capacidad de carga de cada tipo de unidad, en unidades de producto (LE-020). */
+    public static final int CAPACIDAD_AUTO = 24;
+    public static final int CAPACIDAD_MOTOCICLETA = 8;
+    public static final int CAPACIDAD_BICICLETA = 4;
+
+    /** Velocidad de desplazamiento de cada tipo de unidad, en km/h (LE-021). */
+    public static final int VELOCIDAD_AUTO = 40;
+    public static final int VELOCIDAD_MOTOCICLETA = 25;
+    public static final int VELOCIDAD_BICICLETA = 12;
+
+    /**
+     * Costo por kilometro recorrido de cada tipo de unidad (LE-022). Se toman
+     * los valores del banco de pruebas del IACO mientras el proyecto no fije
+     * los oficiales; solo afectan el costo reportado, no el fitness.
+     */
+    public static final double COSTO_KM_AUTO = 1.20;
+    public static final double COSTO_KM_MOTOCICLETA = 0.60;
+    public static final double COSTO_KM_BICICLETA = 0.15;
+
     /** Cantidad de unidades de cada tipo en la flota. */
     public static final int CANTIDAD_AUTOS = 10;
     public static final int CANTIDAD_MOTOS = 15;

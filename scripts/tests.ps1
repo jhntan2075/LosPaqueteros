@@ -22,7 +22,7 @@ try {
            ForEach-Object { $_.FullName.Substring($raiz.Length + 1) }
     [System.IO.File]::WriteAllLines($lista, $rel)
 
-    javac -encoding UTF-8 -cp "out;$junit" -d out-tests "@$lista"
+    javac --release 21 -encoding UTF-8 -cp "out;$junit" -d out-tests "@$lista"
     if ($LASTEXITCODE -ne 0) { throw "javac (tests) devolvio $LASTEXITCODE" }
     Write-Host "Compilados $($rel.Count) archivos de prueba en .\out-tests"
 

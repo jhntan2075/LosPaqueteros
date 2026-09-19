@@ -34,8 +34,11 @@ public final class SimulacionDinamica {
 
     private static final Logger LOGGER = Logger.getLogger(SimulacionDinamica.class.getName());
 
-    private static final int SA_MINUTOS = 30;
-    private static final long SEMILLA = 1;
+    private static final int SA_MINUTOS_POR_DEFECTO = 30;
+    private static final long SEMILLA_POR_DEFECTO = 1;
+    private static final String VARIABLE_ALGORITMO = "PLANIFICADOR_ALGORITMO";
+    private static final String VARIABLE_SEMILLA = "PLANIFICADOR_SEMILLA";
+    private static final String VARIABLE_SA_MINUTOS = "PLANIFICADOR_SA_MINUTOS";
     private static final int MINUTOS_POR_DIA = 1440;
     private static final int MARGEN_CIERRE = 3000;
     private static final int DIAS_POR_DEFECTO = 7;
@@ -73,16 +76,17 @@ public final class SimulacionDinamica {
                         : CargadorBloqueos.cargar(rutaBloqueos, mes))
                 : new Malla();
 
+        int saMinutos = (int) leerEntornoEntero(VARIABLE_SA_MINUTOS, SA_MINUTOS_POR_DEFECTO);
         Orquestador orquestador = new Orquestador(almacenes, flota, pedidos, malla,
-                SA_MINUTOS, ConfiguracionDominio.TIEMPO_SERVICIO_MINUTOS,
+                saMinutos, ConfiguracionDominio.TIEMPO_SERVICIO_MINUTOS,
                 ConfiguracionDominio.PLAZO_MAXIMO_MINUTOS,
-                ConfiguracionDominio.PLAZO_DESPACHO_DIRECTO_MINUTOS, SEMILLA,
-                fabricaAlgoritmo(algoritmo));
+                ConfiguracionDominio.PLAZO_DESPACHO_DIRECTO_MINUTOS,
+                leerEntornoEntero(VARIABLE_SEMILLA, SEMILLA_POR_DEFECTO), fabricaAlgoritmo(algoritmo));
         ResultadoSimulacion resultado = orquestador.simular(horizonte + MARGEN_CIERRE);
 
         int diasInforme = rango != null
                 ? (horizonte + MINUTOS_POR_DIA - 1) / MINUTOS_POR_DIA : dias;
-        informar(algoritmo, resultado, pedidos.size(), flota.size(), diasInforme);
+        informar(algoritmo, saMinutos, resultado, pedidos.size(), flota.size(), diasInforme);
     }
 
     /**
@@ -108,7 +112,8 @@ public final class SimulacionDinamica {
 
     /**
      * @param args argumentos de linea de comandos
-     * @return valor de la opcion --algoritmo en minusculas, o ga si no se indica
+     * @return valor de la opcion --algoritmo en minusculas; si no se indica, el de
+     *         PLANIFICADOR_ALGORITMO o, en su defecto, ga
      */
     private static String extraerAlgoritmo(String[] args) {
         for (int i = 0; i + 1 < args.length; i++) {
@@ -116,7 +121,28 @@ public final class SimulacionDinamica {
                 return args[i + 1].toLowerCase();
             }
         }
-        return ALGORITMO_GA;
+        String valorEntorno = System.getenv(VARIABLE_ALGORITMO);
+        return valorEntorno == null || valorEntorno.isBlank() ? ALGORITMO_GA : valorEntorno.trim().toLowerCase();
+    }
+
+    /**
+     * Lee una variable de entorno numerica (Twelve-Factor).
+     *
+     * @param nombre         nombre de la variable
+     * @param valorPorDefecto valor si la variable no esta definida
+     * @return valor de la variable, o el valor por defecto
+     * @throws IllegalArgumentException si la variable no es un entero valido
+     */
+    private static long leerEntornoEntero(String nombre, long valorPorDefecto) {
+        String valor = System.getenv(nombre);
+        if (valor == null || valor.isBlank()) {
+            return valorPorDefecto;
+        }
+        try {
+            return Long.parseLong(valor.trim());
+        } catch (NumberFormatException exception) {
+            throw new IllegalArgumentException("La variable " + nombre + " debe ser entera: " + valor, exception);
+        }
     }
 
     /**
@@ -139,18 +165,19 @@ public final class SimulacionDinamica {
      * Registra en el log el resumen de la simulacion.
      *
      * @param algoritmo    nombre del algoritmo simulado
+     * @param saMinutos    salto del algoritmo usado, en minutos
      * @param resultado    resultado agregado
      * @param totalPedidos cantidad de pedidos del horizonte
      * @param tamanoFlota  cantidad de unidades de la flota
      * @param dias         horizonte en dias
      */
-    private static void informar(String algoritmo, ResultadoSimulacion resultado, int totalPedidos,
-                                 int tamanoFlota, int dias) {
+    private static void informar(String algoritmo, int saMinutos, ResultadoSimulacion resultado,
+                                 int totalPedidos, int tamanoFlota, int dias) {
         double cumplimiento = 100.0
                 * (resultado.getTotalEntregas() - resultado.getTotalIncumplimientos()) / totalPedidos;
         StringBuilder informe = new StringBuilder();
         informe.append(String.format("Simulacion dinamica (%s): %d dias, Sa=%d min%n",
-                algoritmo.toUpperCase(), dias, SA_MINUTOS));
+                algoritmo.toUpperCase(), dias, saMinutos));
         informe.append(String.format("Entregas: %d de %d%n", resultado.getTotalEntregas(), totalPedidos));
         informe.append(String.format("Incumplimientos: %d (cumplimiento %.2f%%)%n",
                 resultado.getTotalIncumplimientos(), cumplimiento));
@@ -164,7 +191,10 @@ public final class SimulacionDinamica {
         informe.append(String.format("Uso por tipo: %s%n", resultado.getUsoPorTipo()));
         informe.append(String.format("Urgentes repartidos en varias unidades: %d%n",
                 resultado.getUrgentesRepartidos()));
-        informe.append(String.format("Distancia total: %.0f", resultado.getDistanciaTotal()));
+        informe.append(String.format("Distancia total: %.0f km%n", resultado.getDistanciaTotal()));
+        informe.append(String.format("Costo total: %.2f%n", resultado.getCostoTotal()));
+        informe.append(String.format("Ta (computo por planificacion): promedio %.1f ms, maximo %d ms",
+                resultado.getTiempoComputoPromedioMs(), resultado.getTiempoComputoMaximoMs()));
         LOGGER.info(informe.toString());
         for (String detalle : resultado.getDetalleIncumplimientos()) {
             LOGGER.info("Incumplimiento: " + detalle);

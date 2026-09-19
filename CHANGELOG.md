@@ -2,6 +2,40 @@
 
 Formato basado en Keep a Changelog; versionado semántico (MAJOR.MINOR.PATCH).
 
+## [0.5.0] — 2026-09-18
+
+### Añadido
+- Consumo real del stock de los almacenes intermedios: `Almacen.descontar` al
+  despachar y `Almacen.recargar` a su capacidad máxima cada día a las 23:59:59
+  (`Orquestador.recargarAlmacenes`). El planificador proyecta desde el stock
+  disponible del momento y ya no desde el inicial.
+- Costo por km por tipo de unidad (`ConfiguracionDominio.COSTO_KM_*`, provisional,
+  tomado del banco de pruebas del IACO) y costo total en el informe.
+- Medición de Ta por planificación (promedio y máximo) en el informe (LE-059).
+- Lectura de `PLANIFICADOR_ALGORITMO`, `PLANIFICADOR_SEMILLA` y
+  `PLANIFICADOR_SA_MINUTOS` en `SimulacionDinamica`.
+- Pruebas: `AlmacenTest`, `TipoVehiculoTest`, `CalculadoraTiemposTest`,
+  `InventarioProyectadoTest`, `EvaluadorFitnessTest`.
+- `docs/trazabilidad.md` (exigencias → clases → pruebas), `.gitattributes`
+  (LF), `.dockerignore`.
+
+### Corregido
+- El despacho directo de urgentes estimaba la llegada sin la pausa de
+  refrigerio introducida en el PR #11. Elegía unidades que parecían llegar a
+  tiempo y llegaban tarde por la hora de refrigerio: en enero de 2026 una
+  moto llegaba 14 min tarde y se declaraba el colapso el día 2.
+  `Orquestador.estimarLlegada` usa ahora `CalendarioTurnos.avanzarConPausa`.
+
+### Cambiado
+- Capacidad y velocidad de cada tipo de unidad pasan a `ConfiguracionDominio`;
+  `TipoVehiculo` las toma de ahí.
+- Java 21: el Dockerfile usa Temurin 21 Alpine con versión fija y usuario no root,
+  y los scripts compilan con `--release 21`.
+- `.env.example` y `docker-compose.yml` usan los nombres `PLANIFICADOR_*` y la red
+  `paqtracker-red`.
+- Documentación alineada con las velocidades vigentes (auto 40, moto 25 y bici
+  12 km/h) y con el stock real de los almacenes.
+
 ## [0.4.0] — 2026-09-16
 
 ### Añadido
@@ -68,8 +102,13 @@ Formato basado en Keep a Changelog; versionado semántico (MAJOR.MINOR.PATCH).
 
 ## Pendiente
 
-- Cobertura de pruebas unitarias JUnit para todos los bloques compartidos
-  (existe el caso de ejemplo `FragmentadorTest`).
-- Segundo algoritmo metaheurístico (IACO) sobre los bloques comunes.
-- Incorporación de averías como disparador de replanificación (el orquestador ya
+- Pruebas de `Reparador`, `BusquedaLocal`, `ConstructorSoluciones`,
+  `OperadoresGeneticos`, `PlanificadorGA`, `Malla` y `Orquestador`.
+- Averías tipo 1, 2 y 3 como disparador de replanificación (el orquestador ya
   expone el punto de disparo).
+- Media vuelta ante un nodo bloqueado (LE-055) y reasignación de carga en camino
+  (LE-041, LE-042, LE-101), a definir entre el núcleo y el motor de `paqtracker-api`.
+- El porcentaje de cumplimiento del informe puede salir negativo: resta a las
+  entregas los incumplimientos de pedidos que nunca se despacharon.
+- Volver a medir el techo de la flota y la comparación GA/IACO con las velocidades
+  vigentes.

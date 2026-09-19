@@ -2,6 +2,20 @@
 
 Informe del 16-09-2026, rama `hotfix/Comparacion-IACO`.
 
+> **Vigencia (actualizado el 18-09-2026).** Las tablas y resultados de este informe se
+> midieron con la configuración del GA al 16-09. Desde entonces cambió lo siguiente en
+> el árbol `pe.pucp.paqtracker` (y por lo tanto en el IACO adaptado, que lo comparte):
+>
+> - Velocidades de la flota: auto 40, moto 25 y bici 12 km/h (antes 20, 40 y 14).
+> - Turnos de 8 h y refrigerio escalonado (`CalendarioTurnos`), ya presentes en el GA.
+> - Costo por km por tipo de unidad (1,20 / 0,60 / 0,15), usado solo en el reporte.
+> - Stock de los intermedios: se descuenta al despachar y se recarga a las 23:59:59
+>   (antes cada ciclo partía del stock inicial).
+> - Se mide Ta (tiempo de cómputo por planificación).
+>
+> Las ubicaciones de los almacenes del GA, (27,14), (12,38) y (57,27), son las oficiales.
+> Hay que volver a correr las secciones 5.x para tener números vigentes.
+
 ## 1. Resumen
 
 - **Estado previo:** los dos algoritmos están desarrollados y cada uno corre por

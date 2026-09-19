@@ -55,7 +55,7 @@ public final class ConstructorSoluciones {
         SolucionRuteo solucion = new SolucionRuteo();
         List<Vehiculo> libres = obtenerLibres();
         Map<Integer, List<Entrega>> grupos = agruparPorAlmacen(libres);
-        Map<Integer, Integer> stock = stockInicialPorAlmacen();
+        Map<Integer, Integer> stock = stockDisponiblePorAlmacen();
         for (Almacen almacen : escenario.getAlmacenes()) {
             construirRutasDeAlmacen(solucion, almacen, grupos.get(almacen.getId()), libres, stock);
         }
@@ -75,7 +75,7 @@ public final class ConstructorSoluciones {
         Collections.shuffle(libres, random);
         List<Entrega> entregas = new ArrayList<>(escenario.getEntregas());
         Collections.shuffle(entregas, random);
-        Map<Integer, Integer> stock = stockInicialPorAlmacen();
+        Map<Integer, Integer> stock = stockDisponiblePorAlmacen();
         int indiceVehiculo = 0;
         for (Entrega entrega : entregas) {
             if (colocarEnRutaExistente(solucion, entrega, stock)) {
@@ -101,13 +101,13 @@ public final class ConstructorSoluciones {
     }
 
     /**
-     * @return stock inicial de cada almacen, mapeado por identificador
+     * @return stock disponible de cada almacen, mapeado por identificador
      */
-    private Map<Integer, Integer> stockInicialPorAlmacen() {
+    private Map<Integer, Integer> stockDisponiblePorAlmacen() {
         Map<Integer, Integer> stock = new HashMap<>();
         for (Almacen almacen : escenario.getAlmacenes()) {
             stock.put(almacen.getId(),
-                    almacen.esIlimitado() ? Integer.MAX_VALUE : almacen.getStockInicial());
+                    almacen.esIlimitado() ? Integer.MAX_VALUE : almacen.getStockDisponible());
         }
         return stock;
     }
