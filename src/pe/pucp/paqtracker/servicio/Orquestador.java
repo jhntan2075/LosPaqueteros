@@ -44,6 +44,9 @@ import java.util.function.LongFunction;
  */
 public final class Orquestador {
 
+    private static final int MINUTOS_POR_DIA = 1440;
+    private static final long NANOSEGUNDOS_POR_MILISEGUNDO = 1_000_000L;
+
     private final List<Almacen> almacenes;
     private final List<Vehiculo> flota;
     private final List<Pedido> pedidos;
@@ -117,7 +120,9 @@ public final class Orquestador {
         Queue<Pedido> porLlegar = new LinkedList<>(pedidos);
         List<Pedido> cola = new ArrayList<>();
         List<UnidadEnTransito> enRuta = new ArrayList<>();
+        int ultimoDiaRecargado = 0;
         for (int instante = 0; instante <= horizonteMinutos; instante += saMinutos) {
+            ultimoDiaRecargado = recargarAlmacenes(instante, ultimoDiaRecargado);
             liberarUnidades(enRuta, instante);
             actualizarEstadosPorTurno(instante);
             incorporarPedidos(porLlegar, cola, instante);
@@ -127,7 +132,9 @@ public final class Orquestador {
                 continue;
             }
             cola.sort(Comparator.comparingInt(Pedido::getHoraLimite));
+            long inicioComputo = System.nanoTime();
             SolucionRuteo plan = replanificar(cola, instante);
+            resultado.registrarTiempoComputo((System.nanoTime() - inicioComputo) / NANOSEGUNDOS_POR_MILISEGUNDO);
             resultado.incrementarReplanificaciones();
             despachar(plan, cola, enRuta, instante, resultado, unidadesUrgentes);
         }
@@ -157,6 +164,38 @@ public final class Orquestador {
                         pedido.getId(), pedido.getHoraLimite()));
             }
         }
+    }
+
+    /**
+     * Recarga los almacenes intermedios al cruzar la medianoche (23:59:59 del
+     * dia anterior). La recarga es instantanea y deja el stock en su capacidad
+     * maxima; el central no la necesita.
+     *
+     * @param instante           instante actual del reloj
+     * @param ultimoDiaRecargado ultimo dia en que se recargo
+     * @return dia vigente tras la recarga
+     */
+    private int recargarAlmacenes(int instante, int ultimoDiaRecargado) {
+        int dia = instante / MINUTOS_POR_DIA;
+        if (dia > ultimoDiaRecargado) {
+            for (Almacen almacen : almacenes) {
+                almacen.recargar();
+            }
+        }
+        return dia;
+    }
+
+    /**
+     * Descuenta del almacen de salida la carga de una ruta despachada y
+     * registra su costo segun el tipo de unidad.
+     *
+     * @param ruta      ruta despachada
+     * @param distancia kilometros recorridos por la ruta
+     * @param resultado resultado agregado a actualizar
+     */
+    private void registrarSalida(Ruta ruta, int distancia, ResultadoSimulacion resultado) {
+        ruta.getOrigen().descontar(ruta.getCarga());
+        resultado.sumarCosto(distancia * ruta.getVehiculo().getTipo().getCostoPorKm());
     }
 
     /**
@@ -316,7 +355,7 @@ public final class Orquestador {
             Almacen origen = vehiculo.getPosicion();
             int carga = Math.min(restante, vehiculo.getCapacidad());
             int usado = stockUsado.getOrDefault(origen.getId(), 0);
-            if (!origen.esIlimitado() && origen.getStockInicial() - usado < carga) {
+            if (!origen.esIlimitado() && origen.getStockDisponible() - usado < carga) {
                 continue;
             }
             stockUsado.put(origen.getId(), usado + carga);
@@ -415,12 +454,15 @@ public final class Orquestador {
         return vehiculo.estaDisponible()
                 && vehiculo.getCapacidad() >= pedido.getCantidad()
                 && (vehiculo.getPosicion().esIlimitado()
-                        || vehiculo.getPosicion().getStockInicial() >= pedido.getCantidad());
+                        || vehiculo.getPosicion().tieneStock(pedido.getCantidad()));
     }
 
     /**
      * Estima el instante de llegada de una unidad al destino del pedido,
-     * saliendo de su almacen actual en el instante indicado.
+     * saliendo de su almacen actual en el instante indicado. Incluye la pausa
+     * de refrigerio si cae durante el viaje, igual que el recorrido real; sin
+     * ella el despacho directo elegia unidades que parecian llegar a tiempo y
+     * llegaban tarde por la hora de refrigerio.
      *
      * @param vehiculo  unidad a evaluar
      * @param pedido    pedido a despachar
@@ -432,7 +474,8 @@ public final class Orquestador {
                                EscenarioOperativo escenario) {
         int tramo = CalculadoraTiempos.distancia(escenario,
                 vehiculo.getPosicion().getUbicacion(), pedido.getDestino(), instante);
-        return instante + CalculadoraTiempos.minutosDeViaje(tramo, vehiculo.getTipo());
+        return CalendarioTurnos.avanzarConPausa(vehiculo.getId(), instante,
+                CalculadoraTiempos.minutosDeViaje(tramo, vehiculo.getTipo()));
     }
 
     /**
@@ -506,6 +549,7 @@ public final class Orquestador {
         int[] recorrido = CalculadoraTiempos.recorrer(escenario, ruta, instante);
         resultado.registrarUso(ruta.getVehiculo().getTipo().name());
         resultado.sumarDistancia(recorrido[CalculadoraTiempos.INDICE_DISTANCIA]);
+        registrarSalida(ruta, recorrido[CalculadoraTiempos.INDICE_DISTANCIA], resultado);
         resultado.sumarIncumplimientos(recorrido[CalculadoraTiempos.INDICE_INCUMPLIMIENTOS]);
         if (recorrido[CalculadoraTiempos.INDICE_INCUMPLIMIENTOS] > 0) {
             resultado.registrarColapso(instante);
@@ -554,6 +598,7 @@ public final class Orquestador {
             resultado.registrarUso(ruta.getVehiculo().getTipo().name());
             int[] recorrido = CalculadoraTiempos.recorrer(escenario, ruta, instante);
             resultado.sumarDistancia(recorrido[CalculadoraTiempos.INDICE_DISTANCIA]);
+            registrarSalida(ruta, recorrido[CalculadoraTiempos.INDICE_DISTANCIA], resultado);
             resultado.sumarIncumplimientos(recorrido[CalculadoraTiempos.INDICE_INCUMPLIMIENTOS]);
             if (recorrido[CalculadoraTiempos.INDICE_INCUMPLIMIENTOS] > 0) {
                 resultado.registrarColapso(instante);

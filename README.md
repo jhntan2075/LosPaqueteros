@@ -26,7 +26,11 @@ comunes que el GA. Las diferencias y los cambios están en
 
 ## Requisitos previos
 
-- JDK 17 o superior (se requiere el compilador `javac`, no solo el runtime).
+- JDK 21 o superior (se requiere el compilador `javac`, no solo el runtime). Los
+  scripts compilan con `--release 21`, así que un JDK más nuevo produce clases
+  compatibles con Java 21 (DA-01).
+- Para las pruebas: el jar de JUnit en `lib/` (ya versionado).
+- Opcional: Docker Desktop 4.x para correr la imagen del planificador.
 
 ## Estructura del repositorio
 
@@ -56,8 +60,12 @@ datos/                 Dataset compartido por ambos algoritmos
 └── mant.preventivo.202609-202610.txt
 
 docs/
-├── estructura.md      Capas y dependencias
-└── iaco/              Resultados y calibración del IACO
+├── estructura.md                      Capas y dependencias
+├── COMO_FUNCIONA_EL_ALGORITMO.md      Explicación del GA en lenguaje simple
+├── comparacion_ga_iaco.md             GA frente al IACO adaptado
+├── trazabilidad.md                    Exigencias (LE) → clases y pruebas
+├── Justificacion_tecnica_GA_PaqTracker.docx
+└── iaco/                              Resultados y calibración del IACO
 
 scripts/               Compilación y ejecución
 tests/                 Pruebas del GA
@@ -171,11 +179,45 @@ concreta de la v3.0 y mide su aporte por separado.
 
 ## Variables de entorno
 
-El planificador no requiere variables de entorno propias. Los parámetros de
-negocio y del algoritmo se centralizan en `modelo.ConfiguracionDominio` y las
-constantes de `planificador.PlanificadorGA` para el GA, y en
-`bancopruebasiaco.modelo.ConfiguracionDominio` y `bancopruebasiaco.servicio.ParametrosIACO` para el
-IACO. Ver `.env.example` para las variables previstas al integrarse con la API.
+`SimulacionDinamica` lee estas variables. Todas son opcionales y la opción
+`--algoritmo` de la línea de comandos tiene prioridad sobre `PLANIFICADOR_ALGORITMO`:
+
+| Variable | Por defecto | Uso |
+|---|---|---|
+| `PLANIFICADOR_ALGORITMO` | `GA` | `GA` o `IACO` |
+| `PLANIFICADOR_SEMILLA` | `1` | Semilla base (reproducibilidad) |
+| `PLANIFICADOR_SA_MINUTOS` | `30` | Salto del algoritmo Sa, en minutos simulados |
+
+Los parámetros de negocio (almacenes, flota, capacidades, velocidades, costo por
+km, turnos) se centralizan en `modelo.ConfiguracionDominio`, y los del algoritmo
+en las constantes de `planificador.PlanificadorGA` y `planificador.comun.EvaluadorFitness`.
+El IACO de referencia usa los suyos en `bancopruebasiaco.modelo.ConfiguracionDominio`
+y `bancopruebasiaco.servicio.ParametrosIACO`. En `.env.example` están además las
+variables previstas para cuando se integre con la API.
+
+## Indicadores del informe
+
+Al terminar, la simulación registra: entregas, incumplimientos, instante de
+colapso, replanificaciones, pico de unidades en uso, uso por tipo, distancia,
+**costo total** (km × costo por km del tipo) y **Ta**, el tiempo real de cómputo
+por planificación, en promedio y máximo (LE-059). La condición de desempeño es
+Ta < Sa / k.
+
+## Docker
+
+```
+docker compose up --build
+```
+
+La imagen compila con Java 21 (Temurin Alpine, versión fija), corre con un usuario
+no root y por defecto simula 7 días de enero de 2026. Las variables se toman de
+`.env` si ese archivo existe.
+
+## Pruebas
+
+```
+powershell -ExecutionPolicy Bypass -File scripts\tests.ps1
+```
 
 ## Formato de datos
 

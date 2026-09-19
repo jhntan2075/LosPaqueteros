@@ -18,6 +18,10 @@ public final class ResultadoSimulacion {
     private int picoUnidadesEnUso;
     private int instanteColapso;
     private int urgentesRepartidos;
+    private double costoTotal;
+    private long tiempoComputoMaximoMs;
+    private long tiempoComputoTotalMs;
+    private int ejecucionesMedidas;
     private final Map<String, Integer> usoPorTipo;
     private final List<String> detalleIncumplimientos;
 
@@ -52,6 +56,36 @@ public final class ResultadoSimulacion {
 
     public void sumarDistancia(double distancia) {
         this.distanciaTotal += distancia;
+    }
+
+    public double getCostoTotal() {
+        return costoTotal;
+    }
+
+    public void sumarCosto(double costo) {
+        this.costoTotal += costo;
+    }
+
+    /**
+     * Registra el tiempo de computo Ta de una ejecucion del planificador (LE-059).
+     *
+     * @param milisegundos tiempo real que tomo la planificacion
+     */
+    public void registrarTiempoComputo(long milisegundos) {
+        this.tiempoComputoMaximoMs = Math.max(this.tiempoComputoMaximoMs, milisegundos);
+        this.tiempoComputoTotalMs += milisegundos;
+        this.ejecucionesMedidas++;
+    }
+
+    public long getTiempoComputoMaximoMs() {
+        return tiempoComputoMaximoMs;
+    }
+
+    /**
+     * @return Ta promedio en milisegundos, o cero si no hubo ejecuciones
+     */
+    public double getTiempoComputoPromedioMs() {
+        return ejecucionesMedidas == 0 ? 0.0 : (double) tiempoComputoTotalMs / ejecucionesMedidas;
     }
 
     public int getReplanificaciones() {

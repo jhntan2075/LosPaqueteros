@@ -18,14 +18,14 @@ public final class InventarioProyectado {
      * Proyecta el stock de cada almacen tras despachar las rutas de la solucion.
      *
      * @param solucion  solucion cuyas rutas descuentan stock
-     * @param escenario escenario con los almacenes y su stock inicial
+     * @param escenario escenario con los almacenes y su stock disponible
      * @return mapa de identificador de almacen a stock proyectado
      */
     public static Map<Integer, Integer> calcular(SolucionRuteo solucion, EscenarioOperativo escenario) {
         Map<Integer, Integer> stock = new HashMap<>();
         for (Almacen almacen : escenario.getAlmacenes()) {
             stock.put(almacen.getId(),
-                    almacen.esIlimitado() ? Integer.MAX_VALUE : almacen.getStockInicial());
+                    almacen.esIlimitado() ? Integer.MAX_VALUE : almacen.getStockDisponible());
         }
         for (Ruta ruta : solucion.getRutas()) {
             if (ruta.getOrigen().esIlimitado()) {
