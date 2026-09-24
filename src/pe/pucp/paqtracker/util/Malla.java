@@ -5,9 +5,13 @@ import pe.pucp.paqtracker.modelo.ConfiguracionDominio;
 import pe.pucp.paqtracker.modelo.Nodo;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.TreeSet;
 
 /**
  * Malla ortogonal de la ciudad. Calcula la distancia entre dos nodos teniendo
@@ -15,6 +19,14 @@ import java.util.Set;
  * el paso, la distancia es la de Manhattan; cuando un bloqueo interrumpe el
  * camino directo, se calcula el camino mas corto real mediante una busqueda en
  * amplitud sobre los nodos transitables.
+ *
+ * El conjunto de nodos bloqueados solo cambia cuando un bloqueo empieza o
+ * termina, de modo que la linea de tiempo se parte en tramos y el conjunto de
+ * cada tramo se calcula una sola vez y se reutiliza. Sin esa cache, cada
+ * consulta de distancia recorria la lista completa de bloqueos del horizonte:
+ * en una corrida de un anio eran 7246 bloqueos recorridos por consulta para
+ * descubrir que solo uno estaba vigente, y el planificador hace millones de
+ * consultas por ciclo.
  */
 public final class Malla {
 
@@ -22,18 +34,48 @@ public final class Malla {
 
     private final List<Bloqueo> bloqueos;
 
+    /** Instantes en que el conjunto de bloqueos vigentes cambia, ordenados. */
+    private final int[] cambios;
+
+    /** Conjunto de nodos bloqueados de cada tramo, calculado al pedirlo. */
+    private final Map<Integer, Set<Long>> cachePorTramo;
+
     /**
      * @param bloqueos lista de bloqueos programados que afectan la malla
      */
     public Malla(List<Bloqueo> bloqueos) {
         this.bloqueos = bloqueos;
+        this.cambios = calcularCambios(bloqueos);
+        this.cachePorTramo = new HashMap<>();
     }
 
     /**
      * Construye una malla sin bloqueos.
      */
     public Malla() {
-        this.bloqueos = new ArrayList<>();
+        this(new ArrayList<>());
+    }
+
+    /**
+     * Reune los instantes en que algun bloqueo empieza o deja de estar vigente.
+     * Entre dos instantes consecutivos de esta lista, el conjunto de nodos
+     * bloqueados es constante.
+     *
+     * @param bloqueos bloqueos programados
+     * @return instantes de cambio, ordenados y sin repeticiones
+     */
+    private static int[] calcularCambios(List<Bloqueo> bloqueos) {
+        Set<Integer> instantes = new TreeSet<>();
+        for (Bloqueo bloqueo : bloqueos) {
+            instantes.add(bloqueo.getInstanteInicio());
+            instantes.add(bloqueo.getInstanteFin() + 1);
+        }
+        int[] cambios = new int[instantes.size()];
+        int indice = 0;
+        for (int instante : instantes) {
+            cambios[indice++] = instante;
+        }
+        return cambios;
     }
 
     /**
@@ -109,6 +151,32 @@ public final class Malla {
      * @return conjunto de nodos intransitables en ese instante
      */
     private Set<Long> nodosBloqueadosEn(int instante) {
+        if (cambios.length == 0) {
+            return Set.of();
+        }
+        return cachePorTramo.computeIfAbsent(tramoDe(instante), tramo -> construirBloqueados(instante));
+    }
+
+    /**
+     * Identifica el tramo de tiempo al que pertenece un instante. Todos los
+     * instantes de un mismo tramo comparten el conjunto de nodos bloqueados.
+     *
+     * @param instante instante a ubicar
+     * @return indice del tramo
+     */
+    private int tramoDe(int instante) {
+        int posicion = Arrays.binarySearch(cambios, instante);
+        return posicion >= 0 ? posicion : -posicion - 2;
+    }
+
+    /**
+     * Calcula el conjunto de nodos bloqueados de un instante recorriendo la
+     * lista de bloqueos. Se invoca una vez por tramo de tiempo, no por consulta.
+     *
+     * @param instante instante del tramo
+     * @return nodos bloqueados, codificados
+     */
+    private Set<Long> construirBloqueados(int instante) {
         Set<Long> bloqueados = new HashSet<>();
         for (Bloqueo bloqueo : bloqueos) {
             if (bloqueo.estaVigente(instante)) {
@@ -132,6 +200,18 @@ public final class Malla {
         int maxX = Math.max(origen.getX(), destino.getX());
         int minY = Math.min(origen.getY(), destino.getY());
         int maxY = Math.max(origen.getY(), destino.getY());
+        // Se recorre lo mas pequeno: los nodos bloqueados vigentes suelen ser
+        // muchos menos que las celdas del rectangulo que encierra al recorrido.
+        if (bloqueados.size() < (long) (maxX - minX + 1) * (maxY - minY + 1)) {
+            for (long nodo : bloqueados) {
+                int x = (int) (nodo >>> 20);
+                int y = (int) (nodo & 0xFFFFF);
+                if (x >= minX && x <= maxX && y >= minY && y <= maxY) {
+                    return true;
+                }
+            }
+            return false;
+        }
         for (int x = minX; x <= maxX; x++) {
             for (int y = minY; y <= maxY; y++) {
                 if (bloqueados.contains(codificar(x, y))) {

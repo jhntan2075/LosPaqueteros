@@ -25,7 +25,8 @@ import java.util.logging.Logger;
         *   java pe.pucp.paqtracker.servicio.SimulacionDinamica ventas bloqueos dd-MM-yyyy dd-MM-yyyy
  *
  * Ambas formas aceptan al final la opcion --algoritmo ga|iaco (por defecto ga)
- * para elegir el planificador que corre en cada ciclo.
+ * para elegir el planificador que corre en cada ciclo, y la bandera
+ * --detener-en-colapso para terminar en el primer incumplimiento (CU-17).
  *
  * El archivo de ventas debe tener el instante de registro en minutos absolutos
  * del mes, para casar con las ventanas de vigencia de los bloqueos.
@@ -43,6 +44,7 @@ public final class SimulacionDinamica {
     private static final int MARGEN_CIERRE = 3000;
     private static final int DIAS_POR_DEFECTO = 7;
     private static final String OPCION_ALGORITMO = "--algoritmo";
+    private static final String OPCION_DETENER_EN_COLAPSO = "--detener-en-colapso";
     private static final String ALGORITMO_GA = "ga";
     private static final String ALGORITMO_IACO = "iaco";
 
@@ -54,7 +56,8 @@ public final class SimulacionDinamica {
      */
     public static void main(String[] args) throws Exception {
         String algoritmo = extraerAlgoritmo(args);
-        args = sinOpcionAlgoritmo(args);
+        boolean detenerEnColapso = contiene(args, OPCION_DETENER_EN_COLAPSO);
+        args = sinOpciones(args);
         String rutaVentas = args.length > 0 ? args[0] : "ventas.txt";
         String rutaBloqueos = args.length > 1 ? args[1] : null;
         boolean usaRangoFechas = args.length > 3 && !esEntero(args[2]);
@@ -82,7 +85,7 @@ public final class SimulacionDinamica {
                 ConfiguracionDominio.PLAZO_MAXIMO_MINUTOS,
                 ConfiguracionDominio.PLAZO_DESPACHO_DIRECTO_MINUTOS,
                 leerEntornoEntero(VARIABLE_SEMILLA, SEMILLA_POR_DEFECTO), fabricaAlgoritmo(algoritmo));
-        ResultadoSimulacion resultado = orquestador.simular(horizonte + MARGEN_CIERRE);
+        ResultadoSimulacion resultado = orquestador.simular(horizonte + MARGEN_CIERRE, detenerEnColapso);
 
         int diasInforme = rango != null
                 ? (horizonte + MINUTOS_POR_DIA - 1) / MINUTOS_POR_DIA : dias;
@@ -146,14 +149,31 @@ public final class SimulacionDinamica {
     }
 
     /**
-     * @param args argumentos de linea de comandos
-     * @return argumentos posicionales, sin la opcion --algoritmo ni su valor
+     * @param args   argumentos de linea de comandos
+     * @param opcion bandera a buscar
+     * @return verdadero si la bandera esta presente
      */
-    private static String[] sinOpcionAlgoritmo(String[] args) {
+    private static boolean contiene(String[] args, String opcion) {
+        for (String argumento : args) {
+            if (opcion.equals(argumento)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * @param args argumentos de linea de comandos
+     * @return argumentos posicionales, sin las opciones ni sus valores
+     */
+    private static String[] sinOpciones(String[] args) {
         List<String> posicionales = new ArrayList<>();
         for (int i = 0; i < args.length; i++) {
             if (OPCION_ALGORITMO.equals(args[i])) {
                 i++;
+                continue;
+            }
+            if (OPCION_DETENER_EN_COLAPSO.equals(args[i])) {
                 continue;
             }
             posicionales.add(args[i]);

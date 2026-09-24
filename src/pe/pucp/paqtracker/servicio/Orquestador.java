@@ -110,12 +110,26 @@ public final class Orquestador {
     }
 
     /**
-     * Corre la simulacion desde el instante cero hasta el horizonte.
+     * Corre la simulacion completa, desde el instante cero hasta el horizonte.
      *
      * @param horizonteMinutos instante final de la simulacion en minutos
      * @return resultado agregado de la simulacion
      */
     public ResultadoSimulacion simular(int horizonteMinutos) {
+        return simular(horizonteMinutos, false);
+    }
+
+    /**
+     * Corre la simulacion desde el instante cero hasta el horizonte, con la
+     * opcion de cortar apenas se declara el colapso logistico (CU-17). Al
+     * cortar por colapso no se contabilizan los pedidos pendientes, porque la
+     * ejecucion termina antes de su plazo y no llegaron a incumplir.
+     *
+     * @param horizonteMinutos  instante final de la simulacion en minutos
+     * @param detenerEnColapso  verdadero para terminar en el primer incumplimiento
+     * @return resultado agregado de la simulacion
+     */
+    public ResultadoSimulacion simular(int horizonteMinutos, boolean detenerEnColapso) {
         ResultadoSimulacion resultado = new ResultadoSimulacion();
         Queue<Pedido> porLlegar = new LinkedList<>(pedidos);
         List<Pedido> cola = new ArrayList<>();
@@ -127,6 +141,9 @@ public final class Orquestador {
             actualizarEstadosPorTurno(instante);
             incorporarPedidos(porLlegar, cola, instante);
             int unidadesUrgentes = despacharUrgentes(cola, enRuta, instante, resultado);
+            if (detenerEnColapso && resultado.getInstanteColapso() >= 0) {
+                return resultado;
+            }
             if (cola.isEmpty()) {
                 resultado.actualizarPico(unidadesUrgentes);
                 continue;
@@ -137,6 +154,9 @@ public final class Orquestador {
             resultado.registrarTiempoComputo((System.nanoTime() - inicioComputo) / NANOSEGUNDOS_POR_MILISEGUNDO);
             resultado.incrementarReplanificaciones();
             despachar(plan, cola, enRuta, instante, resultado, unidadesUrgentes);
+            if (detenerEnColapso && resultado.getInstanteColapso() >= 0) {
+                return resultado;
+            }
         }
         registrarPedidosPendientes(porLlegar, cola, horizonteMinutos, resultado);
         return resultado;

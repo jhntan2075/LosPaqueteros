@@ -12,35 +12,66 @@ import pe.pucp.paqtracker.util.CalendarioTurnos;
  * Funcion de fitness del planificador. A menor valor, mejor solucion.
  *
  * fitness = distanciaTotal
- *         + PESO_INCUMPLIMIENTO * (incumplimientos de plazo)^2
- *         + PESO_ESPERA         * suma(urgencia * entrega en espera)
- *         + PESO_HOLGURA        * suma(max(0, umbral - holgura)^2)
+ *         + suma(penalizacionTiempo(holgura)) sobre las entregas ruteadas
+ *         + suma(penalizacionCola) sobre las entregas sin rutear
  *
- * La distancia es el costo operativo base. Los otros tres terminos atacan el
- * objetivo del negocio de retrasar el colapso logistico. La capacidad y el
- * stock no aparecen aqui: son restricciones duras que el reparador garantiza
- * antes de evaluar, porque siempre son reparables.
+ * El tiempo se trata con una sola penalizacion por entrega, continua en el
+ * umbral y monotona no creciente en la holgura h = horaLimite - llegada:
+ *
+ *   h >= UMBRAL            -> 0
+ *   0 <= h <  UMBRAL       -> FACTOR_HOLGURA_BLANDA * (UMBRAL - h)^2
+ *   h <  0                 -> PENALIZACION_TARDANZA_BASE
+ *                             + PENALIZACION_POR_MINUTO_TARDE * (-h)
+ *
+ * La version anterior sumaba dos terminos separados, uno por el conteo de
+ * tardios al cuadrado y otro por la holgura, y quedaba invertida: llegar justo
+ * a tiempo costaba mas que llegar tarde, de modo que dejar la entrega en la
+ * cola salia mas barato que rutearla. El conteo binario de tardios sobrevive
+ * solo como criterio duro de aceptacion y colapso, en
+ * {@link #contarIncumplimientos(SolucionRuteo)}, fuera de la busqueda.
+ *
+ * La distancia es el costo operativo base. La capacidad y el stock no aparecen
+ * aqui: son restricciones duras que el reparador garantiza antes de evaluar,
+ * porque siempre son reparables.
  *
  * Este bloque es compartido por todos los algoritmos metaheuristicos y no debe
  * duplicarse ni modificarse localmente.
  */
 public final class EvaluadorFitness {
 
-    /**
-     * Peso del incumplimiento de plazo. Se fija muy alto porque un
-     * incumplimiento equivale al colapso logistico; debe dominar sobre
-     * cualquier ahorro de distancia posible en la malla.
-     */
-    public static final double PESO_INCUMPLIMIENTO = 5000.0;
+    // --- Parametros calibrables de la penalizacion de tiempo. Valores de
+    // --- arranque provisionales (23-09-2026), pendientes de calibrar sobre
+    // --- meses completos. Deben mantener FACTOR_HOLGURA_BLANDA * UMBRAL^2
+    // --- <= PENALIZACION_TARDANZA_BASE para que la rama blanda nunca supere
+    // --- a la dura.
 
-    /** Peso de dejar una entrega en espera, ponderado por su urgencia. */
+    /** Margen, en minutos, por debajo del cual se protege la holgura. */
+    public static final int UMBRAL_HOLGURA_MINUTOS = 120;
+
+    /**
+     * Factor de la rama blanda. Con el umbral en 120 minutos, su maximo es
+     * 0,007 * 120^2 = 100,8: del orden de una distancia, para que proteger la
+     * holgura nunca compita con cumplir el plazo.
+     */
+    public static final double FACTOR_HOLGURA_BLANDA = 0.007;
+
+    /** Salto fijo al incumplir el plazo, independiente de cuanto se tarde. */
+    public static final double PENALIZACION_TARDANZA_BASE = 5000.0;
+
+    /** Costo de cada minuto de retraso; da gradiente para reducir el retraso. */
+    public static final double PENALIZACION_POR_MINUTO_TARDE = 50.0;
+
+    /**
+     * Piso de dejar una entrega sin rutear. Abandonar un pedido debe costar
+     * mas que rutearlo a tiempo aunque sea con margen ajustado.
+     */
+    public static final double PENALIZACION_SIN_RUTEAR_BASE = 5000.0;
+
+    /** Peso de la urgencia de una entrega en espera, sobre el piso anterior. */
     public static final double PESO_ESPERA = 50.0;
 
-    /** Peso de la proteccion de holgura minima cerca del vencimiento. */
-    public static final double PESO_HOLGURA = 20.0;
-
-    /** Margen, en minutos, por debajo del cual se penaliza la holgura. */
-    public static final int UMBRAL_HOLGURA_MINUTOS = 120;
+    /** Piso de holgura restante, en minutos, para evitar dividir entre cero o valores negativos. */
+    private static final int HOLGURA_RESTANTE_MINIMA = 1;
 
     private final EscenarioOperativo escenario;
 
@@ -59,29 +90,41 @@ public final class EvaluadorFitness {
      */
     public double evaluar(SolucionRuteo solucion) {
         double distanciaTotal = 0.0;
-        double penalizacionHolgura = 0.0;
-        int incumplimientos = 0;
+        double penalizacionTiempo = 0.0;
         for (Ruta ruta : solucion.getRutas()) {
             if (ruta.getSecuencia().isEmpty()) {
                 continue;
             }
             ResultadoRuta resultado = evaluarRuta(ruta);
             distanciaTotal += resultado.distancia;
-            incumplimientos += resultado.incumplimientos;
-            penalizacionHolgura += resultado.penalizacionHolgura;
+            penalizacionTiempo += resultado.penalizacionTiempo;
         }
-        double penalizacionEspera = calcularPenalizacionEspera(solucion);
-        double fitness = distanciaTotal
-                + PESO_INCUMPLIMIENTO * incumplimientos * incumplimientos
-                + PESO_ESPERA * penalizacionEspera
-                + PESO_HOLGURA * penalizacionHolgura;
+        double fitness = distanciaTotal + penalizacionTiempo + calcularPenalizacionCola(solucion);
         solucion.setFitness(fitness);
         return fitness;
     }
 
     /**
-     * Evalua una ruta: acumula distancia, incumplimientos y penalizacion de
-     * holgura recorriendola con los tiempos reales.
+     * Penalizacion de tiempo de una entrega segun su holgura. Es continua en el
+     * umbral, monotona no creciente en toda la holgura y nunca negativa.
+     *
+     * @param holgura minutos entre la llegada y la hora limite; negativa si llega tarde
+     * @return penalizacion de tiempo de la entrega
+     */
+    public static double penalizacionTiempo(int holgura) {
+        if (holgura >= UMBRAL_HOLGURA_MINUTOS) {
+            return 0.0;
+        }
+        if (holgura >= 0) {
+            double faltante = UMBRAL_HOLGURA_MINUTOS - holgura;
+            return FACTOR_HOLGURA_BLANDA * faltante * faltante;
+        }
+        return PENALIZACION_TARDANZA_BASE + PENALIZACION_POR_MINUTO_TARDE * (-holgura);
+    }
+
+    /**
+     * Evalua una ruta: acumula distancia y penalizacion de tiempo
+     * recorriendola con los tiempos reales.
      *
      * @param ruta ruta a evaluar
      * @return resultado parcial de la ruta
@@ -96,13 +139,7 @@ public final class EvaluadorFitness {
             resultado.distancia += tramo;
             reloj = CalendarioTurnos.avanzarConPausa(idVehiculo, reloj,
                     CalculadoraTiempos.minutosDeViaje(tramo, ruta.getVehiculo().getTipo()));
-            int holgura = entrega.getHoraLimite() - reloj;
-            if (holgura < 0) {
-                resultado.incumplimientos++;
-            } else if (holgura < UMBRAL_HOLGURA_MINUTOS) {
-                double faltante = UMBRAL_HOLGURA_MINUTOS - holgura;
-                resultado.penalizacionHolgura += faltante * faltante;
-            }
+            resultado.penalizacionTiempo += penalizacionTiempo(entrega.getHoraLimite() - reloj);
             reloj = CalendarioTurnos.avanzarConPausa(idVehiculo, reloj, escenario.getTiempoServicio());
             actual = entrega.getDestino();
         }
@@ -113,24 +150,23 @@ public final class EvaluadorFitness {
         return resultado;
     }
 
-    /** Piso de holgura restante, en minutos, para evitar dividir entre cero o valores negativos. */
-    private static final int HOLGURA_RESTANTE_MINIMA = 1;
-
     /**
-     * Penalizacion por entregas en espera, ponderada por la holgura restante
-     * hasta su plazo (no por el plazo original del pedido): postergar una
-     * entrega cuesta mas a medida que se acerca su vencimiento, de modo que la
-     * presion por despacharla crece en cada ciclo de replanificacion en vez de
-     * quedar fija mientras el pedido permanece huerfano en la cola.
+     * Penalizacion por entregas sin rutear. Cada una paga un piso fijo, para
+     * que abandonarla salga mas caro que rutearla a tiempo, mas un termino
+     * ponderado por la holgura restante hasta su plazo (no por el plazo
+     * original del pedido): postergar una entrega cuesta mas a medida que se
+     * acerca su vencimiento, de modo que la presion por despacharla crece en
+     * cada ciclo de replanificacion en vez de quedar fija mientras el pedido
+     * permanece huerfano en la cola.
      *
      * @param solucion solucion con su cola de espera
-     * @return penalizacion total de espera
+     * @return penalizacion total de la cola de espera
      */
-    private double calcularPenalizacionEspera(SolucionRuteo solucion) {
+    private double calcularPenalizacionCola(SolucionRuteo solucion) {
         double penalizacion = 0.0;
         for (Entrega entrega : solucion.getEspera()) {
             int holguraRestante = entrega.getHoraLimite() - escenario.getInstanteActual();
-            penalizacion += (double) escenario.getPlazoMaximo()
+            penalizacion += PENALIZACION_SIN_RUTEAR_BASE + PESO_ESPERA * escenario.getPlazoMaximo()
                     / Math.max(HOLGURA_RESTANTE_MINIMA, holguraRestante);
         }
         return penalizacion;
@@ -178,7 +214,6 @@ public final class EvaluadorFitness {
      */
     private static final class ResultadoRuta {
         private double distancia = 0.0;
-        private int incumplimientos = 0;
-        private double penalizacionHolgura = 0.0;
+        private double penalizacionTiempo = 0.0;
     }
 }
