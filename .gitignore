@@ -25,6 +25,10 @@ desktop.ini
 *.log
 /tmp/
 
+# Salidas del experimento numerico. El banco de escenarios
+# (datos/experimento/) si se versiona: es la entrada auditable de las corridas.
+/resultados/
+
 # Variables de entorno con valores reales
 .env
 

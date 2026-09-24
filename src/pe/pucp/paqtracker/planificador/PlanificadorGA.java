@@ -4,7 +4,9 @@ import pe.pucp.paqtracker.modelo.EscenarioOperativo;
 import pe.pucp.paqtracker.modelo.SolucionRuteo;
 import pe.pucp.paqtracker.planificador.comun.BusquedaLocal;
 import pe.pucp.paqtracker.planificador.comun.ConstructorSoluciones;
+import pe.pucp.paqtracker.planificador.comun.ContadorEvaluaciones;
 import pe.pucp.paqtracker.planificador.comun.EvaluadorFitness;
+import pe.pucp.paqtracker.planificador.comun.PesosFitness;
 import pe.pucp.paqtracker.planificador.comun.Reparador;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -49,18 +51,37 @@ public final class PlanificadorGA implements AlgoritmoMetaheuristico {
     public static final int TAMANO_TORNEO = 5;
 
     private final long semilla;
+    private final ParametrosGA parametros;
+    private final PesosFitness pesos;
 
     /**
+     * Crea el planificador con los parametros y pesos de produccion.
+     *
      * @param semilla semilla del generador aleatorio, para reproducibilidad
      */
     public PlanificadorGA(long semilla) {
+        this(semilla, ParametrosGA.porDefecto(), PesosFitness.porDefecto());
+    }
+
+    /**
+     * Crea el planificador con parametros y pesos explicitos. Lo usa el
+     * experimento numerico para barrer la calibracion sin recompilar.
+     *
+     * @param semilla    semilla del generador aleatorio, para reproducibilidad
+     * @param parametros parametros del algoritmo genetico
+     * @param pesos      pesos de la funcion objetivo
+     */
+    public PlanificadorGA(long semilla, ParametrosGA parametros, PesosFitness pesos) {
         this.semilla = semilla;
+        this.parametros = parametros;
+        this.pesos = pesos;
     }
 
     @Override
     public SolucionRuteo planificar(EscenarioOperativo escenario) {
+        ContadorEvaluaciones.reiniciarCiclo();
         Reparador reparador = new Reparador(escenario);
-        EvaluadorFitness evaluador = new EvaluadorFitness(escenario);
+        EvaluadorFitness evaluador = new EvaluadorFitness(escenario, pesos);
         ConstructorSoluciones constructor = new ConstructorSoluciones(escenario, reparador, new Random(semilla));
         OperadoresGeneticos operadores = new OperadoresGeneticos(escenario, reparador, new Random(semilla));
         BusquedaLocal busquedaLocal = new BusquedaLocal();
@@ -70,8 +91,12 @@ public final class PlanificadorGA implements AlgoritmoMetaheuristico {
                 constructor, reparador, busquedaLocal, evaluador);
         SolucionRuteo mejorGlobal = mejorDe(poblacion).copiar();
 
-        int elite = Math.max(1, (int) Math.round(TAMANO_POBLACION * FRACCION_ELITE));
-        for (int generacion = 0; generacion < MAX_GENERACIONES; generacion++) {
+        int elite = Math.max(1,
+                (int) Math.round(parametros.getTamanoPoblacion() * parametros.getFraccionElite()));
+        for (int generacion = 0; generacion < parametros.getMaxGeneraciones(); generacion++) {
+            if (ContadorEvaluaciones.presupuestoAgotado()) {
+                break;
+            }
             poblacion = evolucionar(poblacion, elite, operadores, reparador, busquedaLocal, evaluador, random);
             SolucionRuteo mejorGeneracion = mejorDe(poblacion);
             if (mejorGeneracion.getFitness() < mejorGlobal.getFitness()) {
@@ -96,8 +121,9 @@ public final class PlanificadorGA implements AlgoritmoMetaheuristico {
                                                           BusquedaLocal busquedaLocal,
                                                           EvaluadorFitness evaluador) {
         List<SolucionRuteo> poblacion = new ArrayList<>();
-        int golosos = (int) Math.round(TAMANO_POBLACION * FRACCION_GOLOSA);
-        for (int i = 0; i < TAMANO_POBLACION; i++) {
+        int golosos = (int) Math.round(
+                parametros.getTamanoPoblacion() * parametros.getFraccionGolosa());
+        for (int i = 0; i < parametros.getTamanoPoblacion(); i++) {
             SolucionRuteo individuo = (i < golosos)
                     ? constructor.construirGoloso()
                     : constructor.construirAleatorio();
@@ -132,12 +158,13 @@ public final class PlanificadorGA implements AlgoritmoMetaheuristico {
         for (int i = 0; i < elite; i++) {
             nueva.add(poblacion.get(i).copiar());
         }
-        while (nueva.size() < TAMANO_POBLACION) {
-            SolucionRuteo primero = operadores.seleccionarPorTorneo(poblacion, TAMANO_TORNEO);
-            SolucionRuteo hijo = random.nextDouble() < PROBABILIDAD_CRUCE
-                    ? operadores.cruzar(primero, operadores.seleccionarPorTorneo(poblacion, TAMANO_TORNEO))
+        int torneo = parametros.getTamanoTorneo();
+        while (nueva.size() < parametros.getTamanoPoblacion()) {
+            SolucionRuteo primero = operadores.seleccionarPorTorneo(poblacion, torneo);
+            SolucionRuteo hijo = random.nextDouble() < parametros.getProbabilidadCruce()
+                    ? operadores.cruzar(primero, operadores.seleccionarPorTorneo(poblacion, torneo))
                     : primero.copiar();
-            if (random.nextDouble() < PROBABILIDAD_MUTACION) {
+            if (random.nextDouble() < parametros.getProbabilidadMutacion()) {
                 operadores.mutar(hijo);
             }
             reparador.reparar(hijo);

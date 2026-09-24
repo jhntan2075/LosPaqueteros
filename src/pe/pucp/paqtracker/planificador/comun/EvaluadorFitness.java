@@ -74,12 +74,34 @@ public final class EvaluadorFitness {
     private static final int HOLGURA_RESTANTE_MINIMA = 1;
 
     private final EscenarioOperativo escenario;
+    private final PesosFitness pesos;
 
     /**
+     * Crea un evaluador con los pesos de produccion.
+     *
      * @param escenario escenario operativo sobre el que se evalua
      */
     public EvaluadorFitness(EscenarioOperativo escenario) {
+        this(escenario, PesosFitness.porDefecto());
+    }
+
+    /**
+     * Crea un evaluador con pesos explicitos. Lo usa la calibracion del
+     * experimento numerico para barrer un peso a la vez sin recompilar.
+     *
+     * @param escenario escenario operativo sobre el que se evalua
+     * @param pesos     pesos de la funcion objetivo
+     */
+    public EvaluadorFitness(EscenarioOperativo escenario, PesosFitness pesos) {
         this.escenario = escenario;
+        this.pesos = pesos;
+    }
+
+    /**
+     * @return pesos con los que evalua este evaluador
+     */
+    public PesosFitness getPesos() {
+        return pesos;
     }
 
     /**
@@ -101,6 +123,7 @@ public final class EvaluadorFitness {
         }
         double fitness = distanciaTotal + penalizacionTiempo + calcularPenalizacionCola(solucion);
         solucion.setFitness(fitness);
+        ContadorEvaluaciones.registrar();
         return fitness;
     }
 
@@ -112,14 +135,27 @@ public final class EvaluadorFitness {
      * @return penalizacion de tiempo de la entrega
      */
     public static double penalizacionTiempo(int holgura) {
-        if (holgura >= UMBRAL_HOLGURA_MINUTOS) {
+        return penalizacionTiempo(holgura, PesosFitness.porDefecto());
+    }
+
+    /**
+     * Penalizacion de tiempo de una entrega con pesos explicitos. Es la forma
+     * que usan el evaluador y el verificador de invariantes del experimento.
+     *
+     * @param holgura minutos entre la llegada y la hora limite; negativa si llega tarde
+     * @param pesos   pesos de la funcion objetivo
+     * @return penalizacion de tiempo de la entrega
+     */
+    public static double penalizacionTiempo(int holgura, PesosFitness pesos) {
+        if (holgura >= pesos.getUmbralHolguraMinutos()) {
             return 0.0;
         }
         if (holgura >= 0) {
-            double faltante = UMBRAL_HOLGURA_MINUTOS - holgura;
-            return FACTOR_HOLGURA_BLANDA * faltante * faltante;
+            double faltante = pesos.getUmbralHolguraMinutos() - holgura;
+            return pesos.getFactorHolguraBlanda() * faltante * faltante;
         }
-        return PENALIZACION_TARDANZA_BASE + PENALIZACION_POR_MINUTO_TARDE * (-holgura);
+        return pesos.getPenalizacionTardanzaBase()
+                + pesos.getPenalizacionPorMinutoTarde() * (-holgura);
     }
 
     /**
@@ -139,7 +175,7 @@ public final class EvaluadorFitness {
             resultado.distancia += tramo;
             reloj = CalendarioTurnos.avanzarConPausa(idVehiculo, reloj,
                     CalculadoraTiempos.minutosDeViaje(tramo, ruta.getVehiculo().getTipo()));
-            resultado.penalizacionTiempo += penalizacionTiempo(entrega.getHoraLimite() - reloj);
+            resultado.penalizacionTiempo += penalizacionTiempo(entrega.getHoraLimite() - reloj, pesos);
             reloj = CalendarioTurnos.avanzarConPausa(idVehiculo, reloj, escenario.getTiempoServicio());
             actual = entrega.getDestino();
         }
@@ -166,7 +202,8 @@ public final class EvaluadorFitness {
         double penalizacion = 0.0;
         for (Entrega entrega : solucion.getEspera()) {
             int holguraRestante = entrega.getHoraLimite() - escenario.getInstanteActual();
-            penalizacion += PENALIZACION_SIN_RUTEAR_BASE + PESO_ESPERA * escenario.getPlazoMaximo()
+            penalizacion += pesos.getPenalizacionSinRutearBase()
+                    + pesos.getPesoEspera() * escenario.getPlazoMaximo()
                     / Math.max(HOLGURA_RESTANTE_MINIMA, holguraRestante);
         }
         return penalizacion;
