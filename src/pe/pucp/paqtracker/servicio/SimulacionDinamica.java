@@ -9,7 +9,6 @@ import pe.pucp.paqtracker.planificador.AlgoritmoMetaheuristico;
 import pe.pucp.paqtracker.planificador.MemoriaFeromonas;
 import pe.pucp.paqtracker.planificador.PlanificadorGA;
 import pe.pucp.paqtracker.planificador.PlanificadorIACO;
-import pe.pucp.paqtracker.repositorio.CargadorAverias;
 import pe.pucp.paqtracker.repositorio.CargadorBloqueos;
 import pe.pucp.paqtracker.repositorio.CargadorPedidos;
 import pe.pucp.paqtracker.util.Malla;
@@ -27,7 +26,10 @@ import java.util.logging.Logger;
         *   java pe.pucp.paqtracker.servicio.SimulacionDinamica ventas bloqueos dd-MM-yyyy dd-MM-yyyy
  *
  * Ambas formas aceptan al final la opcion --algoritmo ga|iaco (por defecto ga)
- * para elegir el planificador que corre en cada ciclo.
+ * para elegir el planificador que corre en cada ciclo, y cero o mas
+ * ocurrencias de --averia diaDhoraHminutoM,idVehiculo,tipo para registrar
+ * manualmente averias durante la corrida (el curso no entrega un archivo de
+ * averias, a diferencia de pedidos y bloqueos).
  *
  * El archivo de ventas debe tener el instante de registro en minutos absolutos
  * del mes, para casar con las ventanas de vigencia de los bloqueos.
@@ -45,7 +47,7 @@ public final class SimulacionDinamica {
     private static final int MARGEN_CIERRE = 3000;
     private static final int DIAS_POR_DEFECTO = 7;
     private static final String OPCION_ALGORITMO = "--algoritmo";
-    private static final String OPCION_AVERIAS = "--averias";
+    private static final String OPCION_AVERIA = "--averia";
     private static final String ALGORITMO_GA = "ga";
     private static final String ALGORITMO_IACO = "iaco";
 
@@ -58,8 +60,8 @@ public final class SimulacionDinamica {
     public static void main(String[] args) throws Exception {
         String algoritmo = extraerOpcion(args, OPCION_ALGORITMO);
         algoritmo = algoritmo != null ? algoritmo.toLowerCase() : algoritmoPorEntornoOPorDefecto();
-        String rutaAverias = extraerOpcion(args, OPCION_AVERIAS);
-        args = sinOpciones(args, OPCION_ALGORITMO, OPCION_AVERIAS);
+        List<String> textosAverias = extraerOpciones(args, OPCION_AVERIA);
+        args = sinOpciones(args, OPCION_ALGORITMO, OPCION_AVERIA);
         String rutaVentas = args.length > 0 ? args[0] : "ventas.txt";
         String rutaBloqueos = args.length > 1 ? args[1] : null;
         boolean usaRangoFechas = args.length > 3 && !esEntero(args[2]);
@@ -80,11 +82,7 @@ public final class SimulacionDinamica {
                         ? CargadorBloqueos.cargarEnRango(rutaBloqueos, rango)
                         : CargadorBloqueos.cargar(rutaBloqueos, mes))
                 : new Malla();
-        List<Averia> averias = rutaAverias != null
-                ? (rango != null
-                        ? CargadorAverias.cargarEnRango(rutaAverias, rango)
-                        : CargadorAverias.cargar(rutaAverias, mes))
-                : List.of();
+        List<Averia> averias = textosAverias.stream().map(Averia::parsear).toList();
 
         int saMinutos = (int) leerEntornoEntero(VARIABLE_SA_MINUTOS, SA_MINUTOS_POR_DEFECTO);
         Orquestador orquestador = new Orquestador(almacenes, flota, pedidos, averias, malla,
@@ -132,6 +130,24 @@ public final class SimulacionDinamica {
             }
         }
         return null;
+    }
+
+    /**
+     * Extrae todas las ocurrencias de una opcion repetible (p. ej. una averia
+     * registrada manualmente por cada --averia).
+     *
+     * @param args   argumentos de linea de comandos
+     * @param nombre nombre de la opcion a buscar, con guiones
+     * @return valores de cada ocurrencia, en el orden en que aparecen
+     */
+    private static List<String> extraerOpciones(String[] args, String nombre) {
+        List<String> valores = new ArrayList<>();
+        for (int i = 0; i + 1 < args.length; i++) {
+            if (nombre.equals(args[i])) {
+                valores.add(args[i + 1]);
+            }
+        }
+        return valores;
     }
 
     /**
