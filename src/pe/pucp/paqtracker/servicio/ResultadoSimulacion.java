@@ -22,6 +22,7 @@ public final class ResultadoSimulacion {
     private long tiempoComputoMaximoMs;
     private long tiempoComputoTotalMs;
     private int ejecucionesMedidas;
+    private int averiasAtendidas;
     private final Map<String, Integer> usoPorTipo;
     private final List<String> detalleIncumplimientos;
 
@@ -124,6 +125,17 @@ public final class ResultadoSimulacion {
      */
     public void registrarReparto() {
         this.urgentesRepartidos++;
+    }
+
+    public int getAveriasAtendidas() {
+        return averiasAtendidas;
+    }
+
+    /**
+     * Registra una averia procesada durante la simulacion.
+     */
+    public void registrarAveria() {
+        this.averiasAtendidas++;
     }
 
     public Map<String, Integer> getUsoPorTipo() {

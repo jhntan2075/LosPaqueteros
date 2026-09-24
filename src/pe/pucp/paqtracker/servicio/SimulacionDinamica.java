@@ -1,6 +1,7 @@
 package pe.pucp.paqtracker.servicio;
 
 import pe.pucp.paqtracker.modelo.Almacen;
+import pe.pucp.paqtracker.modelo.Averia;
 import pe.pucp.paqtracker.modelo.ConfiguracionDominio;
 import pe.pucp.paqtracker.modelo.Pedido;
 import pe.pucp.paqtracker.modelo.Vehiculo;
@@ -8,6 +9,7 @@ import pe.pucp.paqtracker.planificador.AlgoritmoMetaheuristico;
 import pe.pucp.paqtracker.planificador.MemoriaFeromonas;
 import pe.pucp.paqtracker.planificador.PlanificadorGA;
 import pe.pucp.paqtracker.planificador.PlanificadorIACO;
+import pe.pucp.paqtracker.repositorio.CargadorAverias;
 import pe.pucp.paqtracker.repositorio.CargadorBloqueos;
 import pe.pucp.paqtracker.repositorio.CargadorPedidos;
 import pe.pucp.paqtracker.util.Malla;
@@ -43,6 +45,7 @@ public final class SimulacionDinamica {
     private static final int MARGEN_CIERRE = 3000;
     private static final int DIAS_POR_DEFECTO = 7;
     private static final String OPCION_ALGORITMO = "--algoritmo";
+    private static final String OPCION_AVERIAS = "--averias";
     private static final String ALGORITMO_GA = "ga";
     private static final String ALGORITMO_IACO = "iaco";
 
@@ -53,8 +56,10 @@ public final class SimulacionDinamica {
      * @throws Exception si ocurre un error al leer los archivos de entrada
      */
     public static void main(String[] args) throws Exception {
-        String algoritmo = extraerAlgoritmo(args);
-        args = sinOpcionAlgoritmo(args);
+        String algoritmo = extraerOpcion(args, OPCION_ALGORITMO);
+        algoritmo = algoritmo != null ? algoritmo.toLowerCase() : algoritmoPorEntornoOPorDefecto();
+        String rutaAverias = extraerOpcion(args, OPCION_AVERIAS);
+        args = sinOpciones(args, OPCION_ALGORITMO, OPCION_AVERIAS);
         String rutaVentas = args.length > 0 ? args[0] : "ventas.txt";
         String rutaBloqueos = args.length > 1 ? args[1] : null;
         boolean usaRangoFechas = args.length > 3 && !esEntero(args[2]);
@@ -75,9 +80,14 @@ public final class SimulacionDinamica {
                         ? CargadorBloqueos.cargarEnRango(rutaBloqueos, rango)
                         : CargadorBloqueos.cargar(rutaBloqueos, mes))
                 : new Malla();
+        List<Averia> averias = rutaAverias != null
+                ? (rango != null
+                        ? CargadorAverias.cargarEnRango(rutaAverias, rango)
+                        : CargadorAverias.cargar(rutaAverias, mes))
+                : List.of();
 
         int saMinutos = (int) leerEntornoEntero(VARIABLE_SA_MINUTOS, SA_MINUTOS_POR_DEFECTO);
-        Orquestador orquestador = new Orquestador(almacenes, flota, pedidos, malla,
+        Orquestador orquestador = new Orquestador(almacenes, flota, pedidos, averias, malla,
                 saMinutos, ConfiguracionDominio.TIEMPO_SERVICIO_MINUTOS,
                 ConfiguracionDominio.PLAZO_MAXIMO_MINUTOS,
                 ConfiguracionDominio.PLAZO_DESPACHO_DIRECTO_MINUTOS,
@@ -111,16 +121,24 @@ public final class SimulacionDinamica {
     }
 
     /**
-     * @param args argumentos de linea de comandos
-     * @return valor de la opcion --algoritmo en minusculas; si no se indica, el de
-     *         PLANIFICADOR_ALGORITMO o, en su defecto, ga
+     * @param args   argumentos de linea de comandos
+     * @param nombre nombre de la opcion a buscar, con guiones (p. ej. --algoritmo)
+     * @return valor de la opcion, o null si no se indica
      */
-    private static String extraerAlgoritmo(String[] args) {
+    private static String extraerOpcion(String[] args, String nombre) {
         for (int i = 0; i + 1 < args.length; i++) {
-            if (OPCION_ALGORITMO.equals(args[i])) {
-                return args[i + 1].toLowerCase();
+            if (nombre.equals(args[i])) {
+                return args[i + 1];
             }
         }
+        return null;
+    }
+
+    /**
+     * @return el algoritmo de PLANIFICADOR_ALGORITMO en minusculas, o ga si la
+     *         variable no esta definida (Twelve-Factor)
+     */
+    private static String algoritmoPorEntornoOPorDefecto() {
         String valorEntorno = System.getenv(VARIABLE_ALGORITMO);
         return valorEntorno == null || valorEntorno.isBlank() ? ALGORITMO_GA : valorEntorno.trim().toLowerCase();
     }
@@ -146,13 +164,21 @@ public final class SimulacionDinamica {
     }
 
     /**
-     * @param args argumentos de linea de comandos
-     * @return argumentos posicionales, sin la opcion --algoritmo ni su valor
+     * @param args    argumentos de linea de comandos
+     * @param nombres nombres de las opciones a quitar, con guiones
+     * @return argumentos posicionales, sin esas opciones ni sus valores
      */
-    private static String[] sinOpcionAlgoritmo(String[] args) {
+    private static String[] sinOpciones(String[] args, String... nombres) {
         List<String> posicionales = new ArrayList<>();
         for (int i = 0; i < args.length; i++) {
-            if (OPCION_ALGORITMO.equals(args[i])) {
+            boolean esOpcion = false;
+            for (String nombre : nombres) {
+                if (nombre.equals(args[i])) {
+                    esOpcion = true;
+                    break;
+                }
+            }
+            if (esOpcion) {
                 i++;
                 continue;
             }
@@ -191,6 +217,7 @@ public final class SimulacionDinamica {
         informe.append(String.format("Uso por tipo: %s%n", resultado.getUsoPorTipo()));
         informe.append(String.format("Urgentes repartidos en varias unidades: %d%n",
                 resultado.getUrgentesRepartidos()));
+        informe.append(String.format("Averias atendidas: %d%n", resultado.getAveriasAtendidas()));
         informe.append(String.format("Distancia total: %.0f km%n", resultado.getDistanciaTotal()));
         informe.append(String.format("Costo total: %.2f%n", resultado.getCostoTotal()));
         informe.append(String.format("Ta (computo por planificacion): promedio %.1f ms, maximo %d ms",

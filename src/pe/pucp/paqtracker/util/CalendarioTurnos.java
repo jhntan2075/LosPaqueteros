@@ -47,6 +47,34 @@ public final class CalendarioTurnos {
     }
 
     /**
+     * Minuto absoluto en que termina el turno siguiente al vigente en el
+     * instante dado (LE-incidencias, averia tipo 2).
+     *
+     * @param instante minuto absoluto a consultar
+     * @return minuto absoluto de fin del turno siguiente
+     */
+    public static int finDelSiguienteTurno(int instante) {
+        return turnoFin(instante) + ConfiguracionDominio.DURACION_TURNO_MINUTOS;
+    }
+
+    /**
+     * Minuto absoluto de inicio del primer turno de 15:00 que ocurre en o
+     * despues del instante dado (LE-incidencias, averia tipo 3).
+     *
+     * @param minimoInstante minuto absoluto a partir del cual buscar
+     * @return minuto absoluto de inicio de ese turno
+     */
+    public static int proximoTurnoDeLasTres(int minimoInstante) {
+        int inicioTurnoDeLasTres = ConfiguracionDominio.iniciosTurno()[1];
+        int minutoDelDia = minimoInstante % MINUTOS_POR_DIA;
+        int base = minimoInstante - minutoDelDia;
+        if (minutoDelDia <= inicioTurnoDeLasTres) {
+            return base + inicioTurnoDeLasTres;
+        }
+        return base + MINUTOS_POR_DIA + inicioTurnoDeLasTres;
+    }
+
+    /**
      * Minuto absoluto en que empieza el refrigerio del grupo de la unidad,
      * dentro del turno vigente en el instante dado.
      *

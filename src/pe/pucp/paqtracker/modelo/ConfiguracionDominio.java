@@ -87,6 +87,21 @@ public final class ConfiguracionDominio {
      */
     public static final int GRUPOS_REFRIGERIO = 3;
 
+    /** Duracion total de no disponibilidad de una averia tipo 1, en minutos. */
+    public static final int AVERIA_TIPO1_MINUTOS = 120;
+
+    /**
+     * Minutos que una unidad averiada (tipo 2 o 3) permanece en el lugar de la
+     * averia antes de ser trasladada de forma instantanea al almacen central
+     * (simplificacion explicita del curso). No es el tiempo total de no
+     * disponibilidad: tipo 2 sigue sin disponible hasta el fin del siguiente
+     * turno, y tipo 3 al menos {@link #AVERIA_TIPO3_MINIMO_MINUTOS}.
+     */
+    public static final int AVERIA_PERMANENCIA_SITIO_MINUTOS = 240;
+
+    /** Minutos minimos de no disponibilidad de una averia tipo 3. */
+    public static final int AVERIA_TIPO3_MINIMO_MINUTOS = 2 * 1440;
+
     /**
      * @return minutos del dia en que inicia cada turno
      */
