@@ -5,6 +5,11 @@
 /bin/
 /target/
 
+# Node / Frontend
+node_modules/
+dist/
+dist-ssr/
+
 # Herramientas y IDE
 .idea/
 *.iml
