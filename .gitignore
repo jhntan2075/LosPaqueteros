@@ -5,6 +5,11 @@
 /bin/
 /target/
 
+# Node / Frontend
+node_modules/
+dist/
+dist-ssr/
+
 # Herramientas y IDE
 .idea/
 *.iml
@@ -24,6 +29,10 @@ desktop.ini
 # Registros y temporales
 *.log
 /tmp/
+
+# Salidas del experimento numerico. El banco de escenarios
+# (datos/experimento/) si se versiona: es la entrada auditable de las corridas.
+/resultados/
 
 # Variables de entorno con valores reales
 .env

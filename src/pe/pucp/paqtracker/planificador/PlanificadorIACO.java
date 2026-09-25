@@ -3,7 +3,9 @@ package pe.pucp.paqtracker.planificador;
 import pe.pucp.paqtracker.modelo.EscenarioOperativo;
 import pe.pucp.paqtracker.modelo.SolucionRuteo;
 import pe.pucp.paqtracker.planificador.comun.BusquedaLocal;
+import pe.pucp.paqtracker.planificador.comun.ContadorEvaluaciones;
 import pe.pucp.paqtracker.planificador.comun.EvaluadorFitness;
+import pe.pucp.paqtracker.planificador.comun.PesosFitness;
 import pe.pucp.paqtracker.planificador.comun.Reparador;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -84,14 +86,34 @@ public final class PlanificadorIACO implements AlgoritmoMetaheuristico {
 
     private final long semilla;
     private final MemoriaFeromonas memoria;
+    private final ParametrosIACO parametros;
+    private final PesosFitness pesos;
 
     /**
+     * Crea el planificador con los parametros y pesos de produccion.
+     *
      * @param semilla semilla del ciclo, para reproducibilidad
      * @param memoria memoria de feromonas compartida por toda la simulacion
      */
     public PlanificadorIACO(long semilla, MemoriaFeromonas memoria) {
+        this(semilla, memoria, ParametrosIACO.porDefecto(), PesosFitness.porDefecto());
+    }
+
+    /**
+     * Crea el planificador con parametros y pesos explicitos. Lo usa el
+     * experimento numerico para barrer la calibracion sin recompilar.
+     *
+     * @param semilla    semilla del ciclo, para reproducibilidad
+     * @param memoria    memoria de feromonas compartida por toda la simulacion
+     * @param parametros parametros de la colonia
+     * @param pesos      pesos de la funcion objetivo
+     */
+    public PlanificadorIACO(long semilla, MemoriaFeromonas memoria,
+                            ParametrosIACO parametros, PesosFitness pesos) {
         this.semilla = semilla;
         this.memoria = memoria;
+        this.parametros = parametros;
+        this.pesos = pesos;
     }
 
     /**
@@ -101,19 +123,34 @@ public final class PlanificadorIACO implements AlgoritmoMetaheuristico {
         return new MemoriaFeromonas(TAU_MIN, TAU_MAX);
     }
 
+    /**
+     * Crea la memoria de feromonas con los limites MAX-MIN de unos parametros
+     * dados, para los barridos que mueven tauMin o tauMax.
+     *
+     * @param parametros parametros de la colonia
+     * @return memoria nueva con los limites indicados
+     */
+    public static MemoriaFeromonas crearMemoria(ParametrosIACO parametros) {
+        return new MemoriaFeromonas(parametros.getTauMin(), parametros.getTauMax());
+    }
+
     @Override
     public SolucionRuteo planificar(EscenarioOperativo escenario) {
+        ContadorEvaluaciones.reiniciarCiclo();
         Reparador reparador = new Reparador(escenario);
-        EvaluadorFitness evaluador = new EvaluadorFitness(escenario);
+        EvaluadorFitness evaluador = new EvaluadorFitness(escenario, pesos);
         BusquedaLocal busquedaLocal = new BusquedaLocal();
         OperadoresColonia operadores = new OperadoresColonia(escenario, memoria);
 
         SolucionRuteo mejor = null;
         int sinMejora = 0;
-        for (int iteracion = 0; iteracion < ITERACIONES; iteracion++) {
+        for (int iteracion = 0; iteracion < parametros.getIteraciones(); iteracion++) {
+            if (mejor != null && ContadorEvaluaciones.presupuestoAgotado()) {
+                break;
+            }
             List<SolucionRuteo> colonia = construirColonia(iteracion, operadores, reparador, evaluador);
             colonia.sort(Comparator.comparingDouble(SolucionRuteo::getFitness));
-            int tope = Math.min(BUSQUEDA_LOCAL_TOP, colonia.size());
+            int tope = Math.min(parametros.getBusquedaLocalTop(), colonia.size());
             for (int i = 0; i < tope; i++) {
                 SolucionRuteo hormiga = colonia.get(i);
                 reparador.reparar(hormiga);
@@ -132,15 +169,15 @@ public final class PlanificadorIACO implements AlgoritmoMetaheuristico {
             }
             actualizarFeromonas(colonia, mejor, operadores);
 
-            if (sinMejora >= PARADA) {
+            if (sinMejora >= parametros.getParada()) {
                 break;
             }
-            if (iteracion >= ITERACIONES_SIN_SUAVIZADO
-                    && memoria.factorConvergencia() > UMBRAL_CONVERGENCIA) {
-                memoria.suavizar(FRACCION_SUAVIZADO);
+            if (iteracion >= parametros.getIteracionesSinSuavizado()
+                    && memoria.factorConvergencia() > parametros.getUmbralConvergencia()) {
+                memoria.suavizar(parametros.getFraccionSuavizado());
             }
-            if (sinMejora >= ESTANCAMIENTO) {
-                memoria.suavizar(FRACCION_SUAVIZADO);
+            if (sinMejora >= parametros.getEstancamiento()) {
+                memoria.suavizar(parametros.getFraccionSuavizado());
                 sinMejora = 0;
             }
         }
@@ -161,14 +198,15 @@ public final class PlanificadorIACO implements AlgoritmoMetaheuristico {
     private List<SolucionRuteo> construirColonia(int iteracion, OperadoresColonia operadores,
                                                  Reparador reparador, EvaluadorFitness evaluador) {
         List<SolucionRuteo> colonia = new ArrayList<>();
-        for (int hormiga = 0; hormiga < HORMIGAS; hormiga++) {
+        for (int hormiga = 0; hormiga < parametros.getHormigas(); hormiga++) {
             Random random = new Random(semilla * 1_000_003L + iteracion * 131L + hormiga);
-            double q0 = hormiga == 0 ? 1.0 : Q0;
-            SolucionRuteo solucion = operadores.construir(random, q0, ALFA, BETA, GAMMA,
-                    CANDIDATOS, BUFFER_MINUTOS);
+            double q0 = hormiga == 0 ? 1.0 : parametros.getQ0();
+            SolucionRuteo solucion = operadores.construir(random, q0, parametros.getAlfa(),
+                    parametros.getBeta(), parametros.getGamma(),
+                    parametros.getCandidatos(), parametros.getBufferMinutos());
             reparador.reparar(solucion);
             evaluador.evaluar(solucion);
-            operadores.evaporarLocal(solucion, XI_LOCAL);
+            operadores.evaporarLocal(solucion, parametros.getXiLocal());
             colonia.add(solucion);
         }
         return colonia;
@@ -185,14 +223,15 @@ public final class PlanificadorIACO implements AlgoritmoMetaheuristico {
      */
     private void actualizarFeromonas(List<SolucionRuteo> colonia, SolucionRuteo mejor,
                                      OperadoresColonia operadores) {
-        memoria.evaporar(RHO);
-        int elite = Math.min(ELITE, colonia.size());
+        double rho = parametros.getRho();
+        memoria.evaporar(rho);
+        int elite = Math.min(parametros.getElite(), colonia.size());
         for (int rango = 1; rango <= elite; rango++) {
             SolucionRuteo hormiga = colonia.get(rango - 1);
-            double peso = RHO * (elite - rango + 1) / elite
+            double peso = rho * (elite - rango + 1) / elite
                     * (mejor.getFitness() / Math.max(hormiga.getFitness(), 1e-9));
             operadores.depositar(hormiga, peso);
         }
-        operadores.depositar(mejor, RHO);
+        operadores.depositar(mejor, rho);
     }
 }

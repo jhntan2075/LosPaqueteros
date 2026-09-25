@@ -24,13 +24,18 @@ public final class ConfiguracionDominio {
     public static final int PLAZO_MAXIMO_MINUTOS = 2160;
 
     /**
-     * Plazo, en minutos, a partir del cual un pedido se considera urgente y se
-     * despacha de inmediato en la primera unidad libre con capacidad
-     * suficiente, sin competir por la funcion de fitness del planificador
-     * (8 horas). Para una ventana de entrega tan corta, esperar un ciclo de
-     * optimizacion consume una porcion demasiado grande de su plazo.
+     * Plazo, en minutos, por debajo del cual un pedido se considera urgente y
+     * se despacha de inmediato en la primera unidad libre con capacidad
+     * suficiente, sin competir por la funcion de fitness del planificador. Para
+     * una ventana de entrega muy corta, esperar un ciclo de optimizacion
+     * consume una porcion demasiado grande del plazo.
+     *
+     * Valor experimental (23-09-2026): en cero, ningun pedido se desvia y todos
+     * pasan por el algoritmo, para medir al planificador con los pedidos de 4 h
+     * y 8 h incluidos. Valores operativos: 480 (8 h) es el comportamiento
+     * historico; 60 deja el desvio solo para urgencias reales de una hora.
      */
-    public static final int PLAZO_DESPACHO_DIRECTO_MINUTOS = 480;
+    public static final int PLAZO_DESPACHO_DIRECTO_MINUTOS = 0;
 
     /** Stock inicial de cada almacen intermedio. */
     public static final int STOCK_INTERMEDIO = 1000;

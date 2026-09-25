@@ -15,11 +15,25 @@ Formato basado en Keep a Changelog; versionado semántico (MAJOR.MINOR.PATCH).
 - Lectura de `PLANIFICADOR_ALGORITMO`, `PLANIFICADOR_SEMILLA` y
   `PLANIFICADOR_SA_MINUTOS` en `SimulacionDinamica`.
 - Pruebas: `AlmacenTest`, `TipoVehiculoTest`, `CalculadoraTiemposTest`,
-  `InventarioProyectadoTest`, `EvaluadorFitnessTest`.
+  `InventarioProyectadoTest`, `EvaluadorFitnessTest`, `MallaTest`.
+- Opcion `--detener-en-colapso` y sobrecarga `Orquestador.simular(horizonte,
+  detenerEnColapso)` para terminar la ejecucion en el primer incumplimiento
+  (CU-17).
 - `docs/trazabilidad.md` (exigencias → clases → pruebas), `.gitattributes`
   (LF), `.dockerignore`.
 
 ### Corregido
+- `util.Malla` reconstruia el conjunto de nodos bloqueados en **cada** consulta
+  de distancia, recorriendo la lista completa de bloqueos del horizonte. En una
+  corrida de un anio eran 7246 bloqueos recorridos por consulta para descubrir
+  que solo uno estaba vigente (16 nodos), y el planificador hace millones de
+  consultas por ciclo. Ahora la linea de tiempo se parte en tramos delimitados
+  por el inicio y el fin de cada bloqueo, y el conjunto de cada tramo se calcula
+  una sola vez. `caminoDirectoBloqueado` tambien recorre lo mas pequeno entre
+  los nodos bloqueados y las celdas del rectangulo. Medido: la consulta de
+  distancia con el anio cargado pasa de 42,1 us a 0,195 us (216 veces mas
+  rapida) y una planificacion de 100 entregas de 45,6 s a 1,6 s (29 veces mas
+  rapida), con soluciones identicas.
 - El despacho directo de urgentes estimaba la llegada sin la pausa de
   refrigerio introducida en el PR #11. Elegía unidades que parecían llegar a
   tiempo y llegaban tarde por la hora de refrigerio: en enero de 2026 una

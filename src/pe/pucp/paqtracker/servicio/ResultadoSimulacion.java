@@ -19,6 +19,7 @@ public final class ResultadoSimulacion {
     private int instanteColapso;
     private int urgentesRepartidos;
     private double costoTotal;
+    private double fitnessAcumulado;
     private long tiempoComputoMaximoMs;
     private long tiempoComputoTotalMs;
     private int ejecucionesMedidas;
@@ -67,6 +68,24 @@ public final class ResultadoSimulacion {
     }
 
     /**
+     * @return suma del fitness de los planes despachados hasta el momento
+     */
+    public double getFitnessAcumulado() {
+        return fitnessAcumulado;
+    }
+
+    /**
+     * Acumula el fitness del plan elegido en un ciclo de planificacion. Es la
+     * variable respuesta primaria del experimento numerico: el fitness
+     * acumulado hasta cada corte de la simulacion.
+     *
+     * @param fitness fitness del plan despachado en el ciclo
+     */
+    public void sumarFitness(double fitness) {
+        this.fitnessAcumulado += fitness;
+    }
+
+    /**
      * Registra el tiempo de computo Ta de una ejecucion del planificador (LE-059).
      *
      * @param milisegundos tiempo real que tomo la planificacion
@@ -79,6 +98,13 @@ public final class ResultadoSimulacion {
 
     public long getTiempoComputoMaximoMs() {
         return tiempoComputoMaximoMs;
+    }
+
+    /**
+     * @return tiempo de computo acumulado por el planificador, en milisegundos
+     */
+    public long getTiempoComputoTotalMs() {
+        return tiempoComputoTotalMs;
     }
 
     /**

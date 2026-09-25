@@ -57,6 +57,19 @@ public final class Orquestador {
     private final int plazoDespachoDirecto;
     private final long semilla;
     private final LongFunction<AlgoritmoMetaheuristico> fabricaAlgoritmo;
+    private ObservadorSimulacion observador;
+
+    /**
+     * Instala un observador que recibe el cierre de cada dia simulado. Sirve
+     * para tomar los cortes por horizonte del experimento numerico sin partir
+     * la simulacion en corridas independientes. Con el observador en null, que
+     * es el valor por defecto, la simulacion se comporta igual que siempre.
+     *
+     * @param observador observador a instalar, o null para no observar
+     */
+    public void fijarObservador(ObservadorSimulacion observador) {
+        this.observador = observador;
+    }
 
     /**
      * Crea un orquestador que planifica con el algoritmo genetico.
@@ -110,23 +123,42 @@ public final class Orquestador {
     }
 
     /**
-     * Corre la simulacion desde el instante cero hasta el horizonte.
+     * Corre la simulacion completa, desde el instante cero hasta el horizonte.
      *
      * @param horizonteMinutos instante final de la simulacion en minutos
      * @return resultado agregado de la simulacion
      */
     public ResultadoSimulacion simular(int horizonteMinutos) {
+        return simular(horizonteMinutos, false);
+    }
+
+    /**
+     * Corre la simulacion desde el instante cero hasta el horizonte, con la
+     * opcion de cortar apenas se declara el colapso logistico (CU-17). Al
+     * cortar por colapso no se contabilizan los pedidos pendientes, porque la
+     * ejecucion termina antes de su plazo y no llegaron a incumplir.
+     *
+     * @param horizonteMinutos  instante final de la simulacion en minutos
+     * @param detenerEnColapso  verdadero para terminar en el primer incumplimiento
+     * @return resultado agregado de la simulacion
+     */
+    public ResultadoSimulacion simular(int horizonteMinutos, boolean detenerEnColapso) {
         ResultadoSimulacion resultado = new ResultadoSimulacion();
         Queue<Pedido> porLlegar = new LinkedList<>(pedidos);
         List<Pedido> cola = new ArrayList<>();
         List<UnidadEnTransito> enRuta = new ArrayList<>();
         int ultimoDiaRecargado = 0;
+        int ultimoDiaObservado = 0;
         for (int instante = 0; instante <= horizonteMinutos; instante += saMinutos) {
+            ultimoDiaObservado = observarCierreDeDia(instante, ultimoDiaObservado, cola, resultado);
             ultimoDiaRecargado = recargarAlmacenes(instante, ultimoDiaRecargado);
             liberarUnidades(enRuta, instante);
             actualizarEstadosPorTurno(instante);
             incorporarPedidos(porLlegar, cola, instante);
             int unidadesUrgentes = despacharUrgentes(cola, enRuta, instante, resultado);
+            if (detenerEnColapso && resultado.getInstanteColapso() >= 0) {
+                return resultado;
+            }
             if (cola.isEmpty()) {
                 resultado.actualizarPico(unidadesUrgentes);
                 continue;
@@ -136,10 +168,39 @@ public final class Orquestador {
             SolucionRuteo plan = replanificar(cola, instante);
             resultado.registrarTiempoComputo((System.nanoTime() - inicioComputo) / NANOSEGUNDOS_POR_MILISEGUNDO);
             resultado.incrementarReplanificaciones();
+            resultado.sumarFitness(plan.getFitness());
             despachar(plan, cola, enRuta, instante, resultado, unidadesUrgentes);
+            if (detenerEnColapso && resultado.getInstanteColapso() >= 0) {
+                return resultado;
+            }
         }
         registrarPedidosPendientes(porLlegar, cola, horizonteMinutos, resultado);
         return resultado;
+    }
+
+    /**
+     * Notifica al observador el cierre de cada dia simulado que haya quedado
+     * atras desde la ultima notificacion. Al llegar el reloj al primer instante
+     * de un dia nuevo, el dia anterior ya esta completo: el estado acumulado
+     * que se entrega corresponde a su corte.
+     *
+     * @param instante          instante actual del reloj
+     * @param ultimoDiaObservado ultimo dia ya notificado, cero si ninguno
+     * @param cola              cola de pedidos por planificar
+     * @param resultado         resultado acumulado hasta el momento
+     * @return ultimo dia notificado tras esta llamada
+     */
+    private int observarCierreDeDia(int instante, int ultimoDiaObservado, List<Pedido> cola,
+                                     ResultadoSimulacion resultado) {
+        if (observador == null) {
+            return ultimoDiaObservado;
+        }
+        int diaCumplido = instante / MINUTOS_POR_DIA;
+        while (ultimoDiaObservado < diaCumplido) {
+            ultimoDiaObservado++;
+            observador.alCerrarDia(ultimoDiaObservado, resultado, cola.size());
+        }
+        return ultimoDiaObservado;
     }
 
     /**
