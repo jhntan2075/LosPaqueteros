@@ -23,6 +23,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.function.LongFunction;
 
@@ -170,7 +171,9 @@ public final class CorredorExperimento {
             if (corte == null) {
                 continue;
             }
-            filas.add(String.format("%s,%s,%d,%d,%d,%.4f,%.0f,%d,%d,%d,%d,%d,%s,%d,%d",
+            // Locale.ROOT fuerza el punto decimal: con el local del sistema en
+            // espanol, un fitness "416,0000" agregaba una columna al CSV.
+            filas.add(String.format(Locale.ROOT, "%s,%s,%d,%d,%d,%.4f,%.0f,%d,%d,%d,%d,%d,%s,%d,%d",
                     opciones.escenario, opciones.algoritmo, opciones.repeticion, opciones.semilla,
                     dia, corte.fitnessAcumulado, corte.distanciaTotal, corte.entregasFueraPlazo,
                     corte.entregasEnCola, corte.colapso, corte.evaluaciones, corte.tiempoMs,

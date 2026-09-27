@@ -104,18 +104,36 @@ No se modificó nada en `src/pe/pucp/paqtracker/iaco/` ni en
 
 ### 3.1 Parámetros del IACO adaptado
 
-Son los de la versión publicada `ParametrosIACO.v30()`:
+> **Actualizado el 24-09-2026.** Esta tabla decía "los de la version publicada
+> `ParametrosIACO.v30()`" con los valores con que se creó
+> `planificador/PlanificadorIACO.java` en el commit `9b12050`. El commit
+> `69523a9` ("ajuste de parametros para iaco", un dia despues de este informe)
+> cambió seis de esas constantes en el mismo archivo sin que este documento se
+> actualizara. La tabla de abajo son los valores vigentes en el código hoy; la
+> columna "v3.0 original" queda como referencia de lo que se cambió y por que
+> conviene barrerlo en la etapa 2 del experimento numérico (no hay evidencia
+> documentada de que el ajuste haya sido validado con una corrida).
 
-| Parámetro | Valor | Parámetro | Valor |
-|---|---|---|---|
-| Hormigas | 20 | Iteraciones máximas | 30 |
-| α (feromona) | 1,0 | β (visibilidad) | 2,0 |
-| γ (urgencia) | 1,0 | ρ (evaporación) | 0,10 |
-| Élite que deposita | 5 | τmin / τmax | 0,05 / 1,0 |
-| Candidatos K | 12 | Búsqueda local sobre las mejores | 4 |
-| q0 | 0,35 | ξ local | 0,10 |
-| Estancamiento / parada | 4 / 6 iteraciones | Umbral de convergencia | 0,92 |
-| Holgura de seguridad | 45 min | | |
+| Parámetro | v3.0 original (9b12050) | Vigente en el código |
+|---|---|---|
+| Hormigas | 20 | **50** |
+| Iteraciones máximas | 30 | **100** |
+| α (feromona) | 1,0 | 1,0 |
+| β (visibilidad) | 2,0 | **3,0** |
+| γ (urgencia) | 1,0 | 1,0 |
+| ρ (evaporación) | 0,10 | **0,30** |
+| Élite que deposita | 5 | **10** |
+| τmin / τmax | 0,05 / 1,0 | 0,05 / 1,0 |
+| Candidatos K | 12 | **3** |
+| Búsqueda local sobre las mejores | 4 | 4 |
+| q0 | 0,35 | 0,35 |
+| ξ local | 0,10 | 0,10 |
+| Estancamiento / parada | 4 / 6 iteraciones | 4 / 6 iteraciones |
+| Umbral de convergencia | 0,92 | 0,92 |
+| Holgura de seguridad | 45 min | 45 min |
+
+Fuente de verdad: `PlanificadorIACO.HORMIGAS`, `.ITERACIONES`, `.BETA`, `.RHO`,
+`.ELITE` y `.CANDIDATOS` en `src/pe/pucp/paqtracker/planificador/PlanificadorIACO.java`.
 
 ## 4. Mejoras del IACO: qué se portó y qué no
 
