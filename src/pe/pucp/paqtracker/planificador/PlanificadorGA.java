@@ -100,7 +100,7 @@ public final class PlanificadorGA implements AlgoritmoMetaheuristico {
                 new Random(semilla));
         OperadoresGeneticos operadores = new OperadoresGeneticos(escenario, reparador,
                 new Random(semilla * DESFASE_FLUJO + DESFASE_OPERADORES));
-        BusquedaLocal busquedaLocal = new BusquedaLocal();
+        BusquedaLocal busquedaLocal = new BusquedaLocal(escenario);
         Random random = new Random(semilla * DESFASE_FLUJO + DESFASE_BUCLE);
 
         List<SolucionRuteo> poblacion = construirPoblacionInicial(

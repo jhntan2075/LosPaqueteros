@@ -1,9 +1,11 @@
 package pe.pucp.paqtracker.planificador.comun;
 
 import pe.pucp.paqtracker.modelo.Entrega;
+import pe.pucp.paqtracker.modelo.EscenarioOperativo;
 import pe.pucp.paqtracker.modelo.Nodo;
 import pe.pucp.paqtracker.modelo.Ruta;
 import pe.pucp.paqtracker.modelo.SolucionRuteo;
+import pe.pucp.paqtracker.util.CalculadoraTiempos;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -20,6 +22,12 @@ import java.util.List;
  * unidades de igual o menor capacidad para no vaciar las unidades pequenas
  * hacia los autos y preservar la diversidad de flota.
  *
+ * Ambos operadores aceptan un movimiento solo si reduce la distancia y no
+ * aumenta las entregas fuera de plazo de las rutas que toca. Medir solo la
+ * distancia consolidaba entregas en una ruta mas corta aunque una llegara
+ * tarde, y deshacia en cada generacion la solucion factible que la busqueda
+ * global habia encontrado.
+ *
  * Este bloque es compartido por todos los algoritmos metaheuristicos y no debe
  * duplicarse ni modificarse localmente.
  */
@@ -27,6 +35,16 @@ public final class BusquedaLocal {
 
     private static final int MAXIMO_VUELTAS = 8;
     private static final int LONGITUD_CADENA_MAXIMA = 2;
+    private static final double MEJORA_MINIMA = 0.001;
+
+    private final EscenarioOperativo escenario;
+
+    /**
+     * @param escenario escenario operativo con la malla y el instante de salida de las rutas
+     */
+    public BusquedaLocal(EscenarioOperativo escenario) {
+        this.escenario = escenario;
+    }
 
     /**
      * Optimiza la solucion aplicando los vecindarios hasta que no haya mejora.
@@ -65,8 +83,9 @@ public final class BusquedaLocal {
         for (int i = 0; i < ruta.getSecuencia().size() - 1; i++) {
             for (int j = i + 1; j < ruta.getSecuencia().size(); j++) {
                 double antes = costoRuta(ruta);
+                int tardiasAntes = contarTardias(ruta);
                 Collections.reverse(ruta.getSecuencia().subList(i, j + 1));
-                if (costoRuta(ruta) < antes - 0.001) {
+                if (costoRuta(ruta) < antes - MEJORA_MINIMA && contarTardias(ruta) <= tardiasAntes) {
                     hayMejora = true;
                 } else {
                     Collections.reverse(ruta.getSecuencia().subList(i, j + 1));
@@ -140,15 +159,33 @@ public final class BusquedaLocal {
                 continue;
             }
             double antes = costoRuta(origen) + costoRuta(destino);
+            int tardiasAntes = contarTardias(origen) + contarTardias(destino);
             origen.getSecuencia().removeAll(cadena);
             destino.getSecuencia().addAll(cadena);
-            if (costoRuta(origen) + costoRuta(destino) < antes - 0.001) {
+            boolean acorta = costoRuta(origen) + costoRuta(destino) < antes - MEJORA_MINIMA;
+            if (acorta && contarTardias(origen) + contarTardias(destino) <= tardiasAntes) {
                 return true;
             }
             destino.getSecuencia().removeAll(cadena);
             origen.getSecuencia().addAll(posicion, cadena);
         }
         return false;
+    }
+
+    /**
+     * Entregas de la ruta que llegan despues de su hora limite, con el mismo
+     * calculo de tiempos (malla vigente, turnos y servicio) que usan el
+     * evaluador y el despacho.
+     *
+     * @param ruta ruta a recorrer desde el instante actual del escenario
+     * @return cantidad de entregas fuera de plazo
+     */
+    private int contarTardias(Ruta ruta) {
+        if (ruta.getSecuencia().isEmpty()) {
+            return 0;
+        }
+        int[] recorrido = CalculadoraTiempos.recorrer(escenario, ruta, escenario.getInstanteActual());
+        return recorrido[CalculadoraTiempos.INDICE_INCUMPLIMIENTOS];
     }
 
     /**
