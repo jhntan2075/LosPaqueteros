@@ -1,0 +1,11 @@
+escenario,tipo,semilla_generacion,pedidos_por_dia,dispersion,mezcla_plazos,pedidos,con_bloqueos,bloqueos,dias,origen_generador
+esc-s01,estres,20261001150501,150,concentrada,urgente,4235,false,0,30,esc-t01@p150
+esc-s02,estres,20261001150502,150,uniforme,urgente,4732,false,0,30,esc-t02@p150
+esc-s03,estres,20261001300501,300,concentrada,urgente,9252,false,0,30,esc-t01@p300
+esc-s04,estres,20261001300502,300,uniforme,urgente,9118,false,0,30,esc-t02@p300
+esc-s05,estres,20261001400501,400,concentrada,urgente,12438,false,0,30,esc-t01@p400
+esc-s06,estres,20261001400502,400,uniforme,urgente,12681,false,0,30,esc-t02@p400
+esc-s07,estres,20261001500501,500,concentrada,urgente,15618,false,0,30,esc-t01@p500
+esc-s08,estres,20261001500502,500,uniforme,urgente,15809,false,0,30,esc-t02@p500
+esc-s09,estres,20261001650501,650,concentrada,urgente,19868,false,0,30,esc-t01@p650
+esc-s10,estres,20261001650502,650,uniforme,urgente,19677,false,0,30,esc-t02@p650

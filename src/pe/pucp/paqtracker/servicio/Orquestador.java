@@ -612,6 +612,7 @@ public final class Orquestador {
         resultado.sumarDistancia(recorrido[CalculadoraTiempos.INDICE_DISTANCIA]);
         registrarSalida(ruta, recorrido[CalculadoraTiempos.INDICE_DISTANCIA], resultado);
         resultado.sumarIncumplimientos(recorrido[CalculadoraTiempos.INDICE_INCUMPLIMIENTOS]);
+        registrarMargenes(escenario, ruta, instante, resultado);
         if (recorrido[CalculadoraTiempos.INDICE_INCUMPLIMIENTOS] > 0) {
             resultado.registrarColapso(instante);
             registrarDetalle(escenario, ruta, instante, resultado);
@@ -619,6 +620,32 @@ public final class Orquestador {
         ruta.getVehiculo().setEstado(EstadoVehiculo.EN_RUTA);
         enRuta.add(new UnidadEnTransito(ruta.getVehiculo(),
                 recorrido[CalculadoraTiempos.INDICE_FIN], ruta.getDestino()));
+    }
+
+    /**
+     * Recorre la ruta despachada y registra el margen de cada entrega respecto
+     * de su hora limite. Alimenta el retraso y la holgura promedio que usa la
+     * calibracion de la funcion objetivo, que necesita medir el margen por
+     * entrega y no solo contar las que incumplen.
+     *
+     * @param escenario escenario con la malla vigente
+     * @param ruta      ruta despachada
+     * @param salida    instante de salida de la ruta
+     * @param resultado resultado agregado a actualizar
+     */
+    private void registrarMargenes(EscenarioOperativo escenario, Ruta ruta, int salida,
+                                   ResultadoSimulacion resultado) {
+        int reloj = salida;
+        int idVehiculo = ruta.getVehiculo().getId();
+        Nodo actual = ruta.getOrigen().getUbicacion();
+        for (Entrega entrega : ruta.getSecuencia()) {
+            int tramo = CalculadoraTiempos.distancia(escenario, actual, entrega.getDestino(), reloj);
+            reloj = CalendarioTurnos.avanzarConPausa(idVehiculo, reloj,
+                    CalculadoraTiempos.minutosDeViaje(tramo, ruta.getVehiculo().getTipo()));
+            resultado.registrarMargenEntrega(entrega.getHoraLimite() - reloj, entrega.getCantidad());
+            reloj = CalendarioTurnos.avanzarConPausa(idVehiculo, reloj, escenario.getTiempoServicio());
+            actual = entrega.getDestino();
+        }
     }
 
     /**
@@ -661,6 +688,7 @@ public final class Orquestador {
             resultado.sumarDistancia(recorrido[CalculadoraTiempos.INDICE_DISTANCIA]);
             registrarSalida(ruta, recorrido[CalculadoraTiempos.INDICE_DISTANCIA], resultado);
             resultado.sumarIncumplimientos(recorrido[CalculadoraTiempos.INDICE_INCUMPLIMIENTOS]);
+            registrarMargenes(escenario, ruta, instante, resultado);
             if (recorrido[CalculadoraTiempos.INDICE_INCUMPLIMIENTOS] > 0) {
                 resultado.registrarColapso(instante);
                 registrarDetalle(escenario, ruta, instante, resultado);

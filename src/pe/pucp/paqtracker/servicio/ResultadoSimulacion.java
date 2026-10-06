@@ -20,6 +20,13 @@ public final class ResultadoSimulacion {
     private int urgentesRepartidos;
     private double costoTotal;
     private double fitnessAcumulado;
+    private long retrasoTotalMinutos;
+    private int entregasTarde;
+    private long holguraTotalMinutos;
+    private int entregasATiempo;
+    private long productosEntregados;
+    private long productosFueraDePlazo;
+    private long retrasoPonderadoPorProductos;
     private long tiempoComputoMaximoMs;
     private long tiempoComputoTotalMs;
     private int ejecucionesMedidas;
@@ -83,6 +90,70 @@ public final class ResultadoSimulacion {
      */
     public void sumarFitness(double fitness) {
         this.fitnessAcumulado += fitness;
+    }
+
+    /**
+     * Registra el margen con que llega una entrega despachada. Separa las dos
+     * poblaciones que interesan a la calibracion: las que llegan tarde aportan
+     * al retraso promedio y las que llegan a tiempo, a la holgura promedio.
+     *
+     * @param holgura minutos entre la llegada y la hora limite; negativa si llega tarde
+     */
+    public void registrarMargenEntrega(int holgura, int productos) {
+        this.productosEntregados += productos;
+        if (holgura < 0) {
+            this.retrasoTotalMinutos += -holgura;
+            this.entregasTarde++;
+            this.productosFueraDePlazo += productos;
+            this.retrasoPonderadoPorProductos += (long) -holgura * productos;
+            return;
+        }
+        this.holguraTotalMinutos += holgura;
+        this.entregasATiempo++;
+    }
+
+    /**
+     * @return unidades de producto despachadas, contadas sobre las entregas que
+     *         salieron en una ruta
+     */
+    public long getProductosEntregados() {
+        return productosEntregados;
+    }
+
+    /**
+     * @return unidades de producto que llegaron despues de su hora limite
+     */
+    public long getProductosFueraDePlazo() {
+        return productosFueraDePlazo;
+    }
+
+    /**
+     * Retraso promedio ponderado por la cantidad de producto: un pedido grande
+     * que llega tarde pesa mas que uno pequeño. Es la metrica de decision del
+     * experimento, porque la unidad del dominio es el producto.
+     *
+     * @return minutos de retraso promedio por producto afectado, o cero si no
+     *         hubo entregas tardias
+     */
+    public double getRetrasoPromedioPonderadoMinutos() {
+        return productosFueraDePlazo == 0 ? 0.0
+                : (double) retrasoPonderadoPorProductos / productosFueraDePlazo;
+    }
+
+    /**
+     * @return minutos de retraso promedio entre las entregas que llegaron tarde,
+     *         o cero si todas llegaron dentro del plazo
+     */
+    public double getRetrasoPromedioMinutos() {
+        return entregasTarde == 0 ? 0.0 : (double) retrasoTotalMinutos / entregasTarde;
+    }
+
+    /**
+     * @return holgura promedio, en minutos, de las entregas que llegaron dentro
+     *         del plazo, o cero si no hubo ninguna
+     */
+    public double getHolguraPromedioMinutos() {
+        return entregasATiempo == 0 ? 0.0 : (double) holguraTotalMinutos / entregasATiempo;
     }
 
     /**

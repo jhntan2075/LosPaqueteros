@@ -50,6 +50,15 @@ public final class PlanificadorGA implements AlgoritmoMetaheuristico {
     /** Tamano del torneo de seleccion. */
     public static final int TAMANO_TORNEO = 5;
 
+    /** Multiplicador con que se derivan flujos aleatorios independientes. */
+    private static final long DESFASE_FLUJO = 31L;
+
+    /** Desfase del flujo de los operadores geneticos. */
+    private static final long DESFASE_OPERADORES = 1L;
+
+    /** Desfase del flujo del bucle evolutivo. */
+    private static final long DESFASE_BUCLE = 7L;
+
     private final long semilla;
     private final ParametrosGA parametros;
     private final PesosFitness pesos;
@@ -82,10 +91,17 @@ public final class PlanificadorGA implements AlgoritmoMetaheuristico {
         ContadorEvaluaciones.reiniciarCiclo();
         Reparador reparador = new Reparador(escenario);
         EvaluadorFitness evaluador = new EvaluadorFitness(escenario, pesos);
-        ConstructorSoluciones constructor = new ConstructorSoluciones(escenario, reparador, new Random(semilla));
-        OperadoresGeneticos operadores = new OperadoresGeneticos(escenario, reparador, new Random(semilla));
-        BusquedaLocal busquedaLocal = new BusquedaLocal();
-        Random random = new Random(semilla);
+        // Tres flujos aleatorios independientes. Sembrarlos con el mismo valor
+        // produce secuencias identicas y correlaciona decisiones que deberian
+        // ser independientes: el indice que el constructor usa para un cluster
+        // sale del mismo punto de la secuencia que el torneo usa para elegir
+        // competidor, lo que reduce la diversidad efectiva de la busqueda.
+        ConstructorSoluciones constructor = new ConstructorSoluciones(escenario, reparador,
+                new Random(semilla));
+        OperadoresGeneticos operadores = new OperadoresGeneticos(escenario, reparador,
+                new Random(semilla * DESFASE_FLUJO + DESFASE_OPERADORES));
+        BusquedaLocal busquedaLocal = new BusquedaLocal(escenario);
+        Random random = new Random(semilla * DESFASE_FLUJO + DESFASE_BUCLE);
 
         List<SolucionRuteo> poblacion = construirPoblacionInicial(
                 constructor, reparador, busquedaLocal, evaluador);

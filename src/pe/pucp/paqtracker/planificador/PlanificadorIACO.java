@@ -139,7 +139,7 @@ public final class PlanificadorIACO implements AlgoritmoMetaheuristico {
         ContadorEvaluaciones.reiniciarCiclo();
         Reparador reparador = new Reparador(escenario);
         EvaluadorFitness evaluador = new EvaluadorFitness(escenario, pesos);
-        BusquedaLocal busquedaLocal = new BusquedaLocal();
+        BusquedaLocal busquedaLocal = new BusquedaLocal(escenario);
         OperadoresColonia operadores = new OperadoresColonia(escenario, memoria);
 
         SolucionRuteo mejor = null;

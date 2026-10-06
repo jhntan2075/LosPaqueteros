@@ -41,6 +41,12 @@ public final class VerificadorInvariantes {
     private static final int[] DISTANCIAS_REPRESENTATIVAS = {1, 5, 15, 40, 80, 120};
 
     /**
+     * Cantidades de producto con que se comprueba la invariante (d): el minimo
+     * del banco, su promedio redondeado y su maximo.
+     */
+    private static final int[] PRODUCTOS_REPRESENTATIVOS = {1, 5, 10};
+
+    /**
      * Verifica las invariantes con los pesos indicados en la linea de comandos.
      *
      * @param args overrides de pesos, con las mismas opciones que el corredor
@@ -157,20 +163,29 @@ public final class VerificadorInvariantes {
     private static Resultado verificarRutearCuestaMenosQueAbandonar(PesosFitness pesos) {
         double umbral = pesos.getUmbralHolguraMinutos();
         double blandaMaxima = pesos.getFactorHolguraBlanda() * umbral * umbral;
-        double abandonoMinimo = penalizacionCola(pesos, ConfiguracionDominio.PLAZO_MAXIMO_MINUTOS);
-        for (int distancia : DISTANCIAS_REPRESENTATIVAS) {
-            double rutearATiempo = distancia + blandaMaxima;
-            if (rutearATiempo >= abandonoMinimo) {
-                return Resultado.falla("(d) rutear a tiempo < abandonar",
-                        String.format("con %d km: rutear = %.4f, abandonar = %.4f",
-                                distancia, rutearATiempo, abandonoMinimo));
+        double peorMargen = Double.MAX_VALUE;
+        String peorCaso = "";
+        // El peor caso es la entrega de un solo producto: abandonar escala con
+        // la cantidad, pero rutear a tiempo no, de modo que cuanto mayor es el
+        // pedido mas holgada queda la invariante.
+        for (int productos : PRODUCTOS_REPRESENTATIVOS) {
+            double abandonoMinimo = penalizacionCola(pesos,
+                    ConfiguracionDominio.PLAZO_MAXIMO_MINUTOS, productos);
+            for (int distancia : DISTANCIAS_REPRESENTATIVAS) {
+                double rutearATiempo = distancia + blandaMaxima;
+                if (rutearATiempo >= abandonoMinimo) {
+                    return Resultado.falla("(d) rutear a tiempo < abandonar",
+                            String.format("con %d km y %d producto(s): rutear = %.4f, abandonar = %.4f",
+                                    distancia, productos, rutearATiempo, abandonoMinimo));
+                }
+                if (abandonoMinimo - rutearATiempo < peorMargen) {
+                    peorMargen = abandonoMinimo - rutearATiempo;
+                    peorCaso = String.format("%d km y %d producto(s): %.4f < %.4f",
+                            distancia, productos, rutearATiempo, abandonoMinimo);
+                }
             }
         }
-        return Resultado.ok("(d) rutear a tiempo < abandonar",
-                String.format("peor caso %d km: %.4f < %.4f",
-                        DISTANCIAS_REPRESENTATIVAS[DISTANCIAS_REPRESENTATIVAS.length - 1],
-                        DISTANCIAS_REPRESENTATIVAS[DISTANCIAS_REPRESENTATIVAS.length - 1]
-                                + blandaMaxima, abandonoMinimo));
+        return Resultado.ok("(d) rutear a tiempo < abandonar", "peor caso " + peorCaso);
     }
 
     /**
@@ -182,9 +197,22 @@ public final class VerificadorInvariantes {
      * @return penalizacion de dejar la entrega en la cola de espera
      */
     private static double penalizacionCola(PesosFitness pesos, int holguraRestante) {
-        return pesos.getPenalizacionSinRutearBase()
+        return penalizacionCola(pesos, holguraRestante, 1);
+    }
+
+    /**
+     * Penalizacion de cola de una entrega de la cantidad indicada. Los dos
+     * terminos escalan con la cantidad de producto.
+     *
+     * @param pesos           combinacion de pesos
+     * @param holguraRestante minutos hasta la hora limite
+     * @param productos       unidades de producto de la entrega
+     * @return penalizacion de cola de la entrega
+     */
+    private static double penalizacionCola(PesosFitness pesos, int holguraRestante, int productos) {
+        return productos * (pesos.getPenalizacionSinRutearBase()
                 + pesos.getPesoEspera() * ConfiguracionDominio.PLAZO_MAXIMO_MINUTOS
-                / Math.max(1, holguraRestante);
+                / Math.max(1, holguraRestante));
     }
 
     /**

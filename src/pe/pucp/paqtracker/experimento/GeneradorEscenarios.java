@@ -44,6 +44,12 @@ public final class GeneradorEscenarios {
     /** Escenarios de comparacion. */
     public static final int ESCENARIOS_COMPARACION = 30;
 
+    /** Escenarios del conjunto de tension, usado para calibrar la funcion objetivo. */
+    public static final int ESCENARIOS_TENSION_POR_DEFECTO = 5;
+
+    /** Indice base de las semillas del conjunto de tension, para no chocar con los otros. */
+    private static final int BASE_INDICE_TENSION = 500;
+
     /** Escenarios de comparacion que incorporan bloqueos de via. */
     public static final int ESCENARIOS_CON_BLOQUEOS = 15;
 
@@ -114,6 +120,13 @@ public final class GeneradorEscenarios {
                 valorDe(args, "--semilla-base", String.valueOf(SEMILLA_BASE_POR_DEFECTO)));
 
         Files.createDirectories(salida);
+        String pedidosPorDia = valorDe(args, "--pedidos-por-dia", null);
+        if (pedidosPorDia != null) {
+            generarConjuntoDeTension(salida, semillaBase, Integer.parseInt(pedidosPorDia),
+                    Integer.parseInt(valorDe(args, "--cantidad",
+                            String.valueOf(ESCENARIOS_TENSION_POR_DEFECTO))));
+            return;
+        }
         List<String> manifiesto = new ArrayList<>();
         manifiesto.add("escenario,tipo,semilla_generacion,estrato_volumen,dispersion,"
                 + "mezcla_plazos,pedidos,con_bloqueos,bloqueos,dias");
@@ -136,6 +149,77 @@ public final class GeneradorEscenarios {
                 + ESCENARIOS_COMPARACION + " de comparacion, "
                 + ESCENARIOS_CON_BLOQUEOS + " con bloqueos)");
         System.out.println("Manifiesto: " + rutaManifiesto);
+    }
+
+    /**
+     * Genera el conjunto de escenarios de tension: mismo generador que el resto
+     * del banco, pero con el volumen diario fijado por el usuario en vez del
+     * estrato. El banco de calibracion satura solo al 8 % de la capacidad de la
+     * flota, asi que nunca deja pedidos en cola y aplana las curvas de la etapa
+     * 1; estos escenarios se anclan a la demanda de las semanas pesadas de 2027
+     * para que los pesos de la cola y de la tardanza tengan sobre que actuar.
+     *
+     * Las variantes recorren las dispersiones y las mezclas de plazo
+     * disponibles, de modo que no sean cinco copias del mismo caso.
+     *
+     * @param salida        carpeta de salida
+     * @param semillaBase   semilla base del banco
+     * @param pedidosPorDia pedidos diarios de cada escenario
+     * @param cantidad      escenarios a generar
+     * @throws IOException si no se puede escribir la carpeta de salida
+     */
+    private static void generarConjuntoDeTension(Path salida, long semillaBase, int pedidosPorDia,
+                                                 int cantidad) throws IOException {
+        List<String> manifiesto = new ArrayList<>();
+        manifiesto.add("escenario,tipo,semilla_generacion,pedidos_por_dia,dispersion,"
+                + "mezcla_plazos,pedidos,con_bloqueos,bloqueos,dias");
+        for (int i = 1; i <= cantidad; i++) {
+            manifiesto.add(generarEscenarioDeTension(salida, identificadorTension(i), semillaBase,
+                    i, pedidosPorDia));
+        }
+        Path rutaManifiesto = salida.resolve("manifiesto-tension.csv");
+        Files.write(rutaManifiesto, manifiesto, StandardCharsets.UTF_8);
+        System.out.println("Conjunto de tension generado en " + salida.toAbsolutePath());
+        System.out.println("Escenarios: " + cantidad + " a " + pedidosPorDia + " pedidos/dia");
+        System.out.println("Manifiesto: " + rutaManifiesto);
+    }
+
+    /**
+     * Genera un escenario de tension con su volumen diario explicito.
+     *
+     * @param salida        carpeta de salida
+     * @param escenario     identificador del escenario
+     * @param semillaBase   semilla base del banco
+     * @param indice        numero del escenario dentro del conjunto, desde 1
+     * @param pedidosPorDia pedidos diarios
+     * @return fila del manifiesto
+     * @throws IOException si no se pueden escribir los archivos
+     */
+    private static String generarEscenarioDeTension(Path salida, String escenario, long semillaBase,
+                                                    int indice, int pedidosPorDia)
+            throws IOException {
+        long semilla = semillaDe(semillaBase, BASE_INDICE_TENSION + indice);
+        // Indices desacoplados: con el mismo indice para los dos, el cuarto
+        // escenario repetiria el perfil del primero y solo cambiaria la semilla.
+        int dispersion = (indice - 1) % DISPERSIONES.length;
+        int mezcla = ((indice - 1) / DISPERSIONES.length) % MEZCLAS_PLAZO.length;
+
+        List<String> pedidos = generarPedidosConVolumen(new Random(semilla), pedidosPorDia,
+                dispersion, mezcla);
+        Files.write(rutaVentas(salida, escenario), pedidos, StandardCharsets.UTF_8);
+        Files.write(rutaBloqueos(salida, escenario), List.of(), StandardCharsets.UTF_8);
+
+        return String.format("%s,%s,%d,%d,%s,%s,%d,%s,%d,%d", escenario, "tension", semilla,
+                pedidosPorDia, DISPERSIONES[dispersion], MEZCLAS_PLAZO[mezcla],
+                pedidos.size(), false, 0, DIAS);
+    }
+
+    /**
+     * @param indice numero de escenario de tension, desde 1
+     * @return identificador estable esc-tNN
+     */
+    public static String identificadorTension(int indice) {
+        return String.format("esc-t%02d", indice);
     }
 
     /**
@@ -249,8 +333,22 @@ public final class GeneradorEscenarios {
      */
     private static List<String> generarPedidos(Random random, int estrato, int dispersion,
                                                int mezcla) {
+        return generarPedidosConVolumen(random, PEDIDOS_POR_DIA[estrato], dispersion, mezcla);
+    }
+
+    /**
+     * Genera los pedidos con un volumen diario explicito, en vez de tomarlo del
+     * estrato. Es la forma que usa el conjunto de tension.
+     *
+     * @param random     generador del escenario
+     * @param base       pedidos por dia
+     * @param dispersion patron de dispersion geografica
+     * @param mezcla     mezcla de plazos
+     * @return lineas del archivo de pedidos, ordenadas por instante de registro
+     */
+    private static List<String> generarPedidosConVolumen(Random random, int base, int dispersion,
+                                                         int mezcla) {
         List<String> lineas = new ArrayList<>();
-        int base = PEDIDOS_POR_DIA[estrato];
         int cliente = 0;
         for (int dia = 1; dia <= DIAS; dia++) {
             int delDia = (int) Math.round(base * (1.0 + (random.nextDouble() * 2 - 1) * VARIACION_DIARIA));
