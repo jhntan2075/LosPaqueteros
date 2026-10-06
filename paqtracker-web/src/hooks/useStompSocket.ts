@@ -32,7 +32,8 @@ export function useStompSocket(options: UseStompSocketOptions = {}) {
       reconnectDelay: 5000,
       heartbeatIncoming: 4000,
       heartbeatOutgoing: 4000,
-      debug: options.debug ? (str) => console.log('[STOMP]', str) : undefined,
+      // stompjs invoca this.debug() sin comprobarlo: pasar undefined rompe client.activate()
+      debug: options.debug ? (str) => console.log('[STOMP]', str) : () => {},
       onConnect: () => {
         setIsConnected(true);
         options.onConnect?.();

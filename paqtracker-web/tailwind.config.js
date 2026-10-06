@@ -6,18 +6,27 @@ export default {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        sans: ['"Fira Sans"', 'system-ui', 'sans-serif'],
+        mono: ['"Fira Code"', 'monospace'],
+      },
       colors: {
         brand: {
-          50: '#eef2ff',
-          100: '#e0e7ff',
-          500: '#6366f1',
-          600: '#4f46e5',
-          700: '#4338ca',
-        },
-        traffic: {
-          green: '#22c55e',
-          amber: '#f59e0b',
-          red: '#ef4444',
+          blue: '#1E40AF',
+          'blue-soft': '#DBEAFE',
+          sidebar: '#F1F5F9',
+          border: '#E2E8F0',
+          'border-dark': '#CBD5E1',
+          slate: {
+            900: '#0F172A',
+            500: '#64748B',
+            400: '#94A3B8',
+          },
+          status: {
+            green: '#15803D',
+            amber: '#B45309',
+            red: '#B91C1C',
+          }
         }
       }
     },

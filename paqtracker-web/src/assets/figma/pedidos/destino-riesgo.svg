@@ -1,0 +1,21 @@
+<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="25.5" height="31.5" viewBox="0 0 25.5 31.5" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="destino (19,9)">
+<g id="pin" filter="url(#filter0_d_0_4)">
+<path d="M12.75 26.75C9.35 21.35 3.75 16.35 3.75 11.75C3.75 6.78 7.78 2.75 12.75 2.75C17.72 2.75 21.75 6.78 21.75 11.75C21.75 16.35 16.15 21.35 12.75 26.75Z" fill="#B91C1C"/>
+<path d="M12.75 26.75C9.35 21.35 3.75 16.35 3.75 11.75C3.75 6.78 7.78 2.75 12.75 2.75C17.72 2.75 21.75 6.78 21.75 11.75C21.75 16.35 16.15 21.35 12.75 26.75Z" stroke="white" stroke-width="1.5" stroke-linejoin="round"/>
+</g>
+<rect id="Rectangle" x="11.75" y="6.75" width="2" height="5.5" rx="1" fill="white"/>
+<circle id="Ellipse" cx="12.75" cy="15.25" r="1" fill="white"/>
+</g>
+<defs>
+<filter id="filter0_d_0_4" x="0" y="0" width="25.5" height="31.5" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+<feFlood flood-opacity="0" result="BackgroundImageFix"/>
+<feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
+<feOffset dy="1"/>
+<feGaussianBlur stdDeviation="1.5"/>
+<feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.24 0"/>
+<feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow_0_4"/>
+<feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow_0_4" result="shape"/>
+</filter>
+</defs>
+</svg>
