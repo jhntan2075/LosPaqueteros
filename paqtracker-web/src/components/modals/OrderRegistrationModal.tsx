@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { X, UploadCloud, PlusCircle } from 'lucide-react';
+import { useCerrarConEscape } from '../../hooks/useCerrarConEscape';
 
 interface OrderRegistrationModalProps {
   abierto: boolean;
@@ -16,6 +17,7 @@ export const OrderRegistrationModal: React.FC<OrderRegistrationModalProps> = ({
   const [posY, setPosY] = useState('');
   const [cantidad, setCantidad] = useState('');
   const [limiteMinutos, setLimiteMinutos] = useState('120');
+  useCerrarConEscape(abierto, onCerrar);
 
   if (!abierto) return null;
 

@@ -1,5 +1,6 @@
 import React from 'react';
 import { X } from 'lucide-react';
+import { useCerrarConEscape } from '../../hooks/useCerrarConEscape';
 
 interface LegendModalProps {
   abierto: boolean;
@@ -7,6 +8,7 @@ interface LegendModalProps {
 }
 
 export const LegendModal: React.FC<LegendModalProps> = ({ abierto, onCerrar }) => {
+  useCerrarConEscape(abierto, onCerrar);
   if (!abierto) return null;
 
   return (

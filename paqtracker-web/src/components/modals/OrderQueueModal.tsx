@@ -1,5 +1,6 @@
 import React from 'react';
 import { X, Clock, AlertCircle } from 'lucide-react';
+import { useCerrarConEscape } from '../../hooks/useCerrarConEscape';
 
 interface OrderQueueModalProps {
   abierto: boolean;
@@ -7,6 +8,7 @@ interface OrderQueueModalProps {
 }
 
 export const OrderQueueModal: React.FC<OrderQueueModalProps> = ({ abierto, onCerrar }) => {
+  useCerrarConEscape(abierto, onCerrar);
   if (!abierto) return null;
 
   const pedidosCola = [

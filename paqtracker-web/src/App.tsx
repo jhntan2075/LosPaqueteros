@@ -2,28 +2,43 @@ import { useState, useEffect } from 'react';
 import { Sidebar, type TabModulo } from './components/layout/Sidebar';
 import { HeaderKPIs } from './components/layout/HeaderKPIs';
 import { FooterBar } from './components/layout/FooterBar';
-import { GridMap } from './components/map/GridMap';
-import { OrderRegistrationModal } from './components/modals/OrderRegistrationModal';
-import { OrderQueueModal } from './components/modals/OrderQueueModal';
 import { LegendModal } from './components/modals/LegendModal';
+import { ModuloOperacion } from './components/operacion/ModuloOperacion';
+import { ModuloPedidos } from './components/pedidos/ModuloPedidos';
+import { BLOQUEOS, FLOTA, RESUMEN_PEDIDOS, pedidosEnRiesgo } from './mocks/operacion';
+import type { SubvistaOperacion } from './types/operacion';
+import type { VistaPedidos } from './types/pedidos';
 import { useStompSocket } from './hooks/useStompSocket';
-import { UploadCloud, Play, Pause, RotateCcw } from 'lucide-react';
-import type { TipoEscenario } from './types/ejecucion';
+import { ModuloSimulacion } from './components/simulacion/ModuloSimulacion';
 
 export default function App() {
   const [tabActiva, setTabActiva] = useState<TabModulo>('operacion');
   const [nodoHover, setNodoHover] = useState<{ x: number; y: number }>({ x: 19, y: 9 });
 
+  // Sub-vista del módulo Pedidos (PE-02 cola, PE-01 registro y confirmación)
+  const [vistaPedidos, setVistaPedidos] = useState<VistaPedidos>('cola');
+  // Registro y confirmación traen su propio encabezado y no llevan barra inferior
+  const pantallaCompleta = tabActiva === 'pedidos' && vistaPedidos !== 'cola';
+
+  // Sub-vista de Operación (lienzo en vivo, incidencias, OP-07 flota, OP-09 bitácora)
+  const [subvistaOperacion, setSubvistaOperacion] = useState<SubvistaOperacion>('vivo');
+  const abrirOperacion = (subvista: SubvistaOperacion) => {
+    setSubvistaOperacion(subvista);
+    setTabActiva('operacion');
+  };
+  const enLienzo = tabActiva === 'operacion' && (subvistaOperacion === 'vivo' || subvistaOperacion === 'incidencias');
+
+  const abrirPedidos = (vista: VistaPedidos) => {
+    setVistaPedidos(vista);
+    setTabActiva('pedidos');
+  };
+
   // Modales
-  const [modalRegistroAbierto, setModalRegistroAbierto] = useState(false);
-  const [modalColaAbierto, setModalColaAbierto] = useState(false);
   const [modalLeyendaAbierto, setModalLeyendaAbierto] = useState(false);
 
   // Estado del Reloj y Simulación
   const [relojTexto, setRelojTexto] = useState('25/08/2026 · 11:15:40');
   const [segundosActualizado, setSegundosActualizado] = useState(1);
-  const [escenarioActual, setEscenarioActual] = useState<TipoEscenario>('DIA_A_DIA');
-  const [enEjecucion, setEnEjecucion] = useState(true);
 
   // Hook STOMP persistente
   const { isConnected, subscribe } = useStompSocket({ debug: false });
@@ -53,12 +68,17 @@ export default function App() {
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-[#F8FAFC]">
       {/* Barra Lateral Izquierda (Figma: 90px con logo "P", Operación, Pedidos, etc.) */}
-      <Sidebar tabActiva={tabActiva} onCambiarTab={setTabActiva} />
+      <Sidebar
+        tabActiva={tabActiva}
+        subvistaOperacion={subvistaOperacion}
+        onCambiarTab={(tab) => (tab === 'pedidos' ? abrirPedidos('cola') : setTabActiva(tab))}
+        onCambiarSubvistaOperacion={abrirOperacion}
+      />
 
       {/* Área Central: Header, Lienzo Principal y Footer */}
       <div className="flex-1 flex flex-col h-screen min-w-0 overflow-hidden">
-        {/* Cinta Superior de KPIs y Reloj de Operación */}
-        <HeaderKPIs
+        {/* Cinta Superior de KPIs y Reloj (Operación trae su propio encabezado y fila de KPIs) */}
+        {!pantallaCompleta && tabActiva !== 'operacion' && tabActiva !== 'simulacion' && <HeaderKPIs
           relojSimulado={relojTexto}
           pedidosEntregados={412}
           totalPedidos={1305}
@@ -69,36 +89,27 @@ export default function App() {
           unidadesEnUso={34}
           totalUnidades={60}
           saturacion={0.82}
-        />
+        />}
 
         {/* Vista dinámica según el módulo seleccionado en la barra lateral */}
         <main className="flex-1 relative flex overflow-hidden bg-[#F8FAFC]">
           {tabActiva === 'operacion' && (
-            <GridMap
-              onHoverCoordenada={(coord) => setNodoHover(coord)}
-              onRegistrarPedidoClick={() => setModalRegistroAbierto(true)}
-              onColaPedidosClick={() => setModalColaAbierto(true)}
-              onAbrirAyudaClick={() => setModalLeyendaAbierto(true)}
+            <ModuloOperacion
+              subvista={subvistaOperacion}
+              relojSimulado={relojTexto}
+              conectado={isConnected}
+              onCambiarSubvista={setSubvistaOperacion}
+              onHoverCoordenada={setNodoHover}
             />
           )}
 
           {tabActiva === 'pedidos' && (
-            <div className="flex-1 p-6 overflow-y-auto max-w-4xl mx-auto w-full space-y-4">
-              <div className="bg-white p-6 rounded-xl border border-[#CBD5E1] shadow-xs">
-                <h2 className="text-base font-bold text-slate-800 mb-1">Módulo de Pedidos</h2>
-                <p className="text-xs text-slate-500 mb-4">Gestión y carga masiva de ventas mensuales (LE-006 / LE-007).</p>
-                <div
-                  onClick={() => setModalRegistroAbierto(true)}
-                  className="border-2 border-dashed border-[#CBD5E1] rounded-lg p-8 text-center hover:border-[#1E40AF] transition cursor-pointer"
-                >
-                  <UploadCloud className="w-10 h-10 text-[#1E40AF] mx-auto mb-2" />
-                  <span className="text-sm font-medium text-slate-700 block">
-                    Arrastra aquí el archivo ventas2026mm.txt o haz clic para subir
-                  </span>
-                  <span className="text-xs text-slate-400 block mt-1">Formato oficial de pedidos de PaqRap</span>
-                </div>
-              </div>
-            </div>
+            <ModuloPedidos
+              vista={vistaPedidos}
+              relojSimulado={relojTexto}
+              onCambiarVista={setVistaPedidos}
+              onVerEnLienzo={() => setTabActiva('operacion')}
+            />
           )}
 
           {tabActiva === 'planes' && (
@@ -125,41 +136,10 @@ export default function App() {
             </div>
           )}
 
-          {tabActiva === 'simulacion' && (
-            <div className="flex-1 p-6 overflow-y-auto max-w-4xl mx-auto w-full space-y-4">
-              <div className="bg-white p-6 rounded-xl border border-[#CBD5E1] shadow-xs">
-                <h2 className="text-base font-bold text-slate-800 mb-1">Control de Escenarios</h2>
-                <p className="text-xs text-slate-500 mb-4">Ejecución independiente de los 3 escenarios del curso (DA-08, LE-043).</p>
-                <div className="flex items-center gap-3">
-                  <select
-                    value={escenarioActual}
-                    onChange={(e) => setEscenarioActual(e.target.value as TipoEscenario)}
-                    className="border border-[#CBD5E1] rounded-lg px-3 py-2 text-xs font-mono"
-                  >
-                    <option value="DIA_A_DIA">Día a Día (Reloj real, k = 1)</option>
-                    <option value="SIMULACION_5_DIAS">Simulación de 5 Días (30 a 60 min reales)</option>
-                    <option value="COLAPSO_LOGISTICO">Colapso Logístico</option>
-                  </select>
-                  <button
-                    onClick={() => setEnEjecucion(!enEjecucion)}
-                    className={`px-4 py-2 rounded-lg text-xs font-medium text-white flex items-center gap-1.5 transition ${
-                      enEjecucion ? 'bg-amber-600 hover:bg-amber-700' : 'bg-[#1E40AF] hover:bg-blue-800'
-                    }`}
-                  >
-                    {enEjecucion ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-                    <span>{enEjecucion ? 'Pausar Simulación' : 'Iniciar Simulación'}</span>
-                  </button>
-                  <button
-                    onClick={() => alert('Simulación reiniciada a hora cero.')}
-                    className="p-2 border border-[#CBD5E1] rounded-lg text-slate-600 hover:bg-slate-100 transition"
-                    title="Reiniciar a hora 0"
-                  >
-                    <RotateCcw className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
+          {/* Simulación queda montada aunque se cambie de pestaña: una corrida en curso no se reinicia */}
+          <div className={tabActiva === 'simulacion' ? 'flex-1 flex flex-col min-h-0 min-w-0' : 'hidden'}>
+            <ModuloSimulacion onVerBitacoraCompleta={() => abrirOperacion('bitacora')} onAbrirLeyenda={() => setModalLeyendaAbierto(true)} />
+          </div>
 
           {tabActiva === 'metricas' && (
             <div className="flex-1 p-6 overflow-y-auto max-w-4xl mx-auto w-full space-y-4">
@@ -213,30 +193,21 @@ export default function App() {
         </main>
 
         {/* Barra de Estado Inferior (Figma: nodo (19,9), pedidos, holgura, leyenda) */}
-        <FooterBar
-          nodoSeleccionado={nodoHover}
-          totalPedidos={1305}
-          entregados={412}
-          enRuta={87}
-          enRiesgo={3}
-          bloqueosActivos={4}
-          averiasActivas={2}
+        {!pantallaCompleta && tabActiva !== 'simulacion' && <FooterBar
+          nodoSeleccionado={enLienzo ? nodoHover : undefined}
+          totalPedidos={RESUMEN_PEDIDOS.total}
+          entregados={RESUMEN_PEDIDOS.entregados}
+          enRuta={RESUMEN_PEDIDOS.enRuta}
+          enRiesgo={pedidosEnRiesgo().filter((p) => p.nivel === 'ROJO').length}
+          bloqueosActivos={BLOQUEOS.length}
+          averiasActivas={FLOTA.filter((u) => u.estado === 'AVERIADA').length}
           segundosDesdeActualizacion={segundosActualizado}
-          onAbrirLeyenda={() => setModalLeyendaAbierto(true)}
-        />
+          onAbrirLeyenda={enLienzo ? () => setModalLeyendaAbierto(true) : undefined}
+          onVerBitacora={() => abrirOperacion('bitacora')}
+        />}
       </div>
 
       {/* Modales Interactivos del Diseño */}
-      <OrderRegistrationModal
-        abierto={modalRegistroAbierto}
-        onCerrar={() => setModalRegistroAbierto(false)}
-      />
-
-      <OrderQueueModal
-        abierto={modalColaAbierto}
-        onCerrar={() => setModalColaAbierto(false)}
-      />
-
       <LegendModal
         abierto={modalLeyendaAbierto}
         onCerrar={() => setModalLeyendaAbierto(false)}

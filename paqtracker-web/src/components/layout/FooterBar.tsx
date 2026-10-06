@@ -10,10 +10,14 @@ export interface FooterBarProps {
   averiasActivas?: number;
   segundosDesdeActualizacion?: number;
   onAbrirLeyenda?: () => void;
+  /** Si se indica, "actualizado hace N s" abre la bitácora de eventos. */
+  onVerBitacora?: () => void;
+  /** Reemplaza "actualizado hace N s" (p. ej. "mapa congelado al detectar el colapso"). */
+  estadoAlerta?: string;
 }
 
 export const FooterBar: React.FC<FooterBarProps> = ({
-  nodoSeleccionado = { x: 19, y: 9 },
+  nodoSeleccionado,
   totalPedidos = 1305,
   entregados = 412,
   enRuta = 87,
@@ -22,19 +26,31 @@ export const FooterBar: React.FC<FooterBarProps> = ({
   averiasActivas = 2,
   segundosDesdeActualizacion = 1,
   onAbrirLeyenda,
+  onVerBitacora,
+  estadoAlerta,
 }) => {
+  const actualizacion = (
+    <>
+      <span className="w-1.5 h-1.5 bg-[#15803D] rounded-full animate-pulse"></span>
+      <span className="text-[#64748B] font-sans text-[12px]">actualizado hace {segundosDesdeActualizacion} s</span>
+    </>
+  );
   return (
     <footer className="h-[30px] bg-white border-t border-[#E2E8F0] px-4 flex items-center justify-between text-[12px] select-none flex-shrink-0 z-20">
       <div className="flex items-center gap-4 overflow-x-auto">
-        {/* Nodo actual */}
-        <div className="flex items-center gap-1.5 flex-shrink-0">
-          <span className="text-[#64748B] font-sans font-normal">nodo</span>
-          <span className="text-[#0F172A] font-mono font-medium">
-            ({nodoSeleccionado.x},{nodoSeleccionado.y})
-          </span>
-        </div>
+        {/* Nodo bajo el cursor (solo sobre el lienzo) */}
+        {nodoSeleccionado && (
+          <>
+            <div className="flex items-center gap-1.5 flex-shrink-0">
+              <span className="text-[#64748B] font-sans font-normal">nodo</span>
+              <span className="text-[#0F172A] font-mono font-medium">
+                ({nodoSeleccionado.x},{nodoSeleccionado.y})
+              </span>
+            </div>
 
-        <div className="w-[1px] h-[14px] bg-[#E2E8F0] flex-shrink-0"></div>
+            <div className="w-[1px] h-[14px] bg-[#E2E8F0] flex-shrink-0"></div>
+          </>
+        )}
 
         {/* Pedidos */}
         <div className="flex items-center gap-1.5 flex-shrink-0">
@@ -94,24 +110,32 @@ export const FooterBar: React.FC<FooterBarProps> = ({
           </div>
         </div>
 
-        {/* Ver leyenda modal trigger */}
-        <button
-          onClick={onAbrirLeyenda}
-          className="flex items-center gap-1 text-[#1E40AF] hover:text-blue-800 transition font-sans cursor-pointer"
-        >
-          <span className="font-semibold text-xs leading-none">?</span>
-          <span className="font-medium text-[12px]">Ver leyenda</span>
-        </button>
+        {/* Ver leyenda (solo sobre el lienzo) */}
+        {onAbrirLeyenda && (
+          <button
+            onClick={onAbrirLeyenda}
+            className="flex items-center gap-1 text-[#1E40AF] hover:text-blue-800 transition font-sans cursor-pointer"
+          >
+            <span className="font-semibold text-xs leading-none">?</span>
+            <span className="font-medium text-[12px]">Ver leyenda</span>
+          </button>
+        )}
 
         <div className="w-[1px] h-[14px] bg-[#E2E8F0]"></div>
 
-        {/* Timestamp de actualización */}
-        <div className="flex items-center gap-1.5">
-          <span className="w-1.5 h-1.5 bg-[#15803D] rounded-full animate-pulse"></span>
-          <span className="text-[#64748B] font-sans text-[12px]">
-            actualizado hace {segundosDesdeActualizacion} s
-          </span>
-        </div>
+        {/* Timestamp de actualización: abre la bitácora de eventos si se indica */}
+        {estadoAlerta ? (
+          <div className="flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 bg-[#B91C1C] rounded-full"></span>
+            <span className="text-[#64748B] font-sans text-[12px]">{estadoAlerta}</span>
+          </div>
+        ) : onVerBitacora ? (
+          <button type="button" onClick={onVerBitacora} title="Ver bitácora de eventos" className="flex items-center gap-1.5 hover:underline">
+            {actualizacion}
+          </button>
+        ) : (
+          <div className="flex items-center gap-1.5">{actualizacion}</div>
+        )}
       </div>
     </footer>
   );

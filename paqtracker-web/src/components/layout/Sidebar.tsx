@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { Fragment, useState } from 'react';
+import type { SubvistaOperacion } from '../../types/operacion';
 import {
   LayoutGrid,
   Package,
@@ -14,10 +15,20 @@ export type TabModulo = 'operacion' | 'pedidos' | 'planes' | 'simulacion' | 'met
 
 interface SidebarProps {
   tabActiva: TabModulo;
+  subvistaOperacion: SubvistaOperacion;
   onCambiarTab: (tab: TabModulo) => void;
+  onCambiarSubvistaOperacion: (subvista: SubvistaOperacion) => void;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ tabActiva, onCambiarTab }) => {
+/** Subvistas de Operación que la barra expandida lista bajo su destino (Figma 1:15091). */
+const SUBVISTAS_OPERACION: { id: SubvistaOperacion; label: string }[] = [
+  { id: 'vivo', label: 'Vista en vivo' },
+  { id: 'incidencias', label: 'Incidencias' },
+  { id: 'flota', label: 'Flota' },
+  { id: 'bitacora', label: 'Bitácora' },
+];
+
+export const Sidebar: React.FC<SidebarProps> = ({ tabActiva, subvistaOperacion, onCambiarTab, onCambiarSubvistaOperacion }) => {
   const [expandido, setExpandido] = useState(false);
 
   const menuItems = [
@@ -32,7 +43,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ tabActiva, onCambiarTab }) => 
   return (
     <aside
       className={`h-screen bg-[#F1F5F9] border-r border-[#CBD5E1] transition-all duration-300 flex flex-col items-center py-2.5 z-30 select-none ${
-        expandido ? 'w-[180px]' : 'w-[90px]'
+        expandido ? 'w-[232px]' : 'w-[90px]'
       }`}
     >
       {/* Logo "P" PaqTracker */}
@@ -67,8 +78,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ tabActiva, onCambiarTab }) => 
           const Icon = item.icon;
           const esActivo = tabActiva === item.id;
           return (
+            <Fragment key={item.id}>
             <button
-              key={item.id}
               onClick={() => onCambiarTab(item.id)}
               className={`flex rounded-[6px] transition-all cursor-pointer ${
                 expandido
@@ -94,6 +105,26 @@ export const Sidebar: React.FC<SidebarProps> = ({ tabActiva, onCambiarTab }) => 
                 {item.label}
               </span>
             </button>
+            {expandido && item.id === 'operacion' && (
+              <div className="w-full flex flex-col gap-0.5 pl-[26px] pr-1 pb-1" role="group" aria-label="Vistas de Operación">
+                {SUBVISTAS_OPERACION.map((sub) => {
+                  const activa = esActivo && subvistaOperacion === sub.id;
+                  return (
+                    <button
+                      key={sub.id}
+                      onClick={() => onCambiarSubvistaOperacion(sub.id)}
+                      aria-current={activa ? 'page' : undefined}
+                      className={`text-left px-2.5 py-1.5 rounded-[6px] font-mono font-medium text-[12px] tracking-[0.6px] transition ${
+                        activa ? 'bg-[#DBEAFE] text-[#1E40AF]' : 'text-[#0F172A] hover:bg-slate-200/50'
+                      }`}
+                    >
+                      {sub.label}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+            </Fragment>
           );
         })}
       </div>
