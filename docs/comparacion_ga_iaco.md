@@ -77,7 +77,7 @@ Informe del 16-09-2026, rama `hotfix/Comparacion-IACO`.
 | Horizonte | días pedidos o rango de fechas + 3000 min | mes, sin el último día si el archivo está cortado, + 1 día |
 | Semilla | 1 + instante del ciclo | 7, combinada con ciclo, iteración y hormiga |
 | Métricas | `ResultadoSimulacion`: entregas, incumplimientos, colapso, pico de unidades, uso por tipo, distancia | `Metricas`: en plazo, tardíos, sin entregar, km, costo, holgura, tiempo por plan |
-| Punto de entrada | `servicio.SimulacionDinamica` | `iaco.app.Main` |
+| Punto de entrada | `experimentacion.SimulacionDinamica` | `iaco.app.Main` |
 
 **Conclusión:** con dos modelos de dominio distintos, cualquier diferencia de
 resultados mezcla el efecto del algoritmo con el de la flota, los turnos, el
@@ -206,7 +206,7 @@ El tiempo es de pared e incluye el arranque de la JVM.
 Comando:
 
 ```
-java -cp out pe.pucp.paqtracker.servicio.SimulacionDinamica datos/ventas.v20260909 datos/bloqueos.v20260909/bloqueos 01-01-2026 30-06-2026 --algoritmo iaco
+java -cp "paqtracker-experimentacion/target/classes:paqtracker-planificador-nucleo/target/classes" pe.pucp.paqtracker.experimentacion.SimulacionDinamica datos/ventas.v20260909 datos/bloqueos.v20260909/bloqueos 01-01-2026 30-06-2026 --algoritmo iaco
 ```
 
 | Corrida (181 días, 11 107 pedidos) | Incumpl. | Colapso | Rutas (auto / bici / moto) | Urgentes repartidos | Distancia | Tiempo |

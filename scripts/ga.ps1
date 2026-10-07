@@ -8,7 +8,7 @@ $ErrorActionPreference = "Stop"
 $raiz = Split-Path -Parent $PSScriptRoot
 Push-Location $raiz
 try {
-    if (-not (Test-Path "out\pe\pucp\paqtracker\servicio\SimulacionDinamica.class")) {
+    if (-not (Test-Path "paqtracker-experimentacion\target\classes\pe\pucp\paqtracker\experimentacion\SimulacionDinamica.class")) {
         & (Join-Path $PSScriptRoot "compilar.ps1")
     }
     $argumentos = @($args)
@@ -16,7 +16,7 @@ try {
         $argumentos = @("datos\ventas.v20260909", "datos\bloqueos.v20260909", "7", "202601")
     }
     [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-    java -Xmx4g -cp out pe.pucp.paqtracker.servicio.SimulacionDinamica @argumentos
+    java -Xmx4g -cp "paqtracker-experimentacion\target\classes;paqtracker-planificador-nucleo\target\classes" pe.pucp.paqtracker.experimentacion.SimulacionDinamica @argumentos
 }
 finally {
     Pop-Location

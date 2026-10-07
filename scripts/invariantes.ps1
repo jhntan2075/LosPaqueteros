@@ -10,11 +10,11 @@ $ErrorActionPreference = "Stop"
 $raiz = Split-Path -Parent $PSScriptRoot
 Push-Location $raiz
 try {
-    if (-not (Test-Path "out\pe\pucp\paqtracker\experimento\VerificadorInvariantes.class")) {
+    if (-not (Test-Path "paqtracker-experimentacion\target\classes\pe\pucp\paqtracker\experimentacion\VerificadorInvariantes.class")) {
         & (Join-Path $PSScriptRoot "compilar.ps1")
     }
     [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-    java -cp out pe.pucp.paqtracker.experimento.VerificadorInvariantes @args
+    java -cp "paqtracker-experimentacion\target\classes;paqtracker-planificador-nucleo\target\classes" pe.pucp.paqtracker.experimentacion.VerificadorInvariantes @args
     exit $LASTEXITCODE
 }
 finally {

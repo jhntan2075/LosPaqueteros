@@ -3,7 +3,7 @@
 /out/
 /out-tests/
 /bin/
-/target/
+target/
 
 # Node / Frontend
 node_modules/

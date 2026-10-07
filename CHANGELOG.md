@@ -2,6 +2,23 @@
 
 Formato basado en Keep a Changelog; versionado semántico (MAJOR.MINOR.PATCH).
 
+## [Sin publicar]
+
+### Cambiado
+- El repositorio pasa a ser un monorepo Maven (POM padre + Maven Wrapper 3.9.12):
+  `paqtracker-planificador-nucleo` (Java puro), `paqtracker-api` (Spring Boot 4.0.1,
+  esqueleto) y `paqtracker-experimentacion` (CLI, no se despliega). Los archivos se
+  movieron con `git mv` y conservan su historial.
+- Paquetes renombrados: `servicio` → `simulacion` (núcleo; `SimulacionDinamica` va a
+  experimentación), `repositorio` → `lectura`, `experimento` → `experimentacion`.
+- Las pruebas corren con Maven (`./mvnw test`); se retira el JUnit standalone de `lib/`.
+- `Dockerfile` movido a `paqtracker-api/` (imagen de la API) y `docker-compose.yml`
+  raíz con MySQL 8.0 + API. `.env.example` unificado en la raíz.
+- `paqtracker-infra/init-db/01-init.sql` ya no crea tablas: el esquema es de Flyway.
+
+### Añadido
+- CI en `.github/workflows/` (`java.yml`, `web.yml`) con filtros por ruta.
+
 ## [0.5.0] — 2026-09-18
 
 ### Añadido

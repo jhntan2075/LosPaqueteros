@@ -1,0 +1,23 @@
+# Configuracion de la API de operacion. Todo lo que varia entre entornos llega por
+# variables de entorno (ver .env.example de la raiz); aqui solo hay valores por defecto locales.
+server:
+  address: ${APP_HOST:127.0.0.1}
+  port: ${APP_PORT:3000}
+
+spring:
+  application:
+    name: paqtracker-api
+  datasource:
+    url: jdbc:mysql://${DB_HOST:127.0.0.1}:${DB_PORT:3306}/${DB_NAME:paqtracker}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=America/Lima
+    username: ${DB_USER:paq_user}
+    password: ${DB_PASSWORD:}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    locations: classpath:db/migracion
+  servlet:
+    multipart:
+      max-file-size: ${APP_MAX_ARCHIVO:20MB}
+      max-request-size: ${APP_MAX_ARCHIVO:20MB}

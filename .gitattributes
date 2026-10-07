@@ -8,3 +8,6 @@
 *.jar binary
 *.png binary
 *.jpg binary
+
+# Scripts de Windows del Maven Wrapper: CRLF para cmd.exe.
+*.cmd text eol=crlf

@@ -1,14 +1,52 @@
+# Orquestacion local: MySQL + API de operacion. El front corre aparte con `npm run dev`
+# (Vite reenvia /api y /ws a 127.0.0.1:3000).
+#   cp .env.example .env && docker compose up --build
 services:
-  paqtracker-planificador:
-    build: .
-    image: paqtracker-planificador:0.5.0
+  mysql:
+    image: mysql:8.0.40
+    container_name: paqtracker-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${DB_NAME}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "${DB_PORT:-3306}:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./paqtracker-infra/init-db:/docker-entrypoint-initdb.d:ro
+    networks:
+      - paqtracker-red
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -p$$MYSQL_ROOT_PASSWORD"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: paqtracker-api/Dockerfile
+    image: paqtracker-api:0.6.0
+    container_name: paqtracker-api
+    depends_on:
+      mysql:
+        condition: service_healthy
     env_file:
       - path: .env
         required: false
-    volumes:
-      - ./datos:/app/datos:ro
+    environment:
+      APP_HOST: 0.0.0.0
+      DB_HOST: mysql
+      DB_PORT: 3306
+    ports:
+      - "${APP_PORT:-3000}:3000"
     networks:
       - paqtracker-red
+
+volumes:
+  mysql_data:
 
 networks:
   paqtracker-red:
