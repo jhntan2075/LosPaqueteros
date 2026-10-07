@@ -1,93 +1,112 @@
-import React, { useRef, useState } from 'react';
-import { useCorridaSimulada, type EstadoCorrida } from '../../hooks/useCorridaSimulada';
-import { unidadesEnElInstante } from '../../lib/movimiento';
-import { BLOQUEOS, FLOTA, RESUMEN_PEDIDOS, estadoFlota, pedidosEnRiesgo } from '../../mocks/operacion';
-import { FLOTA_COLAPSO, RESUMEN_COLAPSO, RIESGO_COLAPSO } from '../../mocks/simulacion';
+import React, { useMemo, useRef, useState } from 'react';
+import { ContextoDatosOperacion, useDatosOperacion, useEjecucionEnVivo } from '../../hooks/useDatosOperacion';
+import { useControlEjecucion } from '../../hooks/useEjecuciones';
+import { estadoFlota, pedidosEnRiesgo, resumenRiesgo } from '../../lib/operacion';
+import type { EjecucionApi } from '../../types/api';
 import type { Coordenada } from '../../types/domain';
-import type { ConfiguracionCorrida } from '../../types/simulacion';
+import type { EscenarioSimulacion, EstadoCorrida, MarcaAvance } from '../../types/simulacion';
+import { EstadoConexion } from '../layout/EstadoConexion';
 import { FooterBar } from '../layout/FooterBar';
 import { GridMap, type DestinoMapa, type GridMapHandle } from '../map/GridMap';
 import { PanelLateral, type SeleccionPanel } from '../operacion/PanelLateral';
 import { RailKpis } from '../operacion/RailKpis';
 import { DiagnosticoColapso } from './DiagnosticoColapso';
 import { EncabezadoCorrida } from './EncabezadoCorrida';
+import { InformeCorrida } from './InformeCorrida';
 
 // Corrida de simulación (Figma "Corrida de Simulación" y variantes con panel de incidencias, flota,
-// bitácora, detalle de pedido o vehículo, y "· Hasta el colapso"). El reloj lo lleva
-// useCorridaSimulada; el estado del lienzo usa el conjunto de ejemplo de Operación hasta que
-// paqtracker-api publique el estado de la corrida.
+// bitácora, detalle de pedido o vehículo, y "· Hasta el colapso"). Muestra en vivo la ejecución que
+// corre en paqtracker-api: cualquier dispositivo que la abra ve lo mismo.
 
 const ANCHO_PANEL_PX = 340 + 12;
 const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
-const DESTINOS: DestinoMapa[] = FLOTA.flatMap((u) => u.paradas.map((p) => ({ pedido: p.pedido, destino: p.destino, nivel: p.nivel, unidad: u.codigo })));
-const UNIDADES_MAPA = FLOTA.filter((u) => u.estado !== 'DISPONIBLE');
-
-export interface ResultadoCorrida {
-  estado: EstadoCorrida;
-  relojFinal: Date;
-  simuladoMs: number;
-  transcurridoRealMs: number;
-}
 
 interface CorridaSimulacionProps {
-  configuracion: ConfiguracionCorrida;
-  onDetener: () => void;
-  onVerInforme: (resultado: ResultadoCorrida) => void;
+  ejecucion: EjecucionApi;
+  onSalir: () => void;
   onVerBitacoraCompleta: () => void;
   onAbrirLeyenda: () => void;
 }
 
-export const CorridaSimulacion: React.FC<CorridaSimulacionProps> = ({ configuracion, onDetener, onVerInforme, onVerBitacoraCompleta, onAbrirLeyenda }) => {
-  const corrida = useCorridaSimulada(configuracion.escenario, configuracion.inicio);
+export const CorridaSimulacion: React.FC<CorridaSimulacionProps> = (props) => {
+  const { datos, error } = useEjecucionEnVivo(props.ejecucion.id);
+  if (!datos) return <EstadoConexion titulo={props.ejecucion.nombre} error={error} />;
+  return (
+    <ContextoDatosOperacion.Provider value={datos}>
+      <CorridaEnVivo {...props} />
+    </ContextoDatosOperacion.Provider>
+  );
+};
+
+const CorridaEnVivo: React.FC<CorridaSimulacionProps> = ({ ejecucion, onSalir, onVerBitacoraCompleta, onAbrirLeyenda }) => {
+  const datos = useDatosOperacion();
+  const { detener } = useControlEjecucion(ejecucion.id);
   const mapaRef = useRef<GridMapHandle>(null);
   const [panel, setPanel] = useState<SeleccionPanel | null>(null);
+  const [verInforme, setVerInforme] = useState(false);
   // El diagnóstico se abre solo al detectar el colapso; el usuario puede cerrarlo.
   const [diagnosticoCerrado, setDiagnosticoCerrado] = useState(false);
   const [nodo, setNodo] = useState<Coordenada>({ x: 19, y: 9 });
 
-  const colapso = corrida.estado === 'COLAPSO';
+  const estado: EstadoCorrida =
+    datos.estadoEjecucion === 'COLAPSADA' ? 'COLAPSO' : datos.estadoEjecucion === 'FINALIZADA' ? 'COMPLETADA' : 'EJECUCION';
+  const colapso = estado === 'COLAPSO';
   const verDiagnostico = colapso && !diagnosticoCerrado && panel === null;
-  const flota = estadoFlota();
-  const riesgo = pedidosEnRiesgo();
-  const dia = `${corrida.relojSimulado.getDate()} ${MESES[corrida.relojSimulado.getMonth()]}`;
-  const verInforme = () =>
-    onVerInforme({ estado: corrida.estado, relojFinal: corrida.relojSimulado, simuladoMs: corrida.simuladoMs, transcurridoRealMs: corrida.transcurridoRealMs });
+  const flota = estadoFlota(datos);
+  const riesgo = pedidosEnRiesgo(datos);
+  const dia = `${datos.reloj.getDate()} ${MESES[datos.reloj.getMonth()]}`;
+  const destinos: DestinoMapa[] = useMemo(
+    () => datos.flota.flatMap((u) => u.paradas.map((p) => ({ pedido: p.pedido, destino: p.destino, nivel: p.nivel, unidad: u.codigo }))),
+    [datos.flota],
+  );
+  // Las marcas de avance salen de la bitácora: planificaciones e incidencias.
+  const marcas: MarcaAvance[] = useMemo(
+    () =>
+      datos.eventos
+        .filter((e) => e.categoria === 'PLANIFICADOR' || e.categoria === 'INCIDENCIA')
+        .map((e) => ({ id: e.id, minuto: (e.instanteMs - datos.relojInicio.getTime()) / 60_000, tipo: e.categoria === 'PLANIFICADOR' ? 'PLANIFICADOR' : 'INCIDENCIA' })),
+    [datos.eventos, datos.relojInicio],
+  );
+
+  if (verInforme) {
+    return <InformeCorrida ejecucion={ejecucion} estado={estado} onVolverACorrida={() => setVerInforme(false)} onNuevaCorrida={onSalir} />;
+  }
 
   return (
     <div className="flex-1 flex flex-col min-h-0">
       <EncabezadoCorrida
-        escenario={configuracion.escenario}
-        inicio={configuracion.inicio}
-        {...corrida}
-        onDetener={onDetener}
-        onVerInforme={verInforme}
+        escenario={ejecucion.tipoEscenario as EscenarioSimulacion}
+        estado={estado}
+        inicio={datos.relojInicio}
+        relojSimulado={datos.reloj}
+        simuladoMs={datos.transcurridoSimuladoMs}
+        diasTotales={ejecucion.dias}
+        transcurridoRealMs={datos.transcurridoRealMs}
+        factorAceleracion={datos.factorAceleracion}
+        marcas={marcas}
+        onDetener={detener}
+        onSalir={onSalir}
+        onVerInforme={() => setVerInforme(true)}
       />
       <RailKpis
-        resumen={colapso ? RESUMEN_COLAPSO : RESUMEN_PEDIDOS}
-        riesgo={
-          colapso
-            ? RIESGO_COLAPSO
-            : {
-                rojo: riesgo.filter((p) => p.nivel === 'ROJO').length,
-                ambar: riesgo.filter((p) => p.nivel === 'AMBAR').length,
-                holguraMinima: riesgo[0]?.holgura ?? '—',
-              }
-        }
-        flota={colapso ? FLOTA_COLAPSO : { ...flota, averiadas: flota.averiadas.length }}
+        resumen={datos.resumen}
+        riesgo={resumenRiesgo(datos)}
+        flota={{ ...flota, averiadas: flota.averiadas.length }}
         onVerFlota={() => setPanel({ tipo: 'flota' })}
         onVerIncidencias={() => setPanel({ tipo: 'incidencias' })}
-        notaSaturacion={colapso ? 'superó 1,00 en D5 07:40' : 'Alerta desde 0,70'}
+        notaSaturacion={colapso ? 'al detectarse el colapso' : 'Alerta desde 0,70'}
       />
       <main className="flex-1 relative flex min-h-0 bg-[#F8FAFC]">
         <GridMap
           ref={mapaRef}
           variante="simulacion"
-          unidades={unidadesEnElInstante(UNIDADES_MAPA, corrida.simuladoMs / 60_000)}
-          destinos={DESTINOS}
-          bloqueos={BLOQUEOS}
+          unidades={datos.flota.filter((u) => u.estado !== 'DISPONIBLE')}
+          destinos={destinos}
+          bloqueos={datos.bloqueos}
+          almacenes={datos.almacenes}
           seleccion={panel && (panel.tipo === 'pedido' || panel.tipo === 'vehiculo') ? panel : null}
           anchoPanelDerecho={panel || verDiagnostico ? ANCHO_PANEL_PX : 0}
-          riesgo={colapso ? RIESGO_COLAPSO.rojo + RIESGO_COLAPSO.ambar : riesgo.length}
+          riesgo={riesgo.length}
           onSeleccionar={setPanel}
           onAbrirIncidencias={() => setPanel({ tipo: 'incidencias' })}
           onHoverCoordenada={setNodo}
@@ -97,7 +116,6 @@ export const CorridaSimulacion: React.FC<CorridaSimulacionProps> = ({ configurac
             <PanelLateral
               pestanasCorrida
               seleccion={panel}
-              diaReloj={dia}
               onSeleccionar={setPanel}
               onCerrar={() => setPanel(null)}
               onCentrar={(punto) => mapaRef.current?.centrarEn(punto)}
@@ -109,18 +127,18 @@ export const CorridaSimulacion: React.FC<CorridaSimulacionProps> = ({ configurac
               diaColapso={dia}
               onCerrar={() => setDiagnosticoCerrado(true)}
               onEstadoCompleto={() => setPanel({ tipo: 'incidencias' })}
-              onVerInforme={verInforme}
+              onVerInforme={() => setVerInforme(true)}
             />
           )}
         </GridMap>
       </main>
       <FooterBar
         nodoSeleccionado={nodo}
-        totalPedidos={colapso ? RESUMEN_COLAPSO.total : RESUMEN_PEDIDOS.total}
-        entregados={colapso ? RESUMEN_COLAPSO.entregados : RESUMEN_PEDIDOS.entregados}
-        enRuta={colapso ? RESUMEN_COLAPSO.enRuta : RESUMEN_PEDIDOS.enRuta}
-        enRiesgo={colapso ? RIESGO_COLAPSO.rojo : riesgo.filter((p) => p.nivel === 'ROJO').length}
-        bloqueosActivos={BLOQUEOS.length}
+        totalPedidos={datos.resumen.total}
+        entregados={datos.resumen.entregados}
+        enRuta={datos.resumen.enRuta}
+        enRiesgo={riesgo.filter((p) => p.nivel === 'ROJO').length}
+        bloqueosActivos={datos.bloqueos.length}
         averiasActivas={flota.averiadas.length}
         segundosDesdeActualizacion={1}
         onAbrirLeyenda={onAbrirLeyenda}

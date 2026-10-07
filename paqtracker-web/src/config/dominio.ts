@@ -58,4 +58,4 @@ export const ALMACENES: AlmacenDominio[] = [
 export const PLAZOS_HORAS = [36, 18, 12, 8, 4] as const;
 export type PlazoHoras = (typeof PLAZOS_HORAS)[number];
 
-export const esPlazoRegular = (plazo: PlazoHoras) => plazo === 36;
+export const esPlazoRegular = (plazoHoras: number) => plazoHoras === 36;

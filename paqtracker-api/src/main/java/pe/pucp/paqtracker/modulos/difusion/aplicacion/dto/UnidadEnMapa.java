@@ -13,6 +13,7 @@ import java.util.List;
  * @param ocupacion       carga actual sobre capacidad, entre 0 y 1
  * @param velocidadKmH    velocidad de su tipo
  * @param estado          estado operativo (DISPONIBLE_EN_ALMACEN, EN_RUTA, EN_REFRIGERIO...)
+ * @param almacenOrigen   almacen del que salio (en ruta) o en el que esta (detenida): CENTRAL, INTERMEDIO_1...
  * @param ubicacionActual posicion, interpolada sobre el camino si esta en un tramo
  * @param tramoEnCurso    tramo que recorre, o null si esta detenida
  * @param rutaRestante    ruta planificada que le falta recorrer, desde su posicion actual hasta el
@@ -20,6 +21,7 @@ import java.util.List;
  * @param paradas         entregas pendientes, en orden
  */
 public record UnidadEnMapa(int id, String codigo, String tipo, int capacidadMaxima, int cargaActual,
-                           double ocupacion, int velocidadKmH, String estado, Coordenada ubicacionActual,
+                           double ocupacion, int velocidadKmH, String estado, String almacenOrigen,
+                           Coordenada ubicacionActual,
                            TramoEnCurso tramoEnCurso, List<Coordenada> rutaRestante, List<ParadaPendiente> paradas) {
 }

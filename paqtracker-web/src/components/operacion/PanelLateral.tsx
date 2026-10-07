@@ -1,9 +1,12 @@
 import React, { useState } from 'react';
 import { ALMACENES, CORTE_HOLGURA, CORTE_OCUPACION, UNIDADES } from '../../config/dominio';
+import { useDatosOperacion } from '../../hooks/useDatosOperacion';
+import { useTrazabilidadPedido } from '../../hooks/useTrazabilidadPedido';
 import { capitalizar } from '../../lib/formato';
-import { BLOQUEOS, FLOTA, PEDIDOS_OPERACION, distanciaDesdeOrigen, nivelDeOcupacion, pedidosEnRiesgo, unidadPorCodigo } from '../../mocks/operacion';
+import { distanciaDesdeOrigen, nivelDeOcupacion, pedidosEnRiesgo, unidadPorCodigo } from '../../lib/operacion';
+import { turnoVigente } from '../../lib/turnos';
 import type { Coordenada } from '../../types/domain';
-import type { PedidoOperacion, UnidadOperacion } from '../../types/operacion';
+import type { HitoTrazabilidad, PedidoOperacion, UnidadOperacion } from '../../types/operacion';
 import type { NivelHolgura } from '../../types/pedidos';
 import { COLOR_HOLGURA } from '../pedidos/estilos';
 import { PuntoHolgura } from '../pedidos/iconos';
@@ -26,7 +29,6 @@ export type SeleccionPanel =
 
 interface PanelLateralProps {
   seleccion: SeleccionPanel;
-  diaReloj: string; // "25 ago"
   onSeleccionar: (seleccion: SeleccionPanel) => void;
   onCerrar: () => void;
   onCentrar: (punto: Coordenada) => void;
@@ -106,14 +108,15 @@ const formatoSoles = (monto: number) => `S/ ${monto.toFixed(2).replace('.', ',')
 
 // --- Detalle de pedido ---------------------------------------------------------------------------
 
-const Trazabilidad: React.FC<{ pedido: PedidoOperacion }> = ({ pedido }) => {
-  const reasignaciones = pedido.trazabilidad.filter((h) => h.titulo.startsWith('Reasignación')).length;
+const Trazabilidad: React.FC<{ hitos: HitoTrazabilidad[] }> = ({ hitos }) => {
+  const reasignaciones = hitos.filter((h) => h.titulo.startsWith('Reasignación')).length;
   return (
     <section className="px-[12px] pt-[9px] pb-[6px] flex flex-col gap-[8px]">
       <TituloSeccion derecha={reasignaciones > 0 ? `${reasignaciones} reasignación${reasignaciones > 1 ? 'es' : ''}` : undefined}>Trazabilidad</TituloSeccion>
       <ol className="flex flex-col gap-[8px]">
-        {pedido.trazabilidad.map((hito) => (
-          <li key={hito.titulo} className="flex gap-[10px] text-[12px] leading-[normal]">
+        {hitos.length === 0 && <li className="font-sans text-[12px] text-[#64748B]">Sin hitos registrados.</li>}
+        {hitos.map((hito, i) => (
+          <li key={`${hito.titulo}-${i}`} className="flex gap-[10px] text-[12px] leading-[normal]">
             <time className="w-[34px] font-mono text-[#94A3B8] shrink-0">{hito.hora}</time>
             <span className={`mt-[4px] size-[6px] rounded-full shrink-0 ${hito.reciente ? 'bg-[#1E40AF]' : 'bg-[#94A3B8]'}`} />
             <span className="flex flex-col min-w-0">
@@ -127,16 +130,17 @@ const Trazabilidad: React.FC<{ pedido: PedidoOperacion }> = ({ pedido }) => {
   );
 };
 
-const DetallePedido: React.FC<{ pedido: PedidoOperacion; dia: string } & Omit<PanelLateralProps, 'seleccion' | 'diaReloj' | 'onCerrar'>> = ({
+const DetallePedido: React.FC<{ pedido: PedidoOperacion } & Omit<PanelLateralProps, 'seleccion' | 'onCerrar'>> = ({
   pedido,
-  dia,
   onSeleccionar,
   onCentrar,
 }) => {
   const [pestana, setPestana] = useState<'resumen' | 'trazabilidad'>('resumen');
-  const unidad = unidadPorCodigo(pedido.unidad)!;
-  const origen = ALMACENES.find((a) => a.id === unidad.origen)!;
-  const km = distanciaDesdeOrigen(pedido);
+  const datos = useDatosOperacion();
+  const hitos = useTrazabilidadPedido(datos.ejecucionId, pedido.codigo, pedido.estado);
+  const unidad = unidadPorCodigo(datos, pedido.unidad);
+  const origen = unidad ? ALMACENES.find((a) => a.id === unidad.origen) : undefined;
+  const km = distanciaDesdeOrigen(datos, pedido);
   const fraccion = pedido.holguraMinutos / (pedido.plazoHoras * 60);
   return (
     <>
@@ -169,23 +173,29 @@ const DetallePedido: React.FC<{ pedido: PedidoOperacion; dia: string } & Omit<Pa
               <Dato etiqueta="Cliente" valor={pedido.cliente} />
               <Dato etiqueta="Cantidad" valor={`${pedido.cantidad} unidades de P`} />
               <Dato etiqueta="Tipo de entrega" valor={`${pedido.plazoHoras === 36 ? 'Regular' : 'Priorizado'} ${pedido.plazoHoras} h`} />
-              <Dato etiqueta="Registrado" valor={`${dia} · ${pedido.registrado}`} />
-              <Dato etiqueta="Hora límite" valor={`${dia} · ${pedido.horaLimite}`} />
-              <Dato etiqueta="ETA actual" valor={`${dia} · ${pedido.eta}`} />
+              <Dato etiqueta="Registrado" valor={pedido.registrado} />
+              <Dato etiqueta="Hora límite" valor={pedido.horaLimite} />
+              <Dato etiqueta="ETA actual" valor={pedido.eta} />
               <Dato etiqueta="Destino" valor={`(${pedido.destino.x},${pedido.destino.y})`} />
               <Dato
                 etiqueta="Vehículo asignado"
                 valor={
-                  <button type="button" onClick={() => onSeleccionar({ tipo: 'vehiculo', codigo: unidad.codigo })} className="hover:underline">
-                    {nombreUnidad(unidad)} · {unidad.carga}/{UNIDADES[unidad.tipo].capacidad}
-                  </button>
+                  unidad ? (
+                    <button type="button" onClick={() => onSeleccionar({ tipo: 'vehiculo', codigo: unidad.codigo })} className="hover:underline">
+                      {nombreUnidad(unidad)} · {unidad.carga}/{UNIDADES[unidad.tipo].capacidad}
+                    </button>
+                  ) : (
+                    'sin asignar'
+                  )
                 }
               />
-              <Dato etiqueta="Origen / distancia" valor={`${origen.nombre} · ${km} km · ${formatoSoles(km * UNIDADES[unidad.tipo].costoKm)}`} />
+              {unidad && origen && km !== null && (
+                <Dato etiqueta="Origen / distancia" valor={`${origen.nombre} · ${km} km · ${formatoSoles(km * UNIDADES[unidad.tipo].costoKm)}`} />
+              )}
             </div>
           </>
         )}
-        <Trazabilidad pedido={pedido} />
+        <Trazabilidad hitos={hitos} />
       </div>
       <Acciones>
         <button type="button" onClick={() => onCentrar(pedido.destino)} className="font-sans font-medium text-[#1E40AF] hover:underline">
@@ -223,13 +233,15 @@ const Paradas: React.FC<{ unidad: UnidadOperacion; onSeleccionar: PanelLateralPr
   </section>
 );
 
-const DetalleVehiculo: React.FC<{ unidad: UnidadOperacion } & Omit<PanelLateralProps, 'seleccion' | 'diaReloj' | 'onCerrar'>> = ({
+const DetalleVehiculo: React.FC<{ unidad: UnidadOperacion } & Omit<PanelLateralProps, 'seleccion' | 'onCerrar'>> = ({
   unidad,
   onSeleccionar,
   onCentrar,
 }) => {
   const [pestana, setPestana] = useState<'resumen' | 'ruta' | 'turno'>('resumen');
   const parametros = UNIDADES[unidad.tipo];
+  const { reloj } = useDatosOperacion();
+  const turno = turnoVigente(reloj);
   const nivel = nivelDeOcupacion(unidad.carga, parametros.capacidad);
   const fraccion = unidad.carga / parametros.capacidad;
   const enRojo = unidad.paradas.filter((p) => p.nivel === 'ROJO').length;
@@ -284,11 +296,10 @@ const DetalleVehiculo: React.FC<{ unidad: UnidadOperacion } & Omit<PanelLateralP
             </div>
             <div className="py-[4px] border-b border-[#E2E8F0]">
               <Dato etiqueta="Tipo / velocidad" valor={`${capitalizar(parametros.nombre)} · ${parametros.velocidadKmH} km/h`} />
-              <Dato etiqueta="Distancia recorrida" valor={`${unidad.distanciaRecorridaKm} km`} />
-              <Dato etiqueta="Costo acumulado" valor={formatoSoles(unidad.distanciaRecorridaKm * parametros.costoKm)} />
+
               {unidad.averia && <Dato etiqueta="Avería" valor={`tipo ${unidad.averia.tipo} · fuera ${unidad.averia.fueraDeServicio}`} />}
               <Dato etiqueta="Conductor" valor={unidad.conductor} />
-              <Dato etiqueta="Turno vigente" valor="07:00 – 15:00" />
+              <Dato etiqueta="Turno vigente" valor={turno.actual} />
               <Dato etiqueta="Hora de alimentación" valor={alimentacion} />
               <Dato etiqueta="Pedidos a bordo" valor={`${unidad.paradas.length}${enRojo > 0 ? ` · ${enRojo} en rojo` : ''}`} />
               <Dato etiqueta="Origen de carga" valor={ALMACENES.find((a) => a.id === unidad.origen)!.nombre} />
@@ -298,9 +309,9 @@ const DetalleVehiculo: React.FC<{ unidad: UnidadOperacion } & Omit<PanelLateralP
         {pestana === 'turno' && (
           <div className="py-[4px] border-b border-[#E2E8F0]">
             <Dato etiqueta="Conductor" valor={unidad.conductor} />
-            <Dato etiqueta="Turno vigente" valor="07:00 – 15:00" />
+            <Dato etiqueta="Turno vigente" valor={turno.actual} />
             <Dato etiqueta="Hora de alimentación" valor={alimentacion} />
-            <Dato etiqueta="Próximo turno" valor="15:00 – 23:00" />
+            <Dato etiqueta="Próximo turno" valor={turno.siguiente} />
           </div>
         )}
         {(pestana === 'resumen' || pestana === 'ruta') && <Paradas unidad={unidad} onSeleccionar={onSeleccionar} />}
@@ -327,8 +338,10 @@ const DetalleVehiculo: React.FC<{ unidad: UnidadOperacion } & Omit<PanelLateralP
 // --- Incidencias ---------------------------------------------------------------------------------
 
 const ListaIncidencias: React.FC<Pick<PanelLateralProps, 'onSeleccionar' | 'onCentrar'>> = ({ onSeleccionar, onCentrar }) => {
-  const riesgo = pedidosEnRiesgo();
-  const averiadas = FLOTA.filter((u) => u.estado === 'AVERIADA');
+  const datos = useDatosOperacion();
+  const riesgo = pedidosEnRiesgo(datos);
+  const averiadas = datos.flota.filter((u) => u.estado === 'AVERIADA');
+  const bloqueos = datos.bloqueos;
   return (
     <div className="flex-1 min-h-0 overflow-y-auto">
       <section className="px-[12px] pt-[10px] pb-[8px] flex flex-col gap-[4px] border-b border-[#E2E8F0]">
@@ -360,8 +373,8 @@ const ListaIncidencias: React.FC<Pick<PanelLateralProps, 'onSeleccionar' | 'onCe
         ))}
       </section>
       <section className="px-[12px] pt-[10px] pb-[8px] flex flex-col gap-[4px]">
-        <TituloSeccion derecha={BLOQUEOS.length}>Bloqueos activos</TituloSeccion>
-        {BLOQUEOS.map((b) => (
+        <TituloSeccion derecha={bloqueos.length}>Bloqueos activos</TituloSeccion>
+        {bloqueos.map((b) => (
           <FilaConBarra
             key={b.id}
             color="ambar"
@@ -378,7 +391,6 @@ const ListaIncidencias: React.FC<Pick<PanelLateralProps, 'onSeleccionar' | 'onCe
 
 export const PanelLateral: React.FC<PanelLateralProps> = ({
   seleccion,
-  diaReloj,
   onSeleccionar,
   onCerrar,
   onCentrar,
@@ -392,9 +404,10 @@ export const PanelLateral: React.FC<PanelLateralProps> = ({
         { tipo: 'bitacora', etiqueta: 'Bitácora' },
       ]
     : [{ tipo: 'incidencias', etiqueta: 'Incidencias' }];
+  const datos = useDatosOperacion();
   const esDetalle = seleccion.tipo === 'pedido' || seleccion.tipo === 'vehiculo';
-  const pedido = seleccion.tipo === 'pedido' ? PEDIDOS_OPERACION[seleccion.codigo] : undefined;
-  const unidad = seleccion.tipo === 'vehiculo' ? unidadPorCodigo(seleccion.codigo) : undefined;
+  const pedido = seleccion.tipo === 'pedido' ? datos.pedidos[seleccion.codigo] : undefined;
+  const unidad = seleccion.tipo === 'vehiculo' ? unidadPorCodigo(datos, seleccion.codigo) : undefined;
   return (
     <aside
       aria-label="Incidencias y detalle"
@@ -424,7 +437,7 @@ export const PanelLateral: React.FC<PanelLateralProps> = ({
           ✕
         </button>
       </div>
-      {pedido && <DetallePedido key={pedido.codigo} pedido={pedido} dia={diaReloj} onSeleccionar={onSeleccionar} onCentrar={onCentrar} />}
+      {pedido && <DetallePedido key={pedido.codigo} pedido={pedido} onSeleccionar={onSeleccionar} onCentrar={onCentrar} />}
       {unidad && <DetalleVehiculo key={unidad.codigo} unidad={unidad} onSeleccionar={onSeleccionar} onCentrar={onCentrar} />}
       {seleccion.tipo === 'incidencias' && <ListaIncidencias onSeleccionar={onSeleccionar} onCentrar={onCentrar} />}
       {seleccion.tipo === 'flota' && <EstadoFlota compacto />}

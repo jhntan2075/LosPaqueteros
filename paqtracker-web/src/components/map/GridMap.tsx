@@ -15,12 +15,11 @@ import {
   type Lienzo,
   type Vista,
 } from '../../lib/malla';
-import { nivelDeOcupacion } from '../../mocks/operacion';
+import { nivelDeOcupacion } from '../../lib/operacion';
 import { iconoVehiculo } from './iconosVehiculo';
 import haloSeleccion from '../../assets/figma/pedidos/halo.svg';
-import { PORCENTAJE_STOCK_EJEMPLO } from '../../mocks/pedidos';
 import type { Coordenada } from '../../types/domain';
-import type { BloqueoOperacion, UnidadOperacion } from '../../types/operacion';
+import type { AlmacenOperacion, BloqueoOperacion, UnidadOperacion } from '../../types/operacion';
 import type { NivelHolgura } from '../../types/pedidos';
 
 /** Destino de un pedido a bordo, dibujado como pin con el color de su holgura. */
@@ -42,6 +41,8 @@ interface GridMapProps {
   unidades: UnidadOperacion[];
   destinos: DestinoMapa[];
   bloqueos: BloqueoOperacion[];
+  /** Stock de los almacenes con su semáforo de inventario; sin datos se dibujan sin stock. */
+  almacenes?: AlmacenOperacion[];
   seleccion: ObjetoMapa | null;
   /** Ancho ocupado por un panel flotante a la derecha; los controles de zoom se corren a su izquierda. */
   anchoPanelDerecho?: number;
@@ -90,6 +91,7 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
     unidades,
     destinos,
     bloqueos,
+    almacenes = [],
     seleccion,
     anchoPanelDerecho = 0,
     riesgo,
@@ -367,6 +369,7 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
           unidades={unidades}
           destinos={destinos}
           bloqueos={bloqueos}
+          almacenes={almacenes}
           seleccion={seleccion}
           nodoActivo={nodoActivo}
         />
@@ -380,7 +383,7 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
         >
           <span className="font-mono text-[#0F172A]">
             Almacén {almacen.nombre} ({almacen.ubicacion.x},{almacen.ubicacion.y})
-            {PORCENTAJE_STOCK_EJEMPLO[almacen.id] !== undefined && ` · Stock: ${PORCENTAJE_STOCK_EJEMPLO[almacen.id]}%`}
+            {stockDe(almacenes, almacen.id) !== undefined && ` · Stock: ${stockDe(almacenes, almacen.id)}%`}
           </span>
           <button onClick={() => setAlmacenInspeccionado(null)} aria-label="Cerrar" className="text-[#64748B] hover:text-[#0F172A] font-bold">
             ✕
@@ -474,9 +477,14 @@ interface CapasMapaProps {
   unidades: UnidadOperacion[];
   destinos: DestinoMapa[];
   bloqueos: BloqueoOperacion[];
+  almacenes: AlmacenOperacion[];
   seleccion: ObjetoMapa | null;
   nodoActivo: Coordenada;
 }
+
+/** Porcentaje de stock de un almacén intermedio; undefined en el central o sin datos. */
+const stockDe = (almacenes: AlmacenOperacion[], id: AlmacenOperacion['id']) =>
+  almacenes.find((a) => a.id === id)?.porcentajeStock ?? undefined;
 
 /** Divide la ruta de una unidad en el tramo ya recorrido y el pendiente, cortando en su posición. */
 function dividirRuta(unidad: UnidadOperacion): { recorrido: Coordenada[]; pendiente: Coordenada[] } {
@@ -491,7 +499,7 @@ function dividirRuta(unidad: UnidadOperacion): { recorrido: Coordenada[]; pendie
   return { recorrido: [], pendiente: ruta };
 }
 
-const CapasMapa: React.FC<CapasMapaProps> = ({ vista, lienzo, capas, unidades, destinos, bloqueos, seleccion, nodoActivo }) => {
+const CapasMapa: React.FC<CapasMapaProps> = ({ vista, lienzo, capas, unidades, destinos, bloqueos, almacenes, seleccion, nodoActivo }) => {
   const origen = proyectar(vista, { x: 0, y: 0 });
   const anchoMalla = MALLA_ANCHO_KM * vista.escala;
   const altoMalla = MALLA_ALTO_KM * vista.escala;
@@ -583,9 +591,11 @@ const CapasMapa: React.FC<CapasMapaProps> = ({ vista, lienzo, capas, unidades, d
       {capas.almacenes &&
         ALMACENES.map((almacen) => {
           const { x, y } = proyectar(vista, almacen.ubicacion);
-          const stock = PORCENTAJE_STOCK_EJEMPLO[almacen.id];
+          const stock = stockDe(almacenes, almacen.id);
+          const nivel = almacenes.find((a) => a.id === almacen.id)?.nivel;
           const etiqueta = stock === undefined ? almacen.nombre : `${almacen.nombreCorto.replace('Int.', 'Interm.')} / ${stock} %`;
-          const color = stock === undefined ? '#0F172A' : stock < 15 ? '#B91C1C' : stock < 40 ? '#B45309' : '#15803D';
+          // Semáforo de inventario calculado por la API (LE-078).
+          const color = stock === undefined || !nivel ? '#0F172A' : COLOR_NIVEL[nivel];
           return (
             <g key={almacen.id} transform={`translate(${x}, ${y})`} className="cursor-pointer" data-objeto={`almacen:${almacen.id}`}>
               {stock === undefined ? (

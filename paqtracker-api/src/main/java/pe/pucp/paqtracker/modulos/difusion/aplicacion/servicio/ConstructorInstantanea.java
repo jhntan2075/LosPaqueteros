@@ -135,10 +135,12 @@ public class ConstructorInstantanea {
                 }
             }
         }
+        Almacen origen = transito == null ? vehiculo.getPosicion() : transito.getOrigen();
         return new UnidadEnMapa(vehiculo.getId(), contexto.codigosFlota().codigo(vehiculo),
                 NomenclaturaOperacion.tipoUnidad(vehiculo.getTipo()), vehiculo.getCapacidad(), carga,
                 (double) carga / vehiculo.getCapacidad(), vehiculo.getTipo().getVelocidad(),
-                vehiculo.getEstado().name(), ubicacion, tramoEnCurso, rutaRestante, paradas);
+                vehiculo.getEstado().name(), NomenclaturaOperacion.codigoAlmacen(origen), ubicacion, tramoEnCurso,
+                rutaRestante, paradas);
     }
 
     private TramoEnCurso construirTramo(Tramo tramo, LineaTiempo lineaTiempo) {

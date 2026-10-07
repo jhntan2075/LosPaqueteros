@@ -1,9 +1,9 @@
-import React, { useRef, useState } from 'react';
-import { BLOQUEOS, FLOTA, RESUMEN_PEDIDOS, estadoFlota, pedidosEnRiesgo } from '../../mocks/operacion';
-import { RELOJ_SIMULADO_EJEMPLO } from '../../mocks/pedidos';
-import { useRelojEnVivo } from '../../hooks/useRelojEnVivo';
+import React, { useMemo, useRef, useState } from 'react';
+import { useConexionStomp } from '../../hooks/useConexionStomp';
+import { useDatosOperacion } from '../../hooks/useDatosOperacion';
 import { formatearFechaNumerica } from '../../lib/formato';
-import { unidadesEnElInstante } from '../../lib/movimiento';
+import { estadoFlota, pedidosEnRiesgo, resumenRiesgo } from '../../lib/operacion';
+import { turnoVigente } from '../../lib/turnos';
 import type { Coordenada } from '../../types/domain';
 import type { SubvistaOperacion } from '../../types/operacion';
 import { GridMap, type DestinoMapa, type GridMapHandle, type ObjetoMapa } from '../map/GridMap';
@@ -13,37 +13,33 @@ import { EstadoFlota } from './EstadoFlota';
 import { PanelLateral, type SeleccionPanel } from './PanelLateral';
 import { RailKpis } from './RailKpis';
 
-const ANCHO_PANEL_PX = 340 + 12;
-const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+// Operación día a día: lienzo en vivo, flota y bitácora de la ejecución que difunde paqtracker-api.
 
-// Datos derivados una sola vez del estado de ejemplo (en vivo vendrán de STOMP).
-const DESTINOS: DestinoMapa[] = FLOTA.flatMap((u) => u.paradas.map((p) => ({ pedido: p.pedido, destino: p.destino, nivel: p.nivel, unidad: u.codigo })));
-const UNIDADES_MAPA = FLOTA.filter((u) => u.estado !== 'DISPONIBLE');
+const ANCHO_PANEL_PX = 340 + 12;
 
 interface ModuloOperacionProps {
   subvista: SubvistaOperacion;
-  relojSimulado: string;
-  conectado: boolean;
   onCambiarSubvista: (subvista: SubvistaOperacion) => void;
   onHoverCoordenada: (coord: Coordenada) => void;
 }
 
-export const ModuloOperacion: React.FC<ModuloOperacionProps> = ({ subvista, relojSimulado, conectado, onCambiarSubvista, onHoverCoordenada }) => {
+export const ModuloOperacion: React.FC<ModuloOperacionProps> = ({ subvista, onCambiarSubvista, onHoverCoordenada }) => {
+  const datos = useDatosOperacion();
+  const conectado = useConexionStomp();
   const mapaRef = useRef<GridMapHandle>(null);
-  // Sin conexión, el reloj y las unidades avanzan localmente en tiempo real (k = 1).
-  // ×60 por defecto: a tiempo real (×1) el desplazamiento de las unidades apenas se percibe.
-  const { reloj, velocidad, cambiarVelocidad } = useRelojEnVivo(RELOJ_SIMULADO_EJEMPLO, 60);
-  const minutosDesdeBase = (reloj.getTime() - RELOJ_SIMULADO_EJEMPLO.getTime()) / 60_000;
-  const relojTexto = conectado ? relojSimulado : formatearFechaNumerica(reloj, true);
   // Objeto abierto en el panel derecho; sin objeto, el panel muestra la lista de incidencias.
   const [detalle, setDetalle] = useState<ObjetoMapa | null>(null);
 
-  const flota = estadoFlota();
-  const riesgo = pedidosEnRiesgo();
+  const flota = estadoFlota(datos);
+  const riesgo = pedidosEnRiesgo(datos);
+  const destinos: DestinoMapa[] = useMemo(
+    () => datos.flota.flatMap((u) => u.paradas.map((p) => ({ pedido: p.pedido, destino: p.destino, nivel: p.nivel, unidad: u.codigo }))),
+    [datos.flota],
+  );
+  const unidadesEnMapa = datos.flota.filter((u) => u.estado !== 'DISPONIBLE');
   const enMapa = subvista === 'vivo' || subvista === 'incidencias';
   const panelAbierto = enMapa && (subvista === 'incidencias' || detalle !== null);
   const seleccionPanel: SeleccionPanel = detalle ?? { tipo: 'incidencias' };
-  const diaReloj = `${RELOJ_SIMULADO_EJEMPLO.getDate()} ${MESES[RELOJ_SIMULADO_EJEMPLO.getMonth()]}`;
 
   const seleccionar = (seleccion: SeleccionPanel) => {
     if (seleccion.tipo === 'incidencias' || seleccion.tipo === 'flota' || seleccion.tipo === 'bitacora') {
@@ -62,19 +58,10 @@ export const ModuloOperacion: React.FC<ModuloOperacionProps> = ({ subvista, relo
 
   return (
     <div className="flex-1 flex flex-col min-h-0">
-      <EncabezadoOperacion
-        relojSimulado={relojTexto}
-        conectado={conectado}
-        velocidad={conectado ? undefined : velocidad}
-        onCambiarVelocidad={cambiarVelocidad}
-      />
+      <EncabezadoOperacion relojSimulado={formatearFechaNumerica(datos.reloj, true)} turno={turnoVigente(datos.reloj).actual} conectado={conectado} />
       <RailKpis
-        resumen={RESUMEN_PEDIDOS}
-        riesgo={{
-          rojo: riesgo.filter((p) => p.nivel === 'ROJO').length,
-          ambar: riesgo.filter((p) => p.nivel === 'AMBAR').length,
-          holguraMinima: riesgo[0]?.holgura ?? '—',
-        }}
+        resumen={datos.resumen}
+        riesgo={resumenRiesgo(datos)}
         flota={{ ...flota, averiadas: flota.averiadas.length }}
         onVerFlota={() => onCambiarSubvista('flota')}
         onVerIncidencias={() => seleccionar({ tipo: 'incidencias' })}
@@ -83,9 +70,10 @@ export const ModuloOperacion: React.FC<ModuloOperacionProps> = ({ subvista, relo
         {enMapa && (
           <GridMap
             ref={mapaRef}
-            unidades={unidadesEnElInstante(UNIDADES_MAPA, minutosDesdeBase)}
-            destinos={DESTINOS}
-            bloqueos={BLOQUEOS}
+            unidades={unidadesEnMapa}
+            destinos={destinos}
+            bloqueos={datos.bloqueos}
+            almacenes={datos.almacenes}
             seleccion={detalle}
             anchoPanelDerecho={panelAbierto ? ANCHO_PANEL_PX : 0}
             riesgo={riesgo.length}
@@ -96,7 +84,6 @@ export const ModuloOperacion: React.FC<ModuloOperacionProps> = ({ subvista, relo
             {panelAbierto && (
               <PanelLateral
                 seleccion={seleccionPanel}
-                diaReloj={diaReloj}
                 onSeleccionar={seleccionar}
                 onCerrar={cerrarPanel}
                 onCentrar={(punto) => mapaRef.current?.centrarEn(punto)}

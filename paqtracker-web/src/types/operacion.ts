@@ -1,6 +1,7 @@
 import type { Coordenada } from './domain';
-import type { IdAlmacen, PlazoHoras, TipoUnidad } from '../config/dominio';
+import type { IdAlmacen, TipoUnidad } from '../config/dominio';
 import type { NivelHolgura } from './pedidos';
+import type { EstadoEjecucionApi, IndicadoresApi, TipoEscenarioApi } from './api';
 
 // Modelos de vista del módulo Operación (lienzo en vivo, OP-07 flota, OP-09 bitácora).
 
@@ -47,7 +48,8 @@ export interface PedidoOperacion {
   codigo: string;
   cliente: string;
   cantidad: number;
-  plazoHoras: PlazoHoras;
+  /** Plazo de entrega en horas; los archivos de ventas pueden traer plazos fuera del catálogo de la UI. */
+  plazoHoras: number;
   registrado: string;
   horaLimite: string;
   eta: string;
@@ -71,6 +73,10 @@ export interface BloqueoOperacion {
 export type CategoriaEvento = 'INCIDENCIA' | 'PLANIFICADOR' | 'ENTREGA' | 'OPERACION';
 
 export interface EventoBitacora {
+  /** Identificador único del evento (lo asigna la API). */
+  id: string;
+  /** Instante simulado (epoch ms) del evento. */
+  instanteMs: number;
   hora: string;
   titulo: string;
   detalle: string;
@@ -88,4 +94,33 @@ export interface ResumenPedidos {
   sinRuta: number;
   proximaEntregaMin: number;
   saturacion: number;
+}
+
+export interface AlmacenOperacion {
+  id: IdAlmacen;
+  stock: number | null;
+  capacidad: number | null;
+  /** Stock como porcentaje de la capacidad; null en el almacén central (sin tope). */
+  porcentajeStock: number | null;
+  nivel: NivelHolgura | null;
+}
+
+/** Estado de una ejecución listo para la vista: lo produce el adaptador a partir de la API. */
+export interface DatosOperacion {
+  ejecucionId: string;
+  tipoEscenario: TipoEscenarioApi;
+  estadoEjecucion: EstadoEjecucionApi;
+  reloj: Date;
+  relojInicio: Date;
+  transcurridoSimuladoMs: number;
+  relojRealInicio: Date | null;
+  transcurridoRealMs: number;
+  factorAceleracion: number;
+  flota: UnidadOperacion[];
+  pedidos: Record<string, PedidoOperacion>;
+  bloqueos: BloqueoOperacion[];
+  eventos: EventoBitacora[];
+  resumen: ResumenPedidos;
+  almacenes: AlmacenOperacion[];
+  indicadores: IndicadoresApi;
 }

@@ -3,7 +3,10 @@ import { ALMACENES, MALLA_ALTO_KM, MALLA_ANCHO_KM, PLAZOS_HORAS, esPlazoRegular,
 import { coordenadaValida, evaluarFactibilidad, type EvaluacionFactibilidad, type NivelFactibilidad } from '../../lib/factibilidad';
 import { diasDeDiferencia, formatearDiaMes, formatearDuracion, formatearHora, formatearHoraRelativa, sumarMinutos } from '../../lib/formato';
 import { proyectar, tramoOrtogonal, trazado } from '../../lib/malla';
-import { CLIENTES_EJEMPLO, PORCENTAJE_STOCK_EJEMPLO, registrarPedido } from '../../mocks/pedidos';
+import { useDatosOperacion } from '../../hooks/useDatosOperacion';
+import { useColaPedidos } from '../../hooks/usePedidos';
+import { ErrorDeApi } from '../../services/clienteApi';
+import { registrarPedido } from '../../services/servicioPedidos';
 import type { Coordenada } from '../../types/domain';
 import type { PedidoRegistrado } from '../../types/pedidos';
 import { MiniMapaMalla } from '../map/MiniMapaMalla';
@@ -61,7 +64,7 @@ const InputCoordenada: React.FC<{ eje: 'x' | 'y'; valor: string; maximo: number;
 /** Malla completa con el almacén de origen, el destino y el recorrido ortogonal estimado entre ambos. */
 const MiniMapaDestino: React.FC<{ evaluacion: EvaluacionFactibilidad; destino: Coordenada }> = ({ evaluacion, destino }) => {
   const { almacen } = evaluacion.origen;
-  const stock = PORCENTAJE_STOCK_EJEMPLO[almacen.id];
+  const stock = useDatosOperacion().almacenes.find((a) => a.id === almacen.id)?.porcentajeStock ?? undefined;
   return (
     <MiniMapaMalla
       alto={200}
@@ -117,12 +120,14 @@ const FilaDato: React.FC<{ etiqueta: string; valor: string }> = ({ etiqueta, val
 );
 
 interface RegistrarPedidoProps {
-  reloj: Date;
   onCancelar: () => void;
   onRegistrado: (pedido: PedidoRegistrado) => void;
 }
 
-export const RegistrarPedido: React.FC<RegistrarPedidoProps> = ({ reloj, onCancelar, onRegistrado }) => {
+export const RegistrarPedido: React.FC<RegistrarPedidoProps> = ({ onCancelar, onRegistrado }) => {
+  const datos = useDatosOperacion();
+  const { reloj } = datos;
+  const { clientes } = useColaPedidos();
   const [cliente, setCliente] = useState('');
   const [x, setX] = useState('43');
   const [y, setY] = useState('18');
@@ -148,9 +153,9 @@ export const RegistrarPedido: React.FC<RegistrarPedidoProps> = ({ reloj, onCance
     setEnviando(true);
     setError(null);
     try {
-      onRegistrado(await registrarPedido({ cliente: cliente.trim(), destino, cantidad, plazoHoras }, reloj));
-    } catch {
-      setError('No se pudo registrar el pedido. Inténtalo de nuevo.');
+      onRegistrado(await registrarPedido({ cliente: cliente.trim(), destino, cantidad, plazoHoras }, datos));
+    } catch (e) {
+      setError(e instanceof ErrorDeApi ? e.message : 'No se pudo registrar el pedido. Inténtalo de nuevo.');
       setEnviando(false);
     }
   };
@@ -176,7 +181,7 @@ export const RegistrarPedido: React.FC<RegistrarPedidoProps> = ({ reloj, onCance
               className="bg-white border border-[#CBD5E1] rounded-[8px] h-[40px] px-[12px] w-full font-sans font-medium text-[13px] text-[#0F172A] placeholder:text-[#94A3B8] outline-none focus:border-[#1E40AF] [&::-webkit-calendar-picker-indicator]:!hidden"
             />
             <datalist id="pedido-clientes">
-              {CLIENTES_EJEMPLO.map((nombre) => (
+              {clientes.map((nombre) => (
                 <option key={nombre} value={nombre} />
               ))}
             </datalist>

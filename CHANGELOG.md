@@ -4,6 +4,22 @@ Formato basado en Keep a Changelog; versionado semántico (MAJOR.MINOR.PATCH).
 
 ## [Sin publicar]
 
+### Front conectado a la API (`paqtracker-web`)
+- Los mocks se reemplazan por datos en vivo:
+  - capa `services/` (cliente REST, cliente STOMP único con re-suscripción, adaptador de la
+    instantánea a los modelos de vista);
+  - hooks `useEstadoEjecucion`, `useRelojSimulado`, `useDatosOperacion`, `useColaPedidos`,
+    `useEjecuciones`, `useTrazabilidadPedido`.
+- Operación, Pedidos y la barra superior/inferior muestran la operación día a día. Simulación
+  crea o abre cualquier simulación del servidor (varios dispositivos ven la misma corrida),
+  sube archivos de pedidos y bloqueos validados por la API y permite configurar la flota.
+- Movimiento interpolado en el cliente sobre el camino real del tramo en curso; ruta
+  restante depurada; relojes simulado y real con tiempo transcurrido; diagnóstico del
+  colapso, informe y detalle de pedido con trazabilidad calculados con datos reales.
+- Se quitan los controles de velocidad (fuera del alcance de la entrega).
+- `docker-compose.yml`: el healthcheck de MySQL hace ping por TCP y la API se reinicia
+  si falla. Antes, con una base recién creada, la API arrancaba antes de tiempo y moría.
+
 ### Cambiado
 - El repositorio pasa a ser un monorepo Maven (POM padre + Maven Wrapper 3.9.12):
   `paqtracker-planificador-nucleo` (Java puro), `paqtracker-api` (Spring Boot 4.0.1,

@@ -19,7 +19,9 @@ services:
     networks:
       - paqtracker-red
     healthcheck:
-      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -p$$MYSQL_ROOT_PASSWORD"]
+      # Ping por TCP: durante la primera inicializacion MySQL levanta un servidor temporal solo por
+      # socket; un ping por socket lo daria por sano antes de que la API pueda conectarse.
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 --protocol=tcp -u root -p$$MYSQL_ROOT_PASSWORD"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -30,6 +32,7 @@ services:
       dockerfile: paqtracker-api/Dockerfile
     image: paqtracker-api:0.6.0
     container_name: paqtracker-api
+    restart: on-failure
     depends_on:
       mysql:
         condition: service_healthy
