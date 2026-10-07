@@ -1,5 +1,8 @@
 package pe.pucp.paqtracker.modelo;
 
+import pe.pucp.paqtracker.util.Malla;
+import java.util.List;
+
 /**
  * Tramo del recorrido de una unidad despachada: de donde sale, a donde llega,
  * en que minutos y con que distancia. Es lo que necesita el visualizador para
@@ -22,8 +25,11 @@ public final class Tramo {
     private final int distancia;
     private final int idPedido;
     private final int cantidad;
+    private final List<Nodo> camino;
 
     /**
+     * Crea un tramo cuyo camino es el de Manhattan en L (primero el eje x).
+     *
      * @param tipo      naturaleza del tramo
      * @param origen    nodo de partida
      * @param destino   nodo de llegada
@@ -36,9 +42,30 @@ public final class Tramo {
      */
     public Tramo(TipoTramo tipo, Nodo origen, Nodo destino, int salida, int llegada,
                  int distancia, int idPedido, int cantidad) {
+        this(tipo, origen, destino, salida, llegada, distancia, idPedido, cantidad,
+                Malla.caminoEnL(origen, destino));
+    }
+
+    /**
+     * @param tipo      naturaleza del tramo
+     * @param origen    nodo de partida
+     * @param destino   nodo de llegada
+     * @param salida    instante de partida
+     * @param llegada   instante de llegada
+     * @param distancia kilometros recorridos en el tramo, considerando bloqueos
+     * @param idPedido  pedido que atiende el tramo, o {@link #SIN_PEDIDO}
+     * @param cantidad  paquetes que se entregan al terminar el tramo, cero si no hay entrega
+     * @param camino    vertices del camino real, de origen a destino (rodea los bloqueos vigentes)
+     * @throws IllegalArgumentException si la llegada es anterior a la salida o el camino esta vacio
+     */
+    public Tramo(TipoTramo tipo, Nodo origen, Nodo destino, int salida, int llegada,
+                 int distancia, int idPedido, int cantidad, List<Nodo> camino) {
         if (llegada < salida) {
             throw new IllegalArgumentException(
                     "La llegada " + llegada + " es anterior a la salida " + salida);
+        }
+        if (camino == null || camino.isEmpty()) {
+            throw new IllegalArgumentException("El camino del tramo no puede estar vacio: " + camino);
         }
         this.tipo = tipo;
         this.origen = origen;
@@ -48,6 +75,14 @@ public final class Tramo {
         this.distancia = distancia;
         this.idPedido = idPedido;
         this.cantidad = cantidad;
+        this.camino = List.copyOf(camino);
+    }
+
+    /**
+     * @return vertices del camino del tramo, de origen a destino, inmodificables
+     */
+    public List<Nodo> getCamino() {
+        return camino;
     }
 
     /**

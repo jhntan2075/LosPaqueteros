@@ -120,15 +120,34 @@ public final class ConfiguracionDominio {
      * @return lista de vehiculos de la flota
      */
     public static List<Vehiculo> crearFlota(Almacen central) {
+        return crearFlota(central, CANTIDAD_AUTOS, CANTIDAD_MOTOS, CANTIDAD_BICICLETAS);
+    }
+
+    /**
+     * Construye una flota con la composicion indicada (LE-019), con todas las unidades en el almacen
+     * central. Los ids son consecutivos desde cero en el orden autos, motos, bicicletas.
+     *
+     * @param central    almacen central de partida
+     * @param autos      cantidad de autos
+     * @param motos      cantidad de motocicletas
+     * @param bicicletas cantidad de bicicletas
+     * @return lista de vehiculos de la flota
+     * @throws IllegalArgumentException si alguna cantidad es negativa o la flota queda vacia
+     */
+    public static List<Vehiculo> crearFlota(Almacen central, int autos, int motos, int bicicletas) {
+        if (autos < 0 || motos < 0 || bicicletas < 0 || autos + motos + bicicletas == 0) {
+            throw new IllegalArgumentException("Composicion de flota invalida: autos=" + autos
+                    + ", motos=" + motos + ", bicicletas=" + bicicletas);
+        }
         List<Vehiculo> flota = new ArrayList<>();
         int id = 0;
-        for (int i = 0; i < CANTIDAD_AUTOS; i++) {
+        for (int i = 0; i < autos; i++) {
             flota.add(new Vehiculo(id++, TipoVehiculo.AUTO, central));
         }
-        for (int i = 0; i < CANTIDAD_MOTOS; i++) {
+        for (int i = 0; i < motos; i++) {
             flota.add(new Vehiculo(id++, TipoVehiculo.MOTOCICLETA, central));
         }
-        for (int i = 0; i < CANTIDAD_BICICLETAS; i++) {
+        for (int i = 0; i < bicicletas; i++) {
             flota.add(new Vehiculo(id++, TipoVehiculo.BICICLETA, central));
         }
         return flota;

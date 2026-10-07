@@ -133,7 +133,8 @@ public final class CalculadoraTiempos {
             int distancia = distancia(escenario, actual, entrega.getDestino(), reloj);
             int llegada = CalendarioTurnos.avanzarConPausa(idVehiculo, reloj, minutosDeViaje(distancia, tipo));
             tramos.add(new Tramo(TipoTramo.VIAJE_A_ENTREGA, actual, entrega.getDestino(), reloj, llegada,
-                    distancia, entrega.getIdPedido(), entrega.getCantidad()));
+                    distancia, entrega.getIdPedido(), entrega.getCantidad(),
+                    camino(escenario, actual, entrega.getDestino(), reloj)));
             reloj = CalendarioTurnos.avanzarConPausa(idVehiculo, llegada, escenario.getTiempoServicio());
             tramos.add(new Tramo(TipoTramo.SERVICIO, entrega.getDestino(), entrega.getDestino(), llegada,
                     reloj, 0, entrega.getIdPedido(), 0));
@@ -144,9 +145,20 @@ public final class CalculadoraTiempos {
             int distancia = distancia(escenario, actual, almacen, reloj);
             int llegada = CalendarioTurnos.avanzarConPausa(idVehiculo, reloj, minutosDeViaje(distancia, tipo));
             tramos.add(new Tramo(TipoTramo.RETORNO, actual, almacen, reloj, llegada, distancia,
-                    Tramo.SIN_PEDIDO, 0));
+                    Tramo.SIN_PEDIDO, 0, camino(escenario, actual, almacen, reloj)));
         }
         return tramos;
+    }
+
+    /**
+     * Camino real de un tramo, con el mismo criterio que {@link #distancia}: rodea los bloqueos
+     * vigentes si el escenario tiene malla; si no, el camino en L.
+     */
+    private static List<Nodo> camino(EscenarioOperativo escenario, Nodo origen, Nodo destino, int instante) {
+        if (escenario.getMalla() == null) {
+            return Malla.caminoEnL(origen, destino);
+        }
+        return escenario.getMalla().camino(origen, destino, instante);
     }
 
     private CalculadoraTiempos() {

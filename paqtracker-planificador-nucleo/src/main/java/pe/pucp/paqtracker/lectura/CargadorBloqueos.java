@@ -1,6 +1,8 @@
 package pe.pucp.paqtracker.lectura;
 
 import pe.pucp.paqtracker.modelo.Bloqueo;
+import pe.pucp.paqtracker.modelo.ConfiguracionDominio;
+import pe.pucp.paqtracker.modelo.Nodo;
 import pe.pucp.paqtracker.util.Malla;
 import pe.pucp.paqtracker.util.RangoFechas;
 import java.io.BufferedReader;
@@ -156,7 +158,59 @@ public final class CargadorBloqueos {
             nodos.addAll(Malla.nodosDeTramo(numeros[i], numeros[i + 1],
                     numeros[i + 2], numeros[i + 3]));
         }
-        return new Bloqueo(inicio, fin, nodos);
+        List<Nodo> polilinea = new ArrayList<>();
+        for (int i = 0; i + 1 < numeros.length; i += 2) {
+            polilinea.add(new Nodo(numeros[i], numeros[i + 1]));
+        }
+        return new Bloqueo(inicio, fin, nodos, polilinea);
+    }
+
+    /**
+     * Valida las lineas de un archivo de bloqueos sin cortar en la primera invalida, para informar
+     * todas las lineas a corregir. Exige ventana con fin posterior al inicio, al menos dos puntos,
+     * coordenadas dentro de la malla y segmentos horizontales o verticales.
+     *
+     * @param lineas lineas del archivo, en orden
+     * @return bloqueos validos y una descripcion por linea rechazada
+     */
+    public static ResultadoValidacion validar(List<String> lineas) {
+        int validos = 0;
+        List<String> errores = new ArrayList<>();
+        List<Integer> invalidas = new ArrayList<>();
+        for (int i = 0; i < lineas.size(); i++) {
+            String linea = lineas.get(i).trim();
+            if (linea.isEmpty()) {
+                continue;
+            }
+            try {
+                validarBloqueo(parsearLinea(linea, 0));
+                validos++;
+            } catch (IllegalArgumentException | ArrayIndexOutOfBoundsException excepcion) {
+                errores.add("Linea " + (i + 1) + ": " + excepcion.getMessage());
+                invalidas.add(i + 1);
+            }
+        }
+        return new ResultadoValidacion(validos, errores, invalidas);
+    }
+
+    private static void validarBloqueo(Bloqueo bloqueo) {
+        if (bloqueo.getInstanteFin() < bloqueo.getInstanteInicio()) {
+            throw new IllegalArgumentException("el fin es anterior al inicio");
+        }
+        List<Nodo> puntos = bloqueo.getPolilinea();
+        if (puntos.size() < 2) {
+            throw new IllegalArgumentException("se requieren al menos dos puntos");
+        }
+        for (int i = 0; i < puntos.size(); i++) {
+            Nodo punto = puntos.get(i);
+            if (punto.getX() < 0 || punto.getX() > ConfiguracionDominio.MALLA_ANCHO
+                    || punto.getY() < 0 || punto.getY() > ConfiguracionDominio.MALLA_ALTO) {
+                throw new IllegalArgumentException("punto fuera de la malla " + punto);
+            }
+            if (i > 0 && punto.getX() != puntos.get(i - 1).getX() && punto.getY() != puntos.get(i - 1).getY()) {
+                throw new IllegalArgumentException("segmento diagonal " + puntos.get(i - 1) + "-" + punto);
+            }
+        }
     }
 
     private static int aMinutosAbsolutos(String texto) {

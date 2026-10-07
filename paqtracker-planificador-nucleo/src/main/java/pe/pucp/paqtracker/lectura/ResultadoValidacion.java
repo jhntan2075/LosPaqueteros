@@ -10,14 +10,17 @@ public final class ResultadoValidacion {
 
     private final int registrosValidos;
     private final List<String> errores;
+    private final List<Integer> lineasInvalidas;
 
     /**
      * @param registrosValidos cantidad de lineas con un registro valido
      * @param errores          una descripcion por linea rechazada, con su numero de linea
+     * @param lineasInvalidas  numeros de las lineas rechazadas, empezando en 1
      */
-    public ResultadoValidacion(int registrosValidos, List<String> errores) {
+    public ResultadoValidacion(int registrosValidos, List<String> errores, List<Integer> lineasInvalidas) {
         this.registrosValidos = registrosValidos;
         this.errores = List.copyOf(errores);
+        this.lineasInvalidas = List.copyOf(lineasInvalidas);
     }
 
     /**
@@ -33,5 +36,9 @@ public final class ResultadoValidacion {
 
     public List<String> getErrores() {
         return errores;
+    }
+
+    public List<Integer> getLineasInvalidas() {
+        return lineasInvalidas;
     }
 }

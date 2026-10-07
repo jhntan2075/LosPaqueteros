@@ -1,5 +1,6 @@
 package pe.pucp.paqtracker.modelo;
 
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -13,16 +14,37 @@ public final class Bloqueo {
     private final int instanteInicio;
     private final int instanteFin;
     private final Set<Long> nodosBloqueados;
+    private final List<Nodo> polilinea;
 
     /**
+     * Crea un bloqueo sin polilinea conocida (solo sus nodos).
+     *
      * @param instanteInicio  minuto absoluto en que inicia el bloqueo
      * @param instanteFin     minuto absoluto en que termina el bloqueo
      * @param nodosBloqueados nodos intransitables, codificados como clave larga
      */
     public Bloqueo(int instanteInicio, int instanteFin, Set<Long> nodosBloqueados) {
+        this(instanteInicio, instanteFin, nodosBloqueados, List.of());
+    }
+
+    /**
+     * @param instanteInicio  minuto absoluto en que inicia el bloqueo
+     * @param instanteFin     minuto absoluto en que termina el bloqueo
+     * @param nodosBloqueados nodos intransitables, codificados como clave larga
+     * @param polilinea       vertices del bloqueo tal como vienen en el archivo, para dibujarlo
+     */
+    public Bloqueo(int instanteInicio, int instanteFin, Set<Long> nodosBloqueados, List<Nodo> polilinea) {
         this.instanteInicio = instanteInicio;
         this.instanteFin = instanteFin;
         this.nodosBloqueados = nodosBloqueados;
+        this.polilinea = List.copyOf(polilinea);
+    }
+
+    /**
+     * @return vertices del bloqueo, inmodificables; vacio si no se conocen
+     */
+    public List<Nodo> getPolilinea() {
+        return polilinea;
     }
 
     /**

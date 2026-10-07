@@ -32,6 +32,7 @@ class CargadorPedidosTest {
 
         assertEquals(1, resultado.getRegistrosValidos());
         assertEquals(3, resultado.getErrores().size());
+        assertEquals(List.of(2, 3, 4), resultado.getLineasInvalidas());
         assertTrue(resultado.getErrores().get(0).startsWith("Linea 2:"));
         assertTrue(resultado.getErrores().get(1).startsWith("Linea 3:"));
         assertTrue(resultado.getErrores().get(2).startsWith("Linea 4:"));

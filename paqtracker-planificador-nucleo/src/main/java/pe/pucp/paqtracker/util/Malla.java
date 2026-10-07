@@ -6,8 +6,10 @@ import pe.pucp.paqtracker.modelo.Nodo;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -31,6 +33,11 @@ import java.util.TreeSet;
 public final class Malla {
 
     private static final int SIN_CAMINO = Integer.MAX_VALUE / 4;
+
+    /** Filas del indice lineal de nodos (x * ALTO_INDICE + y) usado al reconstruir caminos. */
+    private static final int ALTO_INDICE = ConfiguracionDominio.MALLA_ALTO + 1;
+    private static final int NO_VISITADO = -2;
+    private static final int RAIZ = -1;
 
     private final List<Bloqueo> bloqueos;
 
@@ -131,6 +138,54 @@ public final class Malla {
             return origen.distanciaManhattan(destino);
         }
         return buscarCaminoMasCorto(origen, destino, bloqueados);
+    }
+
+    /**
+     * Camino que recorre una unidad entre dos nodos en el instante dado, como lista de vertices
+     * (origen, esquinas y destino). Su longitud coincide con
+     * {@link #distancia(Nodo, Nodo, int)}: si el bloqueo no toca el rectangulo es el camino en L
+     * (primero el eje x); si lo toca, el camino mas corto real que lo rodea. Se calcula una sola vez por
+     * despacho para dibujar la ruta; nunca dentro de los bucles de busqueda.
+     *
+     * @param origen   nodo de partida
+     * @param destino  nodo de llegada
+     * @param instante minuto absoluto en que se recorre el tramo
+     * @return vertices del camino; un solo nodo si origen y destino coinciden
+     */
+    public List<Nodo> camino(Nodo origen, Nodo destino, int instante) {
+        Set<Long> bloqueados = nodosBloqueadosEn(instante);
+        if (bloqueados.isEmpty() || !caminoDirectoBloqueado(origen, destino, bloqueados)) {
+            return caminoEnL(origen, destino);
+        }
+        List<Nodo> nodos = reconstruirCaminoMasCorto(origen, destino, bloqueados);
+        return nodos.isEmpty() ? caminoEnL(origen, destino) : comprimir(nodos);
+    }
+
+    /**
+     * Camino de Manhattan en L entre dos nodos, sin considerar bloqueos: primero el eje x, luego el y.
+     *
+     * @param origen  nodo de partida
+     * @param destino nodo de llegada
+     * @return vertices del camino; un solo nodo si origen y destino coinciden
+     */
+    public static List<Nodo> caminoEnL(Nodo origen, Nodo destino) {
+        List<Nodo> vertices = new ArrayList<>();
+        vertices.add(origen);
+        Nodo esquina = new Nodo(destino.getX(), origen.getY());
+        if (!esquina.equals(origen) && !esquina.equals(destino)) {
+            vertices.add(esquina);
+        }
+        if (!destino.equals(origen)) {
+            vertices.add(destino);
+        }
+        return vertices;
+    }
+
+    /**
+     * @return bloqueos programados de la malla, de solo lectura
+     */
+    public List<Bloqueo> getBloqueos() {
+        return Collections.unmodifiableList(bloqueos);
     }
 
     /**
@@ -264,6 +319,83 @@ public final class Malla {
             }
         }
         return SIN_CAMINO;
+    }
+
+    /**
+     * Misma busqueda en amplitud que {@link #buscarCaminoMasCorto}, guardando de que nodo se llego a
+     * cada uno para reconstruir el camino. Si el destino esta bloqueado, el camino llega al vecino
+     * transitable y da el ultimo paso, igual que el calculo de la distancia.
+     *
+     * @param origen     nodo de partida
+     * @param destino    nodo de llegada
+     * @param bloqueados nodos intransitables
+     * @return todos los nodos del camino en orden, o vacio si no hay camino
+     */
+    private List<Nodo> reconstruirCaminoMasCorto(Nodo origen, Nodo destino, Set<Long> bloqueados) {
+        if (origen.equals(destino)) {
+            return List.of(origen);
+        }
+        boolean destinoBloqueado = bloqueados.contains(codificar(destino.getX(), destino.getY()));
+        int[] padre = new int[(ConfiguracionDominio.MALLA_ANCHO + 1) * ALTO_INDICE];
+        Arrays.fill(padre, NO_VISITADO);
+        ArrayDeque<Integer> cola = new ArrayDeque<>();
+        padre[indice(origen.getX(), origen.getY())] = RAIZ;
+        cola.add(indice(origen.getX(), origen.getY()));
+        int[][] direcciones = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
+        while (!cola.isEmpty()) {
+            int actual = cola.poll();
+            int x = actual / ALTO_INDICE;
+            int y = actual % ALTO_INDICE;
+            if (destinoBloqueado && esAdyacente(x, y, destino)) {
+                return armarCamino(padre, actual, destino);
+            }
+            for (int[] direccion : direcciones) {
+                int nuevoX = x + direccion[0];
+                int nuevoY = y + direccion[1];
+                if (fueraDeMalla(nuevoX, nuevoY) || padre[indice(nuevoX, nuevoY)] != NO_VISITADO
+                        || bloqueados.contains(codificar(nuevoX, nuevoY))) {
+                    continue;
+                }
+                if (nuevoX == destino.getX() && nuevoY == destino.getY()) {
+                    return armarCamino(padre, actual, destino);
+                }
+                padre[indice(nuevoX, nuevoY)] = actual;
+                cola.add(indice(nuevoX, nuevoY));
+            }
+        }
+        return List.of();
+    }
+
+    private static List<Nodo> armarCamino(int[] padre, int ultimo, Nodo destino) {
+        LinkedList<Nodo> nodos = new LinkedList<>();
+        nodos.addFirst(destino);
+        for (int actual = ultimo; actual != RAIZ; actual = padre[actual]) {
+            nodos.addFirst(new Nodo(actual / ALTO_INDICE, actual % ALTO_INDICE));
+        }
+        return nodos;
+    }
+
+    /**
+     * Deja solo los vertices: quita los nodos intermedios de cada segmento recto.
+     */
+    private static List<Nodo> comprimir(List<Nodo> nodos) {
+        List<Nodo> vertices = new ArrayList<>();
+        for (int i = 0; i < nodos.size(); i++) {
+            boolean extremo = i == 0 || i == nodos.size() - 1;
+            if (extremo || !esColineal(nodos.get(i - 1), nodos.get(i), nodos.get(i + 1))) {
+                vertices.add(nodos.get(i));
+            }
+        }
+        return vertices;
+    }
+
+    private static boolean esColineal(Nodo anterior, Nodo actual, Nodo siguiente) {
+        return (anterior.getX() == actual.getX() && actual.getX() == siguiente.getX())
+                || (anterior.getY() == actual.getY() && actual.getY() == siguiente.getY());
+    }
+
+    private static int indice(int x, int y) {
+        return x * ALTO_INDICE + y;
     }
 
     /**

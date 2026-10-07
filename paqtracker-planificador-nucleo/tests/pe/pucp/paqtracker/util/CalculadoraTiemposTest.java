@@ -50,6 +50,10 @@ class CalculadoraTiemposTest {
             assertEquals(tramos.get(i - 1).getDestino(), tramos.get(i).getOrigen());
         }
         assertTrue(tramos.get(0).esEntrega());
+        for (Tramo tramo : tramos) {
+            assertEquals(tramo.getOrigen(), tramo.getCamino().get(0));
+            assertEquals(tramo.getDestino(), tramo.getCamino().get(tramo.getCamino().size() - 1));
+        }
         assertEquals(ConfiguracionDominio.TIEMPO_SERVICIO_MINUTOS,
                 tramos.get(1).getLlegada() - tramos.get(1).getSalida());
     }

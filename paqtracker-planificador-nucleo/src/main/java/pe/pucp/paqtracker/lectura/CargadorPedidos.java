@@ -113,6 +113,7 @@ public final class CargadorPedidos {
     public static ResultadoValidacion validar(List<String> lineas) {
         int validos = 0;
         List<String> errores = new ArrayList<>();
+        List<Integer> invalidas = new ArrayList<>();
         for (int i = 0; i < lineas.size(); i++) {
             String linea = lineas.get(i).trim();
             if (linea.isEmpty() || linea.startsWith("#")) {
@@ -124,9 +125,10 @@ public final class CargadorPedidos {
                 validos++;
             } catch (IllegalArgumentException | ArrayIndexOutOfBoundsException excepcion) {
                 errores.add("Linea " + (i + 1) + ": " + excepcion.getMessage());
+                invalidas.add(i + 1);
             }
         }
-        return new ResultadoValidacion(validos, errores);
+        return new ResultadoValidacion(validos, errores, invalidas);
     }
 
     /**
