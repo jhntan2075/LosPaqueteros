@@ -14,8 +14,9 @@ import java.util.List;
  * @param semilla          semilla base, para reproducibilidad
  * @param saMinutos        salto del algoritmo Sa, en minutos simulados
  * @param detenerEnColapso verdadero para detenerse en el primer incumplimiento (CU-17)
+ * @param flota            composicion de la flota
  */
 public record SolicitudPreparacionSimulacion(List<Pedido> pedidos, List<Bloqueo> bloqueos,
                                              AlgoritmoPlanificacion algoritmo, long semilla, int saMinutos,
-                                             boolean detenerEnColapso) {
+                                             boolean detenerEnColapso, ComposicionFlota flota) {
 }

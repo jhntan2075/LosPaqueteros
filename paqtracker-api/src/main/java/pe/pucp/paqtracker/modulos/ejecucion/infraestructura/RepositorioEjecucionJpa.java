@@ -31,7 +31,8 @@ public class RepositorioEjecucionJpa implements RepositorioEjecucion {
         springData.save(new EntidadEjecucion(registro.id(), registro.tipoEscenario().name(),
                 registro.estado().name(), registro.algoritmo(), registro.fechaInicio(), registro.dias(),
                 registro.factorAceleracion(), aUtc(registro.creadaEn()), aUtc(registro.finalizadaEn()),
-                registro.entregas(), registro.incumplimientos(), aUtc(registro.fechaColapso())));
+                registro.entregas(), registro.incumplimientos(), aUtc(registro.fechaColapso()), registro.autos(),
+                registro.motos(), registro.bicicletas()));
     }
 
     @Override
@@ -40,7 +41,8 @@ public class RepositorioEjecucionJpa implements RepositorioEjecucion {
                 TipoEscenario.valueOf(entidad.getTipoEscenario()), EstadoEjecucion.valueOf(entidad.getEstado()),
                 entidad.getAlgoritmo(), entidad.getFechaInicio(), entidad.getDias(), entidad.getFactorAceleracion(),
                 aInstante(entidad.getCreadaEn()), aInstante(entidad.getFinalizadaEn()), entidad.getEntregas(),
-                entidad.getIncumplimientos(), aInstante(entidad.getFechaColapso())));
+                entidad.getIncumplimientos(), aInstante(entidad.getFechaColapso()), entidad.getAutos(),
+                entidad.getMotos(), entidad.getBicicletas()));
     }
 
     @Override

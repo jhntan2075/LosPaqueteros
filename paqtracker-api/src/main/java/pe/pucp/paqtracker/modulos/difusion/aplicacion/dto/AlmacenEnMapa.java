@@ -10,7 +10,8 @@ package pe.pucp.paqtracker.modulos.difusion.aplicacion.dto;
  * @param capacidadMaxima capacidad del almacen; null si es ilimitado
  * @param stockActual     stock disponible; null si es ilimitado
  * @param esPrincipal     verdadero para el almacen central
+ * @param nivelInventario semaforo del stock (VERDE, AMBAR, ROJO); null si es ilimitado (LE-078)
  */
 public record AlmacenEnMapa(int id, String codigo, String nombre, Coordenada ubicacion, Integer capacidadMaxima,
-                            Integer stockActual, boolean esPrincipal) {
+                            Integer stockActual, boolean esPrincipal, String nivelInventario) {
 }

@@ -19,8 +19,12 @@ import java.time.LocalDate;
  * @param entregas           entregas realizadas al guardar
  * @param incumplimientos    entregas fuera de plazo al guardar
  * @param fechaColapso       fecha simulada del colapso, o null
+ * @param autos              autos de la flota
+ * @param motos              motocicletas de la flota
+ * @param bicicletas         bicicletas de la flota
  */
 public record RegistroEjecucion(String id, TipoEscenario tipoEscenario, EstadoEjecucion estado, String algoritmo,
                                 LocalDate fechaInicio, int dias, double factorAceleracion, Instant creadaEn,
-                                Instant finalizadaEn, int entregas, int incumplimientos, Instant fechaColapso) {
+                                Instant finalizadaEn, int entregas, int incumplimientos, Instant fechaColapso,
+                                int autos, int motos, int bicicletas) {
 }

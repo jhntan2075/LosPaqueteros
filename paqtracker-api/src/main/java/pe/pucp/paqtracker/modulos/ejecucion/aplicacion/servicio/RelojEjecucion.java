@@ -1,6 +1,7 @@
 package pe.pucp.paqtracker.modulos.ejecucion.aplicacion.servicio;
 
 import java.time.Clock;
+import java.time.Instant;
 
 /**
  * Reloj simulado de una ejecucion: traduce el tiempo real transcurrido (descontando pausas) a minutos
@@ -17,6 +18,7 @@ public final class RelojEjecucion {
     private long milisegundosAcumulados;
     private long marcaReal;
     private boolean corriendo;
+    private Instant inicioReal;
 
     /**
      * @param relojPared        reloj real
@@ -40,7 +42,17 @@ public final class RelojEjecucion {
         if (!corriendo) {
             marcaReal = relojPared.millis();
             corriendo = true;
+            if (inicioReal == null) {
+                inicioReal = relojPared.instant();
+            }
         }
+    }
+
+    /**
+     * @return instante real en que el reloj corrio por primera vez, o null si aun no corre
+     */
+    public Instant getInicioReal() {
+        return inicioReal;
     }
 
     /**

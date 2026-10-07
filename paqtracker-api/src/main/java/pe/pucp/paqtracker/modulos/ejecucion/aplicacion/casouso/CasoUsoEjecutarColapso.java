@@ -51,7 +51,8 @@ public class CasoUsoEjecutarColapso {
         String id = "colapso-" + UUID.randomUUID().toString().substring(0, LONGITUD_ID);
         MotorEjecucion motor = creador.crear(id, "Simulacion hasta el colapso desde " + solicitud.fechaInicio(),
                 TipoEscenario.COLAPSO_LOGISTICO, algoritmo, solicitud.fechaInicio(), dias,
-                propiedades.ejecucion().factorColapso(), cargadorDatos.cargarRango(solicitud.fechaInicio(), dias));
+                propiedades.ejecucion().factorColapso(), cargadorDatos.cargarRango(solicitud.fechaInicio(), dias),
+                solicitud.flotaOPorDefecto());
         return mapeador.aRespuesta(motor);
     }
 }

@@ -1,6 +1,7 @@
 package pe.pucp.paqtracker.modulos.ejecucion.aplicacion.servicio;
 
 import pe.pucp.paqtracker.modulos.ejecucion.dominio.TipoEscenario;
+import pe.pucp.paqtracker.modulos.planificacion.aplicacion.dto.ComposicionFlota;
 import pe.pucp.paqtracker.modulos.planificacion.dominio.AlgoritmoPlanificacion;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -19,9 +20,10 @@ import java.time.LocalDate;
  * @param saMinutos         minutos simulados entre planificaciones
  * @param maxPasosPorTick   pasos Sa como maximo por difusion
  * @param creadaEn          instante real de creacion
+ * @param flota             composicion de la flota
  */
 public record ConfiguracionMotor(String id, String nombre, TipoEscenario tipoEscenario,
                                  AlgoritmoPlanificacion algoritmo, LocalDate fechaInicio, int dias,
                                  double factorAceleracion, int scSegundos, int saMinutos, int maxPasosPorTick,
-                                 Instant creadaEn) {
+                                 Instant creadaEn, ComposicionFlota flota) {
 }

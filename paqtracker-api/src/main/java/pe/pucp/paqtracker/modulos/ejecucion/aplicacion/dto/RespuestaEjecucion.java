@@ -1,6 +1,7 @@
 package pe.pucp.paqtracker.modulos.ejecucion.aplicacion.dto;
 
 import pe.pucp.paqtracker.modulos.difusion.aplicacion.dto.IndicadoresOperacion;
+import pe.pucp.paqtracker.modulos.planificacion.aplicacion.dto.ComposicionFlota;
 import java.time.LocalDate;
 
 /**
@@ -17,8 +18,10 @@ import java.time.LocalDate;
  * @param relojReal     reloj real legible
  * @param parametros    parametros con los que corre
  * @param indicadores   KPI de la ultima instantanea, o null si aun no corre
+ * @param flota         composicion de la flota
  */
 public record RespuestaEjecucion(String id, String nombre, String tipoEscenario, String estado, String algoritmo,
                                  LocalDate fechaInicio, int dias, String relojSimulado, String relojReal,
-                                 ParametrosEjecucion parametros, IndicadoresOperacion indicadores) {
+                                 ParametrosEjecucion parametros, IndicadoresOperacion indicadores,
+                                 ComposicionFlota flota) {
 }

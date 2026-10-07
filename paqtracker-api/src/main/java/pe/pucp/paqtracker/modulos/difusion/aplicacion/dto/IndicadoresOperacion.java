@@ -15,11 +15,13 @@ package pe.pucp.paqtracker.modulos.difusion.aplicacion.dto;
  * @param tiempoComputoUltimoTaMs      Ta de la ultima planificacion
  * @param replanificaciones            planificaciones ejecutadas
  * @param distanciaTotalKm             kilometros recorridos por la flota
+ * @param porcentajeCumplimiento       entregados a tiempo sobre entregados, en %; 100 si aun no hay (LE-086)
  * @param estadoSemaforoGlobal         VERDE, AMBAR o ROJO
  */
 public record IndicadoresOperacion(int pedidosRegistrados, int pedidosEntregadosATiempo,
                                    int pedidosEntregadosConRetraso, int pedidosPendientes, int pedidosEnTransito,
                                    int unidadesEnRuta, int unidadesDisponibles, int unidadesAveriadas,
                                    double tiempoPromedioEntregaMinutos, long tiempoComputoUltimoTaMs,
-                                   int replanificaciones, double distanciaTotalKm, String estadoSemaforoGlobal) {
+                                   int replanificaciones, double distanciaTotalKm, double porcentajeCumplimiento,
+                                   String estadoSemaforoGlobal) {
 }

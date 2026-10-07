@@ -1,8 +1,10 @@
 package pe.pucp.paqtracker.modulos.ejecucion.aplicacion.servicio;
 
 import org.springframework.stereotype.Service;
+import pe.pucp.paqtracker.comun.excepcion.RecursoNoEncontradoException;
 import pe.pucp.paqtracker.modulos.difusion.aplicacion.dto.MensajeEstadoEjecucion;
 import pe.pucp.paqtracker.modulos.difusion.aplicacion.dto.PedidoEnMapa;
+import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.dto.DetallePedido;
 import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.dto.RespuestaEjecucion;
 import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.dto.ResultadoRegistroPedido;
 import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.dto.SolicitudPedidoEnVivo;
@@ -88,5 +90,16 @@ public class ServicioEjecucion {
      */
     public List<PedidoEnMapa> consultarPedidos(String id) {
         return registro.obtener(id).consultarPedidos();
+    }
+
+    /**
+     * @param id       identificador de la ejecucion
+     * @param idPedido identificador del pedido en la ejecucion
+     * @return pedido con su trazabilidad
+     * @throws RecursoNoEncontradoException si la ejecucion o el pedido no existen
+     */
+    public DetallePedido consultarPedido(String id, int idPedido) {
+        return registro.obtener(id).consultarPedido(idPedido)
+                .orElseThrow(() -> new RecursoNoEncontradoException("pedido", idPedido + " en la ejecucion " + id));
     }
 }

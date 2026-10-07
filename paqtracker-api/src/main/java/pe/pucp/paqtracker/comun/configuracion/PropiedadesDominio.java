@@ -31,11 +31,12 @@ public record PropiedadesDominio(Datos datos, Ejecucion ejecucion, Planificador 
      * @param diasColapso      dias de datos que se cargan para buscar el colapso
      * @param maxPasosPorTick  pasos Sa como maximo por cada Sc, para no dejar de difundir si se atrasa
      * @param maxSimultaneas   simulaciones no terminadas que pueden existir a la vez, ademas del dia a dia
+     * @param maxUnidadesPorTipo unidades de un mismo tipo que admite una flota configurada (LE-019)
      * @param diaADiaActivo    verdadero para arrancar la operacion dia a dia al iniciar la API
      */
     public record Ejecucion(String zonaHoraria, int scSegundos, int saMinutos, double factorPeriodo,
                             double factorColapso, int diasPeriodoMax, int diasColapso, int maxPasosPorTick,
-                            int maxSimultaneas, boolean diaADiaActivo) {
+                            int maxSimultaneas, int maxUnidadesPorTipo, boolean diaADiaActivo) {
     }
 
     /**
@@ -46,11 +47,14 @@ public record PropiedadesDominio(Datos datos, Ejecucion ejecucion, Planificador 
     }
 
     /**
-     * Cortes del semaforo como fraccion del plazo del pedido que aun queda de holgura.
+     * Cortes de los semaforos, como fracciones.
      *
-     * @param fraccionRojo  por debajo de esta fraccion el pedido esta en rojo
-     * @param fraccionAmbar por debajo de esta fraccion (y sobre la roja) el pedido esta en ambar
+     * @param fraccionRojo     holgura restante del pedido, sobre su plazo, bajo la que esta en rojo
+     * @param fraccionAmbar    holgura restante del pedido, sobre su plazo, bajo la que esta en ambar
+     * @param inventarioRojo   stock de un almacen intermedio, sobre su capacidad, bajo el que esta en rojo
+     * @param inventarioAmbar  stock de un almacen intermedio, sobre su capacidad, bajo el que esta en ambar
      */
-    public record Semaforo(double fraccionRojo, double fraccionAmbar) {
+    public record Semaforo(double fraccionRojo, double fraccionAmbar, double inventarioRojo,
+                           double inventarioAmbar) {
     }
 }

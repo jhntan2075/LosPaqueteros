@@ -4,14 +4,17 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import pe.pucp.paqtracker.comun.excepcion.OperacionNoPermitidaException;
 import pe.pucp.paqtracker.comun.tiempo.LineaTiempo;
+import pe.pucp.paqtracker.modelo.Bloqueo;
 import pe.pucp.paqtracker.modelo.Nodo;
 import pe.pucp.paqtracker.modelo.Pedido;
 import pe.pucp.paqtracker.modelo.Tramo;
 import pe.pucp.paqtracker.modulos.difusion.aplicacion.dto.ContextoInstantanea;
 import pe.pucp.paqtracker.modulos.difusion.aplicacion.dto.MensajeEstadoEjecucion;
 import pe.pucp.paqtracker.modulos.difusion.aplicacion.dto.PedidoEnMapa;
+import pe.pucp.paqtracker.modulos.difusion.aplicacion.servicio.CodigosFlota;
 import pe.pucp.paqtracker.modulos.difusion.aplicacion.servicio.NomenclaturaOperacion;
 import pe.pucp.paqtracker.modulos.difusion.aplicacion.servicio.ServicioDifusion;
+import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.dto.DetallePedido;
 import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.dto.ResultadoRegistroPedido;
 import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.dto.SolicitudPedidoEnVivo;
 import pe.pucp.paqtracker.modulos.ejecucion.dominio.EstadoEjecucion;
@@ -23,8 +26,11 @@ import pe.pucp.paqtracker.simulacion.SimulacionEnCurso;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZonedDateTime;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
@@ -56,6 +62,9 @@ public final class MotorEjecucion {
     private final ServicioDifusion difusion;
     private final RepositorioEjecucion repositorio;
     private final ScheduledExecutorService ejecutor;
+    private final int minutoInicial;
+    private final CodigosFlota codigosFlota;
+    private final Set<Integer> bloqueosVigentes = new HashSet<>();
     private volatile EstadoEjecucion estado = EstadoEjecucion.CONFIGURADA;
     private volatile MensajeEstadoEjecucion ultimaInstantanea;
     private int siguientePaso;
@@ -88,7 +97,9 @@ public final class MotorEjecucion {
         this.difusion = difusion;
         this.repositorio = repositorio;
         this.ejecutor = ejecutor;
+        this.minutoInicial = minutoInicial;
         this.siguientePaso = minutoInicial;
+        this.codigosFlota = CodigosFlota.de(simulacion.getFlota());
     }
 
     /**
@@ -199,6 +210,14 @@ public final class MotorEjecucion {
     }
 
     /**
+     * @param idPedido identificador del pedido en la ejecucion
+     * @return pedido con su trazabilidad (LE-077), o vacio si no esta registrado
+     */
+    public Optional<DetallePedido> consultarPedido(int idPedido) {
+        return enHiloMotor(() -> seguimiento.detalle(idPedido, minutoVisible()));
+    }
+
+    /**
      * Procesa un tick en el hilo del motor y espera a que termine. Permite a las pruebas avanzar el
      * motor de forma determinista sin competir con el tick programado.
      */
@@ -229,7 +248,27 @@ public final class MotorEjecucion {
             simulacion.cerrar(horizonte);
             terminar(EstadoEjecucion.FINALIZADA);
         } else {
+            difundirCambiosDeBloqueos(minuto);
             difundirEstado();
+        }
+    }
+
+    /**
+     * Compara los bloqueos vigentes con los del tick anterior y difunde los que empiezan y terminan.
+     */
+    private void difundirCambiosDeBloqueos(double minuto) {
+        int instante = (int) Math.floor(minuto);
+        List<Bloqueo> bloqueos = simulacion.getBloqueos();
+        for (int id = 0; id < bloqueos.size(); id++) {
+            boolean vigente = bloqueos.get(id).estaVigente(instante);
+            if (vigente && bloqueosVigentes.add(id)) {
+                evento("BLOQUEO_INICIADO", "Bloqueo " + id + " vigente hasta "
+                        + lineaTiempo.formatear(bloqueos.get(id).getInstanteFin()),
+                        lineaTiempo.aMilisegundos(bloqueos.get(id).getInstanteInicio()), Map.of("bloqueoId", id));
+            } else if (!vigente && bloqueosVigentes.remove(id)) {
+                evento("BLOQUEO_LEVANTADO", "Bloqueo " + id + " levantado",
+                        lineaTiempo.aMilisegundos(bloqueos.get(id).getInstanteFin()), Map.of("bloqueoId", id));
+            }
         }
     }
 
@@ -295,9 +334,9 @@ public final class MotorEjecucion {
     private void difundirEstado() {
         double minuto = minutoVisible();
         ContextoInstantanea contexto = new ContextoInstantanea(configuracion.id(),
-                configuracion.tipoEscenario().name(), estado.name(), pasoSc++, minuto, lineaTiempo,
-                ZonedDateTime.now(relojPared), reloj.getFactorAceleracion(), seguimiento.pedidosActivos(minuto),
-                seguimiento.indicadores(simulacion, minuto));
+                configuracion.tipoEscenario().name(), estado.name(), pasoSc++, minutoInicial, minuto, lineaTiempo,
+                ZonedDateTime.now(relojPared), reloj.getInicioReal(), reloj.getFactorAceleracion(), codigosFlota,
+                seguimiento.pedidosActivos(minuto), seguimiento.indicadores(simulacion, minuto));
         ultimaInstantanea = difusion.difundirEstado(contexto, simulacion);
     }
 
@@ -312,7 +351,8 @@ public final class MotorEjecucion {
         repositorio.guardar(new RegistroEjecucion(configuracion.id(), configuracion.tipoEscenario(), estado,
                 configuracion.algoritmo().name(), configuracion.fechaInicio(), configuracion.dias(),
                 configuracion.factorAceleracion(), configuracion.creadaEn(), finalizadaEn,
-                resultado.getTotalEntregas(), resultado.getTotalIncumplimientos(), colapso));
+                resultado.getTotalEntregas(), resultado.getTotalIncumplimientos(), colapso,
+                configuracion.flota().autos(), configuracion.flota().motos(), configuracion.flota().bicicletas()));
     }
 
     /**

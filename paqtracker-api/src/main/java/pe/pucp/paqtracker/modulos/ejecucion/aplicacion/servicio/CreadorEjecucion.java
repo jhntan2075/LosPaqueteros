@@ -3,8 +3,10 @@ package pe.pucp.paqtracker.modulos.ejecucion.aplicacion.servicio;
 import org.springframework.stereotype.Component;
 import pe.pucp.paqtracker.comun.configuracion.PropiedadesDominio;
 import pe.pucp.paqtracker.comun.excepcion.OperacionNoPermitidaException;
+import pe.pucp.paqtracker.comun.excepcion.SolicitudInvalidaException;
 import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.dto.DatosEscenario;
 import pe.pucp.paqtracker.modulos.ejecucion.dominio.TipoEscenario;
+import pe.pucp.paqtracker.modulos.planificacion.aplicacion.dto.ComposicionFlota;
 import pe.pucp.paqtracker.modulos.planificacion.dominio.AlgoritmoPlanificacion;
 import java.time.Clock;
 import java.time.LocalDate;
@@ -44,21 +46,34 @@ public class CreadorEjecucion {
      * @param dias              dias del horizonte
      * @param factorAceleracion factor k
      * @param datos             pedidos, bloqueos y linea de tiempo
+     * @param flota             composicion de la flota
      * @return motor registrado y preparado, en estado CONFIGURADA
      * @throws OperacionNoPermitidaException si ya se alcanzo el maximo de simulaciones simultaneas
+     * @throws SolicitudInvalidaException    si la flota esta vacia o excede el tope por tipo
      */
     public MotorEjecucion crear(String id, String nombre, TipoEscenario tipo, AlgoritmoPlanificacion algoritmo,
-                                LocalDate fechaInicio, int dias, double factorAceleracion, DatosEscenario datos) {
+                                LocalDate fechaInicio, int dias, double factorAceleracion, DatosEscenario datos,
+                                ComposicionFlota flota) {
+        validarFlota(flota);
         if (tipo != TipoEscenario.DIA_A_DIA && registro.contarSimulacionesActivas() >= parametros.maxSimultaneas()) {
             throw new OperacionNoPermitidaException("Ya hay " + parametros.maxSimultaneas()
                     + " simulaciones sin terminar; detenga una antes de crear otra");
         }
         ConfiguracionMotor configuracion = new ConfiguracionMotor(id, nombre, tipo, algoritmo, fechaInicio, dias,
                 factorAceleracion, parametros.scSegundos(), parametros.saMinutos(), parametros.maxPasosPorTick(),
-                relojPared.instant());
+                relojPared.instant(), flota);
         MotorEjecucion motor = fabrica.crear(configuracion, datos, tipo == TipoEscenario.COLAPSO_LOGISTICO);
         motor.preparar();
         registro.agregar(motor);
         return motor;
+    }
+
+    private void validarFlota(ComposicionFlota flota) {
+        int tope = parametros.maxUnidadesPorTipo();
+        if (flota.total() == 0 || flota.autos() > tope || flota.motos() > tope || flota.bicicletas() > tope) {
+            throw new SolicitudInvalidaException("La flota debe tener al menos una unidad y hasta " + tope
+                    + " por tipo: autos=" + flota.autos() + ", motos=" + flota.motos()
+                    + ", bicicletas=" + flota.bicicletas());
+        }
     }
 }

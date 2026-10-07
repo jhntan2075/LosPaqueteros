@@ -41,6 +41,7 @@ paqtracker:
     dias-colapso: ${APP_DIAS_COLAPSO:30}
     max-pasos-por-tick: ${APP_MAX_PASOS_POR_TICK:4}
     max-simultaneas: ${APP_MAX_SIMULACIONES:3}
+    max-unidades-por-tipo: ${APP_MAX_UNIDADES_POR_TIPO:50}
     dia-a-dia-activo: ${APP_DIA_A_DIA_ACTIVO:true}
   planificador:
     algoritmo: ${PLANIFICADOR_ALGORITMO:GA}
@@ -49,3 +50,6 @@ paqtracker:
     # Holgura restante como fraccion del plazo del pedido
     fraccion-rojo: ${APP_SEMAFORO_ROJO:0.15}
     fraccion-ambar: ${APP_SEMAFORO_AMBAR:0.40}
+    # Stock de un almacen intermedio como fraccion de su capacidad
+    inventario-rojo: ${APP_INVENTARIO_ROJO:0.20}
+    inventario-ambar: ${APP_INVENTARIO_AMBAR:0.50}

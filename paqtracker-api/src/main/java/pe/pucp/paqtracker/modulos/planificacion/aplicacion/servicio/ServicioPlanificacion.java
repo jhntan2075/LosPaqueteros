@@ -37,7 +37,8 @@ public class ServicioPlanificacion {
      */
     public SimulacionEnCurso prepararSimulacion(SolicitudPreparacionSimulacion solicitud) {
         List<Almacen> almacenes = ConfiguracionDominio.crearAlmacenes();
-        List<Vehiculo> flota = ConfiguracionDominio.crearFlota(almacenes.get(0));
+        List<Vehiculo> flota = ConfiguracionDominio.crearFlota(almacenes.get(0), solicitud.flota().autos(),
+                solicitud.flota().motos(), solicitud.flota().bicicletas());
         Orquestador orquestador = new Orquestador(almacenes, flota, solicitud.pedidos(),
                 new Malla(solicitud.bloqueos()), solicitud.saMinutos(),
                 ConfiguracionDominio.TIEMPO_SERVICIO_MINUTOS, ConfiguracionDominio.PLAZO_MAXIMO_MINUTOS,

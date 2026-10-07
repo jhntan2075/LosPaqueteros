@@ -52,6 +52,15 @@ public class EntidadEjecucion {
     @Column(name = "fecha_colapso")
     private LocalDateTime fechaColapso;
 
+    @Column(name = "autos", nullable = false)
+    private int autos;
+
+    @Column(name = "motos", nullable = false)
+    private int motos;
+
+    @Column(name = "bicicletas", nullable = false)
+    private int bicicletas;
+
     /** Constructor requerido por JPA. */
     protected EntidadEjecucion() {
     }
@@ -69,10 +78,17 @@ public class EntidadEjecucion {
      * @param entregas          entregas realizadas
      * @param incumplimientos   entregas fuera de plazo
      * @param fechaColapso      fecha simulada del colapso, UTC, o null
+     * @param autos             autos de la flota
+     * @param motos             motocicletas de la flota
+     * @param bicicletas        bicicletas de la flota
      */
     public EntidadEjecucion(String id, String tipoEscenario, String estado, String algoritmo, LocalDate fechaInicio,
                             int dias, double factorAceleracion, LocalDateTime creadaEn, LocalDateTime finalizadaEn,
-                            int entregas, int incumplimientos, LocalDateTime fechaColapso) {
+                            int entregas, int incumplimientos, LocalDateTime fechaColapso, int autos, int motos,
+                            int bicicletas) {
+        this.autos = autos;
+        this.motos = motos;
+        this.bicicletas = bicicletas;
         this.id = id;
         this.tipoEscenario = tipoEscenario;
         this.estado = estado;
@@ -133,5 +149,17 @@ public class EntidadEjecucion {
 
     public LocalDateTime getFechaColapso() {
         return fechaColapso;
+    }
+
+    public int getAutos() {
+        return autos;
+    }
+
+    public int getMotos() {
+        return motos;
+    }
+
+    public int getBicicletas() {
+        return bicicletas;
     }
 }

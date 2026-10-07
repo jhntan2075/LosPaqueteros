@@ -3,6 +3,7 @@ package pe.pucp.paqtracker.modulos.ejecucion.aplicacion.servicio;
 import org.springframework.stereotype.Component;
 import pe.pucp.paqtracker.comun.configuracion.PropiedadesDominio;
 import pe.pucp.paqtracker.modelo.Pedido;
+import pe.pucp.paqtracker.modulos.difusion.aplicacion.servicio.CodigosFlota;
 import pe.pucp.paqtracker.modulos.difusion.aplicacion.servicio.ServicioDifusion;
 import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.dto.DatosEscenario;
 import pe.pucp.paqtracker.modulos.ejecucion.dominio.RepositorioEjecucion;
@@ -52,11 +53,11 @@ public class FabricaMotorEjecucion {
     public MotorEjecucion crear(ConfiguracionMotor configuracion, DatosEscenario datos, boolean detenerEnColapso) {
         SimulacionEnCurso simulacion = servicioPlanificacion.prepararSimulacion(new SolicitudPreparacionSimulacion(
                 datos.pedidos(), datos.bloqueos(), configuracion.algoritmo(), propiedades.planificador().semilla(),
-                configuracion.saMinutos(), detenerEnColapso));
+                configuracion.saMinutos(), detenerEnColapso, configuracion.flota()));
         int primerIdLibre = Math.max(datos.idMinimoLibre(),
                 datos.pedidos().stream().mapToInt(Pedido::getId).max().orElse(-1) + 1);
         SeguimientoPedidos seguimiento = new SeguimientoPedidos(datos.lineaTiempo(), propiedades.semaforo(),
-                primerIdLibre);
+                CodigosFlota.de(simulacion.getFlota()), primerIdLibre);
         RelojEjecucion reloj = new RelojEjecucion(relojPared, datos.minutoInicial(),
                 configuracion.factorAceleracion());
         return new MotorEjecucion(configuracion, datos.lineaTiempo(), datos.minutoInicial(), datos.horizonte(),

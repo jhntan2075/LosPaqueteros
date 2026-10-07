@@ -1,6 +1,7 @@
 package pe.pucp.paqtracker.simulacion;
 
 import pe.pucp.paqtracker.modelo.Almacen;
+import pe.pucp.paqtracker.modelo.Bloqueo;
 import pe.pucp.paqtracker.modelo.Pedido;
 import pe.pucp.paqtracker.modelo.SolucionRuteo;
 import pe.pucp.paqtracker.modelo.Tramo;
@@ -182,6 +183,13 @@ public final class SimulacionEnCurso {
      */
     public List<Almacen> getAlmacenes() {
         return orquestador.getAlmacenes();
+    }
+
+    /**
+     * @return bloqueos programados de la simulacion, de solo lectura
+     */
+    public List<Bloqueo> getBloqueos() {
+        return orquestador.getBloqueos();
     }
 
     /**

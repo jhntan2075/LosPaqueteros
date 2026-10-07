@@ -58,7 +58,8 @@ public class CasoUsoEjecutarSimulacionPeriodo {
         String id = "periodo-" + UUID.randomUUID().toString().substring(0, LONGITUD_ID);
         MotorEjecucion motor = creador.crear(id, "Simulacion de " + dias + " dias desde " + solicitud.fechaInicio(),
                 TipoEscenario.SIMULACION_PERIODO, algoritmo, solicitud.fechaInicio(), dias,
-                propiedades.ejecucion().factorPeriodo(), cargadorDatos.cargarRango(solicitud.fechaInicio(), dias));
+                propiedades.ejecucion().factorPeriodo(), cargadorDatos.cargarRango(solicitud.fechaInicio(), dias),
+                solicitud.flotaOPorDefecto());
         return mapeador.aRespuesta(motor);
     }
 }

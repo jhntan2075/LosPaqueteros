@@ -17,6 +17,7 @@ import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.servicio.RegistroEjecucio
 import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.servicio.ServicioEjecucion;
 import pe.pucp.paqtracker.modulos.ejecucion.dominio.PuertoPedidosEnVivo;
 import pe.pucp.paqtracker.modulos.ejecucion.dominio.TipoEscenario;
+import pe.pucp.paqtracker.modulos.planificacion.aplicacion.dto.ComposicionFlota;
 import pe.pucp.paqtracker.modulos.planificacion.dominio.AlgoritmoPlanificacion;
 import java.time.Clock;
 import java.time.ZonedDateTime;
@@ -77,7 +78,8 @@ public class CasoUsoEjecutarDiaADia {
         DatosEscenario datos = recuperarPedidosEnVivo(cargadorDatos.cargarDiaADia(ahora), ahora);
         MotorEjecucion motor = creador.crear(ServicioEjecucion.ID_DIA_A_DIA, NOMBRE, TipoEscenario.DIA_A_DIA,
                 AlgoritmoPlanificacion.desde(propiedades.planificador().algoritmo()),
-                ahora.toLocalDate().withDayOfMonth(1), ahora.toLocalDate().lengthOfMonth(), TIEMPO_REAL, datos);
+                ahora.toLocalDate().withDayOfMonth(1), ahora.toLocalDate().lengthOfMonth(), TIEMPO_REAL, datos,
+                ComposicionFlota.porDefecto());
         motor.iniciar();
         return mapeador.aRespuesta(motor);
     }

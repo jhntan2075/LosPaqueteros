@@ -38,6 +38,6 @@ public class MapeadorEjecucion {
                 configuracion.fechaInicio(), configuracion.dias(),
                 instantanea == null ? null : instantanea.relojSimuladoFormateado(),
                 instantanea == null ? null : instantanea.relojRealFormateado(), parametros,
-                instantanea == null ? null : instantanea.indicadores());
+                instantanea == null ? null : instantanea.indicadores(), configuracion.flota());
     }
 }

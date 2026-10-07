@@ -1,6 +1,7 @@
 package pe.pucp.paqtracker.simulacion;
 
 import pe.pucp.paqtracker.modelo.Almacen;
+import pe.pucp.paqtracker.modelo.Bloqueo;
 import pe.pucp.paqtracker.modelo.Entrega;
 import pe.pucp.paqtracker.modelo.EscenarioOperativo;
 import pe.pucp.paqtracker.modelo.EstadoVehiculo;
@@ -188,6 +189,13 @@ public final class Orquestador {
      */
     public List<Almacen> getAlmacenes() {
         return almacenes;
+    }
+
+    /**
+     * @return bloqueos programados de la simulacion, de solo lectura
+     */
+    public List<Bloqueo> getBloqueos() {
+        return malla.getBloqueos();
     }
 
     /**

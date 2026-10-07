@@ -45,6 +45,6 @@ public class ServicioConfiguracion {
                 NomenclaturaOperacion.nombreAlmacen(almacen),
                 new Coordenada(almacen.getUbicacion().getX(), almacen.getUbicacion().getY()),
                 almacen.esIlimitado() ? null : almacen.getCapacidadMaxima(),
-                almacen.esIlimitado() ? null : almacen.getStockDisponible(), almacen.esIlimitado());
+                almacen.esIlimitado() ? null : almacen.getStockDisponible(), almacen.esIlimitado(), null);
     }
 }

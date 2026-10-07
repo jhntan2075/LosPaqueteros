@@ -9,7 +9,10 @@ import pe.pucp.paqtracker.modelo.Vehiculo;
 import pe.pucp.paqtracker.modulos.difusion.aplicacion.dto.Coordenada;
 import pe.pucp.paqtracker.modulos.difusion.aplicacion.dto.IndicadoresOperacion;
 import pe.pucp.paqtracker.modulos.difusion.aplicacion.dto.PedidoEnMapa;
+import pe.pucp.paqtracker.modulos.difusion.aplicacion.servicio.CodigosFlota;
 import pe.pucp.paqtracker.modulos.difusion.aplicacion.servicio.NomenclaturaOperacion;
+import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.dto.DetallePedido;
+import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.dto.HitoPedido;
 import pe.pucp.paqtracker.modulos.ejecucion.dominio.EstadoPedido;
 import pe.pucp.paqtracker.simulacion.ResultadoPaso;
 import pe.pucp.paqtracker.simulacion.SimulacionEnCurso;
@@ -18,10 +21,12 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * Sigue el estado de cada pedido de una ejecucion a partir de lo que reporta cada paso de la
- * simulacion, y calcula la holgura, el semaforo y los KPI. Lo usa solo el hilo del motor.
+ * simulacion: estado, unidad, llegada estimada, trazabilidad, holgura, semaforo y KPI. Lo usa solo el
+ * hilo del motor.
  */
 public final class SeguimientoPedidos {
 
@@ -30,21 +35,27 @@ public final class SeguimientoPedidos {
     private static final String NIVEL_VERDE = "VERDE";
     private static final String NIVEL_AMBAR = "AMBAR";
     private static final String NIVEL_ROJO = "ROJO";
+    private static final double PORCENTAJE_TOTAL = 100.0;
+    private static final int MINUTOS_POR_HORA = 60;
 
     private final LineaTiempo lineaTiempo;
     private final PropiedadesDominio.Semaforo semaforo;
+    private final CodigosFlota codigosFlota;
     private final Map<Integer, Seguimiento> pedidos = new LinkedHashMap<>();
     private int siguienteId;
     private long ultimoTaMs;
 
     /**
-     * @param lineaTiempo relacion entre minutos simulados y fechas
-     * @param semaforo    cortes del semaforo
+     * @param lineaTiempo   relacion entre minutos simulados y fechas
+     * @param semaforo      cortes del semaforo
+     * @param codigosFlota  codigos visibles de las unidades de la ejecucion
      * @param primerIdLibre primer identificador que no usa ningun pedido cargado
      */
-    public SeguimientoPedidos(LineaTiempo lineaTiempo, PropiedadesDominio.Semaforo semaforo, int primerIdLibre) {
+    public SeguimientoPedidos(LineaTiempo lineaTiempo, PropiedadesDominio.Semaforo semaforo,
+                              CodigosFlota codigosFlota, int primerIdLibre) {
         this.lineaTiempo = lineaTiempo;
         this.semaforo = semaforo;
+        this.codigosFlota = codigosFlota;
         this.siguienteId = primerIdLibre;
     }
 
@@ -62,7 +73,12 @@ public final class SeguimientoPedidos {
      * @param pedido pedido registrado
      */
     public void registrar(Pedido pedido) {
-        pedidos.putIfAbsent(pedido.getId(), new Seguimiento(pedido));
+        if (!pedidos.containsKey(pedido.getId())) {
+            Seguimiento seguimiento = new Seguimiento(pedido);
+            seguimiento.hito(pedido.getInstanteRegistro(), "Registrado", pedido.getCantidad() + " paquetes a "
+                    + pedido.getDestino() + ", plazo " + pedido.getPlazo() / MINUTOS_POR_HORA + " h");
+            pedidos.put(pedido.getId(), seguimiento);
+        }
     }
 
     /**
@@ -118,6 +134,19 @@ public final class SeguimientoPedidos {
     }
 
     /**
+     * @param idPedido identificador del pedido
+     * @param minuto   minuto simulado actual
+     * @return pedido con su trazabilidad, o vacio si no esta registrado
+     */
+    public Optional<DetallePedido> detalle(int idPedido, double minuto) {
+        Seguimiento seguimiento = pedidos.get(idPedido);
+        if (seguimiento == null) {
+            return Optional.empty();
+        }
+        return Optional.of(new DetallePedido(aPedidoEnMapa(seguimiento, minuto), List.copyOf(seguimiento.hitos)));
+    }
+
+    /**
      * @param idPedido identificador de un pedido registrado
      * @return su hora limite, en minutos simulados
      * @throws IllegalArgumentException si el pedido no esta registrado
@@ -136,37 +165,28 @@ public final class SeguimientoPedidos {
      * @return KPI y semaforo global
      */
     public IndicadoresOperacion indicadores(SimulacionEnCurso simulacion, double minuto) {
+        int[] conteo = new int[EstadoPedido.values().length];
         int aTiempo = 0;
-        int conRetraso = 0;
-        int pendientes = 0;
-        int enTransito = 0;
         long minutosEntrega = 0;
         String peorNivel = NIVEL_VERDE;
         for (Seguimiento seguimiento : pedidos.values()) {
-            switch (seguimiento.estado) {
-                case ENTREGADO -> {
-                    minutosEntrega += seguimiento.entregaReal - seguimiento.pedido.getInstanteRegistro();
-                    if (seguimiento.entregaReal <= seguimiento.pedido.getHoraLimite()) {
-                        aTiempo++;
-                    } else {
-                        conRetraso++;
-                    }
-                }
-                case EN_TRANSITO -> enTransito++;
-                case REGISTRADO -> pendientes++;
-            }
-            if (seguimiento.estado != EstadoPedido.ENTREGADO) {
+            conteo[seguimiento.estado.ordinal()]++;
+            if (seguimiento.estado == EstadoPedido.ENTREGADO) {
+                minutosEntrega += seguimiento.entregaReal - seguimiento.pedido.getInstanteRegistro();
+                aTiempo += seguimiento.entregaReal <= seguimiento.pedido.getHoraLimite() ? 1 : 0;
+            } else {
                 peorNivel = peor(peorNivel, nivel(seguimiento, minuto));
             }
         }
-        int entregados = aTiempo + conRetraso;
-        String global = simulacion.huboColapso() ? NIVEL_ROJO : peorNivel;
-        return new IndicadoresOperacion(pedidos.size(), aTiempo, conRetraso, pendientes, enTransito,
+        int entregados = conteo[EstadoPedido.ENTREGADO.ordinal()];
+        return new IndicadoresOperacion(pedidos.size(), aTiempo, entregados - aTiempo,
+                conteo[EstadoPedido.REGISTRADO.ordinal()], conteo[EstadoPedido.EN_TRANSITO.ordinal()],
                 contarUnidades(simulacion, EstadoVehiculo.EN_RUTA),
                 contarUnidades(simulacion, EstadoVehiculo.DISPONIBLE_EN_ALMACEN), 0,
                 entregados == 0 ? 0.0 : (double) minutosEntrega / entregados, ultimoTaMs,
                 simulacion.getResultado().getReplanificaciones(), simulacion.getResultado().getDistanciaTotal(),
-                global);
+                entregados == 0 ? PORCENTAJE_TOTAL : PORCENTAJE_TOTAL * aTiempo / entregados,
+                simulacion.huboColapso() ? NIVEL_ROJO : peorNivel);
     }
 
     private boolean registrarLlegada(Tramo tramo) {
@@ -176,15 +196,19 @@ public final class SeguimientoPedidos {
         }
         seguimiento.partesEnCamino--;
         if (seguimiento.partesEnCamino > 0) {
+            seguimiento.hito(tramo.getLlegada(), "Entrega parcial", tramo.getCantidad() + " paquetes entregados");
             return false;
         }
         seguimiento.estado = EstadoPedido.ENTREGADO;
         seguimiento.entregaReal = tramo.getLlegada();
+        int holgura = seguimiento.pedido.getHoraLimite() - tramo.getLlegada();
+        seguimiento.hito(tramo.getLlegada(), holgura >= 0 ? "Entregado a tiempo" : "Entregado con retraso",
+                holgura >= 0 ? "Holgura de " + holgura + " min" : "Retraso de " + (-holgura) + " min");
         return true;
     }
 
     private void registrarSalida(UnidadEnTransito unidad, int instante, List<Tramo> completados) {
-        String codigo = NomenclaturaOperacion.codigoUnidad(unidad.getVehiculo());
+        String codigo = codigosFlota.codigo(unidad.getVehiculo());
         for (Tramo tramo : unidad.getTramos()) {
             Seguimiento seguimiento = tramo.esEntrega() ? pedidos.get(tramo.getIdPedido()) : null;
             if (seguimiento == null) {
@@ -194,6 +218,9 @@ public final class SeguimientoPedidos {
             seguimiento.unidad = codigo;
             seguimiento.eta = Math.max(seguimiento.eta, tramo.getLlegada());
             seguimiento.partesEnCamino++;
+            seguimiento.hito(instante, "Despachado", tramo.getCantidad() + " paquetes en " + codigo + " desde "
+                    + NomenclaturaOperacion.nombreAlmacen(unidad.getOrigen()) + ", llegada estimada "
+                    + lineaTiempo.formatear(tramo.getLlegada()));
             // Una entrega de distancia cero llega en el mismo instante en que sale: el nucleo no la
             // reporta en el paso siguiente, asi que se cierra aqui.
             if (tramo.getLlegada() <= instante && registrarLlegada(tramo)) {
@@ -247,8 +274,9 @@ public final class SeguimientoPedidos {
     }
 
     /** Estado mutable de un pedido dentro de la ejecucion. */
-    private static final class Seguimiento {
+    private final class Seguimiento {
         private final Pedido pedido;
+        private final List<HitoPedido> hitos = new ArrayList<>();
         private EstadoPedido estado = EstadoPedido.REGISTRADO;
         private String unidad;
         private int eta;
@@ -257,6 +285,10 @@ public final class SeguimientoPedidos {
 
         private Seguimiento(Pedido pedido) {
             this.pedido = pedido;
+        }
+
+        private void hito(int minuto, String titulo, String detalle) {
+            hitos.add(new HitoPedido(lineaTiempo.aMilisegundos(minuto), titulo, detalle));
         }
     }
 }

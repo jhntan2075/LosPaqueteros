@@ -5,6 +5,7 @@ import jakarta.websocket.WebSocketContainer;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.messaging.converter.JacksonJsonMessageConverter;
@@ -12,10 +13,13 @@ import org.springframework.messaging.simp.stomp.StompFrameHandler;
 import org.springframework.messaging.simp.stomp.StompHeaders;
 import org.springframework.messaging.simp.stomp.StompSession;
 import org.springframework.messaging.simp.stomp.StompSessionHandlerAdapter;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.socket.client.standard.StandardWebSocketClient;
 import org.springframework.web.socket.messaging.WebSocketStompClient;
 import java.lang.reflect.Type;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.BlockingQueue;
@@ -70,6 +74,43 @@ class IntegracionApiTest {
     }
 
     @Test
+    void simulacionPeriodo_conFlotaConfigurada_difundeSoloEsasUnidades() {
+        RestClient cliente = RestClient.create("http://localhost:" + puerto);
+        Map<?, ?> creada = cliente.post().uri("/api/ejecuciones").contentType(MediaType.APPLICATION_JSON)
+                .body(Map.of("tipoEscenario", "SIMULACION_PERIODO", "fechaInicio", "2026-01-01", "dias", 1,
+                        "flota", Map.of("autos", 2, "motos", 2, "bicicletas", 2)))
+                .retrieve().body(Map.class);
+        String id = (String) creada.get("id");
+
+        Map<?, ?> estado = cliente.get().uri("/api/ejecuciones/{id}/estado", id).retrieve().body(Map.class);
+        List<?> unidades = (List<?>) estado.get("unidades");
+
+        assertEquals(6, unidades.size());
+        assertEquals("B-02", ((Map<?, ?>) unidades.get(5)).get("codigo"));
+        cliente.post().uri("/api/ejecuciones/{id}/detener", id).retrieve().toBodilessEntity();
+    }
+
+    @Test
+    void importarBloqueos_archivoConLineasInvalidas_lasInformaYNoLoGuarda() {
+        RestClient cliente = RestClient.create("http://localhost:" + puerto);
+        MultiValueMap<String, Object> formulario = new LinkedMultiValueMap<>();
+        formulario.add("mes", "202601");
+        formulario.add("file", new ByteArrayResource("01d02h22m-01d04h42m:25,45,30,40\nroto\n"
+                .getBytes(StandardCharsets.UTF_8)) {
+            @Override
+            public String getFilename() {
+                return "bloqueo.2601.txt";
+            }
+        });
+
+        Map<?, ?> respuesta = cliente.post().uri("/api/archivos/bloqueos").contentType(MediaType.MULTIPART_FORM_DATA)
+                .body(formulario).retrieve().body(Map.class);
+
+        assertEquals(List.of(1, 2), respuesta.get("lineasInvalidas"));
+        assertEquals(false, respuesta.get("guardado"));
+    }
+
+    @Test
     void errores_solicitudesInvalidas_respondenConElCodigoAdecuado() {
         RestClient cliente = RestClient.create("http://localhost:" + puerto);
 
@@ -79,6 +120,10 @@ class IntegracionApiTest {
         assertEquals(400, estado(cliente.post().uri("/api/ejecuciones").contentType(MediaType.APPLICATION_JSON)
                 .body(Map.of("tipoEscenario", "SIMULACION_PERIODO", "fechaInicio", "2030-01-01"))));
         assertEquals(200, estado(cliente.get().uri("/api/configuracion/dominio")));
+        assertEquals(400, estado(cliente.post().uri("/api/ejecuciones").contentType(MediaType.APPLICATION_JSON)
+                .body(Map.of("tipoEscenario", "SIMULACION_PERIODO", "fechaInicio", "2026-01-01",
+                        "flota", Map.of("autos", 0, "motos", 0, "bicicletas", 0)))));
+        assertEquals(400, estado(cliente.get().uri("/api/pedidos/XYZ?ejecucionId=no-existe")));
     }
 
     private static int estado(RestClient.RequestHeadersSpec<?> solicitud) {

@@ -10,9 +10,12 @@ import org.springframework.context.annotation.Primary;
 import pe.pucp.paqtracker.comun.excepcion.SolicitudInvalidaException;
 import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.casouso.CasoUsoControlarEjecucion;
 import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.casouso.CasoUsoEjecutarDiaADia;
+import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.dto.HitoPedido;
 import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.servicio.ServicioEjecucion;
+import pe.pucp.paqtracker.modulos.pedidos.aplicacion.casouso.CasoUsoConsultarDetallePedido;
 import pe.pucp.paqtracker.modulos.pedidos.aplicacion.casouso.CasoUsoConsultarPedidos;
 import pe.pucp.paqtracker.modulos.pedidos.aplicacion.casouso.CasoUsoRegistrarPedido;
+import pe.pucp.paqtracker.modulos.pedidos.aplicacion.dto.RespuestaDetallePedido;
 import pe.pucp.paqtracker.modulos.pedidos.aplicacion.dto.RespuestaPedido;
 import pe.pucp.paqtracker.modulos.pedidos.aplicacion.dto.RespuestaRegistroPedido;
 import pe.pucp.paqtracker.modulos.pedidos.aplicacion.dto.SolicitudRegistroPedido;
@@ -46,6 +49,9 @@ class IntegracionPedidosTest {
     @Autowired
     private CasoUsoControlarEjecucion casoUsoControlar;
 
+    @Autowired
+    private CasoUsoConsultarDetallePedido casoUsoDetalle;
+
     @Test
     void registrarPedido_operacionDiaADiaEnCurso_loDespachaYLoGuardaConSuCliente() {
         casoUsoDiaADia.ejecutar();
@@ -59,6 +65,10 @@ class IntegracionPedidosTest {
         List<RespuestaPedido> pedidos = casoUsoConsultar.ejecutar(respuesta.ejecucionId());
         assertTrue(pedidos.stream().anyMatch(pedido -> "Bodega Rosita".equals(pedido.cliente())
                 && pedido.codigo().equals(respuesta.pedido().codigo())));
+        RespuestaDetallePedido detalle = casoUsoDetalle.ejecutar(respuesta.ejecucionId(),
+                respuesta.pedido().codigo());
+        assertEquals("Bodega Rosita", detalle.pedido().cliente());
+        assertEquals(List.of("Registrado", "Despachado"), detalle.hitos().stream().map(HitoPedido::titulo).toList());
     }
 
     @Test
