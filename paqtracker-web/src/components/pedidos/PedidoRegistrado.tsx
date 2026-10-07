@@ -2,7 +2,8 @@ import React from 'react';
 import { ALMACENES, UNIDADES, esPlazoRegular } from '../../config/dominio';
 import { capitalizar, formatearHolgura, formatearHoraRelativa } from '../../lib/formato';
 import { proyectar, tramoOrtogonal, trazado } from '../../lib/malla';
-import type { PedidoRegistrado as Pedido } from '../../types/pedidos';
+import type { Coordenada } from '../../types/domain';
+import type { PedidoRegistrado as Pedido, VehiculoAsignado } from '../../types/pedidos';
 import { MiniMapaMalla } from '../map/MiniMapaMalla';
 import { COLOR_HOLGURA } from './estilos';
 import { MarcadorAlmacen, PinDestino, PuntoHolgura, RotuloMapa, UnidadEnMapa } from './iconos';
@@ -26,15 +27,14 @@ const Celda: React.FC<{ etiqueta: string; children: React.ReactNode }> = ({ etiq
 );
 
 /** Malla completa con la ruta de la unidad: tramo ya recorrido (gris) y tramo pendiente hasta el nuevo destino (azul). */
-const MiniMapaRuta: React.FC<{ pedido: Pedido }> = ({ pedido }) => {
+const MiniMapaRuta: React.FC<{ pedido: Pedido; vehiculo: VehiculoAsignado; unidad: Coordenada }> = ({ pedido, vehiculo, unidad }) => {
   const almacen = ALMACENES.find((a) => a.id === pedido.almacenOrigen) ?? ALMACENES[0];
   const { destino } = pedido.borrador;
-  const unidad = pedido.posicionVehiculo;
   return (
     <MiniMapaMalla
       alto={150}
       encuadrar={[almacen.ubicacion, unidad, destino]}
-      etiqueta={`Ruta de ${pedido.vehiculo.codigo} desde ${almacen.nombre} hasta (${destino.x},${destino.y})`}
+      etiqueta={`Ruta de ${vehiculo.codigo} desde ${almacen.nombre} hasta (${destino.x},${destino.y})`}
     >
       {(vista, { ancho }) => {
         const pOrigen = proyectar(vista, almacen.ubicacion);
@@ -56,9 +56,9 @@ const MiniMapaRuta: React.FC<{ pedido: Pedido }> = ({ pedido }) => {
             <RotuloMapa x={pOrigen.x} y={pOrigen.y + 18} anchoMapa={ancho} className="font-sans font-medium text-[#64748B]">
               {almacen.nombreCorto}
             </RotuloMapa>
-            <UnidadEnMapa tipo={pedido.vehiculo.tipo} cx={pUnidad.x} cy={pUnidad.y} />
+            <UnidadEnMapa tipo={vehiculo.tipo} cx={pUnidad.x} cy={pUnidad.y} />
             <RotuloMapa x={pUnidad.x} y={pUnidad.y + 14} anchoMapa={ancho} className="font-mono font-medium text-[#1E40AF]">
-              {pedido.vehiculo.codigo}
+              {vehiculo.codigo}
             </RotuloMapa>
             <PinDestino variante="ambar" x={pDestino.x} y={pDestino.y} />
             <RotuloMapa x={pDestino.x} y={pDestino.y + 2} anchoMapa={ancho} className="font-mono font-medium text-[#0F172A]">
@@ -80,9 +80,9 @@ interface PedidoRegistradoProps {
 }
 
 export const PedidoRegistrado: React.FC<PedidoRegistradoProps> = ({ pedido, reloj, onVerEnLienzo, onRegistrarOtro, onVerCola }) => {
-  const { borrador, replanificacion } = pedido;
+  const { borrador, replanificacion, vehiculo } = pedido;
   const almacen = ALMACENES.find((a) => a.id === pedido.almacenOrigen);
-  const nombreVehiculo = capitalizar(UNIDADES[pedido.vehiculo.tipo].nombre);
+  const nombreVehiculo = vehiculo ? `${capitalizar(UNIDADES[vehiculo.tipo].nombre)} ${vehiculo.codigo}` : 'En espera';
 
   return (
     <div className="flex-1 min-h-0 overflow-auto">
@@ -94,9 +94,13 @@ export const PedidoRegistrado: React.FC<PedidoRegistradoProps> = ({ pedido, relo
               <span className="absolute left-[10px] top-[8px] font-sans font-semibold text-[20px] leading-[normal] text-white">✓</span>
             </div>
             <div className="flex flex-col gap-[2px]" role="status">
-              <p className="font-sans font-semibold text-[17px] text-[#0F172A]">Pedido {pedido.codigo} registrado y planificado</p>
+              <p className="font-sans font-semibold text-[17px] text-[#0F172A]">
+                Pedido {pedido.codigo} registrado{vehiculo ? ' y planificado' : ''}
+              </p>
               <p className="font-sans text-[12px] text-[#64748B]">
-                Asignado automáticamente a una unidad y añadido al plan de rutas vigente.
+                {vehiculo
+                  ? 'Asignado automáticamente a una unidad y añadido al plan de rutas vigente.'
+                  : 'No hay una unidad libre en este momento: el pedido espera en la cola y entra en la siguiente planificación.'}
               </p>
             </div>
           </div>
@@ -127,12 +131,10 @@ export const PedidoRegistrado: React.FC<PedidoRegistradoProps> = ({ pedido, relo
               <h2 className="font-sans font-semibold text-[12px] text-[#64748B] tracking-[0.7px]">RESULTADO DE LA PLANIFICACIÓN</h2>
               <div className="flex gap-[14px]">
                 <Celda etiqueta="Vehículo asignado">
-                  <span className="font-mono font-semibold text-[16px] text-[#0F172A]">
-                    {nombreVehiculo} {pedido.vehiculo.codigo}
-                  </span>
+                  <span className="font-mono font-semibold text-[16px] text-[#0F172A]">{nombreVehiculo}</span>
                 </Celda>
                 <Celda etiqueta="ETA">
-                  <span className="font-mono font-semibold text-[16px] text-[#0F172A]">{formatearHoraRelativa(pedido.eta, reloj)}</span>
+                  <span className="font-mono font-semibold text-[16px] text-[#0F172A]">{pedido.eta ? formatearHoraRelativa(pedido.eta, reloj) : '—'}</span>
                 </Celda>
                 <Celda etiqueta="Holgura resultante">
                   <span className="flex items-center gap-[6px]">
@@ -148,21 +150,23 @@ export const PedidoRegistrado: React.FC<PedidoRegistradoProps> = ({ pedido, relo
                 </Celda>
               </div>
 
-              <figure className="flex flex-col gap-[6px]">
-                <MiniMapaRuta pedido={pedido} />
-                <figcaption className="font-sans font-medium text-[12px] text-[#64748B]">
-                  nuevo pedido insertado en la ruta de {pedido.vehiculo.codigo}
-                </figcaption>
-              </figure>
+              {vehiculo && pedido.posicionVehiculo && (
+                <figure className="flex flex-col gap-[6px]">
+                  <MiniMapaRuta pedido={pedido} vehiculo={vehiculo} unidad={pedido.posicionVehiculo} />
+                  <figcaption className="font-sans font-medium text-[12px] text-[#64748B]">
+                    nuevo pedido insertado en la ruta de {vehiculo.codigo}
+                  </figcaption>
+                </figure>
+              )}
 
               <div className="bg-[#EDF2FC] rounded-[8px] px-[12px] py-[10px] flex items-center gap-[8px] text-[#1E40AF]">
                 <span className="font-sans font-medium text-[13px]" aria-hidden="true">
                   ⟳
                 </span>
                 <p className="flex-1 font-sans text-[12px]">
-                  Replanificación disparada — plan actualizado en {String(replanificacion.segundos).replace('.', ',')} s ·{' '}
-                  {replanificacion.rutasAfectadas} rutas afectadas · {replanificacion.pedidosEnRiesgoNuevos} pedidos en riesgo
-                  nuevos.
+                  {replanificacion.replanifico
+                    ? `Replanificación disparada — plan actualizado en ${replanificacion.milisegundos} ms · ${replanificacion.unidadesDespachadas} ${replanificacion.unidadesDespachadas === 1 ? 'unidad despachada' : 'unidades despachadas'}.`
+                    : 'El pedido entra en la siguiente planificación del ciclo Sa.'}
                 </p>
               </div>
             </div>

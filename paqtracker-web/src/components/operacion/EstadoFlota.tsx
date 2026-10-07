@@ -1,7 +1,8 @@
 import React from 'react';
 import { CORTE_OCUPACION, UNIDADES, type TipoUnidad } from '../../config/dominio';
 import { capitalizar } from '../../lib/formato';
-import { AVERIAS_CORRIDA, estadoFlota } from '../../mocks/operacion';
+import { useDatosOperacion } from '../../hooks/useDatosOperacion';
+import { estadoFlota } from '../../lib/operacion';
 import { FilaConBarra, PanelCompleto, TituloSeccion } from './comunes';
 
 import iconoAuto from '../../assets/figma/pedidos/icono-auto.svg';
@@ -14,6 +15,9 @@ import iconoBici from '../../assets/figma/pedidos/icono-bici.svg';
 const ICONO: Record<TipoUnidad, string> = { AUTO: iconoAuto, MOTO: iconoMoto, BICICLETA: iconoBici };
 const ETIQUETA: Record<TipoUnidad, string> = { AUTO: 'Auto', MOTO: 'Moto', BICICLETA: 'Bici' };
 
+/** Las averías se incorporan en una entrega posterior: la corrida aún no registra ninguna. */
+const AVERIAS_CORRIDA = { registradas: 0, porTipo: { 1: 0, 2: 0, 3: 0 }, minutosFueraDeServicio: 0, reincidente: '—' };
+
 const Leyenda: React.FC<{ color: string; etiqueta: string; valor: number }> = ({ color, etiqueta, valor }) => (
   <span className="flex items-center gap-[5px] text-[12px] whitespace-nowrap">
     <span className={`size-[7px] rounded-[1px] ${color}`} />
@@ -24,7 +28,7 @@ const Leyenda: React.FC<{ color: string; etiqueta: string; valor: number }> = ({
 
 /** `compacto`: dentro del panel derecho de la corrida, sin marco ni botón de cierre. */
 export const EstadoFlota: React.FC<{ onCerrar?: () => void; compacto?: boolean }> = ({ onCerrar, compacto = false }) => {
-  const flota = estadoFlota();
+  const flota = estadoFlota(useDatosOperacion());
   const utilizacion = Math.round((flota.enRuta / flota.total) * 100);
   const segmentos = [
     { clave: 'ruta', valor: flota.enRuta, color: 'bg-[#1E40AF]' },

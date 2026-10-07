@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { EVENTOS } from '../../mocks/operacion';
+import { useDatosOperacion } from '../../hooks/useDatosOperacion';
 import type { CategoriaEvento, EventoBitacora } from '../../types/operacion';
 import { FilaConBarra, PanelCompleto, TituloSeccion } from './comunes';
 
@@ -15,9 +15,8 @@ const FILTROS: { valor: Filtro; etiqueta: string }[] = [
   { valor: 'ENTREGA', etiqueta: 'Entregas' },
 ];
 
-/** Ventana de la meta "N eventos en los últimos 30 min simulados", contada desde el reloj de operación. */
-const RELOJ_SEGUNDOS = 11 * 3600 + 15 * 60 + 40;
-const segundosDe = (hora: string) => hora.split(':').map(Number).reduce((total, parte) => total * 60 + parte, 0);
+/** Ventana de "N eventos en los últimos 30 min simulados", contada desde el reloj de la ejecución. */
+const VENTANA_RECIENTES_MS = 30 * 60_000;
 
 function exportarCsv(eventos: EventoBitacora[]) {
   const filas = [['Hora', 'Evento', 'Detalle', 'Categoría'], ...eventos.map((e) => [e.hora, e.titulo, e.detalle, e.categoria])];
@@ -43,8 +42,9 @@ export const BitacoraEventos: React.FC<{ onCerrar?: () => void; compacto?: boole
   const [congelados, setCongelados] = useState<EventoBitacora[] | null>(null);
   const [verTodos, setVerTodos] = useState(false);
 
-  const fuente = congelados ?? EVENTOS;
-  const recientes = fuente.filter((e) => RELOJ_SEGUNDOS - segundosDe(e.hora) <= 30 * 60);
+  const { eventos, reloj } = useDatosOperacion();
+  const fuente = congelados ?? eventos;
+  const recientes = fuente.filter((e) => reloj.getTime() - e.instanteMs <= VENTANA_RECIENTES_MS);
   const base = verTodos ? fuente : recientes;
   const visibles = filtro === 'TODOS' ? base : base.filter((e) => e.categoria === filtro);
 
@@ -76,7 +76,7 @@ export const BitacoraEventos: React.FC<{ onCerrar?: () => void; compacto?: boole
           <button
             type="button"
             aria-pressed={congelados !== null}
-            onClick={() => setCongelados(congelados ? null : [...EVENTOS])}
+            onClick={() => setCongelados(congelados ? null : [...eventos])}
             className={`ml-auto rounded-[4px] px-[7px] py-[3px] font-sans ${
               congelados ? 'bg-[#DBEAFE] text-[#1E40AF] font-medium' : 'bg-white border border-[#E2E8F0] text-[#0F172A] hover:bg-[#F8FAFC]'
             }`}
@@ -88,7 +88,7 @@ export const BitacoraEventos: React.FC<{ onCerrar?: () => void; compacto?: boole
 
       <ol className="flex-1 min-h-0 overflow-y-auto" aria-label="Eventos">
         {visibles.map((e, i) => (
-          <li key={`${e.hora}-${e.titulo}`} className={`border-b border-[#E2E8F0] ${i === 0 && !congelados ? 'bg-[#F8FAFC]' : ''}`}>
+          <li key={e.id} className={`border-b border-[#E2E8F0] ${i === 0 && !congelados ? 'bg-[#F8FAFC]' : ''}`}>
             <FilaConBarra
               color={e.color}
               titulo={e.titulo}

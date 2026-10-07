@@ -1,22 +1,34 @@
 import React, { useRef, useState } from 'react';
-import { CORTE_HOLGURA } from '../../config/dominio';
-import { NOMBRE_REGISTRO, leerArchivo } from '../../lib/archivosSimulacion';
-import { formatearFechaLarga, formatearFechaNumerica, formatearMiles } from '../../lib/formato';
-import type { ArchivoCargado, ConfiguracionCorrida, EscenarioSimulacion, TipoArchivo } from '../../types/simulacion';
+import { CORTE_HOLGURA, UNIDADES } from '../../config/dominio';
+import { mensajeDeError, useEjecuciones } from '../../hooks/useEjecuciones';
+import { formatearFechaLarga, formatearMiles } from '../../lib/formato';
+import { NOMBRE_REGISTRO, mesDeArchivo, subirArchivo } from '../../services/servicioArchivos';
+import type { ComposicionFlotaApi, EjecucionApi, EstadoEjecucionApi } from '../../types/api';
+import type { ArchivoCargado, EscenarioSimulacion, TipoArchivo } from '../../types/simulacion';
 
-// Configuración de escenario (Figma "Configuración de escenario · vacío / completado"), implementada
-// sobre las capturas de los frames.
+// Configuración de escenario (Figma "Configuración de escenario · vacío / completado"). Crea una
+// simulación en paqtracker-api o abre una existente: cualquier dispositivo puede ver cualquier corrida.
 
-const ESCENARIOS: { valor: EscenarioSimulacion; titulo: string; descripcion: string; resumen: string }[] = [
-  { valor: 'CINCO_DIAS', titulo: 'Simulación 5 días', descripcion: 'Comprime 5 días de operación en 30–60 min de ejecución.', resumen: 'Simulación 5 días' },
-  { valor: 'COLAPSO', titulo: 'Hasta el colapso', descripcion: 'Corre hasta el primer pedido imposible de entregar en plazo.', resumen: 'Hasta el colapso' },
+const DIAS_PERIODO = 5;
+const MAXIMO_POR_TIPO = 50;
+
+const ESCENARIOS: { valor: EscenarioSimulacion; titulo: string; descripcion: string }[] = [
+  { valor: 'SIMULACION_PERIODO', titulo: 'Simulación 5 días', descripcion: 'Comprime 5 días de operación en 30–60 min de ejecución.' },
+  { valor: 'COLAPSO_LOGISTICO', titulo: 'Hasta el colapso', descripcion: 'Corre hasta el primer pedido imposible de entregar en plazo.' },
 ];
 
-const ARCHIVOS: { tipo: TipoArchivo; etiqueta: string; acepta: string }[] = [
-  { tipo: 'pedidos', etiqueta: 'Pedidos', acepta: '.txt,.csv' },
-  { tipo: 'bloqueos', etiqueta: 'Bloqueos', acepta: '.txt,.csv' },
-  { tipo: 'averias', etiqueta: 'Averías', acepta: '.txt,.csv' },
+const ARCHIVOS: { tipo: TipoArchivo; etiqueta: string }[] = [
+  { tipo: 'pedidos', etiqueta: 'Pedidos (ventas.AAAAMM.txt)' },
+  { tipo: 'bloqueos', etiqueta: 'Bloqueos (bloqueo.AAMM.txt)' },
 ];
+
+const ESTADO_EJECUCION: Record<EstadoEjecucionApi, { texto: string; clase: string }> = {
+  CONFIGURADA: { texto: 'Configurada', clase: 'bg-[#F1F5F9] text-[#64748B]' },
+  EN_CURSO: { texto: 'En curso', clase: 'bg-[#DBEAFE] text-[#1E40AF]' },
+  PAUSADA: { texto: 'Pausada', clase: 'bg-[#FEF3E5] text-[#B45309]' },
+  FINALIZADA: { texto: 'Finalizada', clase: 'bg-[#DCFCE7] text-[#15803D]' },
+  COLAPSADA: { texto: 'Colapsada', clase: 'border border-[#B91C1C] text-[#B91C1C]' },
+};
 
 const Seccion: React.FC<{ numero: string; titulo: string; resumen: React.ReactNode; resumenPendiente?: boolean; children: React.ReactNode }> = ({
   numero,
@@ -55,10 +67,10 @@ const Etiqueta: React.FC<{ htmlFor?: string; children: React.ReactNode }> = ({ h
 const RanuraArchivo: React.FC<{
   tipo: TipoArchivo;
   etiqueta: string;
-  acepta: string;
   archivo?: ArchivoCargado;
+  subiendo: boolean;
   onCargar: (archivo: File) => void;
-}> = ({ tipo, etiqueta, acepta, archivo, onCargar }) => {
+}> = ({ tipo, etiqueta, archivo, subiendo, onCargar }) => {
   const entrada = useRef<HTMLInputElement>(null);
   const nombres = NOMBRE_REGISTRO[tipo];
   const id = `archivo-${tipo}`;
@@ -66,28 +78,35 @@ const RanuraArchivo: React.FC<{
     <div className="flex flex-col gap-[8px] mb-[6px]">
       <Etiqueta htmlFor={id}>{etiqueta}</Etiqueta>
       <div
-        className={`w-[360px] h-[32px] px-[10px] rounded-[2px] flex items-center gap-[10px] text-[12px] ${
+        className={`w-[420px] h-[32px] px-[10px] rounded-[2px] flex items-center gap-[10px] text-[12px] ${
           archivo ? 'border border-[#CBD5E1] bg-white' : 'border border-dashed border-[#94A3B8] bg-[#F8FAFC]'
         }`}
       >
-        {archivo ? (
+        {subiendo ? (
+          <span className="font-mono text-[#64748B]">Validando en el servidor…</span>
+        ) : archivo ? (
           <>
             <span className="font-mono text-[#0F172A] truncate">"{archivo.nombre}"</span>
             <span className="ml-auto font-mono text-[#64748B] whitespace-nowrap">
-              {formatearMiles(archivo.registros)} {archivo.registros === 1 ? nombres.singular : nombres.plural}
+              {formatearMiles(archivo.registros)} {archivo.registros === 1 ? nombres.singular : nombres.plural} · {archivo.mes}
             </span>
           </>
         ) : (
-          <span className="font-mono text-[#94A3B8]">Ningún archivo cargado</span>
+          <span className="font-mono text-[#94A3B8]">Opcional · se usan los datos ya cargados</span>
         )}
-        <button type="button" onClick={() => entrada.current?.click()} className={`font-sans font-medium text-[#1E40AF] hover:underline whitespace-nowrap ${archivo ? '' : 'ml-auto'}`}>
+        <button
+          type="button"
+          disabled={subiendo}
+          onClick={() => entrada.current?.click()}
+          className={`font-sans font-medium text-[#1E40AF] hover:underline whitespace-nowrap disabled:text-[#94A3B8] ${archivo || subiendo ? '' : 'ml-auto'}`}
+        >
           {archivo ? 'Reemplazar' : 'Subir archivo'}
         </button>
         <input
           ref={entrada}
           id={id}
           type="file"
-          accept={acepta}
+          accept=".txt"
           className="sr-only"
           onChange={(evento) => {
             const elegido = evento.target.files?.[0];
@@ -97,15 +116,13 @@ const RanuraArchivo: React.FC<{
         />
       </div>
       {archivo && archivo.lineasInvalidas.length > 0 && (
-        <p className="font-sans text-[12px] text-[#B45309]">
-          {archivo.lineasInvalidas.length} {archivo.lineasInvalidas.length === 1 ? 'línea no respeta' : 'líneas no respetan'} el formato y se
-          omitirán (línea {archivo.lineasInvalidas.slice(0, 5).join(', ')}
-          {archivo.lineasInvalidas.length > 5 ? '…' : ''}).
+        <p className="font-sans text-[12px] text-[#B91C1C]">
+          {archivo.lineasInvalidas.length} {archivo.lineasInvalidas.length === 1 ? 'línea no respeta' : 'líneas no respetan'} el formato (línea{' '}
+          {archivo.lineasInvalidas.slice(0, 5).join(', ')}
+          {archivo.lineasInvalidas.length > 5 ? '…' : ''}): el archivo no se guardó. Corrígelo y vuelve a subirlo.
         </p>
       )}
-      {archivo && archivo.registros === 0 && (
-        <p className="font-sans text-[12px] text-[#B91C1C]">El archivo no tiene registros válidos.</p>
-      )}
+      {archivo && archivo.guardado && <p className="font-sans text-[12px] text-[#15803D]">Guardado para el mes {archivo.mes}.</p>}
     </div>
   );
 };
@@ -117,51 +134,103 @@ const FilaResumen: React.FC<{ etiqueta: string; valor?: string }> = ({ etiqueta,
   </div>
 );
 
+/** Simulaciones de la API, para abrir una ya creada (por este u otro dispositivo). */
+const ListaEjecuciones: React.FC<{ onAbrir: (ejecucion: EjecucionApi) => void }> = ({ onAbrir }) => {
+  const { ejecuciones, cargando, error, recargar } = useEjecuciones();
+  const simulaciones = ejecuciones.filter((e) => e.tipoEscenario !== 'DIA_A_DIA').reverse();
+  return (
+    <Seccion numero="00" titulo="Simulaciones existentes" resumen={`${simulaciones.length} en el servidor`} resumenPendiente={simulaciones.length === 0}>
+      <div className="flex items-center text-[12px]">
+        <span className="font-sans text-[#64748B]">Ábrelas desde cualquier dispositivo; todos ven la misma corrida.</span>
+        <button type="button" onClick={recargar} className="ml-auto font-sans font-medium text-[#1E40AF] hover:underline">
+          Actualizar
+        </button>
+      </div>
+      {error && <p className="font-sans text-[12px] text-[#B91C1C]">{error}</p>}
+      {!error && !cargando && simulaciones.length === 0 && <p className="font-sans text-[12px] text-[#94A3B8]">Aún no hay simulaciones.</p>}
+      {simulaciones.map((e) => (
+        <div key={e.id} className="h-[36px] flex items-center gap-[10px] border-b border-dashed border-[#E2E8F0] text-[12px]">
+          <span className={`rounded-[4px] px-[6px] py-[2px] font-sans font-medium ${ESTADO_EJECUCION[e.estado].clase}`}>{ESTADO_EJECUCION[e.estado].texto}</span>
+          <span className="font-sans text-[#0F172A] truncate">{e.nombre}</span>
+          <span className="font-mono text-[#94A3B8] whitespace-nowrap">{e.relojSimulado ?? ''}</span>
+          <button type="button" onClick={() => onAbrir(e)} className="ml-auto font-sans font-medium text-[#1E40AF] hover:underline whitespace-nowrap">
+            Ver corrida ›
+          </button>
+        </div>
+      ))}
+    </Seccion>
+  );
+};
+
 interface ConfiguracionEscenarioProps {
-  onEjecutar: (configuracion: ConfiguracionCorrida) => void;
+  onAbrir: (ejecucion: EjecucionApi) => void;
 }
 
-export const ConfiguracionEscenario: React.FC<ConfiguracionEscenarioProps> = ({ onEjecutar }) => {
-  const [escenario, setEscenario] = useState<EscenarioSimulacion>('CINCO_DIAS');
+export const ConfiguracionEscenario: React.FC<ConfiguracionEscenarioProps> = ({ onAbrir }) => {
+  const { crearEIniciar } = useEjecuciones();
+  const [escenario, setEscenario] = useState<EscenarioSimulacion>('SIMULACION_PERIODO');
   const [fecha, setFecha] = useState('');
-  const [hora, setHora] = useState('');
   const [archivos, setArchivos] = useState<Partial<Record<TipoArchivo, ArchivoCargado>>>({});
-  const [corteVerde, setCorteVerde] = useState(String(CORTE_HOLGURA.ambar * 100));
-  const [corteRojo, setCorteRojo] = useState(String(CORTE_HOLGURA.rojo * 100));
+  const [subiendo, setSubiendo] = useState<TipoArchivo | null>(null);
+  const [flota, setFlota] = useState<ComposicionFlotaApi>({ autos: UNIDADES.AUTO.cantidad, motos: UNIDADES.MOTO.cantidad, bicicletas: UNIDADES.BICICLETA.cantidad });
+  const [enviando, setEnviando] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const inicio = fecha && hora ? new Date(`${fecha}T${hora}`) : null;
+  const inicio = fecha ? new Date(`${fecha}T00:00`) : null;
   const inicioValido = inicio !== null && !Number.isNaN(inicio.getTime());
-  const cargados = ARCHIVOS.filter(({ tipo }) => (archivos[tipo]?.registros ?? 0) > 0).length;
-  const verde = Number(corteVerde);
-  const rojo = Number(corteRojo);
-  const cortesValidos = corteVerde !== '' && corteRojo !== '' && rojo > 0 && rojo < verde && verde < 100;
-  const listo = inicioValido && cargados === ARCHIVOS.length && cortesValidos;
+  const totalFlota = flota.autos + flota.motos + flota.bicicletas;
+  const flotaValida = totalFlota > 0 && [flota.autos, flota.motos, flota.bicicletas].every((n) => n >= 0 && n <= MAXIMO_POR_TIPO);
+  const archivosValidos = Object.values(archivos).every((a) => a.guardado);
+  const listo = inicioValido && flotaValida && archivosValidos && subiendo === null && !enviando;
 
   const faltantes = [
     !inicioValido && 'la fecha de inicio',
-    cargados < ARCHIVOS.length && `${ARCHIVOS.length - cargados === ARCHIVOS.length ? 'los 3' : `${ARCHIVOS.length - cargados}`} archivo${ARCHIVOS.length - cargados === 1 ? '' : 's'} requerido${ARCHIVOS.length - cargados === 1 ? '' : 's'}`,
-    !cortesValidos && 'cortes del semáforo válidos',
+    !flotaValida && `una flota de 1 a ${MAXIMO_POR_TIPO} unidades por tipo`,
+    !archivosValidos && 'archivos sin errores',
   ].filter(Boolean) as string[];
 
   const cargar = async (tipo: TipoArchivo, archivo: File) => {
-    const resultado = await leerArchivo(tipo, archivo);
-    setArchivos((previos) => ({ ...previos, [tipo]: resultado }));
+    const mes = mesDeArchivo(archivo.name, fecha ? fecha.slice(0, 7).replace('-', '') : null);
+    if (!mes) {
+      setError(`Elige primero la fecha de inicio: "${archivo.name}" no indica su mes en el nombre.`);
+      return;
+    }
+    setError(null);
+    setSubiendo(tipo);
+    try {
+      const resultado = await subirArchivo(tipo, archivo, mes);
+      setArchivos((previos) => ({ ...previos, [tipo]: resultado }));
+    } catch (e) {
+      setError(mensajeDeError(e, `No se pudo subir ${archivo.name}`));
+    } finally {
+      setSubiendo(null);
+    }
   };
 
-  const ejecutar = () => {
-    if (!listo || !inicio) return;
-    onEjecutar({
-      escenario,
-      inicio,
-      archivos: archivos as Record<TipoArchivo, ArchivoCargado>,
-      corteVerde: verde / 100,
-      corteRojo: rojo / 100,
-    });
+  const ejecutar = async () => {
+    if (!listo || !fecha) return;
+    setEnviando(true);
+    setError(null);
+    try {
+      const ejecucion = await crearEIniciar({
+        tipoEscenario: escenario,
+        fechaInicio: fecha,
+        dias: escenario === 'SIMULACION_PERIODO' ? DIAS_PERIODO : undefined,
+        flota,
+      });
+      onAbrir(ejecucion);
+    } catch (e) {
+      setError(mensajeDeError(e, 'No se pudo crear la simulación'));
+      setEnviando(false);
+    }
   };
+
+  const cambiarFlota = (clave: keyof ComposicionFlotaApi, valor: string) =>
+    setFlota((previa) => ({ ...previa, [clave]: Math.max(0, Math.round(Number(valor)) || 0) }));
 
   const resumenArchivo = (tipo: TipoArchivo) => {
     const a = archivos[tipo];
-    return a && a.registros > 0 ? `${a.registros} · ${a.nombre}` : undefined;
+    return a ? `${a.registros} · ${a.nombre}` : 'datos del servidor';
   };
 
   return (
@@ -174,6 +243,8 @@ export const ConfiguracionEscenario: React.FC<ConfiguracionEscenarioProps> = ({ 
       <div className="flex-1 min-h-0 overflow-y-auto">
         <div className="flex gap-[24px] items-start p-[24px] min-w-[1100px]">
           <div className="flex-1 min-w-0 flex flex-col gap-[12px]">
+            <ListaEjecuciones onAbrir={onAbrir} />
+
             <Seccion numero="01" titulo="Escenario" resumen="">
               <div className="grid grid-cols-2 gap-[12px]" role="radiogroup" aria-label="Escenario">
                 {ESCENARIOS.map((opcion) => {
@@ -197,83 +268,61 @@ export const ConfiguracionEscenario: React.FC<ConfiguracionEscenarioProps> = ({ 
               </div>
             </Seccion>
 
-            <Seccion numero="02" titulo="Periodo" resumen={inicioValido ? formatearFechaLarga(inicio, false) : 'Sin definir'}>
-              <Etiqueta htmlFor="inicio-fecha">Fecha y hora de inicio</Etiqueta>
-              <div className="flex gap-[10px]">
-                <input
-                  id="inicio-fecha"
-                  type="date"
-                  value={fecha}
-                  onChange={(e) => setFecha(e.target.value)}
-                  className="w-[180px] h-[32px] px-[10px] border border-[#CBD5E1] rounded-[2px] font-mono text-[12px] text-[#0F172A] outline-none focus:border-[#1E40AF]"
-                />
-                <input
-                  type="time"
-                  aria-label="Hora de inicio"
-                  value={hora}
-                  onChange={(e) => setHora(e.target.value)}
-                  className="w-[110px] h-[32px] px-[10px] border border-[#CBD5E1] rounded-[2px] font-mono text-[12px] text-[#0F172A] outline-none focus:border-[#1E40AF]"
-                />
-              </div>
+            <Seccion numero="02" titulo="Periodo" resumen={inicioValido ? formatearFechaLarga(inicio, false) : 'Sin definir'} resumenPendiente={!inicioValido}>
+              <Etiqueta htmlFor="inicio-fecha">Fecha de inicio (la simulación arranca a las 00:00)</Etiqueta>
+              <input
+                id="inicio-fecha"
+                type="date"
+                value={fecha}
+                onChange={(e) => setFecha(e.target.value)}
+                className="w-[180px] h-[32px] px-[10px] border border-[#CBD5E1] rounded-[2px] font-mono text-[12px] text-[#0F172A] outline-none focus:border-[#1E40AF]"
+              />
             </Seccion>
 
-            <Seccion numero="03" titulo="Datos de la simulación" resumen={`${cargados}/3 archivos cargados`} resumenPendiente={cargados < 3}>
-              {ARCHIVOS.map(({ tipo, etiqueta, acepta }) => (
-                <RanuraArchivo key={tipo} tipo={tipo} etiqueta={etiqueta} acepta={acepta} archivo={archivos[tipo]} onCargar={(a) => cargar(tipo, a)} />
+            <Seccion numero="03" titulo="Datos de la simulación" resumen={`${Object.keys(archivos).length}/2 archivos nuevos`} resumenPendiente={Object.keys(archivos).length === 0}>
+              {ARCHIVOS.map(({ tipo, etiqueta }) => (
+                <RanuraArchivo key={tipo} tipo={tipo} etiqueta={etiqueta} archivo={archivos[tipo]} subiendo={subiendo === tipo} onCargar={(a) => cargar(tipo, a)} />
               ))}
+              <p className="border-l-[3px] border-[#94A3B8] pl-[9px] font-sans text-[12px] text-[#64748B]">
+                El servidor valida cada línea con el mismo lector del planificador y guarda el archivo para su mes. Las averías se incorporan en una entrega
+                posterior.
+              </p>
             </Seccion>
 
-            <Seccion numero="04" titulo="Rango de semáforo (holgura)" resumen={`${corteVerde || '—'} % / ${corteRojo || '—'} % · CF-02`}>
-              <span className="self-start bg-[#F8FAFC] border border-[#E2E8F0] rounded-[2px] px-[9px] py-[4px] font-sans text-[12px] text-[#334155]">
-                Valores de CF-02 · editable solo para esta corrida
-              </span>
-              <div className="flex gap-[84px] mt-[4px]">
-                {[
-                  { id: 'corte-verde', etiqueta: 'Corte verde / ámbar (holgura ≥)', valor: corteVerde, cambiar: setCorteVerde },
-                  { id: 'corte-rojo', etiqueta: 'Corte ámbar / rojo (holgura <)', valor: corteRojo, cambiar: setCorteRojo },
-                ].map((campo) => (
-                  <div key={campo.id} className="flex flex-col gap-[8px]">
-                    <Etiqueta htmlFor={campo.id}>{campo.etiqueta}</Etiqueta>
-                    <div className="w-[120px] h-[32px] px-[10px] border border-[#CBD5E1] rounded-[2px] flex items-center gap-[6px] focus-within:border-[#1E40AF]">
-                      <input
-                        id={campo.id}
-                        type="number"
-                        min={1}
-                        max={99}
-                        value={campo.valor}
-                        onChange={(e) => campo.cambiar(e.target.value)}
-                        className="w-full min-w-0 bg-transparent outline-none font-mono text-[12px] text-[#0F172A] [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none"
-                      />
-                      <span className="font-mono text-[12px] text-[#64748B]">%</span>
-                    </div>
+            <Seccion numero="04" titulo="Flota" resumen={`${totalFlota} unidades`}>
+              <div className="flex gap-[24px]">
+                {(
+                  [
+                    { clave: 'autos', etiqueta: 'Autos' },
+                    { clave: 'motos', etiqueta: 'Motos' },
+                    { clave: 'bicicletas', etiqueta: 'Bicicletas' },
+                  ] as const
+                ).map(({ clave, etiqueta }) => (
+                  <div key={clave} className="flex flex-col gap-[8px]">
+                    <Etiqueta htmlFor={`flota-${clave}`}>{etiqueta}</Etiqueta>
+                    <input
+                      id={`flota-${clave}`}
+                      type="number"
+                      min={0}
+                      max={MAXIMO_POR_TIPO}
+                      value={flota[clave]}
+                      onChange={(e) => cambiarFlota(clave, e.target.value)}
+                      className="w-[100px] h-[32px] px-[10px] border border-[#CBD5E1] rounded-[2px] font-mono text-[12px] text-[#0F172A] outline-none focus:border-[#1E40AF]"
+                    />
                   </div>
                 ))}
               </div>
-              {cortesValidos ? (
-                <>
-                  <div className="flex h-[8px] mt-[8px] rounded-[1px] overflow-hidden" role="img" aria-label={`rojo bajo ${rojo} %, ámbar de ${rojo} a ${verde} %, verde sobre ${verde} %`}>
-                    <span className="bg-[#B91C1C]" style={{ width: `${rojo}%` }} />
-                    <span className="bg-[#B45309]" style={{ width: `${verde - rojo}%` }} />
-                    <span className="bg-[#15803D] flex-1" />
-                  </div>
-                  <div className="relative h-[16px] font-sans font-medium text-[12px]">
-                    <span className="absolute -translate-x-1/2 text-[#B91C1C]" style={{ left: `${rojo / 2}%` }}>
-                      &lt; {rojo} % rojo
-                    </span>
-                    <span className="absolute -translate-x-1/2 text-[#B45309]" style={{ left: `${(rojo + verde) / 2}%` }}>
-                      {rojo}–{verde} % ámbar
-                    </span>
-                    <span className="absolute -translate-x-1/2 text-[#15803D]" style={{ left: `${(verde + 100) / 2}%` }}>
-                      &gt; {verde} % verde
-                    </span>
-                  </div>
-                </>
-              ) : (
-                <p className="font-sans text-[12px] text-[#B91C1C] mt-[6px]">El corte rojo debe ser menor que el corte verde, y ambos estar entre 1 % y 99 %.</p>
-              )}
+            </Seccion>
+
+            <Seccion numero="05" titulo="Rango de semáforo (holgura)" resumen={`${CORTE_HOLGURA.ambar * 100} % / ${CORTE_HOLGURA.rojo * 100} % · CF-02`}>
+              <div className="flex h-[8px] mt-[4px] rounded-[1px] overflow-hidden" role="img" aria-label="Cortes del semáforo de holgura">
+                <span className="bg-[#B91C1C]" style={{ width: `${CORTE_HOLGURA.rojo * 100}%` }} />
+                <span className="bg-[#B45309]" style={{ width: `${(CORTE_HOLGURA.ambar - CORTE_HOLGURA.rojo) * 100}%` }} />
+                <span className="bg-[#15803D] flex-1" />
+              </div>
               <p className="mt-[6px] border-l-[3px] border-[#94A3B8] pl-[9px] font-sans text-[12px] text-[#334155]">
-                Estos cortes se aplican solo a esta corrida y quedan registrados en «Parámetros de la corrida» del informe, para que la comparación entre
-                corridas sea auditable. Si no se modifican, se usan los valores vigentes en CF-02.
+                Se aplican los cortes vigentes de CF-02 (rojo bajo {CORTE_HOLGURA.rojo * 100} % de holgura, ámbar hasta {CORTE_HOLGURA.ambar * 100} %). Su edición se
+                incorpora con la configuración de la operación.
               </p>
             </Seccion>
           </div>
@@ -281,20 +330,21 @@ export const ConfiguracionEscenario: React.FC<ConfiguracionEscenarioProps> = ({ 
           <aside className="w-[360px] shrink-0 sticky top-0 bg-white border border-[#E2E8F0] rounded-[4px]">
             <h2 className="h-[48px] px-[15px] flex items-center border-b border-[#E2E8F0] font-sans font-semibold text-[14px] text-[#0F172A]">Resumen de la corrida</h2>
             <div className="px-[15px] pt-[8px] pb-[16px] flex flex-col">
-              <FilaResumen etiqueta="Escenario" valor={ESCENARIOS.find((e) => e.valor === escenario)!.resumen} />
-              <FilaResumen etiqueta="Inicio" valor={inicioValido ? formatearFechaNumerica(inicio) : undefined} />
+              <FilaResumen etiqueta="Escenario" valor={ESCENARIOS.find((e) => e.valor === escenario)!.titulo} />
+              <FilaResumen etiqueta="Inicio" valor={inicioValido ? formatearFechaLarga(inicio, false) : undefined} />
               <FilaResumen etiqueta="Pedidos" valor={resumenArchivo('pedidos')} />
               <FilaResumen etiqueta="Bloqueos" valor={resumenArchivo('bloqueos')} />
-              <FilaResumen etiqueta="Averías" valor={resumenArchivo('averias')} />
+              <FilaResumen etiqueta="Flota" valor={`${flota.autos} A · ${flota.motos} M · ${flota.bicicletas} B`} />
               <button
                 type="button"
                 onClick={ejecutar}
                 disabled={!listo}
                 className="mt-[24px] h-[44px] rounded-[2px] bg-[#1E40AF] hover:bg-[#1E3A8A] disabled:bg-[#94A3B8] disabled:cursor-not-allowed text-white font-sans font-semibold text-[14px] transition"
               >
-                Ejecutar simulación
+                {enviando ? 'Creando simulación…' : 'Ejecutar simulación'}
               </button>
-              {!listo && (
+              {error && <p className="mt-[10px] border-l-[3px] border-[#B91C1C] pl-[9px] font-sans text-[12px] text-[#B91C1C]">{error}</p>}
+              {!listo && !enviando && faltantes.length > 0 && (
                 <p className="mt-[10px] border-l-[3px] border-[#94A3B8] pl-[9px] font-sans text-[12px] text-[#64748B]">
                   Define {faltantes.join(', ').replace(/, ([^,]*)$/, ' y $1')} para continuar.
                 </p>

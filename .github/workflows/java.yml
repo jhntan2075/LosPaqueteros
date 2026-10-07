@@ -1,0 +1,59 @@
+# CI de los modulos Java. Un cambio en el nucleo (o en el POM padre) construye nucleo + api +
+# experimentacion; un cambio solo en api o en experimentacion construye ese modulo con el nucleo.
+name: java
+
+on:
+  push:
+    branches: ["feature/**", "hotfix/**"]
+    paths:
+      - "pom.xml"
+      - ".mvn/**"
+      - "paqtracker-planificador-nucleo/**"
+      - "paqtracker-api/**"
+      - "paqtracker-experimentacion/**"
+      - ".github/workflows/java.yml"
+  pull_request:
+    branches: [develop, main]
+    paths:
+      - "pom.xml"
+      - ".mvn/**"
+      - "paqtracker-planificador-nucleo/**"
+      - "paqtracker-api/**"
+      - "paqtracker-experimentacion/**"
+      - ".github/workflows/java.yml"
+
+jobs:
+  construir:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: cambios
+        with:
+          filters: |
+            nucleo:
+              - "pom.xml"
+              - ".mvn/**"
+              - "paqtracker-planificador-nucleo/**"
+            api:
+              - "paqtracker-api/**"
+            experimentacion:
+              - "paqtracker-experimentacion/**"
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+      - name: Elegir modulos
+        id: modulos
+        run: |
+          if [ "${{ steps.cambios.outputs.nucleo }}" = "true" ]; then
+            echo "lista=paqtracker-planificador-nucleo,paqtracker-api,paqtracker-experimentacion" >> "$GITHUB_OUTPUT"
+          else
+            lista=""
+            [ "${{ steps.cambios.outputs.api }}" = "true" ] && lista="paqtracker-api"
+            [ "${{ steps.cambios.outputs.experimentacion }}" = "true" ] && lista="${lista:+$lista,}paqtracker-experimentacion"
+            echo "lista=${lista:-paqtracker-planificador-nucleo}" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Pruebas y empaquetado
+        run: ./mvnw -B -ntp -pl "${{ steps.modulos.outputs.lista }}" -am verify

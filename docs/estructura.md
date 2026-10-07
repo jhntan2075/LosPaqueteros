@@ -1,62 +1,62 @@
-# Estructura del planificador
+# Estructura del monorepo
 
-El repositorio aloja dos algoritmos independientes. Cada uno tiene su propio
-árbol de capas y ninguno depende del otro.
-
-## Algoritmo Genético (GA) — `pe.pucp.paqtracker`
-
-Diagrama de dependencias entre capas (una capa solo depende de las que están
-por debajo):
+## Módulos y dependencias
 
 ```
-servicio        → planificador, planificador.comun, repositorio, modelo, util
-repositorio     → modelo, util
-planificador    → planificador.comun, modelo, util
-planificador.comun → modelo, util
-util            → modelo
-modelo          → (sin dependencias internas)
+paqtracker-api              ─┐
+                             ├─→ paqtracker-planificador-nucleo
+paqtracker-experimentacion  ─┘
+
+paqtracker-web  ──HTTP /api, STOMP /ws──→  paqtracker-api
 ```
 
-El servicio orquesta; el planificador decide; los bloques comunes son la
-maquinaria compartida; el repositorio lee datos; util calcula distancias y
-tiempos; el modelo son las entidades. Ninguna capa inferior conoce a una
-superior.
+Prohibido: `nucleo → *`, `api → experimentacion`. `paqtracker-experimentacion` no se
+despliega.
 
-## Algoritmo IACO — `pe.pucp.paqtracker.bancopruebasiaco`
+## Núcleo — `paqtracker-planificador-nucleo` (`pe.pucp.paqtracker`)
 
-```
-app             → servicio, datos, modelo
-datos           → modelo
-servicio        → modelo
-modelo          → (sin dependencias internas)
-```
-
-`app` es el banco de pruebas por línea de comandos; `datos` localiza y lee los
-archivos de entrada; `servicio` contiene la colonia de hormigas
-(`PlanificadorIACO`, `MemoriaFeromonas`, `BusquedaLocal`, `EvaluadorRuta`), el
-simulador y las métricas; `modelo` son las entidades.
-
-## Frontera entre ambos
+Una capa solo depende de las que están por debajo:
 
 ```
-pe.pucp.paqtracker                  ✗→  pe.pucp.paqtracker.bancopruebasiaco
-pe.pucp.paqtracker.bancopruebasiaco  ✗→  pe.pucp.paqtracker
+simulacion          → planificador, planificador.comun, modelo, util
+lectura             → modelo, util
+planificador        → planificador.comun, modelo, util
+planificador.comun  → modelo, util
+modelo ↔ util       (mismo módulo: EscenarioOperativo usa Malla y util usa el modelo)
 ```
 
-No hay ni debe haber imports cruzados. Los dos algoritmos definen clases
-homónimas con contratos incompatibles (`Ruta`, `Almacen`, `Pedido`,
-`ConfiguracionDominio`), de modo que un import cruzado sería un error de
-compilación o, peor, una confusión silenciosa de tipos.
+`simulacion` orquesta el reloj, el despacho y la recarga; `planificador` decide;
+`planificador.comun` es la maquinaria compartida por GA e IACO; `lectura` lee los
+archivos de entrada; `util` calcula distancias y tiempos; `modelo` es el contrato
+común con la API.
 
-Lo único que comparten es el dataset de `datos/` y los scripts de `scripts/`.
+## API — `paqtracker-api` (`pe.pucp.paqtracker`)
 
-La versión del IACO que se compara con el GA en igualdad de condiciones no está
-en `iaco`: es `planificador.PlanificadorIACO` (con `OperadoresColonia` y
-`MemoriaFeromonas`), que vive en el árbol del GA y respeta sus capas. Ver
-[`comparacion_ga_iaco.md`](comparacion_ga_iaco.md).
+```
+comun/                  configuracion, excepcion, archivos, salud
+modulos/<modulo>/
+  presentacion/   →  aplicacion/   →  dominio/   ←  infraestructura/
+  (controladores)    (casouso, servicio,  (puertos)    (JPA, adaptadores)
+                      dto, mapeador)
+```
+
+Módulos: `pedidos`, `planificacion`, `ejecucion`, `difusion`, `configuracion`. Solo
+`planificacion` importa `pe.pucp.paqtracker.planificador`; los demás usan `modelo` y
+se comunican entre sí únicamente por `CasoUso*` o por el servicio fachada del módulo.
+
+## Experimentación — `paqtracker-experimentacion`
+
+```
+experimentacion   → simulacion, lectura, planificador, modelo, util (del núcleo)
+bancopruebasiaco  → (autónomo: app → servicio, datos → modelo)
+```
+
+`bancopruebasiaco` y el núcleo definen clases homónimas con contratos incompatibles
+(`Ruta`, `Almacen`, `Pedido`, `ConfiguracionDominio`), así que no hay ni debe haber
+imports cruzados entre ellos.
 
 ## Regla al añadir código
 
-- Código del GA: bajo `pe.pucp.paqtracker`, fuera de `iaco`.
-- Código del IACO: bajo `pe.pucp.paqtracker.bancopruebasiaco`.
-- Nada que importe de un lado al otro.
+- Lógica del planificador o de la simulación reutilizable: núcleo, en el paquete de la capa.
+- Casos de uso, persistencia y difusión: `paqtracker-api`, en el módulo y la capa que corresponda.
+- Corridas por lotes y análisis: `paqtracker-experimentacion`.

@@ -1,8 +1,8 @@
 import type { Coordenada } from './domain';
 import type { IdAlmacen, PlazoHoras, TipoUnidad } from '../config/dominio';
 
-// Modelos de vista del módulo Pedidos (PE-01, PE-02). Son la forma en que la UI
-// consume los datos; el adaptador de paqtracker-api deberá producir estos mismos tipos.
+// Modelos de vista del módulo Pedidos (PE-01, PE-02). Son la forma en que la UI consume los datos;
+// services/servicioPedidos los produce a partir de paqtracker-api.
 
 /** Sub-vistas del módulo: PE-02 cola, PE-01 registro y su confirmación. */
 export type VistaPedidos = 'cola' | 'registrar' | 'registrado';
@@ -21,8 +21,9 @@ export interface PedidoEnCola {
   codigo: string; // p. ej. "#1088"
   cliente: string;
   cantidad: number;
-  plazoHoras: PlazoHoras;
-  horaLimite: string; // "14:37" o "02:40 · D2"
+  /** Plazo en horas; los archivos de ventas pueden traer plazos fuera del catálogo de la UI. */
+  plazoHoras: number;
+  horaLimite: string; // "14:37" o "02:40 +1d"
   eta: string | null;
   holgura: string;
   nivelHolgura: NivelHolgura;
@@ -38,20 +39,24 @@ export interface BorradorPedido {
 }
 
 export interface ResultadoReplanificacion {
-  segundos: number;
-  rutasAfectadas: number;
-  pedidosEnRiesgoNuevos: number;
+  /** Verdadero si el registro disparó una planificación inmediata (CU-12). */
+  replanifico: boolean;
+  /** Ta de esa planificación, en milisegundos. */
+  milisegundos: number;
+  unidadesDespachadas: number;
 }
 
 export interface PedidoRegistrado {
   codigo: string;
   borrador: BorradorPedido;
-  almacenOrigen: IdAlmacen;
+  /** Almacén del que sale la unidad asignada; null si el pedido quedó en cola sin unidad. */
+  almacenOrigen: IdAlmacen | null;
   horaLimite: Date;
-  vehiculo: VehiculoAsignado;
-  /** Nodo donde está la unidad al momento del registro, sobre su recorrido hacia el destino. */
-  posicionVehiculo: Coordenada;
-  eta: Date;
+  /** Unidad asignada; null si no había una libre y el pedido espera el siguiente ciclo. */
+  vehiculo: VehiculoAsignado | null;
+  /** Nodo donde está la unidad al momento del registro. */
+  posicionVehiculo: Coordenada | null;
+  eta: Date | null;
   holguraMinutos: number;
   nivelHolgura: NivelHolgura;
   replanificacion: ResultadoReplanificacion;

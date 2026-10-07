@@ -47,7 +47,7 @@ interface RailKpisProps {
 
 export const RailKpis: React.FC<RailKpisProps> = ({ resumen, riesgo, flota, onVerFlota, onVerIncidencias, notaSaturacion }) => {
   const quiebre = resumen.saturacion >= 1;
-  const porcentaje = ((resumen.entregados / resumen.total) * 100).toFixed(1).replace('.', ',');
+  const porcentaje = (resumen.total === 0 ? 0 : (resumen.entregados / resumen.total) * 100).toFixed(1).replace('.', ',');
   const enRutaDe = (tipo: string) => flota.porTipo.find((t) => t.tipo === tipo)?.enRuta ?? 0;
   return (
     <div className="h-[96px] bg-white border-b border-[#E2E8F0] px-[16px] py-[8px] flex gap-[8px] shrink-0">

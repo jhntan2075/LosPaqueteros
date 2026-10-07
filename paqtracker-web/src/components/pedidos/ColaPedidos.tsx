@@ -1,7 +1,7 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { PLAZOS_HORAS, UNIDADES, esPlazoRegular, type PlazoHoras, type TipoUnidad } from '../../config/dominio';
 import { capitalizar, formatearMiles } from '../../lib/formato';
-import { obtenerColaPedidos } from '../../mocks/pedidos';
+import { useColaPedidos } from '../../hooks/usePedidos';
 import type { EstadoPedidoCola, PedidoEnCola } from '../../types/pedidos';
 import { COLOR_HOLGURA } from './estilos';
 import { PuntoHolgura } from './iconos';
@@ -27,7 +27,7 @@ interface Filtros {
 
 const SIN_FILTROS: Filtros = { estado: TODOS, plazo: TODOS, vehiculo: TODOS };
 
-const etiquetaPlazo =(plazo: PlazoHoras) => `${esPlazoRegular(plazo) ? 'Regular' : 'Priorizado'} ${plazo} h`;
+const etiquetaPlazo = (plazo: number) => `${esPlazoRegular(plazo) ? 'Regular' : 'Priorizado'} ${plazo} h`;
 
 const etiquetaVehiculo = (pedido: PedidoEnCola) =>
   pedido.vehiculo ? `${capitalizar(UNIDADES[pedido.vehiculo.tipo].nombre)} ${pedido.vehiculo.codigo}` : '—';
@@ -93,21 +93,8 @@ function exportarCsv(pedidos: PedidoEnCola[]) {
 }
 
 export const ColaPedidos: React.FC<{ onRegistrar: () => void }> = ({ onRegistrar }) => {
-  const [pedidos, setPedidos] = useState<PedidoEnCola[]>([]);
-  const [total, setTotal] = useState(0);
+  const { pedidos, total, cargando, error } = useColaPedidos();
   const [filtros, setFiltros] = useState<Filtros>(SIN_FILTROS);
-
-  useEffect(() => {
-    let vigente = true;
-    obtenerColaPedidos().then((respuesta) => {
-      if (!vigente) return;
-      setPedidos(respuesta.pedidos);
-      setTotal(respuesta.total);
-    });
-    return () => {
-      vigente = false;
-    };
-  }, []);
 
   const visibles = useMemo(
     () =>
@@ -219,8 +206,11 @@ export const ColaPedidos: React.FC<{ onRegistrar: () => void }> = ({ onRegistrar
           </div>
         ))}
 
-        {visibles.length === 0 && (
-          <p className="px-[20px] py-[14px] text-[12px] text-[#64748B]">Ningún pedido coincide con los filtros.</p>
+        {error && <p className="px-[20px] py-[14px] text-[12px] text-[#B91C1C]">{error}</p>}
+        {!error && visibles.length === 0 && (
+          <p className="px-[20px] py-[14px] text-[12px] text-[#64748B]">
+            {cargando ? 'Cargando pedidos…' : pedidos.length === 0 ? 'Aún no hay pedidos registrados.' : 'Ningún pedido coincide con los filtros.'}
+          </p>
         )}
       </div>
 

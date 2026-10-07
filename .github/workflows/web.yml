@@ -1,0 +1,31 @@
+# CI del front web: lint + build. No se dispara por cambios en los modulos Java.
+name: web
+
+on:
+  push:
+    branches: ["feature/**", "hotfix/**"]
+    paths:
+      - "paqtracker-web/**"
+      - ".github/workflows/web.yml"
+  pull_request:
+    branches: [develop, main]
+    paths:
+      - "paqtracker-web/**"
+      - ".github/workflows/web.yml"
+
+jobs:
+  construir:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: paqtracker-web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: paqtracker-web/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run build

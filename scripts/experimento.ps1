@@ -15,11 +15,11 @@ $ErrorActionPreference = "Stop"
 $raiz = Split-Path -Parent $PSScriptRoot
 Push-Location $raiz
 try {
-    if (-not (Test-Path "out\pe\pucp\paqtracker\experimento\CorredorExperimento.class")) {
+    if (-not (Test-Path "paqtracker-experimentacion\target\classes\pe\pucp\paqtracker\experimentacion\CorredorExperimento.class")) {
         & (Join-Path $PSScriptRoot "compilar.ps1")
     }
     [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-    java -Xmx4g -cp out pe.pucp.paqtracker.experimento.CorredorExperimento @args
+    java -Xmx4g -cp "paqtracker-experimentacion\target\classes;paqtracker-planificador-nucleo\target\classes" pe.pucp.paqtracker.experimentacion.CorredorExperimento @args
 }
 finally {
     Pop-Location

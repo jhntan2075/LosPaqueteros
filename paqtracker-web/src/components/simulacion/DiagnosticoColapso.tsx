@@ -1,9 +1,20 @@
 import React from 'react';
-import { DIAGNOSTICO_COLAPSO } from '../../mocks/simulacion';
+import { ALMACENES } from '../../config/dominio';
+import { useDatosOperacion } from '../../hooks/useDatosOperacion';
+import { estadoFlota, pedidosEnRiesgo } from '../../lib/operacion';
+import type { EventoBitacora } from '../../types/operacion';
+import type { NivelHolgura } from '../../types/pedidos';
 import { COLOR_HOLGURA } from '../pedidos/estilos';
 
-// Panel derecho "Diagnóstico del colapso" (Figma "Corrida de Simulación · Hasta el colapso"),
-// implementado sobre la captura del frame.
+// Panel derecho "Diagnóstico del colapso" (Figma "Corrida de Simulación · Hasta el colapso"). Se arma
+// con el estado de la ejecución en el instante en que el servidor la detuvo por colapso.
+
+/** Eventos previos que se muestran como deterioro. */
+const EVENTOS_PREVIOS = 4;
+/** Ocupación de la flota desde la que se atribuye el colapso a falta de unidades. */
+const OCUPACION_SATURADA = 0.9;
+
+const NIVEL_POR_COLOR: Record<EventoBitacora['color'], NivelHolgura> = { rojo: 'ROJO', ambar: 'AMBAR', azul: 'VERDE', gris: 'CERRADO' };
 
 const Titulo: React.FC<{ numero: string; children: React.ReactNode; derecha?: string }> = ({ numero, children, derecha }) => (
   <div className="flex items-center gap-[8px]">
@@ -29,7 +40,17 @@ interface DiagnosticoColapsoProps {
 }
 
 export const DiagnosticoColapso: React.FC<DiagnosticoColapsoProps> = ({ diaColapso, onCerrar, onEstadoCompleto, onVerInforme }) => {
-  const d = DIAGNOSTICO_COLAPSO;
+  const datos = useDatosOperacion();
+  const previos = datos.eventos.filter((e) => e.categoria === 'INCIDENCIA' || e.categoria === 'PLANIFICADOR').slice(0, EVENTOS_PREVIOS);
+  const critico = pedidosEnRiesgo(datos)[0];
+  const flota = estadoFlota(datos);
+  const ocupacion = flota.total === 0 ? 0 : flota.enRuta / flota.total;
+  const causa =
+    ocupacion >= OCUPACION_SATURADA
+      ? { titulo: 'Capacidad de flota agotada', detalle: `${flota.enRuta}/${flota.total} en ruta` }
+      : { titulo: 'Plazo inalcanzable con la flota libre', detalle: `${flota.disponibles} unidades libres` };
+  const intermedios = datos.almacenes.filter((a) => a.capacidad !== null && a.stock !== null);
+
   return (
     <aside
       aria-label="Diagnóstico del colapso"
@@ -47,58 +68,63 @@ export const DiagnosticoColapso: React.FC<DiagnosticoColapsoProps> = ({ diaColap
 
       <div className="flex-1 min-h-0 overflow-y-auto">
         <section className="px-[12px] pt-[10px] pb-[10px] flex flex-col gap-[7px] border-b border-[#E2E8F0]">
-          <Titulo numero="01" derecha="últimas 8 h">Antes — deterioro previo</Titulo>
-          {d.antes.map((hito) => (
-            <div key={hito.hora} className="flex gap-[10px] text-[12px]">
-              <time className="w-[34px] font-mono text-[#94A3B8] shrink-0">{hito.hora}</time>
-              <span className={`font-sans ${COLOR_HOLGURA[hito.nivel]}`}>{hito.texto}</span>
+          <Titulo numero="01" derecha="últimos eventos">Antes — deterioro previo</Titulo>
+          {previos.length === 0 && <p className="font-sans text-[12px] text-[#94A3B8]">Sin eventos registrados en esta vista.</p>}
+          {previos.map((evento) => (
+            <div key={evento.id} className="flex gap-[10px] text-[12px]">
+              <time className="w-[52px] font-mono text-[#94A3B8] shrink-0">{evento.hora}</time>
+              <span className={`font-sans ${COLOR_HOLGURA[NIVEL_POR_COLOR[evento.color]]}`}>{evento.detalle}</span>
             </div>
           ))}
         </section>
 
         <section className="px-[12px] pt-[10px] pb-[10px] flex flex-col gap-[8px] border-b border-[#E2E8F0]">
           <Titulo numero="02" derecha={diaColapso}>Instante — pedido que rompe el plazo</Titulo>
-          <div className="border border-[#B91C1C] rounded-[4px] px-[12px] py-[10px] flex flex-col gap-[6px]">
-            <div className="flex items-center">
-              <span className="font-mono font-semibold text-[14px] text-[#0F172A]">Pedido {d.pedido.codigo}</span>
-              <span className="ml-auto border border-[#B91C1C] rounded-[4px] px-[6px] py-[1px] font-sans font-medium text-[12px] text-[#B91C1C]">{d.pedido.plazo}</span>
+          {critico ? (
+            <div className="border border-[#B91C1C] rounded-[4px] px-[12px] py-[10px] flex flex-col gap-[6px]">
+              <div className="flex items-center">
+                <span className="font-mono font-semibold text-[14px] text-[#0F172A]">Pedido {critico.codigo}</span>
+                <span className="ml-auto border border-[#B91C1C] rounded-[4px] px-[6px] py-[1px] font-sans font-medium text-[12px] text-[#B91C1C]">
+                  {critico.plazoHoras === 36 ? 'Regular' : 'Priorizado'} {critico.plazoHoras} h
+                </span>
+              </div>
+              <Dato etiqueta="Destino / Cantidad" valor={`(${critico.destino.x},${critico.destino.y}) · ${critico.cantidad} u`} />
+              <Dato etiqueta="Registrado / Límite" valor={`${critico.registrado} → ${critico.horaLimite}`} />
+              <Dato etiqueta="Mejor ETA factible" valor={critico.eta} />
+              <Dato etiqueta="Holgura" valor={critico.holgura} color="text-[#B91C1C]" />
             </div>
-            <Dato etiqueta="Cliente / Destino" valor={`${d.pedido.cliente} · ${d.pedido.destino}`} />
-            <Dato etiqueta="Registrado / Límite" valor={`${d.pedido.registrado} → ${d.pedido.limite}`} />
-            <Dato etiqueta="Mejor ETA factible" valor={d.pedido.mejorEta} />
-            <Dato etiqueta="Holgura" valor={d.pedido.holgura} color="text-[#B91C1C]" />
-          </div>
+          ) : (
+            <p className="font-sans text-[12px] text-[#64748B]">El pedido incumplido ya salió en una ruta que llega tarde.</p>
+          )}
         </section>
 
         <section className="px-[12px] pt-[10px] pb-[12px] flex flex-col gap-[8px]">
           <Titulo numero="03">Después — causa dominante</Titulo>
           <div className="bg-[#FEF2F2] border border-[#FECACA] rounded-[4px] px-[10px] py-[8px] flex items-center gap-[8px] text-[12px]">
             <span className="text-[#B91C1C] text-[10px]">▲</span>
-            <span className="font-sans font-semibold text-[#0F172A]">{d.causa.titulo}</span>
-            <span className="ml-auto font-mono text-[#B91C1C]">{d.causa.detalle}</span>
+            <span className="font-sans font-semibold text-[#0F172A]">{causa.titulo}</span>
+            <span className="ml-auto font-mono text-[#B91C1C]">{causa.detalle}</span>
           </div>
           <div className="flex items-center text-[12px] mt-[4px]">
             <span className="font-sans font-semibold text-[#0F172A]">Almacenes en el instante del quiebre</span>
-            <span className="ml-auto font-mono text-[#94A3B8]">recarga en {d.recarga}</span>
+            <span className="ml-auto font-mono text-[#94A3B8]">recarga a las 00:00</span>
           </div>
-          {d.almacenes.map((a) => {
-            const fraccion = a.stock / a.capacidad;
+          {intermedios.map((a) => {
+            const fraccion = (a.stock as number) / (a.capacidad as number);
             return (
-              <div key={a.nombre} className="flex flex-col gap-[4px]">
-                <span className="font-mono text-[12px] text-[#B91C1C] truncate">
-                  {a.nombre} · {a.stock}/{a.capacidad} u · {Math.round(fraccion * 100)} % · {a.nota}
+              <div key={a.id} className="flex flex-col gap-[4px]">
+                <span className={`font-mono text-[12px] truncate ${a.nivel === 'ROJO' ? 'text-[#B91C1C]' : 'text-[#0F172A]'}`}>
+                  {ALMACENES.find((x) => x.id === a.id)?.nombre} · {a.stock}/{a.capacidad} u · {Math.round(fraccion * 100)} %
                 </span>
                 <div className="h-[4px] bg-[#E2E8F0] rounded-full overflow-hidden">
-                  <div className="h-full bg-[#B91C1C]" style={{ width: `${fraccion * 100}%` }} />
+                  <div className={`h-full ${a.nivel === 'ROJO' ? 'bg-[#B91C1C]' : 'bg-[#1E40AF]'}`} style={{ width: `${fraccion * 100}%` }} />
                 </div>
               </div>
             );
           })}
-          {d.factores.map((f) => (
-            <p key={f} className="border-l-[3px] border-[#94A3B8] pl-[8px] font-sans text-[12px] text-[#64748B]">
-              {f}
-            </p>
-          ))}
+          <p className="border-l-[3px] border-[#94A3B8] pl-[8px] font-sans text-[12px] text-[#64748B]">
+            {datos.bloqueos.length} {datos.bloqueos.length === 1 ? 'tramo bloqueado vigente' : 'tramos bloqueados vigentes'} · {datos.resumen.enEspera} pedidos en espera
+          </p>
         </section>
       </div>
 

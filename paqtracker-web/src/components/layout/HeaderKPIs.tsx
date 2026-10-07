@@ -2,36 +2,34 @@ import React from 'react';
 import { RelojOperacion } from './RelojOperacion';
 
 export interface HeaderKPIsProps {
-  relojSimulado?: string;
-  pedidosEntregados?: number;
-  totalPedidos?: number;
-  pedidosEnRuta?: number;
-  pedidosEnEspera?: number;
-  pedidosEnRiesgoRojo?: number;
-  pedidosEnRiesgoAmbar?: number;
-  unidadesEnUso?: number;
-  totalUnidades?: number;
-  saturacion?: number;
+  pedidosEntregados: number;
+  totalPedidos: number;
+  pedidosEnRuta: number;
+  pedidosEnEspera: number;
+  pedidosEnRiesgoRojo: number;
+  pedidosEnRiesgoAmbar: number;
+  unidadesEnUso: number;
+  totalUnidades: number;
+  saturacion: number;
 }
 
 export const HeaderKPIs: React.FC<HeaderKPIsProps> = ({
-  relojSimulado = '25/08/2026 · 11:15:40',
-  pedidosEntregados = 412,
-  totalPedidos = 1305,
-  pedidosEnRuta = 87,
-  pedidosEnEspera = 806,
-  pedidosEnRiesgoRojo = 3,
-  pedidosEnRiesgoAmbar = 11,
-  unidadesEnUso = 34,
-  totalUnidades = 60,
-  saturacion = 0.82,
+  pedidosEntregados,
+  totalPedidos,
+  pedidosEnRuta,
+  pedidosEnEspera,
+  pedidosEnRiesgoRojo,
+  pedidosEnRiesgoAmbar,
+  unidadesEnUso,
+  totalUnidades,
+  saturacion,
 }) => {
-  const porcentajeEntregado = ((pedidosEntregados / totalPedidos) * 100).toFixed(1).replace('.', ',');
+  const porcentajeEntregado = (totalPedidos === 0 ? 0 : (pedidosEntregados / totalPedidos) * 100).toFixed(1).replace('.', ',');
 
   return (
     <header className="h-[94px] bg-white border-b border-[#E2E8F0] px-4 py-2 flex items-center gap-2 overflow-x-auto select-none flex-shrink-0">
       {/* 1. Reloj de Operación */}
-      <RelojOperacion relojSimulado={relojSimulado} />
+      <RelojOperacion />
 
       {/* Separador vertical */}
       <div className="w-[1px] h-[78px] bg-[#E2E8F0] flex-shrink-0 mx-1"></div>

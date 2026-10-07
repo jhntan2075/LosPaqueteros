@@ -2,6 +2,78 @@
 
 Formato basado en Keep a Changelog; versionado semántico (MAJOR.MINOR.PATCH).
 
+## [Sin publicar]
+
+### Front conectado a la API (`paqtracker-web`)
+- Los mocks se reemplazan por datos en vivo:
+  - capa `services/` (cliente REST, cliente STOMP único con re-suscripción, adaptador de la
+    instantánea a los modelos de vista);
+  - hooks `useEstadoEjecucion`, `useRelojSimulado`, `useDatosOperacion`, `useColaPedidos`,
+    `useEjecuciones`, `useTrazabilidadPedido`.
+- Operación, Pedidos y la barra superior/inferior muestran la operación día a día. Simulación
+  crea o abre cualquier simulación del servidor (varios dispositivos ven la misma corrida),
+  sube archivos de pedidos y bloqueos validados por la API y permite configurar la flota.
+- Movimiento interpolado en el cliente sobre el camino real del tramo en curso; ruta
+  restante depurada; relojes simulado y real con tiempo transcurrido; diagnóstico del
+  colapso, informe y detalle de pedido con trazabilidad calculados con datos reales.
+- Se quitan los controles de velocidad (fuera del alcance de la entrega).
+- `docker-compose.yml`: el healthcheck de MySQL hace ping por TCP y la API se reinicia
+  si falla. Antes, con una base recién creada, la API arrancaba antes de tiempo y moría.
+
+### Cambiado
+- El repositorio pasa a ser un monorepo Maven (POM padre + Maven Wrapper 3.9.12):
+  `paqtracker-planificador-nucleo` (Java puro), `paqtracker-api` (Spring Boot 4.0.1,
+  esqueleto) y `paqtracker-experimentacion` (CLI, no se despliega). Los archivos se
+  movieron con `git mv` y conservan su historial.
+- Paquetes renombrados: `servicio` → `simulacion` (núcleo; `SimulacionDinamica` va a
+  experimentación), `repositorio` → `lectura`, `experimento` → `experimentacion`.
+- Las pruebas corren con Maven (`./mvnw test`); se retira el JUnit standalone de `lib/`.
+- `Dockerfile` movido a `paqtracker-api/` (imagen de la API) y `docker-compose.yml`
+  raíz con MySQL 8.0 + API. `.env.example` unificado en la raíz.
+- `paqtracker-infra/init-db/01-init.sql` ya no crea tablas: el esquema es de Flyway.
+
+- `ContadorEvaluaciones` deja de ser estático: cada simulación crea su contador y lo
+  pasa a `PlanificadorGA`/`PlanificadorIACO` (nuevos constructores) y a
+  `EvaluadorFitness`. Necesario para correr varias ejecuciones a la vez en la API.
+- `Orquestador.simular` es ahora un bucle sobre `SimulacionEnCurso`; los resultados
+  son idénticos a los anteriores (verificado en enero 2026, estrés con colapso e IACO).
+
+### Añadido
+- CI en `.github/workflows/` (`java.yml`, `web.yml`) con filtros por ruta.
+- `simulacion.SimulacionEnCurso` (`Orquestador.iniciar`): simulación que avanza paso a
+  paso con un reloj externo, admite pedidos registrados en vivo (`agregarPedido`) y
+  devuelve un `ResultadoPaso` con pedidos incorporados, entregas completadas, unidades
+  liberadas y despachadas, Ta, fitness y colapso.
+- API de operación (`paqtracker-api`), con tres escenarios concurrentes:
+  - día a día con reloj real, que arranca solo;
+  - simulación de periodo y simulación hasta el colapso, con reloj acelerado.
+
+  Cada ejecución tiene su motor con hilo propio. Difunde por STOMP (`/ws`,
+  `/topic/ejecuciones/{id}/estado|eventos`) cada Sc y planifica cada Sa con GA o IACO.
+  Incluye CU-01 (con replanificación inmediata, CU-12), CU-02 (validación línea por
+  línea), CU-04, CU-15, CU-16, CU-17, CU-25 y la consulta de configuración del dominio.
+  Persistencia en MySQL con Flyway (`V1__crear_tablas.sql`).
+- Lo que el visualizador necesita para el alcance sem08 (desde la API):
+  - **Rutas y movimiento:** camino real de cada tramo, que rodea los bloqueos
+    (`Malla.camino`), y ruta restante por unidad.
+  - **Relojes:** con tiempo transcurrido simulado y real.
+  - **Mapa y KPI:** bloqueos vigentes con su polilínea y eventos de inicio y fin;
+    semáforo de inventario; porcentaje de cumplimiento.
+  - **Pedidos:** detalle de pedido con trazabilidad.
+  - **Archivos:** carga de bloqueos y números de línea inválidos en las importaciones.
+- Flota configurable al crear una simulación (LE-019), con códigos de unidad por
+  ejecución y migración `V2__agregar_flota_ejecucion.sql`.
+- Despliegue en la VM (`paqtracker-infra/`):
+  - Nginx como proxy de la SPA, `/api` y `/ws`.
+  - Unidad systemd de la API.
+  - Script de base y usuario MySQL de permisos mínimos.
+  - Script de despliegue idempotente.
+- `CargadorPedidos.validar` y `ResultadoValidacion` (errores por línea para CU-02) y
+  `RangoFechas.de(LocalDate, LocalDate)`.
+- `modelo.Tramo` / `TipoTramo` y `CalculadoraTiempos.trazar`: tramos de cada ruta
+  despachada (viaje, servicio y retorno, con salida y llegada) para que el visualizador
+  interpole la posición de las unidades. `UnidadEnTransito` guarda origen, salida y tramos.
+
 ## [0.5.0] — 2026-09-18
 
 ### Añadido
