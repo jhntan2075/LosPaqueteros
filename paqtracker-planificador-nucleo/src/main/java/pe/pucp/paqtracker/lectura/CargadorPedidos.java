@@ -1,5 +1,6 @@
 package pe.pucp.paqtracker.lectura;
 
+import pe.pucp.paqtracker.modelo.ConfiguracionDominio;
 import pe.pucp.paqtracker.modelo.Nodo;
 import pe.pucp.paqtracker.modelo.Pedido;
 import pe.pucp.paqtracker.util.RangoFechas;
@@ -99,6 +100,54 @@ public final class CargadorPedidos {
             }
         }
         return pedidos;
+    }
+
+    /**
+     * Valida las lineas de un archivo de ventas sin cortar en la primera
+     * invalida, para informar al usuario todas las lineas a corregir (CU-02).
+     * Aplica el mismo formato que la carga; ignora lineas vacias y comentarios.
+     *
+     * @param lineas lineas del archivo, en orden
+     * @return registros validos y una descripcion por linea rechazada
+     */
+    public static ResultadoValidacion validar(List<String> lineas) {
+        int validos = 0;
+        List<String> errores = new ArrayList<>();
+        for (int i = 0; i < lineas.size(); i++) {
+            String linea = lineas.get(i).trim();
+            if (linea.isEmpty() || linea.startsWith("#")) {
+                continue;
+            }
+            try {
+                Pedido pedido = parsearLinea(linea, validos, Integer.MAX_VALUE, 0);
+                validarValores(pedido);
+                validos++;
+            } catch (IllegalArgumentException | ArrayIndexOutOfBoundsException excepcion) {
+                errores.add("Linea " + (i + 1) + ": " + excepcion.getMessage());
+            }
+        }
+        return new ResultadoValidacion(validos, errores);
+    }
+
+    /**
+     * Rechaza pedidos con valores fuera del dominio: destino fuera de la malla,
+     * cantidad o plazo no positivos.
+     *
+     * @param pedido pedido leido
+     * @throws IllegalArgumentException si algun valor esta fuera del dominio
+     */
+    private static void validarValores(Pedido pedido) {
+        Nodo destino = pedido.getDestino();
+        if (destino.getX() < 0 || destino.getX() > ConfiguracionDominio.MALLA_ANCHO
+                || destino.getY() < 0 || destino.getY() > ConfiguracionDominio.MALLA_ALTO) {
+            throw new IllegalArgumentException("destino fuera de la malla " + destino);
+        }
+        if (pedido.getCantidad() <= 0) {
+            throw new IllegalArgumentException("cantidad no positiva " + pedido.getCantidad());
+        }
+        if (pedido.getPlazo() <= 0) {
+            throw new IllegalArgumentException("plazo no positivo " + pedido.getPlazo());
+        }
     }
 
     private static List<Path> archivosDeVentas(String ruta, String mes) throws IOException {

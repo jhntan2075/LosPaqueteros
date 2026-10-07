@@ -1,5 +1,5 @@
-# Configuracion de la API de operacion. Todo lo que varia entre entornos llega por
-# variables de entorno (ver .env.example de la raiz); aqui solo hay valores por defecto locales.
+# Configuracion de la API de operacion. Todo lo que varia entre entornos llega por variables de
+# entorno (ver .env.example de la raiz); aqui solo hay valores por defecto locales.
 server:
   address: ${APP_HOST:127.0.0.1}
   port: ${APP_PORT:3000}
@@ -8,16 +8,44 @@ spring:
   application:
     name: paqtracker-api
   datasource:
-    url: jdbc:mysql://${DB_HOST:127.0.0.1}:${DB_PORT:3306}/${DB_NAME:paqtracker}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=America/Lima
+    url: jdbc:mysql://${DB_HOST:127.0.0.1}:${DB_PORT:3306}/${DB_NAME:paqtracker}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
     username: ${DB_USER:paq_user}
     password: ${DB_PASSWORD:}
   jpa:
     open-in-view: false
     hibernate:
       ddl-auto: validate
+    properties:
+      hibernate.jdbc.time_zone: UTC
   flyway:
     locations: classpath:db/migracion
   servlet:
     multipart:
       max-file-size: ${APP_MAX_ARCHIVO:20MB}
       max-request-size: ${APP_MAX_ARCHIVO:20MB}
+
+paqtracker:
+  datos:
+    ventas: ${APP_DATOS_VENTAS:datos/ventas.v20260909}
+    bloqueos: ${APP_DATOS_BLOQUEOS:datos/bloqueos.v20260909}
+  ejecucion:
+    zona-horaria: ${APP_ZONA_HORARIA:America/Lima}
+    # Sc: segundos reales entre dos difusiones del estado
+    sc-segundos: ${APP_SC_SEGUNDOS:1}
+    # Sa: minutos simulados entre dos planificaciones (LE-058)
+    sa-minutos: ${PLANIFICADOR_SA_MINUTOS:30}
+    # k = 180: 5 dias simulados en 40 minutos reales
+    factor-periodo: ${APP_FACTOR_PERIODO:180}
+    factor-colapso: ${APP_FACTOR_COLAPSO:180}
+    dias-periodo-max: ${APP_DIAS_PERIODO_MAX:7}
+    dias-colapso: ${APP_DIAS_COLAPSO:30}
+    max-pasos-por-tick: ${APP_MAX_PASOS_POR_TICK:4}
+    max-simultaneas: ${APP_MAX_SIMULACIONES:3}
+    dia-a-dia-activo: ${APP_DIA_A_DIA_ACTIVO:true}
+  planificador:
+    algoritmo: ${PLANIFICADOR_ALGORITMO:GA}
+    semilla: ${PLANIFICADOR_SEMILLA:1}
+  semaforo:
+    # Holgura restante como fraccion del plazo del pedido
+    fraccion-rojo: ${APP_SEMAFORO_ROJO:0.15}
+    fraccion-ambar: ${APP_SEMAFORO_AMBAR:0.40}

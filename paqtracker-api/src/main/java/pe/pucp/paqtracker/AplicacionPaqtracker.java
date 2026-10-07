@@ -2,6 +2,7 @@ package pe.pucp.paqtracker;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
 
 /**
  * Punto de entrada de la API de operacion de PaqTracker (monolito modular, DA-03).
@@ -9,6 +10,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
  * presentacion, aplicacion, dominio e infraestructura.
  */
 @SpringBootApplication
+@ConfigurationPropertiesScan
 public class AplicacionPaqtracker {
 
     /**

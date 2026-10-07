@@ -40,6 +40,11 @@ services:
       APP_HOST: 0.0.0.0
       DB_HOST: mysql
       DB_PORT: 3306
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      APP_DATOS_VENTAS: /app/datos/ventas.v20260909
+      APP_DATOS_BLOQUEOS: /app/datos/bloqueos.v20260909
     ports:
       - "${APP_PORT:-3000}:3000"
     networks:

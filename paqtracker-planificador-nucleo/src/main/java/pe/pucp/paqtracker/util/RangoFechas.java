@@ -26,6 +26,21 @@ public final class RangoFechas {
     }
 
     /**
+     * Arma el rango inclusivo entre dos fechas.
+     *
+     * @param inicio fecha inicial del rango
+     * @param fin    fecha final del rango
+     * @return rango de fechas
+     * @throws IllegalArgumentException si alguna fecha es nula o fin es anterior a inicio
+     */
+    public static RangoFechas de(LocalDate inicio, LocalDate fin) {
+        if (inicio == null || fin == null) {
+            throw new IllegalArgumentException("Las fechas del rango son obligatorias: " + inicio + ", " + fin);
+        }
+        return new RangoFechas(inicio, fin);
+    }
+
+    /**
      * Parsea dos fechas en formato dd-MM-yyyy y arma el rango inclusivo.
      *
      * @param inicio fecha inicial del rango, formato dd-MM-yyyy

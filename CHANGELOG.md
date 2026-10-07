@@ -28,6 +28,17 @@ Formato basado en Keep a Changelog; versionado semántico (MAJOR.MINOR.PATCH).
   paso con un reloj externo, admite pedidos registrados en vivo (`agregarPedido`) y
   devuelve un `ResultadoPaso` con pedidos incorporados, entregas completadas, unidades
   liberadas y despachadas, Ta, fitness y colapso.
+- API de operación (`paqtracker-api`), con tres escenarios concurrentes:
+  - día a día con reloj real, que arranca solo;
+  - simulación de periodo y simulación hasta el colapso, con reloj acelerado.
+
+  Cada ejecución tiene su motor con hilo propio. Difunde por STOMP (`/ws`,
+  `/topic/ejecuciones/{id}/estado|eventos`) cada Sc y planifica cada Sa con GA o IACO.
+  Incluye CU-01 (con replanificación inmediata, CU-12), CU-02 (validación línea por
+  línea), CU-04, CU-15, CU-16, CU-17, CU-25 y la consulta de configuración del dominio.
+  Persistencia en MySQL con Flyway (`V1__crear_tablas.sql`).
+- `CargadorPedidos.validar` y `ResultadoValidacion` (errores por línea para CU-02) y
+  `RangoFechas.de(LocalDate, LocalDate)`.
 - `modelo.Tramo` / `TipoTramo` y `CalculadoraTiempos.trazar`: tramos de cada ruta
   despachada (viaje, servicio y retorno, con salida y llegada) para que el visualizador
   interpole la posición de las unidades. `UnidadEnTransito` guarda origen, salida y tramos.

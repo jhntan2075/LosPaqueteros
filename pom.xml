@@ -20,6 +20,8 @@
 
     <properties>
         <maven.compiler.release>21</maven.compiler.release>
+        <!-- Nombres de parametros en el bytecode: Spring los usa para @PathVariable y @RequestParam. -->
+        <maven.compiler.parameters>true</maven.compiler.parameters>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <spring-boot.version>4.0.1</spring-boot.version>
