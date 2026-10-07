@@ -266,8 +266,7 @@ public final class BarridoCalibracion {
     private static ResultadoSimulacion simular(Opciones opciones, PesosFitness pesos,
                                                ParametrosGA parametros, String nombre,
                                                long semilla, List<Pedido> pedidos) throws IOException {
-        ContadorEvaluaciones.reiniciarTodo();
-        ContadorEvaluaciones.fijarPresupuestoPorCiclo(opciones.presupuesto);
+        ContadorEvaluaciones contador = new ContadorEvaluaciones(opciones.presupuesto);
 
         int horizonte = opciones.dias * MINUTOS_POR_DIA;
         List<Almacen> almacenes = ConfiguracionDominio.crearAlmacenes();
@@ -277,7 +276,7 @@ public final class BarridoCalibracion {
         Orquestador orquestador = new Orquestador(almacenes, flota, pedidos, malla, SA_MINUTOS,
                 ConfiguracionDominio.TIEMPO_SERVICIO_MINUTOS,
                 ConfiguracionDominio.PLAZO_MAXIMO_MINUTOS, 0, semilla,
-                unaSemilla -> new PlanificadorGA(unaSemilla, parametros, pesos));
+                unaSemilla -> new PlanificadorGA(unaSemilla, parametros, pesos, contador));
         return orquestador.simular(horizonte + MARGEN_CIERRE, false);
     }
 

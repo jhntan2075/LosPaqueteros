@@ -62,6 +62,7 @@ public final class PlanificadorGA implements AlgoritmoMetaheuristico {
     private final long semilla;
     private final ParametrosGA parametros;
     private final PesosFitness pesos;
+    private final ContadorEvaluaciones contador;
 
     /**
      * Crea el planificador con los parametros y pesos de produccion.
@@ -81,16 +82,31 @@ public final class PlanificadorGA implements AlgoritmoMetaheuristico {
      * @param pesos      pesos de la funcion objetivo
      */
     public PlanificadorGA(long semilla, ParametrosGA parametros, PesosFitness pesos) {
+        this(semilla, parametros, pesos, new ContadorEvaluaciones());
+    }
+
+    /**
+     * Crea el planificador con un contador de evaluaciones compartido por la
+     * simulacion, que puede imponer un presupuesto por ciclo.
+     *
+     * @param semilla    semilla del generador aleatorio, para reproducibilidad
+     * @param parametros parametros del algoritmo genetico
+     * @param pesos      pesos de la funcion objetivo
+     * @param contador   contador de evaluaciones de la simulacion
+     */
+    public PlanificadorGA(long semilla, ParametrosGA parametros, PesosFitness pesos,
+                          ContadorEvaluaciones contador) {
         this.semilla = semilla;
         this.parametros = parametros;
         this.pesos = pesos;
+        this.contador = contador;
     }
 
     @Override
     public SolucionRuteo planificar(EscenarioOperativo escenario) {
-        ContadorEvaluaciones.reiniciarCiclo();
+        contador.reiniciarCiclo();
         Reparador reparador = new Reparador(escenario);
-        EvaluadorFitness evaluador = new EvaluadorFitness(escenario, pesos);
+        EvaluadorFitness evaluador = new EvaluadorFitness(escenario, pesos, contador);
         // Tres flujos aleatorios independientes. Sembrarlos con el mismo valor
         // produce secuencias identicas y correlaciona decisiones que deberian
         // ser independientes: el indice que el constructor usa para un cluster
@@ -110,7 +126,7 @@ public final class PlanificadorGA implements AlgoritmoMetaheuristico {
         int elite = Math.max(1,
                 (int) Math.round(parametros.getTamanoPoblacion() * parametros.getFraccionElite()));
         for (int generacion = 0; generacion < parametros.getMaxGeneraciones(); generacion++) {
-            if (ContadorEvaluaciones.presupuestoAgotado()) {
+            if (contador.presupuestoAgotado()) {
                 break;
             }
             poblacion = evolucionar(poblacion, elite, operadores, reparador, busquedaLocal, evaluador, random);

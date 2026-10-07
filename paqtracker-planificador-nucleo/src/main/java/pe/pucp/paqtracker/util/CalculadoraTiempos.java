@@ -4,7 +4,11 @@ import pe.pucp.paqtracker.modelo.Entrega;
 import pe.pucp.paqtracker.modelo.EscenarioOperativo;
 import pe.pucp.paqtracker.modelo.Nodo;
 import pe.pucp.paqtracker.modelo.Ruta;
+import pe.pucp.paqtracker.modelo.TipoTramo;
 import pe.pucp.paqtracker.modelo.TipoVehiculo;
+import pe.pucp.paqtracker.modelo.Tramo;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Calculo unificado de distancias y tiempos de una ruta. Considera la velocidad
@@ -102,6 +106,47 @@ public final class CalculadoraTiempos {
         }
         int holgura = holguraMinima == Integer.MAX_VALUE ? 0 : holguraMinima;
         return new int[]{distanciaTotal, reloj, incumplimientos, holgura};
+    }
+
+    /**
+     * Recorre una ruta igual que {@link #recorrer} y devuelve cada tramo con sus
+     * instantes: viaje a cada entrega, acondicionamiento en su destino y retorno
+     * al almacen. La llegada del ultimo tramo coincide con el instante de fin de
+     * {@code recorrer}. Se calcula una sola vez por despacho, fuera de los bucles
+     * de busqueda, para que el visualizador interpole la posicion de la unidad.
+     *
+     * @param escenario escenario operativo con malla y tiempo de servicio
+     * @param ruta      ruta a recorrer
+     * @param salida    instante absoluto de salida del almacen de origen
+     * @return tramos en orden de recorrido; vacio si la ruta no tiene entregas
+     */
+    public static List<Tramo> trazar(EscenarioOperativo escenario, Ruta ruta, int salida) {
+        List<Tramo> tramos = new ArrayList<>();
+        if (ruta.getSecuencia().isEmpty()) {
+            return tramos;
+        }
+        int reloj = salida;
+        int idVehiculo = ruta.getVehiculo().getId();
+        TipoVehiculo tipo = ruta.getVehiculo().getTipo();
+        Nodo actual = ruta.getOrigen().getUbicacion();
+        for (Entrega entrega : ruta.getSecuencia()) {
+            int distancia = distancia(escenario, actual, entrega.getDestino(), reloj);
+            int llegada = CalendarioTurnos.avanzarConPausa(idVehiculo, reloj, minutosDeViaje(distancia, tipo));
+            tramos.add(new Tramo(TipoTramo.VIAJE_A_ENTREGA, actual, entrega.getDestino(), reloj, llegada,
+                    distancia, entrega.getIdPedido(), entrega.getCantidad()));
+            reloj = CalendarioTurnos.avanzarConPausa(idVehiculo, llegada, escenario.getTiempoServicio());
+            tramos.add(new Tramo(TipoTramo.SERVICIO, entrega.getDestino(), entrega.getDestino(), llegada,
+                    reloj, 0, entrega.getIdPedido(), 0));
+            actual = entrega.getDestino();
+        }
+        if (ruta.getDestino() != null) {
+            Nodo almacen = ruta.getDestino().getUbicacion();
+            int distancia = distancia(escenario, actual, almacen, reloj);
+            int llegada = CalendarioTurnos.avanzarConPausa(idVehiculo, reloj, minutosDeViaje(distancia, tipo));
+            tramos.add(new Tramo(TipoTramo.RETORNO, actual, almacen, reloj, llegada, distancia,
+                    Tramo.SIN_PEDIDO, 0));
+        }
+        return tramos;
     }
 
     private CalculadoraTiempos() {

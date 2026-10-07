@@ -23,7 +23,6 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
@@ -41,11 +40,15 @@ import java.util.function.LongFunction;
  * El metodo replanificar es el punto de disparo; hoy lo invoca solo el reloj,
  * pero queda preparado para que una averia lo dispare en el futuro sin
  * reescribir el resto (orquestador hibrido).
+ *
+ * Guarda la configuracion y las operaciones de cada paso; el estado que cambia
+ * entre pasos vive en {@link SimulacionEnCurso}. {@link #simular} corre la
+ * simulacion completa de una vez (experimentacion) y {@link #iniciar} entrega
+ * la simulacion para que un reloj externo la avance paso a paso (API).
  */
 public final class Orquestador {
 
     private static final int MINUTOS_POR_DIA = 1440;
-    private static final long NANOSEGUNDOS_POR_MILISEGUNDO = 1_000_000L;
 
     private final List<Almacen> almacenes;
     private final List<Vehiculo> flota;
@@ -143,39 +146,48 @@ public final class Orquestador {
      * @return resultado agregado de la simulacion
      */
     public ResultadoSimulacion simular(int horizonteMinutos, boolean detenerEnColapso) {
-        ResultadoSimulacion resultado = new ResultadoSimulacion();
-        Queue<Pedido> porLlegar = new LinkedList<>(pedidos);
-        List<Pedido> cola = new ArrayList<>();
-        List<UnidadEnTransito> enRuta = new ArrayList<>();
-        int ultimoDiaRecargado = 0;
-        int ultimoDiaObservado = 0;
+        SimulacionEnCurso simulacion = iniciar(detenerEnColapso);
         for (int instante = 0; instante <= horizonteMinutos; instante += saMinutos) {
-            ultimoDiaObservado = observarCierreDeDia(instante, ultimoDiaObservado, cola, resultado);
-            ultimoDiaRecargado = recargarAlmacenes(instante, ultimoDiaRecargado);
-            liberarUnidades(enRuta, instante);
-            actualizarEstadosPorTurno(instante);
-            incorporarPedidos(porLlegar, cola, instante);
-            int unidadesUrgentes = despacharUrgentes(cola, enRuta, instante, resultado);
-            if (detenerEnColapso && resultado.getInstanteColapso() >= 0) {
-                return resultado;
-            }
-            if (cola.isEmpty()) {
-                resultado.actualizarPico(unidadesUrgentes);
-                continue;
-            }
-            cola.sort(Comparator.comparingInt(Pedido::getHoraLimite));
-            long inicioComputo = System.nanoTime();
-            SolucionRuteo plan = replanificar(cola, instante);
-            resultado.registrarTiempoComputo((System.nanoTime() - inicioComputo) / NANOSEGUNDOS_POR_MILISEGUNDO);
-            resultado.incrementarReplanificaciones();
-            resultado.sumarFitness(plan.getFitness());
-            despachar(plan, cola, enRuta, instante, resultado, unidadesUrgentes);
-            if (detenerEnColapso && resultado.getInstanteColapso() >= 0) {
-                return resultado;
+            simulacion.avanzar(instante);
+            if (simulacion.estaDetenida()) {
+                return simulacion.getResultado();
             }
         }
-        registrarPedidosPendientes(porLlegar, cola, horizonteMinutos, resultado);
-        return resultado;
+        simulacion.cerrar(horizonteMinutos);
+        return simulacion.getResultado();
+    }
+
+    /**
+     * Prepara una simulacion que avanza paso a paso, para que la conduzca un
+     * reloj externo (la API). Los pasos deben respetar el salto Sa del
+     * orquestador para reproducir el comportamiento de {@link #simular}.
+     *
+     * @param detenerEnColapso verdadero para detenerse en el primer incumplimiento (CU-17)
+     * @return simulacion lista para su primer paso
+     */
+    public SimulacionEnCurso iniciar(boolean detenerEnColapso) {
+        return new SimulacionEnCurso(this, pedidos, detenerEnColapso);
+    }
+
+    /**
+     * @return salto del reloj Sa, en minutos
+     */
+    public int getSaMinutos() {
+        return saMinutos;
+    }
+
+    /**
+     * @return flota completa; sus estados y posiciones cambian durante la simulacion
+     */
+    public List<Vehiculo> getFlota() {
+        return flota;
+    }
+
+    /**
+     * @return almacenes; su stock cambia durante la simulacion
+     */
+    public List<Almacen> getAlmacenes() {
+        return almacenes;
     }
 
     /**
@@ -190,7 +202,7 @@ public final class Orquestador {
      * @param resultado         resultado acumulado hasta el momento
      * @return ultimo dia notificado tras esta llamada
      */
-    private int observarCierreDeDia(int instante, int ultimoDiaObservado, List<Pedido> cola,
+    int observarCierreDeDia(int instante, int ultimoDiaObservado, List<Pedido> cola,
                                      ResultadoSimulacion resultado) {
         if (observador == null) {
             return ultimoDiaObservado;
@@ -212,7 +224,7 @@ public final class Orquestador {
      * @param instanteFinal instante final de la simulacion
      * @param resultado resultado agregado a actualizar
      */
-    private void registrarPedidosPendientes(Queue<Pedido> porLlegar, List<Pedido> cola,
+    void registrarPedidosPendientes(Queue<Pedido> porLlegar, List<Pedido> cola,
                                              int instanteFinal, ResultadoSimulacion resultado) {
         List<Pedido> pendientes = new ArrayList<>(porLlegar);
         pendientes.addAll(cola);
@@ -236,7 +248,7 @@ public final class Orquestador {
      * @param ultimoDiaRecargado ultimo dia en que se recargo
      * @return dia vigente tras la recarga
      */
-    private int recargarAlmacenes(int instante, int ultimoDiaRecargado) {
+    int recargarAlmacenes(int instante, int ultimoDiaRecargado) {
         int dia = instante / MINUTOS_POR_DIA;
         if (dia > ultimoDiaRecargado) {
             for (Almacen almacen : almacenes) {
@@ -265,17 +277,21 @@ public final class Orquestador {
      *
      * @param enRuta   unidades en transito
      * @param instante instante actual del reloj
+     * @return unidades liberadas en este paso
      */
-    private void liberarUnidades(List<UnidadEnTransito> enRuta, int instante) {
+    List<Vehiculo> liberarUnidades(List<UnidadEnTransito> enRuta, int instante) {
+        List<Vehiculo> liberadas = new ArrayList<>();
         Iterator<UnidadEnTransito> iterador = enRuta.iterator();
         while (iterador.hasNext()) {
             UnidadEnTransito unidad = iterador.next();
             if (unidad.getLibreEn() <= instante) {
                 unidad.getVehiculo().setEstado(EstadoVehiculo.DISPONIBLE_EN_ALMACEN);
                 unidad.getVehiculo().setPosicion(unidad.getDestino());
+                liberadas.add(unidad.getVehiculo());
                 iterador.remove();
             }
         }
+        return liberadas;
     }
 
     /**
@@ -286,7 +302,7 @@ public final class Orquestador {
      *
      * @param instante instante actual del reloj
      */
-    private void actualizarEstadosPorTurno(int instante) {
+    void actualizarEstadosPorTurno(int instante) {
         for (Vehiculo vehiculo : flota) {
             if (vehiculo.getEstado() == EstadoVehiculo.DISPONIBLE_EN_ALMACEN
                     || vehiculo.getEstado() == EstadoVehiculo.EN_REFRIGERIO) {
@@ -302,11 +318,16 @@ public final class Orquestador {
      * @param porLlegar pedidos aun no registrados
      * @param cola      cola de pedidos por planificar
      * @param instante  instante actual del reloj
+     * @return pedidos incorporados en este paso
      */
-    private void incorporarPedidos(Queue<Pedido> porLlegar, List<Pedido> cola, int instante) {
+    List<Pedido> incorporarPedidos(Queue<Pedido> porLlegar, List<Pedido> cola, int instante) {
+        List<Pedido> incorporados = new ArrayList<>();
         while (!porLlegar.isEmpty() && porLlegar.peek().getInstanteRegistro() <= instante) {
-            cola.add(porLlegar.poll());
+            Pedido pedido = porLlegar.poll();
+            cola.add(pedido);
+            incorporados.add(pedido);
         }
+        return incorporados;
     }
 
     /**
@@ -323,7 +344,7 @@ public final class Orquestador {
      * @param resultado resultado agregado a actualizar
      * @return cantidad de unidades despachadas de forma directa en este ciclo
      */
-    private int despacharUrgentes(List<Pedido> cola, List<UnidadEnTransito> enRuta,
+    int despacharUrgentes(List<Pedido> cola, List<UnidadEnTransito> enRuta,
                                   int instante, ResultadoSimulacion resultado) {
         List<Pedido> urgentes = new ArrayList<>();
         for (Pedido pedido : cola) {
@@ -617,9 +638,24 @@ public final class Orquestador {
             resultado.registrarColapso(instante);
             registrarDetalle(escenario, ruta, instante, resultado);
         }
+        ponerEnTransito(ruta, escenario, instante, recorrido[CalculadoraTiempos.INDICE_FIN], enRuta);
+    }
+
+    /**
+     * Marca la unidad de una ruta como en ruta y la registra en transito con los
+     * tramos que va a recorrer, para que se pueda seguir su posicion.
+     *
+     * @param ruta      ruta despachada
+     * @param escenario escenario con la malla vigente
+     * @param salida    instante de salida
+     * @param libreEn   instante en que la unidad termina la ruta
+     * @param enRuta    unidades en transito (se agrega la despachada)
+     */
+    private void ponerEnTransito(Ruta ruta, EscenarioOperativo escenario, int salida, int libreEn,
+                                 List<UnidadEnTransito> enRuta) {
         ruta.getVehiculo().setEstado(EstadoVehiculo.EN_RUTA);
-        enRuta.add(new UnidadEnTransito(ruta.getVehiculo(),
-                recorrido[CalculadoraTiempos.INDICE_FIN], ruta.getDestino()));
+        enRuta.add(new UnidadEnTransito(ruta.getVehiculo(), ruta.getOrigen(), salida, libreEn,
+                ruta.getDestino(), CalculadoraTiempos.trazar(escenario, ruta, salida)));
     }
 
     /**
@@ -673,7 +709,7 @@ public final class Orquestador {
      * @param resultado        resultado agregado a actualizar
      * @param unidadesUrgentes unidades ya despachadas este ciclo por despacho directo
      */
-    private void despachar(SolucionRuteo plan, List<Pedido> cola, List<UnidadEnTransito> enRuta,
+    void despachar(SolucionRuteo plan, List<Pedido> cola, List<UnidadEnTransito> enRuta,
                            int instante, ResultadoSimulacion resultado, int unidadesUrgentes) {
         Set<Integer> despachados = new HashSet<>();
         int enUso = unidadesUrgentes;
@@ -697,9 +733,7 @@ public final class Orquestador {
             for (Entrega entrega : ruta.getSecuencia()) {
                 despachados.add(entrega.getIdPedido());
             }
-            ruta.getVehiculo().setEstado(EstadoVehiculo.EN_RUTA);
-            enRuta.add(new UnidadEnTransito(ruta.getVehiculo(),
-                    recorrido[CalculadoraTiempos.INDICE_FIN], ruta.getDestino()));
+            ponerEnTransito(ruta, escenario, instante, recorrido[CalculadoraTiempos.INDICE_FIN], enRuta);
         }
         resultado.actualizarPico(enUso);
         cola.removeIf(pedido -> despachados.contains(pedido.getId()));

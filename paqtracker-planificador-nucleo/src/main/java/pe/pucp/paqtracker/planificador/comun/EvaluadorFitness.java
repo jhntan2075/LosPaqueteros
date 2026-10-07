@@ -90,6 +90,7 @@ public final class EvaluadorFitness {
 
     private final EscenarioOperativo escenario;
     private final PesosFitness pesos;
+    private final ContadorEvaluaciones contador;
 
     /**
      * Crea un evaluador con los pesos de produccion.
@@ -108,8 +109,21 @@ public final class EvaluadorFitness {
      * @param pesos     pesos de la funcion objetivo
      */
     public EvaluadorFitness(EscenarioOperativo escenario, PesosFitness pesos) {
+        this(escenario, pesos, new ContadorEvaluaciones());
+    }
+
+    /**
+     * Crea un evaluador que registra cada evaluacion en el contador indicado.
+     *
+     * @param escenario escenario operativo sobre el que se evalua
+     * @param pesos     pesos de la funcion objetivo
+     * @param contador  contador de evaluaciones de la simulacion
+     */
+    public EvaluadorFitness(EscenarioOperativo escenario, PesosFitness pesos,
+                            ContadorEvaluaciones contador) {
         this.escenario = escenario;
         this.pesos = pesos;
+        this.contador = contador;
     }
 
     /**
@@ -138,7 +152,7 @@ public final class EvaluadorFitness {
         }
         double fitness = distanciaTotal + penalizacionTiempo + calcularPenalizacionCola(solucion);
         solucion.setFitness(fitness);
-        ContadorEvaluaciones.registrar();
+        contador.registrar();
         return fitness;
     }
 

@@ -76,10 +76,9 @@ public final class CorredorExperimento {
      */
     public static List<String> ejecutar(Opciones opciones) throws IOException {
         verificarDespachoDirecto();
-        ContadorEvaluaciones.reiniciarTodo();
-        if (opciones.presupuestoEvaluaciones > 0) {
-            ContadorEvaluaciones.fijarPresupuestoPorCiclo(opciones.presupuestoEvaluaciones);
-        }
+        ContadorEvaluaciones contador = opciones.presupuestoEvaluaciones > 0
+                ? new ContadorEvaluaciones(opciones.presupuestoEvaluaciones)
+                : new ContadorEvaluaciones();
 
         Path carpeta = Path.of(opciones.carpeta);
         int horizonte = opciones.dias * MINUTOS_POR_DIA;
@@ -93,10 +92,10 @@ public final class CorredorExperimento {
         Orquestador orquestador = new Orquestador(almacenes, flota, pedidos, malla,
                 opciones.saMinutos, ConfiguracionDominio.TIEMPO_SERVICIO_MINUTOS,
                 ConfiguracionDominio.PLAZO_MAXIMO_MINUTOS, 0,
-                opciones.semilla, fabricaAlgoritmo(opciones));
+                opciones.semilla, fabricaAlgoritmo(opciones, contador));
 
         Map<Integer, Corte> cortes = new LinkedHashMap<>();
-        orquestador.fijarObservador(recolector(opciones.cortes, cortes));
+        orquestador.fijarObservador(recolector(opciones.cortes, cortes, contador));
         orquestador.simular(horizonte + MARGEN_CIERRE, false);
 
         return formatear(opciones, cortes, pedidos.size());
@@ -109,13 +108,15 @@ public final class CorredorExperimento {
      *
      * @param diasDeCorte dias en que se toma la instantanea
      * @param destino     mapa donde se acumulan los cortes tomados
+     * @param contador    contador de evaluaciones de la corrida
      * @return observador listo para instalar en el orquestador
      */
-    private static ObservadorSimulacion recolector(int[] diasDeCorte, Map<Integer, Corte> destino) {
+    private static ObservadorSimulacion recolector(int[] diasDeCorte, Map<Integer, Corte> destino,
+                                                   ContadorEvaluaciones contador) {
         return (dia, parcial, entregasEnCola) -> {
             for (int corte : diasDeCorte) {
                 if (corte == dia) {
-                    destino.put(dia, Corte.tomar(parcial, entregasEnCola));
+                    destino.put(dia, Corte.tomar(parcial, entregasEnCola, contador.getTotal()));
                 }
             }
         };
@@ -127,18 +128,20 @@ public final class CorredorExperimento {
      * modo que el aprendizaje persista entre ciclos como en produccion.
      *
      * @param opciones opciones de la corrida
+     * @param contador contador de evaluaciones compartido por todos los ciclos de la corrida
      * @return fabrica que crea el algoritmo de cada ciclo a partir de su semilla
      */
-    private static LongFunction<AlgoritmoMetaheuristico> fabricaAlgoritmo(Opciones opciones) {
+    private static LongFunction<AlgoritmoMetaheuristico> fabricaAlgoritmo(Opciones opciones,
+                                                                          ContadorEvaluaciones contador) {
         if ("GA".equals(opciones.algoritmo)) {
             ParametrosGA parametros = opciones.parametrosGA;
             PesosFitness pesos = opciones.pesos;
-            return semilla -> new PlanificadorGA(semilla, parametros, pesos);
+            return semilla -> new PlanificadorGA(semilla, parametros, pesos, contador);
         }
         ParametrosIACO parametros = opciones.parametrosIACO;
         PesosFitness pesos = opciones.pesos;
         MemoriaFeromonas memoria = PlanificadorIACO.crearMemoria(parametros);
-        return semilla -> new PlanificadorIACO(semilla, memoria, parametros, pesos);
+        return semilla -> new PlanificadorIACO(semilla, memoria, parametros, pesos, contador);
     }
 
     /**
@@ -212,15 +215,16 @@ public final class CorredorExperimento {
         /**
          * @param parcial        resultado acumulado en el instante del corte
          * @param entregasEnCola pedidos ingresados y aun no despachados
+         * @param evaluaciones   evaluaciones de la funcion objetivo acumuladas hasta el corte
          * @return instantanea inmutable del corte
          */
-        private static Corte tomar(ResultadoSimulacion parcial, int entregasEnCola) {
+        private static Corte tomar(ResultadoSimulacion parcial, int entregasEnCola, long evaluaciones) {
             int instanteColapso = parcial.getInstanteColapso();
             return new Corte(parcial.getFitnessAcumulado(), parcial.getDistanciaTotal(),
                     parcial.getTotalIncumplimientos(), entregasEnCola,
                     instanteColapso >= 0 ? 1 : 0,
                     instanteColapso >= 0 ? instanteColapso / MINUTOS_POR_DIA + 1 : -1,
-                    ContadorEvaluaciones.getTotal(), parcial.getTiempoComputoTotalMs(),
+                    evaluaciones, parcial.getTiempoComputoTotalMs(),
                     parcial.getTotalEntregas());
         }
     }

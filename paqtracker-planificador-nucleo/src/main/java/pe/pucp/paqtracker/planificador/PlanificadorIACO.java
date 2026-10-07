@@ -88,6 +88,7 @@ public final class PlanificadorIACO implements AlgoritmoMetaheuristico {
     private final MemoriaFeromonas memoria;
     private final ParametrosIACO parametros;
     private final PesosFitness pesos;
+    private final ContadorEvaluaciones contador;
 
     /**
      * Crea el planificador con los parametros y pesos de produccion.
@@ -110,10 +111,26 @@ public final class PlanificadorIACO implements AlgoritmoMetaheuristico {
      */
     public PlanificadorIACO(long semilla, MemoriaFeromonas memoria,
                             ParametrosIACO parametros, PesosFitness pesos) {
+        this(semilla, memoria, parametros, pesos, new ContadorEvaluaciones());
+    }
+
+    /**
+     * Crea el planificador con un contador de evaluaciones compartido por la
+     * simulacion, que puede imponer un presupuesto por ciclo.
+     *
+     * @param semilla    semilla del ciclo, para reproducibilidad
+     * @param memoria    memoria de feromonas compartida por toda la simulacion
+     * @param parametros parametros de la colonia
+     * @param pesos      pesos de la funcion objetivo
+     * @param contador   contador de evaluaciones de la simulacion
+     */
+    public PlanificadorIACO(long semilla, MemoriaFeromonas memoria, ParametrosIACO parametros,
+                            PesosFitness pesos, ContadorEvaluaciones contador) {
         this.semilla = semilla;
         this.memoria = memoria;
         this.parametros = parametros;
         this.pesos = pesos;
+        this.contador = contador;
     }
 
     /**
@@ -136,16 +153,16 @@ public final class PlanificadorIACO implements AlgoritmoMetaheuristico {
 
     @Override
     public SolucionRuteo planificar(EscenarioOperativo escenario) {
-        ContadorEvaluaciones.reiniciarCiclo();
+        contador.reiniciarCiclo();
         Reparador reparador = new Reparador(escenario);
-        EvaluadorFitness evaluador = new EvaluadorFitness(escenario, pesos);
+        EvaluadorFitness evaluador = new EvaluadorFitness(escenario, pesos, contador);
         BusquedaLocal busquedaLocal = new BusquedaLocal(escenario);
         OperadoresColonia operadores = new OperadoresColonia(escenario, memoria);
 
         SolucionRuteo mejor = null;
         int sinMejora = 0;
         for (int iteracion = 0; iteracion < parametros.getIteraciones(); iteracion++) {
-            if (mejor != null && ContadorEvaluaciones.presupuestoAgotado()) {
+            if (mejor != null && contador.presupuestoAgotado()) {
                 break;
             }
             List<SolucionRuteo> colonia = construirColonia(iteracion, operadores, reparador, evaluador);

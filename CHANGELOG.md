@@ -16,8 +16,21 @@ Formato basado en Keep a Changelog; versionado semántico (MAJOR.MINOR.PATCH).
   raíz con MySQL 8.0 + API. `.env.example` unificado en la raíz.
 - `paqtracker-infra/init-db/01-init.sql` ya no crea tablas: el esquema es de Flyway.
 
+- `ContadorEvaluaciones` deja de ser estático: cada simulación crea su contador y lo
+  pasa a `PlanificadorGA`/`PlanificadorIACO` (nuevos constructores) y a
+  `EvaluadorFitness`. Necesario para correr varias ejecuciones a la vez en la API.
+- `Orquestador.simular` es ahora un bucle sobre `SimulacionEnCurso`; los resultados
+  son idénticos a los anteriores (verificado en enero 2026, estrés con colapso e IACO).
+
 ### Añadido
 - CI en `.github/workflows/` (`java.yml`, `web.yml`) con filtros por ruta.
+- `simulacion.SimulacionEnCurso` (`Orquestador.iniciar`): simulación que avanza paso a
+  paso con un reloj externo, admite pedidos registrados en vivo (`agregarPedido`) y
+  devuelve un `ResultadoPaso` con pedidos incorporados, entregas completadas, unidades
+  liberadas y despachadas, Ta, fitness y colapso.
+- `modelo.Tramo` / `TipoTramo` y `CalculadoraTiempos.trazar`: tramos de cada ruta
+  despachada (viaje, servicio y retorno, con salida y llegada) para que el visualizador
+  interpole la posición de las unidades. `UnidadEnTransito` guarda origen, salida y tramos.
 
 ## [0.5.0] — 2026-09-18
 
