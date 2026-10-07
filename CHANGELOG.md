@@ -37,6 +37,21 @@ Formato basado en Keep a Changelog; versionado semántico (MAJOR.MINOR.PATCH).
   Incluye CU-01 (con replanificación inmediata, CU-12), CU-02 (validación línea por
   línea), CU-04, CU-15, CU-16, CU-17, CU-25 y la consulta de configuración del dominio.
   Persistencia en MySQL con Flyway (`V1__crear_tablas.sql`).
+- Lo que el visualizador necesita para el alcance sem08 (desde la API):
+  - **Rutas y movimiento:** camino real de cada tramo, que rodea los bloqueos
+    (`Malla.camino`), y ruta restante por unidad.
+  - **Relojes:** con tiempo transcurrido simulado y real.
+  - **Mapa y KPI:** bloqueos vigentes con su polilínea y eventos de inicio y fin;
+    semáforo de inventario; porcentaje de cumplimiento.
+  - **Pedidos:** detalle de pedido con trazabilidad.
+  - **Archivos:** carga de bloqueos y números de línea inválidos en las importaciones.
+- Flota configurable al crear una simulación (LE-019), con códigos de unidad por
+  ejecución y migración `V2__agregar_flota_ejecucion.sql`.
+- Despliegue en la VM (`paqtracker-infra/`):
+  - Nginx como proxy de la SPA, `/api` y `/ws`.
+  - Unidad systemd de la API.
+  - Script de base y usuario MySQL de permisos mínimos.
+  - Script de despliegue idempotente.
 - `CargadorPedidos.validar` y `ResultadoValidacion` (errores por línea para CU-02) y
   `RangoFechas.de(LocalDate, LocalDate)`.
 - `modelo.Tramo` / `TipoTramo` y `CalculadoraTiempos.trazar`: tramos de cada ruta

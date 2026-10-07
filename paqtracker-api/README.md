@@ -47,13 +47,15 @@ del mes cuyo plazo aún no vence.
 | Método | Ruta | Descripción |
 |---|---|---|
 | GET | `/ejecuciones` | Lista de ejecuciones con reloj y KPI |
-| POST | `/ejecuciones` | Crea una simulación: `{tipoEscenario, fechaInicio: "2027-03-01", dias?, algoritmo?}` |
+| POST | `/ejecuciones` | Crea una simulación: `{tipoEscenario, fechaInicio: "2027-03-01", dias?, algoritmo?, flota?: {autos, motos, bicicletas}}` |
 | GET | `/ejecuciones/{id}` | Resumen de una ejecución |
 | GET | `/ejecuciones/{id}/estado` | Última instantánea (para quien se conecta tarde) |
 | POST | `/ejecuciones/{id}/iniciar` · `/pausar` · `/detener` | Control del reloj |
 | POST | `/pedidos` | CU-01: `{cliente, x, y, cantidad, plazoHoras}` |
 | GET | `/pedidos?ejecucionId=dia-a-dia` | CU-04: pedidos con estado, unidad, ETA y holgura |
-| POST | `/archivos/pedidos` | CU-02: multipart `file` + `mes` (YYYYMM) |
+| GET | `/pedidos/{codigo}?ejecucionId=` | Detalle de un pedido con su trazabilidad (hitos) |
+| POST | `/archivos/pedidos` | CU-02: multipart `file` + `mes` (YYYYMM); devuelve `lineasInvalidas` |
+| POST | `/archivos/bloqueos` | Igual que el anterior, para el archivo de bloqueos del mes |
 | GET | `/configuracion/dominio` | Malla, almacenes, flota, plazos y turnos |
 
 Los errores responden `{estado, error, mensaje, detalles}` con 400, 404 o 409.
@@ -63,11 +65,23 @@ Los errores responden `{estado, error, mensaje, detalles}` con 400, 404 o 409.
 | Tópico | Contenido |
 |---|---|
 | `/topic/ejecuciones/{id}/estado` | `MensajeEstadoEjecucion` en cada Sc |
-| `/topic/ejecuciones/{id}/eventos` | `NUEVO_PEDIDO`, `PLAN_ACTUALIZADO`, `PEDIDO_ENTREGADO`, `ALERTA_COLAPSO`, `EJECUCION_FINALIZADA` |
+| `/topic/ejecuciones/{id}/eventos` | `NUEVO_PEDIDO`, `PLAN_ACTUALIZADO`, `PEDIDO_ENTREGADO`, `BLOQUEO_INICIADO`, `BLOQUEO_LEVANTADO`, `ALERTA_COLAPSO`, `EJECUCION_FINALIZADA` |
 
-Los instantes simulados van en epoch ms. Cada unidad en ruta trae su `tramoEnCurso`
-(origen, destino, salida y llegada), así el front puede interpolar la posición entre
-dos instantáneas. `ubicacionActual` ya viene interpolada en forma de L.
+Los instantes simulados van en epoch ms. La instantánea trae:
+
+- **Relojes** (LE-085, LE-089): `relojSimuladoMs`, `relojSimuladoInicioMs`,
+  `tiempoSimuladoTranscurridoMs`, `relojRealInicioMs` y `tiempoRealTranscurridoMs`.
+- **Unidades** (LE-095): código, tipo, estado, `cargaActual`, `ocupacion`,
+  `ubicacionActual` y `paradas`.
+  - `tramoEnCurso` incluye origen, destino, salida, llegada y su `camino` real, que rodea
+    los bloqueos (LE-064).
+  - `rutaRestante` es la ruta planificada desde la posición actual hasta el almacén de
+    retorno, ya depurada de lo recorrido (LE-092).
+- **Almacenes:** stock y `nivelInventario` VERDE/AMBAR/ROJO en los intermedios (LE-078).
+- **Bloqueos vigentes:** polilínea, inicio y fin (LE-083).
+- **Pedidos activos:** estado, unidad, ETA y nivel de holgura.
+- **Indicadores:** entregas a tiempo o con retraso, `porcentajeCumplimiento` (LE-086),
+  Ta, distancia y semáforo global.
 
 ## Ejecutar
 
@@ -98,10 +112,17 @@ Variables en [`.env.example`](../.env.example).
 - `MotorEjecucionTest` controla el reloj, así que no hay esperas.
 - `IntegracionApiTest` levanta el servidor y verifica la difusión por STOMP de punta a punta.
 
+## Despliegue
+
+El despliegue en la VM (Nginx + systemd + MySQL, sin Docker) está en
+[`paqtracker-infra/README.md`](../paqtracker-infra/README.md).
+
 ## Limitaciones conocidas
 
-- Las unidades se dibujan en un camino en L entre los extremos de cada tramo. Si un
-  bloqueo obliga a desviarse, el tiempo y la distancia sí lo incluyen, pero el
-  dibujo no muestra el desvío.
+- La posición se interpola a velocidad constante sobre el camino del tramo; si el
+  refrigerio cae a mitad de un tramo, la pausa se reparte a lo largo del tramo.
+- El camino se calcula al despachar con los bloqueos vigentes en ese momento. Un
+  bloqueo que empieza durante el viaje no cambia el dibujo (media vuelta, LE-055,
+  pendiente).
 - La operación día a día cubre el mes en curso y termina al cerrar el mes.
 - Averías y la edición de parámetros (CU-26 a CU-28) quedan para la siguiente entrega.
