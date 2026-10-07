@@ -14,6 +14,7 @@ import pe.pucp.paqtracker.modulos.difusion.aplicacion.dto.MensajeEventoEjecucion
 import pe.pucp.paqtracker.modulos.difusion.aplicacion.dto.UnidadEnMapa;
 import pe.pucp.paqtracker.modulos.difusion.aplicacion.servicio.CodigosFlota;
 import pe.pucp.paqtracker.modulos.difusion.aplicacion.servicio.ConstructorInstantanea;
+import pe.pucp.paqtracker.modulos.difusion.aplicacion.servicio.NomenclaturaOperacion;
 import pe.pucp.paqtracker.modulos.difusion.aplicacion.servicio.ServicioDifusion;
 import pe.pucp.paqtracker.modulos.difusion.dominio.PuertoDifusion;
 import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.dto.DetallePedido;
@@ -171,6 +172,23 @@ class MotorEjecucionTest {
         assertEquals(EstadoEjecucion.COLAPSADA, motor.getEstado());
         assertTrue(hayEvento("ALERTA_COLAPSO"));
         assertNotNull(guardados.get("prueba").fechaColapso());
+    }
+
+    @Test
+    void procesarTick_pedidoImposibleConDetencion_alertaTraeElPedidoQueColapsa() {
+        MotorEjecucion motor = crearMotor(List.of(new Pedido(1, new Nodo(67, 14), 2, 0, 1)), true);
+        motor.preparar();
+        motor.iniciar();
+
+        pared.avanzar(Duration.ofMinutes(1));
+        motor.procesarTickAhora();
+
+        Map<String, Object> detalle = eventos.stream().filter(evento -> evento.tipo().equals("ALERTA_COLAPSO"))
+                .findFirst().orElseThrow().detalle();
+        assertEquals(NomenclaturaOperacion.codigoPedido(1), detalle.get("codigoPedido"));
+        assertEquals("ENTREGA_TARDIA", detalle.get("causa"));
+        assertTrue((int) detalle.get("retrasoMinutos") > 0);
+        assertNotNull(detalle.get("unidad"));
     }
 
     @Test

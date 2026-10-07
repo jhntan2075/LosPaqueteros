@@ -20,6 +20,7 @@ import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.dto.SolicitudPedidoEnVivo
 import pe.pucp.paqtracker.modulos.ejecucion.dominio.EstadoEjecucion;
 import pe.pucp.paqtracker.modulos.ejecucion.dominio.RegistroEjecucion;
 import pe.pucp.paqtracker.modulos.ejecucion.dominio.RepositorioEjecucion;
+import pe.pucp.paqtracker.simulacion.ColapsoLogistico;
 import pe.pucp.paqtracker.simulacion.ResultadoPaso;
 import pe.pucp.paqtracker.simulacion.ResultadoSimulacion;
 import pe.pucp.paqtracker.simulacion.SimulacionEnCurso;
@@ -27,6 +28,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -311,9 +313,29 @@ public final class MotorEjecucion {
                     lineaTiempo.aMilisegundos(tramo.getLlegada()), Map.of("codigoPedido", codigo, "aTiempo", aTiempo));
         }
         if (paso.isColapsoDeclarado()) {
-            evento("ALERTA_COLAPSO", "Colapso logistico: un pedido no se puede entregar a tiempo", instanteMs,
-                    Map.of());
+            ColapsoLogistico colapso = simulacion.getResultado().getColapso().orElseThrow();
+            String codigo = NomenclaturaOperacion.codigoPedido(colapso.getIdPedido());
+            evento("ALERTA_COLAPSO", "Colapso logistico: el pedido " + codigo + " no se puede entregar a tiempo",
+                    instanteMs, detalleColapso(colapso, codigo));
         }
+    }
+
+    /**
+     * Datos del colapso para el diagnostico del visualizador: pedido que falla, causa, instante del colapso y,
+     * si el pedido salio en una unidad, su llegada estimada y la unidad.
+     */
+    private Map<String, Object> detalleColapso(ColapsoLogistico colapso, String codigoPedido) {
+        Map<String, Object> detalle = new LinkedHashMap<>();
+        detalle.put("codigoPedido", codigoPedido);
+        detalle.put("causa", colapso.getCausa().name());
+        detalle.put("instanteColapsoMs", lineaTiempo.aMilisegundos(colapso.getInstante()));
+        detalle.put("horaLimiteMs", lineaTiempo.aMilisegundos(colapso.getHoraLimite()));
+        colapso.getVehiculo().ifPresent(vehiculo -> {
+            detalle.put("llegadaEstimadaMs", lineaTiempo.aMilisegundos(colapso.getLlegadaEstimada()));
+            detalle.put("retrasoMinutos", colapso.getLlegadaEstimada() - colapso.getHoraLimite());
+            detalle.put("unidad", codigosFlota.codigo(vehiculo));
+        });
+        return detalle;
     }
 
     private void terminar(EstadoEjecucion estadoFinal) {

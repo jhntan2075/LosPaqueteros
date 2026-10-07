@@ -3,6 +3,7 @@ package pe.pucp.paqtracker.simulacion;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.TreeMap;
 
 /**
@@ -11,12 +12,15 @@ import java.util.TreeMap;
  */
 public final class ResultadoSimulacion {
 
+    /** Valor de {@link #getInstanteColapso()} mientras no se declare el colapso. */
+    public static final int SIN_COLAPSO = -1;
+
     private int totalEntregas;
     private int totalIncumplimientos;
     private double distanciaTotal;
     private int replanificaciones;
     private int picoUnidadesEnUso;
-    private int instanteColapso;
+    private ColapsoLogistico colapso;
     private int urgentesRepartidos;
     private double costoTotal;
     private double fitnessAcumulado;
@@ -37,7 +41,6 @@ public final class ResultadoSimulacion {
      * Crea un resultado vacio, sin colapso registrado.
      */
     public ResultadoSimulacion() {
-        this.instanteColapso = -1;
         this.usoPorTipo = new TreeMap<>();
         this.detalleIncumplimientos = new ArrayList<>();
     }
@@ -201,13 +204,29 @@ public final class ResultadoSimulacion {
         this.picoUnidadesEnUso = Math.max(this.picoUnidadesEnUso, enUso);
     }
 
+    /**
+     * @return minuto en que se declaro el colapso, o {@link #SIN_COLAPSO} si no ocurrio
+     */
     public int getInstanteColapso() {
-        return instanteColapso;
+        return colapso == null ? SIN_COLAPSO : colapso.getInstante();
     }
 
-    public void registrarColapso(int instante) {
-        if (this.instanteColapso < 0) {
-            this.instanteColapso = instante;
+    /**
+     * @return colapso declarado con el pedido que lo causo, o vacio si no ocurrio
+     */
+    public Optional<ColapsoLogistico> getColapso() {
+        return Optional.ofNullable(colapso);
+    }
+
+    /**
+     * Declara el colapso logistico. Solo cuenta el primero: el colapso es un
+     * evento unico y los incumplimientos posteriores ya no lo cambian.
+     *
+     * @param colapso colapso observado
+     */
+    void registrarColapso(ColapsoLogistico colapso) {
+        if (this.colapso == null) {
+            this.colapso = colapso;
         }
     }
 

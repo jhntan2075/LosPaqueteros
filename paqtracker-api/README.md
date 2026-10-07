@@ -67,6 +67,16 @@ Los errores responden `{estado, error, mensaje, detalles}` con 400, 404 o 409.
 | `/topic/ejecuciones/{id}/estado` | `MensajeEstadoEjecucion` en cada Sc |
 | `/topic/ejecuciones/{id}/eventos` | `NUEVO_PEDIDO`, `PLAN_ACTUALIZADO`, `PEDIDO_ENTREGADO`, `BLOQUEO_INICIADO`, `BLOQUEO_LEVANTADO`, `ALERTA_COLAPSO`, `EJECUCION_FINALIZADA` |
 
+El `detalle` de `ALERTA_COLAPSO` identifica el pedido que declara el colapso (LE-067):
+
+| Campo | Contenido |
+|---|---|
+| `codigoPedido` | Pedido que incumple su plazo, p. ej. `P-00001` |
+| `causa` | `ENTREGA_TARDIA` (salió en una unidad que llega tarde) o `PLAZO_VENCIDO_SIN_DESPACHO` (venció esperando en la cola) |
+| `instanteColapsoMs` | Instante del colapso: la salida de la unidad o la hora límite del pedido vencido |
+| `horaLimiteMs` | Hora límite del pedido |
+| `llegadaEstimadaMs`, `retrasoMinutos`, `unidad` | Solo con `ENTREGA_TARDIA`: llegada estimada al cliente, minutos de retraso y código de la unidad |
+
 Los instantes simulados van en epoch ms. La instantánea trae:
 
 - **Relojes** (LE-085, LE-089): `relojSimuladoMs`, `relojSimuladoInicioMs`,
