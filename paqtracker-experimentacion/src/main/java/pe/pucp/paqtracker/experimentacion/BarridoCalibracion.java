@@ -273,7 +273,7 @@ public final class BarridoCalibracion {
         List<Vehiculo> flota = ConfiguracionDominio.crearFlota(almacenes.get(0));
         Malla malla = new Malla(opciones.cargarBloqueos(nombre));
 
-        Orquestador orquestador = new Orquestador(almacenes, flota, pedidos, malla, SA_MINUTOS,
+        Orquestador orquestador = new Orquestador(almacenes, flota, pedidos, List.of(), malla, SA_MINUTOS,
                 ConfiguracionDominio.TIEMPO_SERVICIO_MINUTOS,
                 ConfiguracionDominio.PLAZO_MAXIMO_MINUTOS, 0, semilla,
                 unaSemilla -> new PlanificadorGA(unaSemilla, parametros, pesos, contador));

@@ -1,6 +1,7 @@
 package pe.pucp.paqtracker.simulacion;
 
 import pe.pucp.paqtracker.modelo.Almacen;
+import pe.pucp.paqtracker.modelo.Averia;
 import pe.pucp.paqtracker.modelo.Bloqueo;
 import pe.pucp.paqtracker.modelo.Pedido;
 import pe.pucp.paqtracker.modelo.SolucionRuteo;
@@ -12,14 +13,15 @@ import java.util.Comparator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.ListIterator;
+import java.util.Queue;
 
 /**
  * Simulacion que avanza paso a paso. Guarda el estado que cambia de un paso al
  * siguiente (pedidos por llegar, cola, unidades en transito y resultado
  * acumulado) y aplica en cada paso la misma secuencia que el bucle de
- * {@link Orquestador#simular(int, boolean)}: cierre de dia, recarga, liberacion
- * de unidades, refrigerios, ingreso de pedidos, despacho directo de urgentes y
- * planificacion con despacho.
+ * {@link Orquestador#simular(int, boolean)}: cierre de dia, recarga, averias,
+ * liberacion de unidades y de averiadas, refrigerios, ingreso de pedidos,
+ * despacho directo de urgentes y planificacion con despacho.
  *
  * Permite que la API conduzca la simulacion con su propio reloj (real o
  * acelerado), que lea el estado entre pasos y que agregue pedidos registrados
@@ -33,8 +35,12 @@ public final class SimulacionEnCurso {
     private final Orquestador orquestador;
     private final boolean detenerEnColapso;
     private final LinkedList<Pedido> porLlegar;
+    private final Queue<Averia> averiasPorOcurrir;
     private final List<Pedido> cola = new ArrayList<>();
     private final List<UnidadEnTransito> enRuta = new ArrayList<>();
+    private final List<Orquestador.EventoPosicion> traslados = new ArrayList<>();
+    private final List<Orquestador.EventoDisponible> disponibles = new ArrayList<>();
+    private final List<Orquestador.EventoRegreso> regresos = new ArrayList<>();
     private final ResultadoSimulacion resultado = new ResultadoSimulacion();
     private int ultimoDiaRecargado;
     private int ultimoDiaObservado;
@@ -44,11 +50,14 @@ public final class SimulacionEnCurso {
     /**
      * @param orquestador      orquestador con la configuracion y las operaciones de cada paso
      * @param pedidos          pedidos del horizonte ordenados por instante de registro
+     * @param averias          averias programadas del horizonte ordenadas por instante
      * @param detenerEnColapso verdadero para detenerse en el primer incumplimiento (CU-17)
      */
-    SimulacionEnCurso(Orquestador orquestador, List<Pedido> pedidos, boolean detenerEnColapso) {
+    SimulacionEnCurso(Orquestador orquestador, List<Pedido> pedidos, List<Averia> averias,
+                      boolean detenerEnColapso) {
         this.orquestador = orquestador;
         this.porLlegar = new LinkedList<>(pedidos);
+        this.averiasPorOcurrir = new LinkedList<>(averias);
         this.detenerEnColapso = detenerEnColapso;
     }
 
@@ -72,7 +81,10 @@ public final class SimulacionEnCurso {
         ultimoDiaObservado = orquestador.observarCierreDeDia(instante, ultimoDiaObservado, cola, resultado);
         ultimoDiaRecargado = orquestador.recargarAlmacenes(instante, ultimoDiaRecargado);
         List<Tramo> entregas = entregasCompletadas(instante);
+        orquestador.procesarAverias(averiasPorOcurrir, instante, enRuta, traslados, disponibles, regresos,
+                resultado);
         List<Vehiculo> liberadas = orquestador.liberarUnidades(enRuta, instante);
+        orquestador.liberarAveriados(traslados, disponibles, regresos, instante);
         orquestador.actualizarEstadosPorTurno(instante);
         List<Pedido> incorporados = orquestador.incorporarPedidos(porLlegar, cola, instante);
         int despachadasAntes = enRuta.size();
@@ -80,7 +92,7 @@ public final class SimulacionEnCurso {
         long tiempoComputo = ResultadoPaso.SIN_PLANIFICACION;
         double fitness = 0.0;
         if (!debeDetenerse()) {
-            if (cola.isEmpty()) {
+            if (cola.isEmpty() && !orquestador.hayEntregasLiberadas()) {
                 resultado.actualizarPico(unidadesUrgentes);
             } else {
                 long computoPrevio = resultado.getTiempoComputoTotalMs();

@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 import pe.pucp.paqtracker.modelo.Almacen;
 import pe.pucp.paqtracker.modelo.ConfiguracionDominio;
 import pe.pucp.paqtracker.modelo.Nodo;
+import pe.pucp.paqtracker.modelo.Ruta;
 import pe.pucp.paqtracker.modelo.TipoTramo;
 import pe.pucp.paqtracker.modelo.TipoVehiculo;
 import pe.pucp.paqtracker.modelo.Tramo;
@@ -44,8 +45,9 @@ class ConstructorInstantaneaTest {
                 new Tramo(TipoTramo.VIAJE_A_ENTREGA, new Nodo(0, 0), new Nodo(10, 0), 0, 10, 10, 1, 2),
                 new Tramo(TipoTramo.SERVICIO, new Nodo(10, 0), new Nodo(10, 0), 10, 70, 0, 1, 0),
                 new Tramo(TipoTramo.RETORNO, new Nodo(10, 0), new Nodo(10, 10), 70, 80, 10, Tramo.SIN_PEDIDO, 0));
-        UnidadEnTransito unidad = new UnidadEnTransito(new Vehiculo(0, TipoVehiculo.AUTO, central), central, 0, 80,
-                central, tramos);
+        Ruta ruta = new Ruta(new Vehiculo(0, TipoVehiculo.AUTO, central), central);
+        ruta.setDestino(central);
+        UnidadEnTransito unidad = new UnidadEnTransito(ruta.getVehiculo(), ruta, 0, 80, tramos);
 
         assertEquals(List.of(new Coordenada(5, 0), new Coordenada(10, 0), new Coordenada(10, 10)),
                 ConstructorInstantanea.rutaRestante(unidad, 5));
