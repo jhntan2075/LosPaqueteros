@@ -67,6 +67,16 @@ Los errores responden `{estado, error, mensaje, detalles}` con 400, 404 o 409.
 | `/topic/ejecuciones/{id}/estado` | `MensajeEstadoEjecucion` en cada Sc |
 | `/topic/ejecuciones/{id}/eventos` | `NUEVO_PEDIDO`, `PLAN_ACTUALIZADO`, `PEDIDO_ENTREGADO`, `BLOQUEO_INICIADO`, `BLOQUEO_LEVANTADO`, `ALERTA_COLAPSO`, `EJECUCION_FINALIZADA` |
 
+El `detalle` de `ALERTA_COLAPSO` identifica el pedido que declara el colapso (LE-067):
+
+| Campo | Contenido |
+|---|---|
+| `codigoPedido` | Pedido que incumple su plazo, p. ej. `P-00001` |
+| `causa` | `ENTREGA_TARDIA` (salió en una unidad que llega tarde) o `PLAZO_VENCIDO_SIN_DESPACHO` (venció esperando en la cola) |
+| `instanteColapsoMs` | Instante del colapso: la salida de la unidad o la hora límite del pedido vencido |
+| `horaLimiteMs` | Hora límite del pedido |
+| `llegadaEstimadaMs`, `retrasoMinutos`, `unidad` | Solo con `ENTREGA_TARDIA`: llegada estimada al cliente, minutos de retraso y código de la unidad |
+
 Los instantes simulados van en epoch ms. La instantánea trae:
 
 - **Relojes** (LE-085, LE-089): `relojSimuladoMs`, `relojSimuladoInicioMs`,
@@ -121,8 +131,10 @@ El despliegue en la VM (Nginx + systemd + MySQL, sin Docker) está en
 
 - La posición se interpola a velocidad constante sobre el camino del tramo; si el
   refrigerio cae a mitad de un tramo, la pausa se reparte a lo largo del tramo.
-- El camino se calcula al despachar con los bloqueos vigentes en ese momento. Un
-  bloqueo que empieza durante el viaje no cambia el dibujo (media vuelta, LE-055,
-  pendiente).
+- El camino se calcula al despachar y esquiva los bloqueos que la unidad encontraría
+  al pasar por cada nodo, incluso los que empiezan durante el viaje. Los bloqueos de una
+  ejecución se fijan al crearla; si se llegaran a registrar en vivo (CU-12), haría falta
+  la media vuelta (LE-055, pendiente). Por la interpolación lineal de arriba, en un tramo
+  con refrigerio el dibujo puede mostrar la unidad atrasada respecto de su avance real.
 - La operación día a día cubre el mes en curso y termina al cerrar el mes.
 - Averías y la edición de parámetros (CU-26 a CU-28) quedan para la siguiente entrega.

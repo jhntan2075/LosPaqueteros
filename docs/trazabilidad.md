@@ -21,7 +21,7 @@ no al núcleo del planificador).
 | LE-026 | Dos algoritmos metaheurísticos en Java | Hecho | `PlanificadorGA`, `PlanificadorIACO` sobre `AlgoritmoMetaheuristico` | — (falta `PlanificadorGATest`) |
 | LE-032 | Rutas dentro del plazo; colapso si no hay plan factible | Parcial | `EvaluadorFitness` (penalización), `Orquestador` (registro) | `EvaluadorFitnessTest` |
 | LE-041 / LE-042 | Reasignación de carga en camino al pedido más crítico | Pendiente / Motor | — | — |
-| LE-055 | Media vuelta ante nodo bloqueado | Motor | Hoy `util.Malla` solo rodea el bloqueo al planificar | — |
+| LE-055 | Media vuelta ante nodo bloqueado | Motor | `util.Malla` rodea al planificar los bloqueos que la unidad encontraría en el viaje (incluso los que empiezan en tránsito); la media vuelta solo haría falta con bloqueos registrados en vivo | `MallaTest` |
 | LE-057 | Sc: salto del eje de consumo | Hecho | `MotorEjecucion` (tick cada `APP_SC_SEGUNDOS`) | `MotorEjecucionTest` |
 | LE-058 | Sa: salto del algoritmo | Hecho | `Orquestador` (`saMinutos`), `PLANIFICADOR_SA_MINUTOS` | — |
 | LE-059 | Ta: tiempo de cómputo por planificación | Hecho | `Orquestador.simular`, `ResultadoSimulacion.registrarTiempoComputo` | — |

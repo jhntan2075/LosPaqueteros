@@ -73,6 +73,26 @@ Formato basado en Keep a Changelog; versionado semántico (MAJOR.MINOR.PATCH).
 - `modelo.Tramo` / `TipoTramo` y `CalculadoraTiempos.trazar`: tramos de cada ruta
   despachada (viaje, servicio y retorno, con salida y llegada) para que el visualizador
   interpole la posición de las unidades. `UnidadEnTransito` guarda origen, salida y tramos.
+- `simulacion.ColapsoLogistico`: el colapso guarda el pedido que lo declara, su causa
+  (`ENTREGA_TARDIA` o `PLAZO_VENCIDO_SIN_DESPACHO`), la hora límite y, si salió, la llegada
+  estimada y la unidad. `ResultadoSimulacion.getColapso()` lo expone y el evento
+  `ALERTA_COLAPSO` lo difunde en su `detalle` (LE-067).
+
+### Corregido
+- Un pedido que vencía en la cola sin despacharse solo se detectaba al cerrar el horizonte,
+  así que la simulación hasta el colapso seguía corriendo después del colapso real. Ahora
+  cada paso revisa la cola y declara el colapso en la hora límite del pedido. En las
+  corridas de experimentación esto solo puede adelantar `getInstanteColapso()`; el resto de
+  las métricas no cambia.
+- Las unidades cruzaban bloqueos que empezaban durante el viaje: el camino y la distancia de
+  cada tramo se calculaban con los bloqueos vigentes al salir (en octubre 2026, 5 % de los
+  tramos de auto, 7 % de moto y 11 % de bicicleta). Como los bloqueos se conocen de antemano,
+  `Malla.distancia`/`Malla.camino` reciben ahora la unidad y evalúan cada nodo en el minuto
+  en que esta llegaría (velocidad y refrigerio, igual que `CalculadoraTiempos`). Un bloqueo
+  que termina antes de que la unidad llegue ya no la desvía. GA e IACO evalúan con la misma
+  distancia; la matriz del primer tramo de IACO sigue siendo una estimación en un instante.
+  Costo: Ta promedio de 500 a 784 ms en 7 días de octubre 2026 (semilla 1), lejos de
+  Sa/k = 10 s; con las semillas 2 a 4 el cumplimiento sigue en 100 %.
 
 ## [0.5.0] — 2026-09-18
 

@@ -3,6 +3,7 @@ package pe.pucp.paqtracker.util;
 import pe.pucp.paqtracker.modelo.Bloqueo;
 import pe.pucp.paqtracker.modelo.ConfiguracionDominio;
 import pe.pucp.paqtracker.modelo.Nodo;
+import pe.pucp.paqtracker.modelo.Vehiculo;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -14,13 +15,19 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.function.IntUnaryOperator;
 
 /**
  * Malla ortogonal de la ciudad. Calcula la distancia entre dos nodos teniendo
- * en cuenta los bloqueos vigentes en un instante dado. Sin bloqueos que corten
- * el paso, la distancia es la de Manhattan; cuando un bloqueo interrumpe el
- * camino directo, se calcula el camino mas corto real mediante una busqueda en
- * amplitud sobre los nodos transitables.
+ * en cuenta los bloqueos. Sin bloqueos que corten el paso, la distancia es la
+ * de Manhattan; cuando un bloqueo interrumpe el camino directo, se calcula el
+ * camino mas corto real mediante una busqueda en amplitud sobre los nodos
+ * transitables.
+ *
+ * Los bloqueos se conocen de antemano, asi que cuando se sabe que unidad
+ * recorre el tramo cada nodo se evalua en el minuto en que la unidad llegaria
+ * a el: un bloqueo que empieza a mitad del viaje se rodea y uno que termina
+ * antes de que la unidad llegue no la desvia.
  *
  * El conjunto de nodos bloqueados solo cambia cuando un bloqueo empieza o
  * termina, de modo que la linea de tiempo se parte en tramos y el conjunto de
@@ -36,8 +43,10 @@ public final class Malla {
 
     /** Filas del indice lineal de nodos (x * ALTO_INDICE + y) usado al reconstruir caminos. */
     private static final int ALTO_INDICE = ConfiguracionDominio.MALLA_ALTO + 1;
+    private static final int TOTAL_NODOS = (ConfiguracionDominio.MALLA_ANCHO + 1) * ALTO_INDICE;
     private static final int NO_VISITADO = -2;
     private static final int RAIZ = -1;
+    private static final int[][] DIRECCIONES = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
 
     private final List<Bloqueo> bloqueos;
 
@@ -121,44 +130,68 @@ public final class Malla {
     }
 
     /**
-     * Distancia entre dos nodos considerando los bloqueos vigentes en el
-     * instante dado.
+     * Distancia entre dos nodos con los bloqueos vigentes en un unico instante, como si todo el
+     * tramo se recorriera en ese minuto. Solo sirve para estimaciones que no conocen la unidad
+     * (heuristicas); para evaluar o trazar una ruta se usa
+     * {@link #distancia(Nodo, Nodo, int, Vehiculo)}.
      *
      * @param origen   nodo de partida
      * @param destino  nodo de llegada
-     * @param instante minuto absoluto en que se recorre el tramo
+     * @param instante minuto absoluto en que se evaluan los bloqueos
      * @return distancia real, esquivando bloqueos si es necesario
      */
     public int distancia(Nodo origen, Nodo destino, int instante) {
-        Set<Long> bloqueados = nodosBloqueadosEn(instante);
-        if (bloqueados.isEmpty()) {
-            return origen.distanciaManhattan(destino);
-        }
-        if (!caminoDirectoBloqueado(origen, destino, bloqueados)) {
-            return origen.distanciaManhattan(destino);
-        }
-        return buscarCaminoMasCorto(origen, destino, bloqueados);
+        return distancia(origen, destino, instante, instante, kilometros -> instante);
     }
 
     /**
-     * Camino que recorre una unidad entre dos nodos en el instante dado, como lista de vertices
-     * (origen, esquinas y destino). Su longitud coincide con
-     * {@link #distancia(Nodo, Nodo, int)}: si el bloqueo no toca el rectangulo es el camino en L
-     * (primero el eje x); si lo toca, el camino mas corto real que lo rodea. Se calcula una sola vez por
-     * despacho para dibujar la ruta; nunca dentro de los bucles de busqueda.
+     * Distancia que recorre una unidad entre dos nodos saliendo en el instante dado. Cada nodo se
+     * evalua contra los bloqueos vigentes en el minuto en que la unidad llegaria a el, con su
+     * velocidad y su refrigerio, igual que el reloj de {@link CalculadoraTiempos}.
      *
      * @param origen   nodo de partida
      * @param destino  nodo de llegada
-     * @param instante minuto absoluto en que se recorre el tramo
+     * @param salida   minuto absoluto en que la unidad sale del origen
+     * @param vehiculo unidad que recorre el tramo
+     * @return distancia real, esquivando los bloqueos que encontraria en el camino
+     */
+    public int distancia(Nodo origen, Nodo destino, int salida, Vehiculo vehiculo) {
+        IntUnaryOperator llegada = kilometros -> instanteTrasRecorrer(salida, kilometros, vehiculo);
+        return distancia(origen, destino, salida, llegada.applyAsInt(origen.distanciaManhattan(destino)),
+                llegada);
+    }
+
+    /**
+     * Camino entre dos nodos con los bloqueos vigentes en un unico instante. Su longitud coincide con
+     * {@link #distancia(Nodo, Nodo, int)}.
+     *
+     * @param origen   nodo de partida
+     * @param destino  nodo de llegada
+     * @param instante minuto absoluto en que se evaluan los bloqueos
      * @return vertices del camino; un solo nodo si origen y destino coinciden
      */
     public List<Nodo> camino(Nodo origen, Nodo destino, int instante) {
-        Set<Long> bloqueados = nodosBloqueadosEn(instante);
-        if (bloqueados.isEmpty() || !caminoDirectoBloqueado(origen, destino, bloqueados)) {
-            return caminoEnL(origen, destino);
-        }
-        List<Nodo> nodos = reconstruirCaminoMasCorto(origen, destino, bloqueados);
-        return nodos.isEmpty() ? caminoEnL(origen, destino) : comprimir(nodos);
+        return camino(origen, destino, instante, instante, kilometros -> instante);
+    }
+
+    /**
+     * Camino que recorre una unidad entre dos nodos, como lista de vertices (origen, esquinas y
+     * destino). Su longitud coincide con {@link #distancia(Nodo, Nodo, int, Vehiculo)}: si ningun
+     * bloqueo toca el rectangulo mientras dura el viaje es el camino en L (primero el eje x); si lo
+     * toca, el camino mas corto que no pisa un nodo bloqueado en el minuto en que la unidad pasa por
+     * el. Se calcula una sola vez por despacho para dibujar la ruta; nunca dentro de los bucles de
+     * busqueda.
+     *
+     * @param origen   nodo de partida
+     * @param destino  nodo de llegada
+     * @param salida   minuto absoluto en que la unidad sale del origen
+     * @param vehiculo unidad que recorre el tramo
+     * @return vertices del camino; un solo nodo si origen y destino coinciden
+     */
+    public List<Nodo> camino(Nodo origen, Nodo destino, int salida, Vehiculo vehiculo) {
+        IntUnaryOperator llegada = kilometros -> instanteTrasRecorrer(salida, kilometros, vehiculo);
+        return camino(origen, destino, salida, llegada.applyAsInt(origen.distanciaManhattan(destino)),
+                llegada);
     }
 
     /**
@@ -200,6 +233,62 @@ public final class Malla {
     }
 
     /**
+     * Distancia con el atajo de Manhattan: la busqueda solo corre si algun bloqueo vigente entre la
+     * salida y la llegada por el camino en L toca el rectangulo del recorrido.
+     *
+     * @param desde   minuto de salida
+     * @param hasta   minuto de llegada por el camino en L
+     * @param llegada minuto en que la unidad alcanza cada kilometro recorrido
+     */
+    private int distancia(Nodo origen, Nodo destino, int desde, int hasta, IntUnaryOperator llegada) {
+        if (origen.equals(destino) || !rectanguloBloqueadoEntre(origen, destino, desde, hasta)) {
+            return origen.distanciaManhattan(destino);
+        }
+        int[] padre = new int[TOTAL_NODOS];
+        int[] pasos = new int[TOTAL_NODOS];
+        int ultimo = buscarCaminoMasCorto(origen, destino, llegada, padre, pasos);
+        return ultimo == NO_VISITADO ? SIN_CAMINO : pasos[ultimo] + 1;
+    }
+
+    private List<Nodo> camino(Nodo origen, Nodo destino, int desde, int hasta, IntUnaryOperator llegada) {
+        if (origen.equals(destino) || !rectanguloBloqueadoEntre(origen, destino, desde, hasta)) {
+            return caminoEnL(origen, destino);
+        }
+        int[] padre = new int[TOTAL_NODOS];
+        int ultimo = buscarCaminoMasCorto(origen, destino, llegada, padre, new int[TOTAL_NODOS]);
+        return ultimo == NO_VISITADO ? caminoEnL(origen, destino) : comprimir(armarCamino(padre, ultimo, destino));
+    }
+
+    /**
+     * Minuto en que una unidad termina de recorrer una cantidad de kilometros, con el mismo calculo
+     * que el reloj de las rutas: velocidad del tipo de unidad y pausa del refrigerio.
+     */
+    private static int instanteTrasRecorrer(int salida, int kilometros, Vehiculo vehiculo) {
+        return CalendarioTurnos.avanzarConPausa(vehiculo.getId(), salida,
+                CalculadoraTiempos.minutosDeViaje(kilometros, vehiculo.getTipo()));
+    }
+
+    /**
+     * Indica si algun nodo bloqueado en algun momento del intervalo cae dentro del rectangulo de
+     * movimiento. Recorre solo los tramos de tiempo que el intervalo atraviesa.
+     *
+     * @param desde primer minuto del intervalo
+     * @param hasta ultimo minuto del intervalo
+     * @return verdadero si el camino directo podria cruzar un bloqueo
+     */
+    private boolean rectanguloBloqueadoEntre(Nodo origen, Nodo destino, int desde, int hasta) {
+        if (cambios.length == 0) {
+            return false;
+        }
+        for (int tramo = tramoDe(desde); tramo <= tramoDe(hasta); tramo++) {
+            if (caminoDirectoBloqueado(origen, destino, nodosBloqueadosDelTramo(tramo))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
      * Union de los nodos bloqueados por los bloqueos vigentes en el instante.
      *
      * @param instante minuto absoluto a consultar
@@ -209,7 +298,18 @@ public final class Malla {
         if (cambios.length == 0) {
             return Set.of();
         }
-        return cachePorTramo.computeIfAbsent(tramoDe(instante), tramo -> construirBloqueados(instante));
+        return nodosBloqueadosDelTramo(tramoDe(instante));
+    }
+
+    /**
+     * @param tramo indice del tramo de tiempo; -1 es el tramo previo al primer bloqueo
+     * @return nodos bloqueados durante ese tramo
+     */
+    private Set<Long> nodosBloqueadosDelTramo(int tramo) {
+        if (tramo < 0) {
+            return Set.of();
+        }
+        return cachePorTramo.computeIfAbsent(tramo, indice -> construirBloqueados(cambios[indice]));
     }
 
     /**
@@ -278,92 +378,49 @@ public final class Malla {
     }
 
     /**
-     * Busqueda en amplitud del camino mas corto sobre los nodos transitables.
-     * Si el destino esta bloqueado, la unidad se aproxima al vecino transitable
-     * mas cercano y se suma el ultimo paso, de modo que el costo sea finito.
+     * Busqueda en amplitud del camino mas corto sobre los nodos transitables. Como la cola avanza
+     * kilometro a kilometro, todos los vecinos de un nodo se alcanzan en el mismo minuto y se
+     * descartan los que esten bloqueados en ese minuto. El destino siempre se acepta: si esta
+     * bloqueado, la unidad da el ultimo paso desde el vecino transitable y el costo es finito.
      *
-     * @param origen     nodo de partida
-     * @param destino    nodo de llegada
-     * @param bloqueados nodos intransitables
-     * @return numero de pasos del camino mas corto
+     * @param origen  nodo de partida, distinto del destino
+     * @param destino nodo de llegada
+     * @param llegada minuto en que la unidad alcanza cada kilometro recorrido
+     * @param padre   arreglo de salida: de que nodo se llego a cada uno
+     * @param pasos   arreglo de salida: kilometros recorridos hasta cada nodo
+     * @return indice del nodo desde el que se da el ultimo paso al destino, o NO_VISITADO si no hay camino
      */
-    private int buscarCaminoMasCorto(Nodo origen, Nodo destino, Set<Long> bloqueados) {
-        if (origen.getX() == destino.getX() && origen.getY() == destino.getY()) {
-            return 0;
-        }
-        boolean destinoBloqueado = bloqueados.contains(codificar(destino.getX(), destino.getY()));
-        boolean[][] visto = new boolean[ConfiguracionDominio.MALLA_ANCHO + 1][ConfiguracionDominio.MALLA_ALTO + 1];
-        ArrayDeque<int[]> cola = new ArrayDeque<>();
-        cola.add(new int[]{origen.getX(), origen.getY(), 0});
-        visto[origen.getX()][origen.getY()] = true;
-        int[][] direcciones = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
-        while (!cola.isEmpty()) {
-            int[] actual = cola.poll();
-            if (destinoBloqueado && esAdyacente(actual[0], actual[1], destino)) {
-                return actual[2] + 1;
-            }
-            for (int[] direccion : direcciones) {
-                int nuevoX = actual[0] + direccion[0];
-                int nuevoY = actual[1] + direccion[1];
-                if (fueraDeMalla(nuevoX, nuevoY) || visto[nuevoX][nuevoY]) {
-                    continue;
-                }
-                if (bloqueados.contains(codificar(nuevoX, nuevoY))) {
-                    continue;
-                }
-                if (nuevoX == destino.getX() && nuevoY == destino.getY()) {
-                    return actual[2] + 1;
-                }
-                visto[nuevoX][nuevoY] = true;
-                cola.add(new int[]{nuevoX, nuevoY, actual[2] + 1});
-            }
-        }
-        return SIN_CAMINO;
-    }
-
-    /**
-     * Misma busqueda en amplitud que {@link #buscarCaminoMasCorto}, guardando de que nodo se llego a
-     * cada uno para reconstruir el camino. Si el destino esta bloqueado, el camino llega al vecino
-     * transitable y da el ultimo paso, igual que el calculo de la distancia.
-     *
-     * @param origen     nodo de partida
-     * @param destino    nodo de llegada
-     * @param bloqueados nodos intransitables
-     * @return todos los nodos del camino en orden, o vacio si no hay camino
-     */
-    private List<Nodo> reconstruirCaminoMasCorto(Nodo origen, Nodo destino, Set<Long> bloqueados) {
-        if (origen.equals(destino)) {
-            return List.of(origen);
-        }
-        boolean destinoBloqueado = bloqueados.contains(codificar(destino.getX(), destino.getY()));
-        int[] padre = new int[(ConfiguracionDominio.MALLA_ANCHO + 1) * ALTO_INDICE];
+    private int buscarCaminoMasCorto(Nodo origen, Nodo destino, IntUnaryOperator llegada, int[] padre,
+                                     int[] pasos) {
         Arrays.fill(padre, NO_VISITADO);
         ArrayDeque<Integer> cola = new ArrayDeque<>();
         padre[indice(origen.getX(), origen.getY())] = RAIZ;
         cola.add(indice(origen.getX(), origen.getY()));
-        int[][] direcciones = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
+        int pasoEvaluado = -1;
+        Set<Long> bloqueados = Set.of();
         while (!cola.isEmpty()) {
             int actual = cola.poll();
-            int x = actual / ALTO_INDICE;
-            int y = actual % ALTO_INDICE;
-            if (destinoBloqueado && esAdyacente(x, y, destino)) {
-                return armarCamino(padre, actual, destino);
+            // La cola sale ordenada por kilometros: el conjunto cambia solo al pasar al siguiente.
+            if (pasos[actual] + 1 != pasoEvaluado) {
+                pasoEvaluado = pasos[actual] + 1;
+                bloqueados = nodosBloqueadosEn(llegada.applyAsInt(pasoEvaluado));
             }
-            for (int[] direccion : direcciones) {
-                int nuevoX = x + direccion[0];
-                int nuevoY = y + direccion[1];
+            for (int[] direccion : DIRECCIONES) {
+                int nuevoX = actual / ALTO_INDICE + direccion[0];
+                int nuevoY = actual % ALTO_INDICE + direccion[1];
+                if (nuevoX == destino.getX() && nuevoY == destino.getY()) {
+                    return actual;
+                }
                 if (fueraDeMalla(nuevoX, nuevoY) || padre[indice(nuevoX, nuevoY)] != NO_VISITADO
                         || bloqueados.contains(codificar(nuevoX, nuevoY))) {
                     continue;
                 }
-                if (nuevoX == destino.getX() && nuevoY == destino.getY()) {
-                    return armarCamino(padre, actual, destino);
-                }
                 padre[indice(nuevoX, nuevoY)] = actual;
+                pasos[indice(nuevoX, nuevoY)] = pasoEvaluado;
                 cola.add(indice(nuevoX, nuevoY));
             }
         }
-        return List.of();
+        return NO_VISITADO;
     }
 
     private static List<Nodo> armarCamino(int[] padre, int ultimo, Nodo destino) {
@@ -406,15 +463,5 @@ public final class Malla {
     private boolean fueraDeMalla(int x, int y) {
         return x < 0 || x > ConfiguracionDominio.MALLA_ANCHO
                 || y < 0 || y > ConfiguracionDominio.MALLA_ALTO;
-    }
-
-    /**
-     * @param x       coordenada horizontal del nodo evaluado
-     * @param y       coordenada vertical del nodo evaluado
-     * @param destino nodo de destino
-     * @return verdadero si el nodo evaluado es adyacente al destino
-     */
-    private boolean esAdyacente(int x, int y, Nodo destino) {
-        return Math.abs(x - destino.getX()) + Math.abs(y - destino.getY()) == 1;
     }
 }

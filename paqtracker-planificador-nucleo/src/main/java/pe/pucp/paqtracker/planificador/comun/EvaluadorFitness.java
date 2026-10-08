@@ -222,7 +222,8 @@ public final class EvaluadorFitness {
         int reloj = escenario.getInstanteActual();
         int idVehiculo = ruta.getVehiculo().getId();
         for (Entrega entrega : ruta.getSecuencia()) {
-            int tramo = CalculadoraTiempos.distancia(escenario, actual, entrega.getDestino(), reloj);
+            int tramo = CalculadoraTiempos.distancia(escenario, actual, entrega.getDestino(), reloj,
+                    ruta.getVehiculo());
             resultado.distancia += tramo;
             reloj = CalendarioTurnos.avanzarConPausa(idVehiculo, reloj,
                     CalculadoraTiempos.minutosDeViaje(tramo, ruta.getVehiculo().getTipo()));
@@ -233,7 +234,7 @@ public final class EvaluadorFitness {
         }
         if (ruta.getDestino() != null) {
             resultado.distancia += CalculadoraTiempos.distancia(
-                    escenario, actual, ruta.getDestino().getUbicacion(), reloj);
+                    escenario, actual, ruta.getDestino().getUbicacion(), reloj, ruta.getVehiculo());
         }
         return resultado;
     }

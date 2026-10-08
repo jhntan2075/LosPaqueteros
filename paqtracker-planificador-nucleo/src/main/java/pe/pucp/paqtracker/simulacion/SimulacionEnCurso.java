@@ -25,7 +25,9 @@ import java.util.Queue;
  *
  * Permite que la API conduzca la simulacion con su propio reloj (real o
  * acelerado), que lea el estado entre pasos y que agregue pedidos registrados
- * en vivo. No es segura para hilos: debe usarla un solo hilo.
+ * en vivo. Cada paso revisa ademas si un pedido de la cola vencio sin
+ * despacharse, para declarar el colapso en ese mismo paso. No es segura para
+ * hilos: debe usarla un solo hilo.
  */
 public final class SimulacionEnCurso {
 
@@ -87,6 +89,7 @@ public final class SimulacionEnCurso {
         orquestador.liberarAveriados(traslados, disponibles, regresos, instante);
         orquestador.actualizarEstadosPorTurno(instante);
         List<Pedido> incorporados = orquestador.incorporarPedidos(porLlegar, cola, instante);
+        orquestador.detectarVencidosEnCola(cola, instante, resultado);
         int despachadasAntes = enRuta.size();
         int unidadesUrgentes = orquestador.despacharUrgentes(cola, enRuta, instante, resultado);
         long tiempoComputo = ResultadoPaso.SIN_PLANIFICACION;

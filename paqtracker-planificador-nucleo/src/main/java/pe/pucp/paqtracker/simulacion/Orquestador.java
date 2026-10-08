@@ -274,12 +274,30 @@ public final class Orquestador {
         for (Pedido pedido : pendientes) {
             if (pedido.getHoraLimite() <= instanteFinal) {
                 resultado.sumarIncumplimientos(1);
-                resultado.registrarColapso(pedido.getHoraLimite());
+                resultado.registrarColapso(ColapsoLogistico.porPlazoVencidoSinDespacho(pedido));
                 resultado.getDetalleIncumplimientos().add(String.format(
                         "pedido %d: hora limite %d, no fue entregado",
                         pedido.getId(), pedido.getHoraLimite()));
             }
         }
+    }
+
+    /**
+     * Declara el colapso si algun pedido de la cola llego a su hora limite sin
+     * despacharse. Sin esta revision, un pedido varado en la cola solo se
+     * detectaba al cerrar el horizonte y la simulacion seguia despues del
+     * colapso real. No suma incumplimientos: el pedido aun puede salir tarde en
+     * un despacho, o contarse al cerrar, y se contaria dos veces.
+     *
+     * @param cola      cola de pedidos por planificar
+     * @param instante  instante actual del reloj
+     * @param resultado resultado agregado a actualizar
+     */
+    void detectarVencidosEnCola(List<Pedido> cola, int instante, ResultadoSimulacion resultado) {
+        cola.stream()
+                .filter(pedido -> pedido.getHoraLimite() <= instante)
+                .min(Comparator.comparingInt(Pedido::getHoraLimite))
+                .ifPresent(pedido -> resultado.registrarColapso(ColapsoLogistico.porPlazoVencidoSinDespacho(pedido)));
     }
 
     /**
@@ -788,7 +806,7 @@ public final class Orquestador {
     private int estimarLlegada(Vehiculo vehiculo, Pedido pedido, int instante,
                                EscenarioOperativo escenario) {
         int tramo = CalculadoraTiempos.distancia(escenario,
-                vehiculo.getPosicion().getUbicacion(), pedido.getDestino(), instante);
+                vehiculo.getPosicion().getUbicacion(), pedido.getDestino(), instante, vehiculo);
         return CalendarioTurnos.avanzarConPausa(vehiculo.getId(), instante,
                 CalculadoraTiempos.minutosDeViaje(tramo, vehiculo.getTipo()));
     }
@@ -868,7 +886,6 @@ public final class Orquestador {
         resultado.sumarIncumplimientos(recorrido[CalculadoraTiempos.INDICE_INCUMPLIMIENTOS]);
         registrarMargenes(escenario, ruta, instante, resultado);
         if (recorrido[CalculadoraTiempos.INDICE_INCUMPLIMIENTOS] > 0) {
-            resultado.registrarColapso(instante);
             registrarDetalle(escenario, ruta, instante, resultado);
         }
         ponerEnTransito(ruta, escenario, instante, recorrido[CalculadoraTiempos.INDICE_FIN], enRuta);
@@ -908,7 +925,8 @@ public final class Orquestador {
         int idVehiculo = ruta.getVehiculo().getId();
         Nodo actual = ruta.getOrigen().getUbicacion();
         for (Entrega entrega : ruta.getSecuencia()) {
-            int tramo = CalculadoraTiempos.distancia(escenario, actual, entrega.getDestino(), reloj);
+            int tramo = CalculadoraTiempos.distancia(escenario, actual, entrega.getDestino(), reloj,
+                    ruta.getVehiculo());
             reloj = CalendarioTurnos.avanzarConPausa(idVehiculo, reloj,
                     CalculadoraTiempos.minutosDeViaje(tramo, ruta.getVehiculo().getTipo()));
             resultado.registrarMargenEntrega(entrega.getHoraLimite() - reloj, entrega.getCantidad());
@@ -959,7 +977,6 @@ public final class Orquestador {
             resultado.sumarIncumplimientos(recorrido[CalculadoraTiempos.INDICE_INCUMPLIMIENTOS]);
             registrarMargenes(escenario, ruta, instante, resultado);
             if (recorrido[CalculadoraTiempos.INDICE_INCUMPLIMIENTOS] > 0) {
-                resultado.registrarColapso(instante);
                 registrarDetalle(escenario, ruta, instante, resultado);
             }
             resultado.sumarEntregas(ruta.getSecuencia().size());
@@ -994,7 +1011,10 @@ public final class Orquestador {
     }
 
     /**
-     * Registra el detalle de los incumplimientos de una ruta para el informe.
+     * Registra el detalle de los incumplimientos de una ruta para el informe y
+     * declara el colapso con la primera entrega tardia. Recorre la ruta igual
+     * que {@link CalculadoraTiempos#recorrer}, asi que encuentra las mismas
+     * entregas que esta conto como incumplidas.
      *
      * @param escenario escenario operativo
      * @param ruta      ruta con incumplimientos
@@ -1007,11 +1027,14 @@ public final class Orquestador {
         int idVehiculo = ruta.getVehiculo().getId();
         Nodo actual = ruta.getOrigen().getUbicacion();
         for (Entrega entrega : ruta.getSecuencia()) {
-            int tramo = CalculadoraTiempos.distancia(escenario, actual, entrega.getDestino(), reloj);
+            int tramo = CalculadoraTiempos.distancia(escenario, actual, entrega.getDestino(), reloj,
+                    ruta.getVehiculo());
             reloj = CalendarioTurnos.avanzarConPausa(idVehiculo, reloj,
                     CalculadoraTiempos.minutosDeViaje(tramo, ruta.getVehiculo().getTipo()));
             int holgura = entrega.getHoraLimite() - reloj;
             if (holgura < 0) {
+                resultado.registrarColapso(ColapsoLogistico.porEntregaTardia(entrega.getIdPedido(), salida,
+                        entrega.getHoraLimite(), reloj, ruta.getVehiculo()));
                 resultado.getDetalleIncumplimientos().add(String.format(
                         "t=%d (dia %d) %s: hora limite %d, llega en %d, tarde por %d min",
                         salida, salida / 1440 + 1, ruta.getVehiculo().getTipo(),
