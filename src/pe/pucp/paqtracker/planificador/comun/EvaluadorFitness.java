@@ -15,13 +15,25 @@ import pe.pucp.paqtracker.util.CalendarioTurnos;
  *         + suma(penalizacionTiempo(holgura)) sobre las entregas ruteadas
  *         + suma(penalizacionCola) sobre las entregas sin rutear
  *
+ * La unidad del dominio es el producto, no el pedido: la capacidad de la flota,
+ * el stock de los almacenes y las restricciones duras se miden en productos, de
+ * modo que un pedido de 40 unidades no puede pesar lo mismo que uno de 1. Los
+ * terminos que representan un costo consumado escalan con la cantidad; los que
+ * representan un evento binario del pedido, no.
+ *
  * El tiempo se trata con una sola penalizacion por entrega, continua en el
  * umbral y monotona no creciente en la holgura h = horaLimite - llegada:
  *
  *   h >= UMBRAL            -> 0
  *   0 <= h <  UMBRAL       -> FACTOR_HOLGURA_BLANDA * (UMBRAL - h)^2
  *   h <  0                 -> PENALIZACION_TARDANZA_BASE
- *                             + PENALIZACION_POR_MINUTO_TARDE * (-h)
+ *                             + PENALIZACION_POR_MINUTO_TARDE * productos * (-h)
+ *
+ * La cola escala por completo con la cantidad, porque abandonar un pedido deja
+ * sin atender a todos sus productos:
+ *
+ *   P_cola(e) = productos(e) * (PENALIZACION_SIN_RUTEAR_BASE
+ *                               + PESO_ESPERA * plazoMaximo / holguraRestante)
  *
  * La version anterior sumaba dos terminos separados, uno por el conteo de
  * tardios al cuadrado y otro por la holgura, y quedaba invertida: llegar justo
@@ -72,6 +84,9 @@ public final class EvaluadorFitness {
 
     /** Piso de holgura restante, en minutos, para evitar dividir entre cero o valores negativos. */
     private static final int HOLGURA_RESTANTE_MINIMA = 1;
+
+    /** Cantidad de producto con la que se comprueban las invariantes en su peor caso. */
+    private static final int PRODUCTO_UNICO = 1;
 
     private final EscenarioOperativo escenario;
     private final PesosFitness pesos;
@@ -128,25 +143,47 @@ public final class EvaluadorFitness {
     }
 
     /**
-     * Penalizacion de tiempo de una entrega segun su holgura. Es continua en el
-     * umbral, monotona no creciente en toda la holgura y nunca negativa.
+     * Penalizacion de tiempo de una entrega de un solo producto, con los pesos
+     * de produccion.
      *
      * @param holgura minutos entre la llegada y la hora limite; negativa si llega tarde
      * @return penalizacion de tiempo de la entrega
      */
     public static double penalizacionTiempo(int holgura) {
-        return penalizacionTiempo(holgura, PesosFitness.porDefecto());
+        return penalizacionTiempo(holgura, PRODUCTO_UNICO, PesosFitness.porDefecto());
     }
 
     /**
-     * Penalizacion de tiempo de una entrega con pesos explicitos. Es la forma
-     * que usan el evaluador y el verificador de invariantes del experimento.
+     * Penalizacion de tiempo de una entrega de un solo producto, con pesos
+     * explicitos. Es la forma con la que el verificador comprueba las
+     * invariantes en su peor caso: con un producto, la rama dura vale lo minimo
+     * posible frente a la blanda.
      *
      * @param holgura minutos entre la llegada y la hora limite; negativa si llega tarde
      * @param pesos   pesos de la funcion objetivo
      * @return penalizacion de tiempo de la entrega
      */
     public static double penalizacionTiempo(int holgura, PesosFitness pesos) {
+        return penalizacionTiempo(holgura, PRODUCTO_UNICO, pesos);
+    }
+
+    /**
+     * Penalizacion de tiempo de una entrega segun su holgura y su cantidad de
+     * producto. Es continua en el umbral, monotona no creciente en la holgura y
+     * nunca negativa.
+     *
+     * Solo el costo por minuto escala con la cantidad: incumplir es un evento
+     * binario del pedido que declara el colapso logistico (LE-067), asi que el
+     * salto fijo no se multiplica, mientras que la magnitud del retraso si
+     * afecta a tantos productos como transporte la entrega. La rama blanda
+     * tampoco escala: protege la holgura, no mide un costo consumado.
+     *
+     * @param holgura   minutos entre la llegada y la hora limite; negativa si llega tarde
+     * @param productos unidades de producto de la entrega
+     * @param pesos     pesos de la funcion objetivo
+     * @return penalizacion de tiempo de la entrega
+     */
+    public static double penalizacionTiempo(int holgura, int productos, PesosFitness pesos) {
         if (holgura >= pesos.getUmbralHolguraMinutos()) {
             return 0.0;
         }
@@ -155,7 +192,7 @@ public final class EvaluadorFitness {
             return pesos.getFactorHolguraBlanda() * faltante * faltante;
         }
         return pesos.getPenalizacionTardanzaBase()
-                + pesos.getPenalizacionPorMinutoTarde() * (-holgura);
+                + pesos.getPenalizacionPorMinutoTarde() * productos * (-holgura);
     }
 
     /**
@@ -175,7 +212,8 @@ public final class EvaluadorFitness {
             resultado.distancia += tramo;
             reloj = CalendarioTurnos.avanzarConPausa(idVehiculo, reloj,
                     CalculadoraTiempos.minutosDeViaje(tramo, ruta.getVehiculo().getTipo()));
-            resultado.penalizacionTiempo += penalizacionTiempo(entrega.getHoraLimite() - reloj, pesos);
+            resultado.penalizacionTiempo += penalizacionTiempo(entrega.getHoraLimite() - reloj,
+                    entrega.getCantidad(), pesos);
             reloj = CalendarioTurnos.avanzarConPausa(idVehiculo, reloj, escenario.getTiempoServicio());
             actual = entrega.getDestino();
         }
@@ -195,6 +233,10 @@ public final class EvaluadorFitness {
      * cada ciclo de replanificacion en vez de quedar fija mientras el pedido
      * permanece huerfano en la cola.
      *
+     * Los dos terminos escalan con la cantidad de producto: abandonar deja sin
+     * atender a todas las unidades del pedido, de modo que un pedido grande en
+     * cola cuesta proporcionalmente mas que uno pequeño.
+     *
      * @param solucion solucion con su cola de espera
      * @return penalizacion total de la cola de espera
      */
@@ -202,9 +244,10 @@ public final class EvaluadorFitness {
         double penalizacion = 0.0;
         for (Entrega entrega : solucion.getEspera()) {
             int holguraRestante = entrega.getHoraLimite() - escenario.getInstanteActual();
-            penalizacion += pesos.getPenalizacionSinRutearBase()
+            double porProducto = pesos.getPenalizacionSinRutearBase()
                     + pesos.getPesoEspera() * escenario.getPlazoMaximo()
                     / Math.max(HOLGURA_RESTANTE_MINIMA, holguraRestante);
+            penalizacion += porProducto * entrega.getCantidad();
         }
         return penalizacion;
     }

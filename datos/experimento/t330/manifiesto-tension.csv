@@ -1,0 +1,6 @@
+escenario,tipo,semilla_generacion,pedidos_por_dia,dispersion,mezcla_plazos,pedidos,con_bloqueos,bloqueos,dias
+esc-t01,tension,20260923501,330,concentrada,urgente,9694,false,0,30
+esc-t02,tension,20260923502,330,uniforme,urgente,9448,false,0,30
+esc-t03,tension,20260923503,330,mixta,urgente,9906,false,0,30
+esc-t04,tension,20260923504,330,concentrada,equilibrada,9703,false,0,30
+esc-t05,tension,20260923505,330,uniforme,equilibrada,9968,false,0,30

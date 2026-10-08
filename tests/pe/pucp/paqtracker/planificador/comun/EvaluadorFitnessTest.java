@@ -27,6 +27,9 @@ class EvaluadorFitnessTest {
     private static final Nodo DESTINO_LEJANO = new Nodo(65, 45);
     private static final Nodo DESTINO_CERCANO = new Nodo(40, 30);
 
+    /** Cantidad de producto de las entregas de los casos que no la barren. */
+    private static final int PRODUCTOS_POR_DEFECTO = 4;
+
     private final Almacen central = new Almacen(0, new Nodo(27, 14), true, Integer.MAX_VALUE);
 
     @Test
@@ -77,6 +80,75 @@ class EvaluadorFitnessTest {
     }
 
     @Test
+    void penalizacionTiempo_entregaTarde_escalaElCostoPorMinutoConLosProductos() {
+        // El salto fijo no escala (incumplir es binario); el costo por minuto si.
+        double base = EvaluadorFitness.PENALIZACION_TARDANZA_BASE;
+        double porMinuto = EvaluadorFitness.PENALIZACION_POR_MINUTO_TARDE;
+        PesosFitness pesos = PesosFitness.porDefecto();
+
+        for (int productos : new int[]{1, 5, 10}) {
+            double esperado = base + porMinuto * productos * 30;
+            assertEquals(esperado, EvaluadorFitness.penalizacionTiempo(-30, productos, pesos),
+                    1e-9, "productos " + productos);
+        }
+    }
+
+    @Test
+    void penalizacionTiempo_ramaBlanda_noEscalaConLosProductos() {
+        // La rama blanda protege la holgura, no mide un costo consumado.
+        PesosFitness pesos = PesosFitness.porDefecto();
+        double conUno = EvaluadorFitness.penalizacionTiempo(60, 1, pesos);
+
+        assertEquals(conUno, EvaluadorFitness.penalizacionTiempo(60, 10, pesos), 1e-9);
+        assertEquals(0.0, EvaluadorFitness.penalizacionTiempo(UMBRAL, 10, pesos));
+    }
+
+    @Test
+    void calcularFitness_entregaEnCola_escalaConLosProductos() {
+        EvaluadorFitness evaluador = new EvaluadorFitness(escenario());
+        double conUno = evaluador.evaluar(colaCon(1));
+
+        assertEquals(conUno * 5, evaluador.evaluar(colaCon(5)), 1e-6);
+        assertEquals(conUno * 10, evaluador.evaluar(colaCon(10)), 1e-6);
+    }
+
+    @Test
+    void calcularFitness_alCrecerLosProductos_seToleraMasTardanzaAntesDeAbandonar() {
+        // Los dos lados escalan con la cantidad, de modo que abandonar no deja
+        // de ser una opcion para un pedido grande; lo que crece es la tardanza
+        // que el planificador tolera antes de preferir el abandono. Con los
+        // pesos de arranque el umbral va de 9 min con un producto a 99 con diez.
+        EvaluadorFitness evaluador = new EvaluadorFitness(escenario());
+        int anterior = 0;
+        for (int productos : new int[]{1, 5, 10}) {
+            double abandonar = evaluador.evaluar(colaCon(productos));
+            int tolerancia = 0;
+            while (tolerancia < PLAZO_MAXIMO
+                    && EvaluadorFitness.penalizacionTiempo(-(tolerancia + 1), productos,
+                            PesosFitness.porDefecto()) < abandonar) {
+                tolerancia++;
+            }
+            assertTrue(tolerancia > anterior,
+                    "la tolerancia debe crecer con los productos; con " + productos
+                            + " dio " + tolerancia + " y antes " + anterior);
+            anterior = tolerancia;
+        }
+    }
+
+    @Test
+    void calcularFitness_pedidoGrande_rutearATiempoSiempreCuestaMenosQueAbandonar() {
+        // La invariante (d) del diseño: con holgura no negativa, rutear gana
+        // siempre, y la ventaja crece con la cantidad de producto.
+        EvaluadorFitness evaluador = new EvaluadorFitness(escenario());
+        for (int productos : new int[]{1, 5, 10}) {
+            SolucionRuteo aTiempo = solucionConUnaEntrega(PLAZO_MAXIMO, DESTINO_LEJANO,
+                    TipoVehiculo.AUTO, productos);
+            assertTrue(evaluador.evaluar(aTiempo) < evaluador.evaluar(colaCon(productos)),
+                    "productos " + productos);
+        }
+    }
+
+    @Test
     void penalizacionTiempo_ramaBlanda_nuncaSuperaALaDura() {
         double blandaMaxima = EvaluadorFitness.FACTOR_HOLGURA_BLANDA * UMBRAL * UMBRAL;
         assertTrue(blandaMaxima < EvaluadorFitness.PENALIZACION_TARDANZA_BASE,
@@ -123,11 +195,33 @@ class EvaluadorFitnessTest {
     }
 
     private SolucionRuteo solucionConUnaEntrega(int plazoMinutos, Nodo destino, TipoVehiculo tipo) {
+        return solucionConUnaEntrega(plazoMinutos, destino, tipo, PRODUCTOS_POR_DEFECTO);
+    }
+
+    /**
+     * @param plazoMinutos plazo de la entrega
+     * @param destino      nodo de entrega
+     * @param tipo         tipo de unidad que la transporta
+     * @param productos    unidades de producto de la entrega
+     * @return solucion con una sola ruta de una sola entrega
+     */
+    private SolucionRuteo solucionConUnaEntrega(int plazoMinutos, Nodo destino, TipoVehiculo tipo,
+                                                int productos) {
         Ruta ruta = new Ruta(new Vehiculo(0, tipo, central), central);
-        ruta.getSecuencia().add(new Entrega(0, 0, destino, 4, 0, plazoMinutos));
+        ruta.getSecuencia().add(new Entrega(0, 0, destino, productos, 0, plazoMinutos));
         ruta.setDestino(central);
         SolucionRuteo solucion = new SolucionRuteo();
         solucion.getRutas().add(ruta);
+        return solucion;
+    }
+
+    /**
+     * @param productos unidades de producto de la entrega abandonada
+     * @return solucion sin rutas, con una unica entrega en la cola de espera
+     */
+    private SolucionRuteo colaCon(int productos) {
+        SolucionRuteo solucion = new SolucionRuteo();
+        solucion.getEspera().add(new Entrega(0, 0, DESTINO_LEJANO, productos, 0, 240));
         return solucion;
     }
 

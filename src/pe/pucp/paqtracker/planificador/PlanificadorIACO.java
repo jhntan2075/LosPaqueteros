@@ -84,6 +84,9 @@ public final class PlanificadorIACO implements AlgoritmoMetaheuristico {
     /** Holgura de seguridad, en minutos, exigida al construir. */
     public static final int BUFFER_MINUTOS = 45;
 
+    /** Separacion entre los flujos aleatorios de dos ciclos consecutivos. */
+    private static final long DESFASE_CICLO = 1_000_003L;
+
     private final long semilla;
     private final MemoriaFeromonas memoria;
     private final ParametrosIACO parametros;
@@ -199,7 +202,11 @@ public final class PlanificadorIACO implements AlgoritmoMetaheuristico {
                                                  Reparador reparador, EvaluadorFitness evaluador) {
         List<SolucionRuteo> colonia = new ArrayList<>();
         for (int hormiga = 0; hormiga < parametros.getHormigas(); hormiga++) {
-            Random random = new Random(semilla * 1_000_003L + iteracion * 131L + hormiga);
+            // El indice de la hormiga debe ser unico dentro del ciclo: con un
+            // multiplicador fijo de 131, la hormiga 131 de una iteracion repetia
+            // el flujo de la hormiga 0 de la siguiente en colonias de 132 o mas.
+            long indiceHormiga = (long) iteracion * parametros.getHormigas() + hormiga;
+            Random random = new Random(semilla * DESFASE_CICLO + indiceHormiga);
             double q0 = hormiga == 0 ? 1.0 : parametros.getQ0();
             SolucionRuteo solucion = operadores.construir(random, q0, parametros.getAlfa(),
                     parametros.getBeta(), parametros.getGamma(),
