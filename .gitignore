@@ -28,6 +28,7 @@ desktop.ini
 
 # Registros y temporales
 *.log
+*.tmp
 /tmp/
 
 # Salidas del experimento numerico. El banco de escenarios
