@@ -93,6 +93,10 @@ Formato basado en Keep a Changelog; versionado semántico (MAJOR.MINOR.PATCH).
   distancia; la matriz del primer tramo de IACO sigue siendo una estimación en un instante.
   Costo: Ta promedio de 500 a 784 ms en 7 días de octubre 2026 (semilla 1), lejos de
   Sa/k = 10 s; con las semillas 2 a 4 el cumplimiento sigue en 100 %.
+- Al subir un archivo de pedidos o bloqueos, si el movimiento del temporal al destino fallaba
+  quedaba un `archivo*.tmp` huérfano en la carpeta de datos (llegaron 8 al repositorio).
+  `AlmacenArchivosLocal` ahora lo borra, `*.tmp` queda en el `.gitignore` y se retiran los
+  que se habían versionado.
 
 ## [0.5.0] — 2026-09-18
 

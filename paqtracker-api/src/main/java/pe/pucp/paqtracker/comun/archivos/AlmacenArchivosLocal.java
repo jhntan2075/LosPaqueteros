@@ -72,14 +72,30 @@ public class AlmacenArchivosLocal implements PuertoAlmacenArchivos {
     }
 
     private static void escribir(Path destino, byte[] contenido) {
+        Path temporal = null;
         try {
             Files.createDirectories(destino.getParent());
-            Path temporal = Files.createTempFile(destino.getParent(), "archivo", ".tmp");
+            temporal = Files.createTempFile(destino.getParent(), "archivo", ".tmp");
             Files.write(temporal, contenido);
             Files.move(temporal, destino, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
             LOGGER.info("Archivo de entrada guardado: {}", destino);
         } catch (IOException excepcion) {
+            // Si el movimiento falla (en Windows, por ejemplo, con el destino abierto) el temporal quedaria
+            // huerfano en la carpeta de datos.
+            borrarTemporal(temporal, excepcion);
             throw new UncheckedIOException("No se pudo guardar el archivo " + destino, excepcion);
+        }
+    }
+
+    private static void borrarTemporal(Path temporal, IOException causa) {
+        if (temporal == null) {
+            return;
+        }
+        try {
+            Files.deleteIfExists(temporal);
+        } catch (IOException excepcion) {
+            causa.addSuppressed(excepcion);
+            LOGGER.warn("No se pudo borrar el temporal {}", temporal, excepcion);
         }
     }
 
