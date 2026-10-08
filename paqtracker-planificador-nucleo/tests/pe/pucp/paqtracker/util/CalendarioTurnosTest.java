@@ -65,4 +65,24 @@ class CalendarioTurnosTest {
     void avanzarConPausa_instanteYaDentroDelRefrigerio_esperaAQueTermineAntesDeAvanzar() {
         assertEquals(690, CalendarioTurnos.avanzarConPausa(GRUPO_CERO, 620, 30));
     }
+
+    @Test
+    void finDelSiguienteTurno_turnoDeLasSiete_terminaDieciseisHorasDespues() {
+        assertEquals(1380, CalendarioTurnos.finDelSiguienteTurno(500));
+    }
+
+    @Test
+    void proximoTurnoDeLasTres_instanteYaEnEseTurno_devuelveEseMismoInicio() {
+        assertEquals(900, CalendarioTurnos.proximoTurnoDeLasTres(900));
+    }
+
+    @Test
+    void proximoTurnoDeLasTres_instanteAntesDelTurno_devuelveElMismoDia() {
+        assertEquals(900, CalendarioTurnos.proximoTurnoDeLasTres(500));
+    }
+
+    @Test
+    void proximoTurnoDeLasTres_instanteDespuesDelTurno_avanzaAlDiaSiguiente() {
+        assertEquals(2340, CalendarioTurnos.proximoTurnoDeLasTres(901));
+    }
 }

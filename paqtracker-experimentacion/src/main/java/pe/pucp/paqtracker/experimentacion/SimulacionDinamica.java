@@ -3,6 +3,7 @@ package pe.pucp.paqtracker.experimentacion;
 import pe.pucp.paqtracker.lectura.CargadorBloqueos;
 import pe.pucp.paqtracker.lectura.CargadorPedidos;
 import pe.pucp.paqtracker.modelo.Almacen;
+import pe.pucp.paqtracker.modelo.Averia;
 import pe.pucp.paqtracker.modelo.ConfiguracionDominio;
 import pe.pucp.paqtracker.modelo.Pedido;
 import pe.pucp.paqtracker.modelo.Vehiculo;
@@ -27,8 +28,11 @@ import java.util.logging.Logger;
  *   java pe.pucp.paqtracker.experimentacion.SimulacionDinamica ventas bloqueos dd-MM-yyyy dd-MM-yyyy
  *
  * Ambas formas aceptan al final la opcion --algoritmo ga|iaco (por defecto ga)
- * para elegir el planificador que corre en cada ciclo, y la bandera
- * --detener-en-colapso para terminar en el primer incumplimiento (CU-17).
+ * para elegir el planificador que corre en cada ciclo, la bandera
+ * --detener-en-colapso para terminar en el primer incumplimiento (CU-17), y
+ * cero o mas ocurrencias de --averia diaDhoraHminutoM,idVehiculo,tipo para
+ * registrar manualmente averias durante la corrida (el curso no entrega un
+ * archivo de averias, a diferencia de pedidos y bloqueos).
  *
  * El archivo de ventas debe tener el instante de registro en minutos absolutos
  * del mes, para casar con las ventanas de vigencia de los bloqueos.
@@ -46,6 +50,7 @@ public final class SimulacionDinamica {
     private static final int MARGEN_CIERRE = 3000;
     private static final int DIAS_POR_DEFECTO = 7;
     private static final String OPCION_ALGORITMO = "--algoritmo";
+    private static final String OPCION_AVERIA = "--averia";
     private static final String OPCION_DETENER_EN_COLAPSO = "--detener-en-colapso";
     private static final String ALGORITMO_GA = "ga";
     private static final String ALGORITMO_IACO = "iaco";
@@ -57,9 +62,11 @@ public final class SimulacionDinamica {
      * @throws Exception si ocurre un error al leer los archivos de entrada
      */
     public static void main(String[] args) throws Exception {
-        String algoritmo = extraerAlgoritmo(args);
+        String algoritmo = extraerOpcion(args, OPCION_ALGORITMO);
+        algoritmo = algoritmo != null ? algoritmo.toLowerCase() : algoritmoPorEntornoOPorDefecto();
+        List<String> textosAverias = extraerOpciones(args, OPCION_AVERIA);
         boolean detenerEnColapso = contiene(args, OPCION_DETENER_EN_COLAPSO);
-        args = sinOpciones(args);
+        args = sinOpciones(args, OPCION_ALGORITMO, OPCION_AVERIA);
         String rutaVentas = args.length > 0 ? args[0] : "ventas.txt";
         String rutaBloqueos = args.length > 1 ? args[1] : null;
         boolean usaRangoFechas = args.length > 3 && !esEntero(args[2]);
@@ -80,9 +87,10 @@ public final class SimulacionDinamica {
                         ? CargadorBloqueos.cargarEnRango(rutaBloqueos, rango)
                         : CargadorBloqueos.cargar(rutaBloqueos, mes))
                 : new Malla();
+        List<Averia> averias = textosAverias.stream().map(Averia::parsear).toList();
 
         int saMinutos = (int) leerEntornoEntero(VARIABLE_SA_MINUTOS, SA_MINUTOS_POR_DEFECTO);
-        Orquestador orquestador = new Orquestador(almacenes, flota, pedidos, malla,
+        Orquestador orquestador = new Orquestador(almacenes, flota, pedidos, averias, malla,
                 saMinutos, ConfiguracionDominio.TIEMPO_SERVICIO_MINUTOS,
                 ConfiguracionDominio.PLAZO_MAXIMO_MINUTOS,
                 ConfiguracionDominio.PLAZO_DESPACHO_DIRECTO_MINUTOS,
@@ -116,16 +124,42 @@ public final class SimulacionDinamica {
     }
 
     /**
-     * @param args argumentos de linea de comandos
-     * @return valor de la opcion --algoritmo en minusculas; si no se indica, el de
-     *         PLANIFICADOR_ALGORITMO o, en su defecto, ga
+     * @param args   argumentos de linea de comandos
+     * @param nombre nombre de la opcion a buscar, con guiones (p. ej. --algoritmo)
+     * @return valor de la opcion, o null si no se indica
      */
-    private static String extraerAlgoritmo(String[] args) {
+    private static String extraerOpcion(String[] args, String nombre) {
         for (int i = 0; i + 1 < args.length; i++) {
-            if (OPCION_ALGORITMO.equals(args[i])) {
-                return args[i + 1].toLowerCase();
+            if (nombre.equals(args[i])) {
+                return args[i + 1];
             }
         }
+        return null;
+    }
+
+    /**
+     * Extrae todas las ocurrencias de una opcion repetible (p. ej. una averia
+     * registrada manualmente por cada --averia).
+     *
+     * @param args   argumentos de linea de comandos
+     * @param nombre nombre de la opcion a buscar, con guiones
+     * @return valores de cada ocurrencia, en el orden en que aparecen
+     */
+    private static List<String> extraerOpciones(String[] args, String nombre) {
+        List<String> valores = new ArrayList<>();
+        for (int i = 0; i + 1 < args.length; i++) {
+            if (nombre.equals(args[i])) {
+                valores.add(args[i + 1]);
+            }
+        }
+        return valores;
+    }
+
+    /**
+     * @return el algoritmo de PLANIFICADOR_ALGORITMO en minusculas, o ga si la
+     *         variable no esta definida (Twelve-Factor)
+     */
+    private static String algoritmoPorEntornoOPorDefecto() {
         String valorEntorno = System.getenv(VARIABLE_ALGORITMO);
         return valorEntorno == null || valorEntorno.isBlank() ? ALGORITMO_GA : valorEntorno.trim().toLowerCase();
     }
@@ -165,13 +199,24 @@ public final class SimulacionDinamica {
     }
 
     /**
-     * @param args argumentos de linea de comandos
-     * @return argumentos posicionales, sin las opciones ni sus valores
+     * Quita las opciones con valor indicadas (y sus valores) y la bandera
+     * --detener-en-colapso, que no lleva valor.
+     *
+     * @param args    argumentos de linea de comandos
+     * @param nombres nombres de las opciones con valor a quitar, con guiones
+     * @return argumentos posicionales, sin esas opciones ni sus valores
      */
-    private static String[] sinOpciones(String[] args) {
+    private static String[] sinOpciones(String[] args, String... nombres) {
         List<String> posicionales = new ArrayList<>();
         for (int i = 0; i < args.length; i++) {
-            if (OPCION_ALGORITMO.equals(args[i])) {
+            boolean esOpcion = false;
+            for (String nombre : nombres) {
+                if (nombre.equals(args[i])) {
+                    esOpcion = true;
+                    break;
+                }
+            }
+            if (esOpcion) {
                 i++;
                 continue;
             }
@@ -213,6 +258,7 @@ public final class SimulacionDinamica {
         informe.append(String.format("Uso por tipo: %s%n", resultado.getUsoPorTipo()));
         informe.append(String.format("Urgentes repartidos en varias unidades: %d%n",
                 resultado.getUrgentesRepartidos()));
+        informe.append(String.format("Averias atendidas: %d%n", resultado.getAveriasAtendidas()));
         informe.append(String.format("Distancia total: %.0f km%n", resultado.getDistanciaTotal()));
         informe.append(String.format("Costo total: %.2f%n", resultado.getCostoTotal()));
         informe.append(String.format("Ta (computo por planificacion): promedio %.1f ms, maximo %d ms",

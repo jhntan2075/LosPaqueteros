@@ -14,6 +14,7 @@ public final class Vehiculo {
     private final int id;
     private final TipoVehiculo tipo;
     private Almacen posicion;
+    private Nodo ubicacionActual;
     private EstadoVehiculo estado;
 
     /**
@@ -25,6 +26,7 @@ public final class Vehiculo {
         this.id = id;
         this.tipo = tipo;
         this.posicion = posicion;
+        this.ubicacionActual = posicion.getUbicacion();
         this.estado = EstadoVehiculo.DISPONIBLE_EN_ALMACEN;
     }
 
@@ -40,8 +42,35 @@ public final class Vehiculo {
         return posicion;
     }
 
+    /**
+     * Fija el almacen de la unidad; sincroniza tambien su ubicacion real, que
+     * hasta este punto puede haber quedado en un punto que no es un almacen
+     * (ver {@link #fijarUbicacionAveria}).
+     *
+     * @param posicion almacen en que queda la unidad
+     */
     public void setPosicion(Almacen posicion) {
         this.posicion = posicion;
+        this.ubicacionActual = posicion.getUbicacion();
+    }
+
+    /**
+     * @return el punto exacto de la malla en que se encuentra la unidad ahora,
+     *         que puede no ser un almacen mientras esta averiada
+     */
+    public Nodo getUbicacionActual() {
+        return ubicacionActual;
+    }
+
+    /**
+     * Registra el punto exacto en que quedo inmovilizada la unidad por una
+     * averia, sin alterar {@link #getPosicion()} (que en ese momento no es
+     * relevante para el planificador, porque la unidad no esta disponible).
+     *
+     * @param ubicacion punto de la malla en que ocurrio la averia
+     */
+    public void fijarUbicacionAveria(Nodo ubicacion) {
+        this.ubicacionActual = ubicacion;
     }
 
     public EstadoVehiculo getEstado() {

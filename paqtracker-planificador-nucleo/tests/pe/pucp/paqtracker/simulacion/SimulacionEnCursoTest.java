@@ -151,7 +151,7 @@ class SimulacionEnCursoTest {
                                                 LongFunction<AlgoritmoMetaheuristico> fabricaAlgoritmo) {
         List<Almacen> almacenes = ConfiguracionDominio.crearAlmacenes();
         List<Vehiculo> flota = ConfiguracionDominio.crearFlota(almacenes.get(0));
-        return new Orquestador(almacenes, flota, pedidos, new Malla(), SA_MINUTOS,
+        return new Orquestador(almacenes, flota, pedidos, List.of(), new Malla(), SA_MINUTOS,
                 ConfiguracionDominio.TIEMPO_SERVICIO_MINUTOS, ConfiguracionDominio.PLAZO_MAXIMO_MINUTOS,
                 ConfiguracionDominio.PLAZO_DESPACHO_DIRECTO_MINUTOS, SEMILLA, fabricaAlgoritmo);
     }

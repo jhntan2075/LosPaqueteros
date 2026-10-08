@@ -89,7 +89,7 @@ public final class CorredorExperimento {
         Malla malla = new Malla(CargadorBloqueos.cargar(
                 GeneradorEscenarios.rutaBloqueos(carpeta, opciones.escenario).toString()));
 
-        Orquestador orquestador = new Orquestador(almacenes, flota, pedidos, malla,
+        Orquestador orquestador = new Orquestador(almacenes, flota, pedidos, List.of(), malla,
                 opciones.saMinutos, ConfiguracionDominio.TIEMPO_SERVICIO_MINUTOS,
                 ConfiguracionDominio.PLAZO_MAXIMO_MINUTOS, 0,
                 opciones.semilla, fabricaAlgoritmo(opciones, contador));

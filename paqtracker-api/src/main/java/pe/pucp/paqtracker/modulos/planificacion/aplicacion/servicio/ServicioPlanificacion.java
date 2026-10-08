@@ -39,7 +39,7 @@ public class ServicioPlanificacion {
         List<Almacen> almacenes = ConfiguracionDominio.crearAlmacenes();
         List<Vehiculo> flota = ConfiguracionDominio.crearFlota(almacenes.get(0), solicitud.flota().autos(),
                 solicitud.flota().motos(), solicitud.flota().bicicletas());
-        Orquestador orquestador = new Orquestador(almacenes, flota, solicitud.pedidos(),
+        Orquestador orquestador = new Orquestador(almacenes, flota, solicitud.pedidos(), List.of(),
                 new Malla(solicitud.bloqueos()), solicitud.saMinutos(),
                 ConfiguracionDominio.TIEMPO_SERVICIO_MINUTOS, ConfiguracionDominio.PLAZO_MAXIMO_MINUTOS,
                 ConfiguracionDominio.PLAZO_DESPACHO_DIRECTO_MINUTOS, solicitud.semilla(),
