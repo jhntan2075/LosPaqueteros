@@ -1,0 +1,21 @@
+<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="almacen/Interm. 2 / 18 %">
+<g id="dep&#195;&#179;sito intermedio" filter="url(#filter0_d_0_8)">
+<path d="M20 9L32 17V31H8V17L20 9Z" fill="white"/>
+<path d="M20 9L32 17V31H8V17L20 9Z" stroke="#B91C1C" stroke-width="2" stroke-linejoin="round"/>
+</g>
+<rect id="ocupaci&#195;&#179;n &#194;&#183; vac&#195;&#173;o" x="10" y="18" width="20" height="12" rx="1" fill="#E2E8F0"/>
+<rect id="ocupaci&#195;&#179;n &#194;&#183; nivel" x="10" y="27.84" width="20" height="2.16" rx="1" fill="#B91C1C"/>
+</g>
+<defs>
+<filter id="filter0_d_0_8" x="5" y="7" width="30" height="28" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+<feFlood flood-opacity="0" result="BackgroundImageFix"/>
+<feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
+<feOffset dy="1"/>
+<feGaussianBlur stdDeviation="1"/>
+<feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.16 0"/>
+<feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow_0_8"/>
+<feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow_0_8" result="shape"/>
+</filter>
+</defs>
+</svg>

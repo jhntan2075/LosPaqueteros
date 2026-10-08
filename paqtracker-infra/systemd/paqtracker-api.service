@@ -1,0 +1,30 @@
+# Servicio systemd de la API de PaqTracker en la VM (2 vCPU / 2 GB, sin Docker).
+# Instalar en /etc/systemd/system/paqtracker-api.service y ejecutar:
+#   sudo systemctl daemon-reload && sudo systemctl enable --now paqtracker-api
+[Unit]
+Description=PaqTracker - API de operacion
+After=network-online.target mysql.service mysqld.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=paqtracker
+Group=paqtracker
+WorkingDirectory=/opt/paqtracker
+EnvironmentFile=/etc/paqtracker/paqtracker.env
+# Heap acotado y SerialGC: la VM tiene 2 GB compartidos con MySQL y Nginx.
+ExecStart=/usr/bin/java -Xmx640m -XX:+UseSerialGC -jar /opt/paqtracker/paqtracker-api.jar
+# 143 = salida normal de la JVM al recibir SIGTERM en un systemctl stop.
+SuccessExitStatus=143
+Restart=on-failure
+RestartSec=5
+
+# Endurecimiento: la API solo escribe en la carpeta de datos (archivos subidos por CU-02).
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+ReadWritePaths=/opt/paqtracker/datos
+
+[Install]
+WantedBy=multi-user.target
