@@ -7,13 +7,14 @@ import pe.pucp.paqtracker.modelo.Ruta;
 import pe.pucp.paqtracker.modelo.TipoTramo;
 import pe.pucp.paqtracker.modelo.TipoVehiculo;
 import pe.pucp.paqtracker.modelo.Tramo;
+import pe.pucp.paqtracker.modelo.Vehiculo;
 import java.util.ArrayList;
 import java.util.List;
 
 /**
  * Calculo unificado de distancias y tiempos de una ruta. Considera la velocidad
- * del tipo de unidad, los bloqueos vigentes en el instante en que se recorre
- * cada tramo y el tiempo de acondicionamiento por entrega. Todas las capas del
+ * del tipo de unidad, los bloqueos vigentes en el minuto en que la unidad pasa
+ * por cada nodo y el tiempo de acondicionamiento por entrega. Todas las capas del
  * planificador usan esta clase para que el calculo sea consistente.
  */
 public final class CalculadoraTiempos {
@@ -31,13 +32,14 @@ public final class CalculadoraTiempos {
     public static final int INDICE_HOLGURA_MINIMA = 3;
 
     /**
-     * Distancia de un tramo entre dos nodos, considerando bloqueos si el
-     * escenario tiene malla.
+     * Distancia de un tramo entre dos nodos con los bloqueos vigentes en un unico instante. Solo para
+     * estimaciones que no conocen la unidad (heuristicas); las rutas se evaluan con
+     * {@link #distancia(EscenarioOperativo, Nodo, Nodo, int, Vehiculo)}.
      *
      * @param escenario escenario operativo con la malla vigente
      * @param origen    nodo de partida
      * @param destino   nodo de llegada
-     * @param instante  minuto absoluto en que se recorre el tramo
+     * @param instante  minuto absoluto en que se evaluan los bloqueos
      * @return distancia del tramo
      */
     public static int distancia(EscenarioOperativo escenario, Nodo origen, Nodo destino, int instante) {
@@ -45,6 +47,25 @@ public final class CalculadoraTiempos {
             return origen.distanciaManhattan(destino);
         }
         return escenario.getMalla().distancia(origen, destino, instante);
+    }
+
+    /**
+     * Distancia que recorre una unidad en un tramo, esquivando los bloqueos que estarian vigentes
+     * cuando pase por cada nodo, si el escenario tiene malla.
+     *
+     * @param escenario escenario operativo con la malla vigente
+     * @param origen    nodo de partida
+     * @param destino   nodo de llegada
+     * @param salida    minuto absoluto en que la unidad sale del origen
+     * @param vehiculo  unidad que recorre el tramo
+     * @return distancia del tramo
+     */
+    public static int distancia(EscenarioOperativo escenario, Nodo origen, Nodo destino, int salida,
+                                Vehiculo vehiculo) {
+        if (escenario.getMalla() == null) {
+            return origen.distanciaManhattan(destino);
+        }
+        return escenario.getMalla().distancia(origen, destino, salida, vehiculo);
     }
 
     /**
@@ -84,7 +105,7 @@ public final class CalculadoraTiempos {
         int idVehiculo = ruta.getVehiculo().getId();
         Nodo actual = ruta.getOrigen().getUbicacion();
         for (Entrega entrega : ruta.getSecuencia()) {
-            int tramo = distancia(escenario, actual, entrega.getDestino(), reloj);
+            int tramo = distancia(escenario, actual, entrega.getDestino(), reloj, ruta.getVehiculo());
             distanciaTotal += tramo;
             reloj = CalendarioTurnos.avanzarConPausa(idVehiculo, reloj,
                     minutosDeViaje(tramo, ruta.getVehiculo().getTipo()));
@@ -99,7 +120,8 @@ public final class CalculadoraTiempos {
             actual = entrega.getDestino();
         }
         if (ruta.getDestino() != null) {
-            int tramoFinal = distancia(escenario, actual, ruta.getDestino().getUbicacion(), reloj);
+            int tramoFinal = distancia(escenario, actual, ruta.getDestino().getUbicacion(), reloj,
+                    ruta.getVehiculo());
             distanciaTotal += tramoFinal;
             reloj = CalendarioTurnos.avanzarConPausa(idVehiculo, reloj,
                     minutosDeViaje(tramoFinal, ruta.getVehiculo().getTipo()));
@@ -126,15 +148,16 @@ public final class CalculadoraTiempos {
             return tramos;
         }
         int reloj = salida;
-        int idVehiculo = ruta.getVehiculo().getId();
-        TipoVehiculo tipo = ruta.getVehiculo().getTipo();
+        Vehiculo vehiculo = ruta.getVehiculo();
+        int idVehiculo = vehiculo.getId();
+        TipoVehiculo tipo = vehiculo.getTipo();
         Nodo actual = ruta.getOrigen().getUbicacion();
         for (Entrega entrega : ruta.getSecuencia()) {
-            int distancia = distancia(escenario, actual, entrega.getDestino(), reloj);
+            int distancia = distancia(escenario, actual, entrega.getDestino(), reloj, vehiculo);
             int llegada = CalendarioTurnos.avanzarConPausa(idVehiculo, reloj, minutosDeViaje(distancia, tipo));
             tramos.add(new Tramo(TipoTramo.VIAJE_A_ENTREGA, actual, entrega.getDestino(), reloj, llegada,
                     distancia, entrega.getIdPedido(), entrega.getCantidad(),
-                    camino(escenario, actual, entrega.getDestino(), reloj)));
+                    camino(escenario, actual, entrega.getDestino(), reloj, vehiculo)));
             reloj = CalendarioTurnos.avanzarConPausa(idVehiculo, llegada, escenario.getTiempoServicio());
             tramos.add(new Tramo(TipoTramo.SERVICIO, entrega.getDestino(), entrega.getDestino(), llegada,
                     reloj, 0, entrega.getIdPedido(), 0));
@@ -142,23 +165,24 @@ public final class CalculadoraTiempos {
         }
         if (ruta.getDestino() != null) {
             Nodo almacen = ruta.getDestino().getUbicacion();
-            int distancia = distancia(escenario, actual, almacen, reloj);
+            int distancia = distancia(escenario, actual, almacen, reloj, vehiculo);
             int llegada = CalendarioTurnos.avanzarConPausa(idVehiculo, reloj, minutosDeViaje(distancia, tipo));
             tramos.add(new Tramo(TipoTramo.RETORNO, actual, almacen, reloj, llegada, distancia,
-                    Tramo.SIN_PEDIDO, 0, camino(escenario, actual, almacen, reloj)));
+                    Tramo.SIN_PEDIDO, 0, camino(escenario, actual, almacen, reloj, vehiculo)));
         }
         return tramos;
     }
 
     /**
-     * Camino real de un tramo, con el mismo criterio que {@link #distancia}: rodea los bloqueos
-     * vigentes si el escenario tiene malla; si no, el camino en L.
+     * Camino real de un tramo, con el mismo criterio que la distancia: rodea los bloqueos que la
+     * unidad encontraria al pasar si el escenario tiene malla; si no, el camino en L.
      */
-    private static List<Nodo> camino(EscenarioOperativo escenario, Nodo origen, Nodo destino, int instante) {
+    private static List<Nodo> camino(EscenarioOperativo escenario, Nodo origen, Nodo destino, int salida,
+                                     Vehiculo vehiculo) {
         if (escenario.getMalla() == null) {
             return Malla.caminoEnL(origen, destino);
         }
-        return escenario.getMalla().camino(origen, destino, instante);
+        return escenario.getMalla().camino(origen, destino, salida, vehiculo);
     }
 
     private CalculadoraTiempos() {

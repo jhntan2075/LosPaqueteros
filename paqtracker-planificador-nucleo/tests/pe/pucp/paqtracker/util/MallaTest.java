@@ -1,7 +1,10 @@
 package pe.pucp.paqtracker.util;
 
+import pe.pucp.paqtracker.modelo.Almacen;
 import pe.pucp.paqtracker.modelo.Bloqueo;
 import pe.pucp.paqtracker.modelo.Nodo;
+import pe.pucp.paqtracker.modelo.TipoVehiculo;
+import pe.pucp.paqtracker.modelo.Vehiculo;
 import org.junit.jupiter.api.Test;
 import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -16,6 +19,9 @@ class MallaTest {
 
     private static final int INICIO = 1000;
     private static final int FIN = 2000;
+
+    /** Una bicicleta tarda 25 minutos en recorrer los 5 km hasta x=30: sale 10 minutos antes del cambio. */
+    private static final int MINUTOS_ANTES_DEL_BLOQUEO = 10;
 
     @Test
     void distancia_sinBloqueos_retornaManhattan() {
@@ -99,6 +105,65 @@ class MallaTest {
     }
 
     @Test
+    void distancia_bloqueoIniciaDuranteElViaje_loRodea() {
+        Malla malla = new Malla(List.of(bloqueoParcial()));
+        Nodo origen = new Nodo(25, 20);
+        Nodo destino = new Nodo(35, 20);
+        // La bicicleta sale antes del bloqueo y llega a x=30 cuando ya esta vigente.
+        int salida = INICIO - MINUTOS_ANTES_DEL_BLOQUEO;
+
+        int foto = malla.distancia(origen, destino, salida);
+        int recorrida = malla.distancia(origen, destino, salida, bicicleta());
+
+        assertEquals(10, foto);
+        assertTrue(recorrida > 10, "deberia rodear el bloqueo que empieza en el viaje, pero dio " + recorrida);
+    }
+
+    @Test
+    void distancia_bloqueoTerminaAntesDeLlegar_noDesvia() {
+        Malla malla = new Malla(List.of(bloqueoParcial()));
+        Nodo origen = new Nodo(25, 20);
+        Nodo destino = new Nodo(35, 20);
+        // Vigente al salir, pero levantado cuando la bicicleta llega a x=30.
+        int salida = FIN - MINUTOS_ANTES_DEL_BLOQUEO;
+
+        assertTrue(malla.distancia(origen, destino, salida) > 10);
+        assertEquals(10, malla.distancia(origen, destino, salida, bicicleta()));
+    }
+
+    @Test
+    void camino_bloqueoIniciaDuranteElViaje_noPisaNodosBloqueadosAlPasar() {
+        Bloqueo bloqueo = bloqueoParcial();
+        Malla malla = new Malla(List.of(bloqueo));
+        Nodo origen = new Nodo(25, 20);
+        Nodo destino = new Nodo(35, 20);
+        Vehiculo vehiculo = bicicleta();
+        int salida = INICIO - MINUTOS_ANTES_DEL_BLOQUEO;
+
+        List<Nodo> camino = malla.camino(origen, destino, salida, vehiculo);
+
+        assertEquals(malla.distancia(origen, destino, salida, vehiculo), longitud(camino));
+        int kilometros = 0;
+        for (int i = 1; i < camino.size(); i++) {
+            Nodo a = camino.get(i - 1);
+            Nodo b = camino.get(i);
+            int pasoX = Integer.signum(b.getX() - a.getX());
+            int pasoY = Integer.signum(b.getY() - a.getY());
+            for (int x = a.getX() + pasoX, y = a.getY() + pasoY; ; x += pasoX, y += pasoY) {
+                kilometros++;
+                int instante = CalendarioTurnos.avanzarConPausa(vehiculo.getId(), salida,
+                        CalculadoraTiempos.minutosDeViaje(kilometros, vehiculo.getTipo()));
+                boolean bloqueado = bloqueo.estaVigente(instante)
+                        && bloqueo.getNodosBloqueados().contains(Malla.codificar(x, y));
+                assertFalse(bloqueado, "pisa (" + x + "," + y + ") en el minuto " + instante);
+                if (x == b.getX() && y == b.getY()) {
+                    break;
+                }
+            }
+        }
+    }
+
+    @Test
     void camino_origenIgualDestino_esUnSoloNodo() {
         Malla malla = new Malla();
 
@@ -111,6 +176,21 @@ class MallaTest {
             total += camino.get(i - 1).distanciaManhattan(camino.get(i));
         }
         return total;
+    }
+
+    /**
+     * @return bloqueo de la columna x=30 entre y=0 e y=30, vigente entre INICIO y FIN
+     */
+    private static Bloqueo bloqueoParcial() {
+        return new Bloqueo(INICIO, FIN, Malla.nodosDeTramo(30, 0, 30, 30));
+    }
+
+    /**
+     * @return bicicleta (la unidad mas lenta) con un id cuyo refrigerio no cae en las pruebas
+     */
+    private static Vehiculo bicicleta() {
+        Almacen central = new Almacen(0, new Nodo(27, 14), true, 0);
+        return new Vehiculo(0, TipoVehiculo.BICICLETA, central);
     }
 
     /**

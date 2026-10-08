@@ -581,7 +581,7 @@ public final class Orquestador {
     private int estimarLlegada(Vehiculo vehiculo, Pedido pedido, int instante,
                                EscenarioOperativo escenario) {
         int tramo = CalculadoraTiempos.distancia(escenario,
-                vehiculo.getPosicion().getUbicacion(), pedido.getDestino(), instante);
+                vehiculo.getPosicion().getUbicacion(), pedido.getDestino(), instante, vehiculo);
         return CalendarioTurnos.avanzarConPausa(vehiculo.getId(), instante,
                 CalculadoraTiempos.minutosDeViaje(tramo, vehiculo.getTipo()));
     }
@@ -700,7 +700,8 @@ public final class Orquestador {
         int idVehiculo = ruta.getVehiculo().getId();
         Nodo actual = ruta.getOrigen().getUbicacion();
         for (Entrega entrega : ruta.getSecuencia()) {
-            int tramo = CalculadoraTiempos.distancia(escenario, actual, entrega.getDestino(), reloj);
+            int tramo = CalculadoraTiempos.distancia(escenario, actual, entrega.getDestino(), reloj,
+                    ruta.getVehiculo());
             reloj = CalendarioTurnos.avanzarConPausa(idVehiculo, reloj,
                     CalculadoraTiempos.minutosDeViaje(tramo, ruta.getVehiculo().getTipo()));
             resultado.registrarMargenEntrega(entrega.getHoraLimite() - reloj, entrega.getCantidad());
@@ -799,7 +800,8 @@ public final class Orquestador {
         int idVehiculo = ruta.getVehiculo().getId();
         Nodo actual = ruta.getOrigen().getUbicacion();
         for (Entrega entrega : ruta.getSecuencia()) {
-            int tramo = CalculadoraTiempos.distancia(escenario, actual, entrega.getDestino(), reloj);
+            int tramo = CalculadoraTiempos.distancia(escenario, actual, entrega.getDestino(), reloj,
+                    ruta.getVehiculo());
             reloj = CalendarioTurnos.avanzarConPausa(idVehiculo, reloj,
                     CalculadoraTiempos.minutosDeViaje(tramo, ruta.getVehiculo().getTipo()));
             int holgura = entrega.getHoraLimite() - reloj;

@@ -131,8 +131,10 @@ El despliegue en la VM (Nginx + systemd + MySQL, sin Docker) está en
 
 - La posición se interpola a velocidad constante sobre el camino del tramo; si el
   refrigerio cae a mitad de un tramo, la pausa se reparte a lo largo del tramo.
-- El camino se calcula al despachar con los bloqueos vigentes en ese momento. Un
-  bloqueo que empieza durante el viaje no cambia el dibujo (media vuelta, LE-055,
-  pendiente).
+- El camino se calcula al despachar y esquiva los bloqueos que la unidad encontraría
+  al pasar por cada nodo, incluso los que empiezan durante el viaje. Los bloqueos de una
+  ejecución se fijan al crearla; si se llegaran a registrar en vivo (CU-12), haría falta
+  la media vuelta (LE-055, pendiente). Por la interpolación lineal de arriba, en un tramo
+  con refrigerio el dibujo puede mostrar la unidad atrasada respecto de su avance real.
 - La operación día a día cubre el mes en curso y termina al cerrar el mes.
 - Averías y la edición de parámetros (CU-26 a CU-28) quedan para la siguiente entrega.
