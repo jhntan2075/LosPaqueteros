@@ -6,6 +6,7 @@ import { capitalizar } from '../../lib/formato';
 import {
   acercarEn,
   escalaDeEncuadre,
+  escalaMinimaPermitida,
   limitarVista,
   nodoEn,
   pasoCuadricula,
@@ -56,14 +57,16 @@ interface GridMapProps {
    */
   variante?: 'operacion' | 'simulacion';
   onAyuda?: () => void;
+  /** Componente de KPIs flotantes para renderizar en la barra de controles del mapa */
+  slotKpis?: React.ReactNode;
   children?: React.ReactNode;
 }
 
 /**
- * El mapa llena todo su espacio ('cubrir'): a la escala mínima la malla toca los cuatro bordes y
- * sobresale en un eje, que se recorre arrastrando. Los controles flotan sobre el mapa.
+ * La malla de 70 × 50 km se encuadra completa ('contener') con márgenes para que todos los
+ * vehículos, almacenes y destinos se vean a la primera sin recortes. Los controles flotan sobre el mapa.
  */
-const LIENZO_BASE = { margen: 0, ajuste: 'cubrir' } as const;
+const LIENZO_BASE = { margen: 32, margenSuperior: 56, ajuste: 'contener' } as const;
 /** Franja superior ocupada por los controles flotantes: los rótulos del eje x se dibujan debajo. */
 const FRANJA_CONTROLES_PX = 52;
 /** Desplazamiento máximo (px) para considerar un toque como clic y no como arrastre. */
@@ -100,13 +103,19 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
     onHoverCoordenada,
     variante = 'operacion',
     onAyuda,
+    slotKpis,
     children,
   },
   ref,
 ) {
   const containerRef = useRef<HTMLDivElement>(null);
   const { ancho, alto } = useTamanoElemento(containerRef);
-  const lienzo: Lienzo = { ancho, alto, ...LIENZO_BASE };
+  const lienzo: Lienzo = {
+    ancho,
+    alto,
+    ...LIENZO_BASE,
+    margenDerecho: anchoPanelDerecho > 0 ? anchoPanelDerecho + 24 : LIENZO_BASE.margen,
+  };
 
   // Vista elegida por el usuario (zoom / desplazamiento). null = vista inicial centrada, que se recalcula
   // sola con el tamaño del contenedor; una vista elegida se reajusta con limitarVista si el contenedor cambia.
@@ -142,7 +151,12 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
       if ((evento.target as HTMLElement).closest('[data-sin-zoom]')) return;
       evento.preventDefault();
       const rect = elemento.getBoundingClientRect();
-      const l: Lienzo = { ancho: rect.width, alto: rect.height, ...LIENZO_BASE };
+      const l: Lienzo = {
+        ancho: rect.width,
+        alto: rect.height,
+        ...LIENZO_BASE,
+        margenDerecho: anchoPanelDerecho > 0 ? anchoPanelDerecho + 24 : LIENZO_BASE.margen,
+      };
       const factor = evento.deltaY < 0 ? 1.15 : 1 / 1.15;
       setVistaUsuario((actual) =>
         acercarEn(actual ? limitarVista(actual, l) : vistaCompleta(l), factor, evento.clientX - rect.left, evento.clientY - rect.top, l),
@@ -150,7 +164,7 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
     };
     elemento.addEventListener('wheel', alGirar, { passive: false });
     return () => elemento.removeEventListener('wheel', alGirar);
-  }, []);
+  }, [anchoPanelDerecho]);
 
   // Arrastre con captura de puntero: sigue aunque el cursor salga del mapa, como en un visor de mapas.
   // Con la captura activa el click llega al contenedor, así que un toque sin desplazamiento sobre un
@@ -216,7 +230,8 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
     if (vista) setVistaUsuario(acercarEn(vista, factor, ancho / 2, alto / 2, lienzo));
   };
 
-  const escalaMinima = ancho > 0 ? escalaDeEncuadre(lienzo) : 1;
+  const escalaBase = ancho > 0 ? escalaDeEncuadre(lienzo) : 1;
+  const escalaMinima = ancho > 0 ? escalaMinimaPermitida(lienzo) : 1;
   const enEscalaMinima = !vista || vista.escala <= escalaMinima * 1.001;
   const averiadas = unidades.filter((u) => u.estado === 'AVERIADA').length;
   const derechaControles = anchoPanelDerecho > 0 ? anchoPanelDerecho + 24 : 16;
@@ -229,7 +244,7 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
       onPointerCancel={handlePointerUp}
-      className={`relative flex-1 w-full h-full bg-[#F1F5F9] overflow-hidden select-none touch-none ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+      className={`relative flex-1 w-full h-full bg-white overflow-hidden select-none touch-none ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
     >
       {/* 1. Barra flotante: búsqueda, riesgo, bloqueos y averías, capas */}
       <div className="absolute left-3 top-3 z-10 flex items-center gap-2">
@@ -309,6 +324,9 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
           )}
         </div>
         )}
+
+        {/* Slot para KPIs flotantes (Opción A: HUD Popover) */}
+        {slotKpis}
       </div>
 
       {enSimulacion && onAyuda && anchoPanelDerecho === 0 && (
@@ -346,18 +364,18 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
         <button
           onClick={() => setVistaUsuario(null)}
           className="w-8 h-8 flex items-center justify-center hover:bg-slate-100 rounded-lg text-[#64748B] hover:text-[#0F172A] transition cursor-pointer"
-          title="Restablecer vista (escala mínima)"
+          title="Restablecer vista completa (100%)"
         >
           <Maximize2 className="w-3.5 h-3.5" />
         </button>
         <span className="text-[9px] font-mono text-center text-[#94A3B8] font-bold block">
-          {vista ? Math.round((vista.escala / escalaMinima) * 100) : 100}%
+          {vista ? Math.round((vista.escala / escalaBase) * 100) : 100}%
         </span>
       </div>
 
       {/* 3. Escala */}
-      <div className="absolute left-4 bottom-12 z-10 bg-white/90 backdrop-blur-xs px-2.5 py-1 rounded-md border border-[#E2E8F0] text-[11px] font-mono text-[#64748B] shadow-xs pointer-events-none">
-        Área: 70 × 50 Km (71 × 51 Nodos) · 1 km = {vista ? vista.escala.toFixed(1).replace('.', ',') : '—'} px
+      <div className="absolute left-4 bottom-12 z-10 bg-white/95 backdrop-blur-xs px-2.5 py-1 rounded-md border border-[#E2E8F0] text-[11px] font-mono text-[#64748B] shadow-xs pointer-events-none">
+        1 km = {vista ? vista.escala.toFixed(1).replace('.', ',') : '—'} px
       </div>
 
       {/* 4. Lienzo: la geometría se proyecta con la vista; los marcadores conservan su tamaño en pantalla */}
@@ -501,17 +519,30 @@ function dividirRuta(unidad: UnidadOperacion): { recorrido: Coordenada[]; pendie
 
 const CapasMapa: React.FC<CapasMapaProps> = ({ vista, lienzo, capas, unidades, destinos, bloqueos, almacenes, seleccion, nodoActivo }) => {
   const origen = proyectar(vista, { x: 0, y: 0 });
-  const anchoMalla = MALLA_ANCHO_KM * vista.escala;
-  const altoMalla = MALLA_ALTO_KM * vista.escala;
   const paso = pasoCuadricula(vista.escala);
+  const pasoPx = paso * vista.escala;
 
-  // Rótulos de los ejes dentro del mapa, pegados al borde visible (debajo de los controles flotantes).
-  const yRotulosX = Math.max(origen.y, 0) + FRANJA_CONTROLES_PX + 4;
-  const xRotulosY = Math.max(origen.x, 0) + 6;
+  // Cuadrícula continua y uniforme en todo el lienzo
+  const iMin = Math.floor((0 - origen.x) / pasoPx) - 1;
+  const iMax = Math.ceil((lienzo.ancho - origen.x) / pasoPx) + 1;
+  const jMin = Math.floor((0 - origen.y) / pasoPx) - 1;
+  const jMax = Math.ceil((lienzo.alto - origen.y) / pasoPx) + 1;
+
+  // Rótulos de los ejes: marcas cada 10 km a lo largo del plano
+  const hayEspacioSuperior = origen.y >= FRANJA_CONTROLES_PX + 14;
+  const yRotulosX = hayEspacioSuperior ? origen.y - 6 : Math.max(origen.y + 14, FRANJA_CONTROLES_PX + 4);
+
+  const hayEspacioIzquierdo = origen.x >= 28;
+  const xRotulosY = hayEspacioIzquierdo ? origen.x - 6 : Math.max(origen.x + 6, 8);
+  const anchorY = hayEspacioIzquierdo ? 'end' : 'start';
+
+  const paso10Px = 10 * vista.escala;
+  const k10MaxX = Math.ceil((lienzo.ancho - origen.x) / paso10Px);
+  const k10MaxY = Math.ceil((lienzo.alto - origen.y) / paso10Px);
+  const totalRotulosX = Math.max(Math.floor(MALLA_ANCHO_KM / 10) + 1, k10MaxX + 1);
+  const totalRotulosY = Math.max(Math.floor(MALLA_ALTO_KM / 10) + 1, k10MaxY + 1);
+
   const halo = { stroke: '#FFFFFF', strokeWidth: 3, paintOrder: 'stroke' } as const;
-  // Los rótulos de los extremos (0k, 70k, 50k) se corren lo justo para no cortarse contra el borde.
-  const xRotulo = (km: number) => Math.min(Math.max(origen.x + km * vista.escala, 14), lienzo.ancho - 16);
-  const yRotulo = (km: number) => Math.min(Math.max(origen.y + km * vista.escala + 4, yRotulosX + 16), lienzo.alto - 6);
 
   // Unidad destacada: la seleccionada o la que lleva el pedido seleccionado.
   const unidadDestacada =
@@ -524,31 +555,58 @@ const CapasMapa: React.FC<CapasMapaProps> = ({ vista, lienzo, capas, unidades, d
 
   return (
     <svg className="absolute inset-0 w-full h-full">
-      {/* Malla de la ciudad */}
-      <rect x={origen.x} y={origen.y} width={anchoMalla} height={altoMalla} fill="#FFFFFF" />
-      {Array.from({ length: Math.floor(MALLA_ANCHO_KM / paso) + 1 }, (_, i) => {
-        const x = origen.x + i * paso * vista.escala;
-        if (x < -1 || x > lienzo.ancho + 1) return null;
-        return <line key={`v${i}`} x1={x} y1={origen.y} x2={x} y2={origen.y + altoMalla} stroke="#E2E8F0" strokeWidth="1" />;
+      {/* Cuadrícula continua y uniforme en todo el lienzo */}
+      {Array.from({ length: Math.max(0, iMax - iMin + 1) }, (_, idx) => {
+        const i = iMin + idx;
+        const x = origen.x + i * pasoPx;
+        return (
+          <line
+            key={`gv${i}`}
+            x1={x}
+            y1={0}
+            x2={x}
+            y2={lienzo.alto}
+            stroke="#E2E8F0"
+            strokeWidth="1"
+          />
+        );
       })}
-      {Array.from({ length: Math.floor(MALLA_ALTO_KM / paso) + 1 }, (_, i) => {
-        const y = origen.y + i * paso * vista.escala;
-        if (y < -1 || y > lienzo.alto + 1) return null;
-        return <line key={`h${i}`} x1={origen.x} y1={y} x2={origen.x + anchoMalla} y2={y} stroke="#E2E8F0" strokeWidth="1" />;
+      {Array.from({ length: Math.max(0, jMax - jMin + 1) }, (_, idx) => {
+        const j = jMin + idx;
+        const y = origen.y + j * pasoPx;
+        return (
+          <line
+            key={`gh${j}`}
+            x1={0}
+            y1={y}
+            x2={lienzo.ancho}
+            y2={y}
+            stroke="#E2E8F0"
+            strokeWidth="1"
+          />
+        );
       })}
-      <rect x={origen.x} y={origen.y} width={anchoMalla} height={altoMalla} fill="none" stroke="#94A3B8" strokeWidth="1.5" />
 
       {/* Rótulos cada 10 km */}
-      {Array.from({ length: MALLA_ANCHO_KM / 10 + 1 }, (_, i) => (
-        <text key={`rx${i}`} x={xRotulo(i * 10)} y={yRotulosX} fill="#94A3B8" fontSize="11" fontFamily="Fira Code" textAnchor="middle" {...halo}>
-          {i * 10}k
-        </text>
-      ))}
-      {Array.from({ length: MALLA_ALTO_KM / 10 + 1 }, (_, i) => (
-        <text key={`ry${i}`} x={xRotulosY} y={yRotulo(i * 10)} fill="#94A3B8" fontSize="11" fontFamily="Fira Code" textAnchor="start" {...halo}>
-          {i * 10}k
-        </text>
-      ))}
+      {Array.from({ length: Math.max(0, totalRotulosX) }, (_, i) => {
+        const x = origen.x + i * 10 * vista.escala;
+        if (x < 14 || x > lienzo.ancho - 16) return null;
+        return (
+          <text key={`rx${i}`} x={x} y={yRotulosX} fill="#94A3B8" fontSize="11" fontFamily="Fira Code" textAnchor="middle" {...halo}>
+            {i * 10}k
+          </text>
+        );
+      })}
+      {Array.from({ length: Math.max(0, totalRotulosY) }, (_, i) => {
+        const y = origen.y + i * 10 * vista.escala + 4;
+        const topeSuperior = hayEspacioSuperior ? 14 : yRotulosX + 16;
+        if (y < topeSuperior || y > lienzo.alto - 6) return null;
+        return (
+          <text key={`ry${i}`} x={xRotulosY} y={y} fill="#94A3B8" fontSize="11" fontFamily="Fira Code" textAnchor={anchorY} {...halo}>
+            {i * 10}k
+          </text>
+        );
+      })}
 
       {/* --- RUTAS: tramo recorrido (gris sólido) y pendiente (punteado; azul si está destacada) --- */}
       {capas.rutas &&
