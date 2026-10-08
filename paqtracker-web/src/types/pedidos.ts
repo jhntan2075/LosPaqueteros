@@ -20,6 +20,7 @@ export interface VehiculoAsignado {
 export interface PedidoEnCola {
   codigo: string; // p. ej. "#1088"
   cliente: string;
+  destino?: Coordenada;
   cantidad: number;
   /** Plazo en horas; los archivos de ventas pueden traer plazos fuera del catálogo de la UI. */
   plazoHoras: number;

@@ -88,14 +88,6 @@ const CorridaEnVivo: React.FC<CorridaSimulacionProps> = ({ ejecucion, onSalir, o
         onSalir={onSalir}
         onVerInforme={() => setVerInforme(true)}
       />
-      <RailKpis
-        resumen={datos.resumen}
-        riesgo={resumenRiesgo(datos)}
-        flota={{ ...flota, averiadas: flota.averiadas.length }}
-        onVerFlota={() => setPanel({ tipo: 'flota' })}
-        onVerIncidencias={() => setPanel({ tipo: 'incidencias' })}
-        notaSaturacion={colapso ? 'al detectarse el colapso' : 'Alerta desde 0,70'}
-      />
       <main className="flex-1 relative flex min-h-0 bg-[#F8FAFC]">
         <GridMap
           ref={mapaRef}
@@ -111,6 +103,16 @@ const CorridaEnVivo: React.FC<CorridaSimulacionProps> = ({ ejecucion, onSalir, o
           onAbrirIncidencias={() => setPanel({ tipo: 'incidencias' })}
           onHoverCoordenada={setNodo}
           onAyuda={onAbrirLeyenda}
+          slotKpis={
+            <RailKpis
+              resumen={datos.resumen}
+              riesgo={resumenRiesgo(datos)}
+              flota={{ ...flota, averiadas: flota.averiadas.length }}
+              notaSaturacion={colapso ? 'al detectarse el colapso' : 'Alerta desde 0,70'}
+              onVerFlota={() => setPanel({ tipo: 'flota' })}
+              onVerIncidencias={() => setPanel({ tipo: 'incidencias' })}
+            />
+          }
         >
           {panel && (
             <PanelLateral

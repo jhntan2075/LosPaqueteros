@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Sidebar, type TabModulo } from './components/layout/Sidebar';
+import { TopNavbar, type TabModulo } from './components/layout/TopNavbar';
 import { EstadoConexion } from './components/layout/EstadoConexion';
 import { HeaderKPIs } from './components/layout/HeaderKPIs';
 import { FooterBar } from './components/layout/FooterBar';
@@ -8,6 +8,9 @@ import { ModuloOperacion } from './components/operacion/ModuloOperacion';
 import { ModuloPedidos } from './components/pedidos/ModuloPedidos';
 import { ModuloSimulacion } from './components/simulacion/ModuloSimulacion';
 import { ContextoDatosOperacion, useEjecucionEnVivo } from './hooks/useDatosOperacion';
+import { useConexionStomp } from './hooks/useConexionStomp';
+import { formatearFechaNumerica } from './lib/formato';
+import { turnoVigente } from './lib/turnos';
 import { pedidosEnRiesgo, resumenRiesgo } from './lib/operacion';
 import { ID_DIA_A_DIA } from './services/clienteApi';
 import type { DatosOperacion, SubvistaOperacion } from './types/operacion';
@@ -110,20 +113,22 @@ export default function App() {
   }, []);
   const segundosActualizado = diaADia.recibidoEnMs === 0 ? 0 : Math.max(0, Math.round((ahora - diaADia.recibidoEnMs) / 1000));
 
+  const conectado = useConexionStomp();
   const riesgo = datos ? resumenRiesgo(datos) : null;
   const sinDatos = <EstadoConexion titulo="Operación día a día" error={diaADia.error} />;
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-[#F8FAFC]">
-      <Sidebar
+    <div className="flex flex-col h-screen w-screen overflow-hidden bg-[#F8FAFC]">
+      <TopNavbar
         tabActiva={tabActiva}
-        subvistaOperacion={subvistaOperacion}
         onCambiarTab={(tab) => (tab === 'pedidos' ? abrirPedidos('cola') : setTabActiva(tab))}
-        onCambiarSubvistaOperacion={abrirOperacion}
+        relojSimulado={datos ? formatearFechaNumerica(datos.reloj, true) : undefined}
+        turno={datos ? turnoVigente(datos.reloj).actual : undefined}
+        conectado={conectado}
       />
 
       <ContextoDatosOperacion.Provider value={datos}>
-        <div className="flex-1 flex flex-col h-screen min-w-0 overflow-hidden">
+        <div className="flex-1 flex flex-col min-h-0 min-w-0 overflow-hidden">
           {/* Cinta superior de KPIs (Operación y Simulación traen su propio encabezado) */}
           {datos && riesgo && !pantallaCompleta && tabActiva !== 'operacion' && tabActiva !== 'simulacion' && (
             <HeaderKPIs

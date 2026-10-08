@@ -1,14 +1,10 @@
 import React, { useMemo, useRef, useState } from 'react';
-import { useConexionStomp } from '../../hooks/useConexionStomp';
 import { useDatosOperacion } from '../../hooks/useDatosOperacion';
-import { formatearFechaNumerica } from '../../lib/formato';
 import { estadoFlota, pedidosEnRiesgo, resumenRiesgo } from '../../lib/operacion';
-import { turnoVigente } from '../../lib/turnos';
 import type { Coordenada } from '../../types/domain';
 import type { SubvistaOperacion } from '../../types/operacion';
 import { GridMap, type DestinoMapa, type GridMapHandle, type ObjetoMapa } from '../map/GridMap';
 import { BitacoraEventos } from './BitacoraEventos';
-import { EncabezadoOperacion } from './EncabezadoOperacion';
 import { EstadoFlota } from './EstadoFlota';
 import { PanelLateral, type SeleccionPanel } from './PanelLateral';
 import { RailKpis } from './RailKpis';
@@ -25,7 +21,6 @@ interface ModuloOperacionProps {
 
 export const ModuloOperacion: React.FC<ModuloOperacionProps> = ({ subvista, onCambiarSubvista, onHoverCoordenada }) => {
   const datos = useDatosOperacion();
-  const conectado = useConexionStomp();
   const mapaRef = useRef<GridMapHandle>(null);
   // Objeto abierto en el panel derecho; sin objeto, el panel muestra la lista de incidencias.
   const [detalle, setDetalle] = useState<ObjetoMapa | null>(null);
@@ -58,14 +53,6 @@ export const ModuloOperacion: React.FC<ModuloOperacionProps> = ({ subvista, onCa
 
   return (
     <div className="flex-1 flex flex-col min-h-0">
-      <EncabezadoOperacion relojSimulado={formatearFechaNumerica(datos.reloj, true)} turno={turnoVigente(datos.reloj).actual} conectado={conectado} />
-      <RailKpis
-        resumen={datos.resumen}
-        riesgo={resumenRiesgo(datos)}
-        flota={{ ...flota, averiadas: flota.averiadas.length }}
-        onVerFlota={() => onCambiarSubvista('flota')}
-        onVerIncidencias={() => seleccionar({ tipo: 'incidencias' })}
-      />
       <main className="flex-1 relative flex min-h-0 bg-[#F8FAFC]">
         {enMapa && (
           <GridMap
@@ -80,6 +67,15 @@ export const ModuloOperacion: React.FC<ModuloOperacionProps> = ({ subvista, onCa
             onSeleccionar={setDetalle}
             onAbrirIncidencias={() => seleccionar({ tipo: 'incidencias' })}
             onHoverCoordenada={onHoverCoordenada}
+            slotKpis={
+              <RailKpis
+                resumen={datos.resumen}
+                riesgo={resumenRiesgo(datos)}
+                flota={{ ...flota, averiadas: flota.averiadas.length }}
+                onVerFlota={() => onCambiarSubvista('flota')}
+                onVerIncidencias={() => seleccionar({ tipo: 'incidencias' })}
+              />
+            }
           >
             {panelAbierto && (
               <PanelLateral

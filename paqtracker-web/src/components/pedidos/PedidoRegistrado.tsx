@@ -1,4 +1,15 @@
 import React from 'react';
+import {
+  CheckCircle2,
+  MapPin,
+  Plus,
+  ArrowLeft,
+  Truck,
+  Clock,
+  RefreshCw,
+  User,
+  ShieldCheck,
+} from 'lucide-react';
 import { ALMACENES, UNIDADES, esPlazoRegular } from '../../config/dominio';
 import { capitalizar, formatearHolgura, formatearHoraRelativa } from '../../lib/formato';
 import { proyectar, tramoOrtogonal, trazado } from '../../lib/malla';
@@ -10,29 +21,38 @@ import { MarcadorAlmacen, PinDestino, PuntoHolgura, RotuloMapa, UnidadEnMapa } f
 
 import holguraAmbarTriangulo from '../../assets/figma/pedidos/holgura-ambar-triangulo.svg';
 
-// PE-01 · Pedido registrado (Figma 1:12733).
-
-const FilaResumen: React.FC<{ etiqueta: string; valor: string; mono?: boolean }> = ({ etiqueta, valor, mono = false }) => (
-  <div className="flex items-center justify-between w-full">
-    <span className="font-sans text-[#64748B]">{etiqueta}</span>
-    <span className={mono ? 'font-mono font-medium text-[#0F172A]' : 'font-sans font-medium text-[#0F172A]'}>{valor}</span>
+const FilaResumen: React.FC<{ etiqueta: string; valor: React.ReactNode }> = ({ etiqueta, valor }) => (
+  <div className="flex items-center justify-between w-full text-xs py-1">
+    <span className="font-sans text-slate-500">{etiqueta}</span>
+    <span className="font-sans font-medium text-slate-800 text-right">{valor}</span>
   </div>
 );
 
-const Celda: React.FC<{ etiqueta: string; children: React.ReactNode }> = ({ etiqueta, children }) => (
-  <div className="flex-1 min-w-0 bg-[#F8FAFC] rounded-[8px] px-[12px] py-[10px] flex flex-col gap-[4px] whitespace-nowrap">
-    <span className="font-sans text-[12px] text-[#64748B]">{etiqueta}</span>
+const CeldaKpi: React.FC<{ etiqueta: string; icono?: React.ReactNode; children: React.ReactNode }> = ({
+  etiqueta,
+  icono,
+  children,
+}) => (
+  <div className="flex-1 min-w-0 bg-slate-50 rounded-xl p-3.5 border border-slate-200/80 flex flex-col gap-1">
+    <span className="font-sans text-[11px] text-slate-500 flex items-center gap-1.5">
+      {icono}
+      {etiqueta}
+    </span>
     {children}
   </div>
 );
 
-/** Malla completa con la ruta de la unidad: tramo ya recorrido (gris) y tramo pendiente hasta el nuevo destino (azul). */
-const MiniMapaRuta: React.FC<{ pedido: Pedido; vehiculo: VehiculoAsignado; unidad: Coordenada }> = ({ pedido, vehiculo, unidad }) => {
+/** Malla completa con la ruta de la unidad: tramo recorrido y tramo pendiente hasta el nuevo destino */
+const MiniMapaRuta: React.FC<{ pedido: Pedido; vehiculo: VehiculoAsignado; unidad: Coordenada }> = ({
+  pedido,
+  vehiculo,
+  unidad,
+}) => {
   const almacen = ALMACENES.find((a) => a.id === pedido.almacenOrigen) ?? ALMACENES[0];
   const { destino } = pedido.borrador;
   return (
     <MiniMapaMalla
-      alto={150}
+      alto={160}
       encuadrar={[almacen.ubicacion, unidad, destino]}
       etiqueta={`Ruta de ${vehiculo.codigo} desde ${almacen.nombre} hasta (${destino.x},${destino.y})`}
     >
@@ -53,15 +73,15 @@ const MiniMapaRuta: React.FC<{ pedido: Pedido; vehiculo: VehiculoAsignado; unida
               />
             </svg>
             <MarcadorAlmacen almacen={almacen.id} enRuta cx={pOrigen.x} cy={pOrigen.y} />
-            <RotuloMapa x={pOrigen.x} y={pOrigen.y + 18} anchoMapa={ancho} className="font-sans font-medium text-[#64748B]">
+            <RotuloMapa x={pOrigen.x} y={pOrigen.y + 18} anchoMapa={ancho} className="font-sans font-medium text-slate-500">
               {almacen.nombreCorto}
             </RotuloMapa>
             <UnidadEnMapa tipo={vehiculo.tipo} cx={pUnidad.x} cy={pUnidad.y} />
-            <RotuloMapa x={pUnidad.x} y={pUnidad.y + 14} anchoMapa={ancho} className="font-mono font-medium text-[#1E40AF]">
+            <RotuloMapa x={pUnidad.x} y={pUnidad.y + 14} anchoMapa={ancho} className="font-mono font-medium text-blue-700">
               {vehiculo.codigo}
             </RotuloMapa>
             <PinDestino variante="ambar" x={pDestino.x} y={pDestino.y} />
-            <RotuloMapa x={pDestino.x} y={pDestino.y + 2} anchoMapa={ancho} className="font-mono font-medium text-[#0F172A]">
+            <RotuloMapa x={pDestino.x} y={pDestino.y + 2} anchoMapa={ancho} className="font-mono font-medium text-slate-900">
               ({destino.x},{destino.y})
             </RotuloMapa>
           </>
@@ -79,125 +99,173 @@ interface PedidoRegistradoProps {
   onVerCola: () => void;
 }
 
-export const PedidoRegistrado: React.FC<PedidoRegistradoProps> = ({ pedido, reloj, onVerEnLienzo, onRegistrarOtro, onVerCola }) => {
+export const PedidoRegistrado: React.FC<PedidoRegistradoProps> = ({
+  pedido,
+  reloj,
+  onVerEnLienzo,
+  onRegistrarOtro,
+  onVerCola,
+}) => {
   const { borrador, replanificacion, vehiculo } = pedido;
   const almacen = ALMACENES.find((a) => a.id === pedido.almacenOrigen);
   const nombreVehiculo = vehiculo ? `${capitalizar(UNIDADES[vehiculo.tipo].nombre)} ${vehiculo.codigo}` : 'En espera';
 
   return (
-    <div className="flex-1 min-h-0 overflow-auto">
-      <div className="min-w-[1064px] px-[32px] pt-[38px] pb-[24px] flex justify-center leading-[normal]">
-        <section className="w-[1000px] bg-white border border-[#E2E8F0] rounded-[12px] px-[32px] py-[28px] flex flex-col gap-[20px]">
-          {/* Banner */}
-          <div className="flex items-center gap-[14px]">
-            <div className="relative bg-[#1E40AF] rounded-full size-[38px] shrink-0" aria-hidden="true">
-              <span className="absolute left-[10px] top-[8px] font-sans font-semibold text-[20px] leading-[normal] text-white">✓</span>
+    <div className="flex-1 min-h-0 overflow-y-auto">
+      <div className="max-w-4xl mx-auto w-full p-4 lg:p-6 flex flex-col gap-6">
+        {/* Banner de confirmación */}
+        <div className="bg-white border border-emerald-200 rounded-2xl p-6 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="size-12 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-700 shrink-0">
+              <CheckCircle2 className="w-6 h-6" />
             </div>
-            <div className="flex flex-col gap-[2px]" role="status">
-              <p className="font-sans font-semibold text-[17px] text-[#0F172A]">
-                Pedido {pedido.codigo} registrado{vehiculo ? ' y planificado' : ''}
-              </p>
-              <p className="font-sans text-[12px] text-[#64748B]">
+            <div>
+              <div className="flex items-center gap-2.5">
+                <h2 className="font-sans font-bold text-lg text-slate-900">
+                  Pedido #{pedido.codigo} registrado exitosamente
+                </h2>
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-sans font-medium bg-emerald-50 text-emerald-800 border border-emerald-200">
+                  {vehiculo ? 'Planificado' : 'En cola'}
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 font-sans mt-0.5">
                 {vehiculo
-                  ? 'Asignado automáticamente a una unidad y añadido al plan de rutas vigente.'
-                  : 'No hay una unidad libre en este momento: el pedido espera en la cola y entra en la siguiente planificación.'}
+                  ? `Asignado automáticamente a ${nombreVehiculo} e incorporado a la ruta vigente.`
+                  : 'Sin unidad libre al momento del registro: el pedido queda en cola para el próximo ciclo de optimización.'}
               </p>
             </div>
           </div>
 
-          <div className="bg-[#E2E8F0] h-px w-full" />
+          <button
+            type="button"
+            onClick={onVerEnLienzo}
+            className="h-10 px-5 rounded-xl bg-blue-700 hover:bg-blue-800 text-white font-sans font-medium text-xs flex items-center gap-2 shadow-xs transition shrink-0"
+          >
+            <MapPin className="w-4 h-4" />
+            <span>Ver en el mapa</span>
+          </button>
+        </div>
 
-          <div className="flex gap-[40px] items-start">
-            {/* Resumen */}
-            <div className="w-[400px] shrink-0 flex flex-col gap-[12px] text-[12px] whitespace-nowrap">
-              <h2 className="font-sans font-semibold text-[#64748B] tracking-[0.7px]">RESUMEN DEL PEDIDO</h2>
+        {/* Doble columna: Resumen del Pedido vs Planificación */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+          {/* Tarjeta 1: Resumen del Pedido */}
+          <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs flex flex-col gap-4">
+            <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
+              <h3 className="font-sans font-bold text-xs text-slate-700 tracking-wider uppercase">
+                Resumen del Pedido
+              </h3>
+              <User className="w-4 h-4 text-slate-400" />
+            </div>
+
+            <div className="space-y-1 divide-y divide-slate-50">
               <FilaResumen etiqueta="Cliente" valor={borrador.cliente} />
               <FilaResumen
                 etiqueta="Nodo de destino"
-                valor={`(${borrador.destino.x},${borrador.destino.y})`}
-                mono
-              />
-              <FilaResumen etiqueta="Cantidad" valor={`${borrador.cantidad} u. de P`} />
-              <FilaResumen
-                etiqueta="Tipo de entrega"
-                valor={`${esPlazoRegular(borrador.plazoHoras) ? 'Regular' : 'Priorizada'} ${borrador.plazoHoras} h`}
-              />
-              <FilaResumen etiqueta="Hora límite" valor={formatearHoraRelativa(pedido.horaLimite, reloj)} mono />
-              <FilaResumen etiqueta="Almacén de origen" valor={almacen?.nombre ?? '—'} />
-            </div>
-
-            {/* Resultado */}
-            <div className="flex-1 min-w-0 flex flex-col gap-[14px]">
-              <h2 className="font-sans font-semibold text-[12px] text-[#64748B] tracking-[0.7px]">RESULTADO DE LA PLANIFICACIÓN</h2>
-              <div className="flex gap-[14px]">
-                <Celda etiqueta="Vehículo asignado">
-                  <span className="font-mono font-semibold text-[16px] text-[#0F172A]">{nombreVehiculo}</span>
-                </Celda>
-                <Celda etiqueta="ETA">
-                  <span className="font-mono font-semibold text-[16px] text-[#0F172A]">{pedido.eta ? formatearHoraRelativa(pedido.eta, reloj) : '—'}</span>
-                </Celda>
-                <Celda etiqueta="Holgura resultante">
-                  <span className="flex items-center gap-[6px]">
-                    {pedido.nivelHolgura === 'AMBAR' ? (
-                      <img src={holguraAmbarTriangulo} alt="" className="block" />
-                    ) : (
-                      <PuntoHolgura nivel={pedido.nivelHolgura} />
-                    )}
-                    <span className={`font-mono font-semibold text-[16px] ${COLOR_HOLGURA[pedido.nivelHolgura]}`}>
-                      {formatearHolgura(pedido.holguraMinutos)}
-                    </span>
+                valor={
+                  <span className="font-mono font-medium text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+                    X: {borrador.destino.x} · Y: {borrador.destino.y}
                   </span>
-                </Celda>
-              </div>
-
-              {vehiculo && pedido.posicionVehiculo && (
-                <figure className="flex flex-col gap-[6px]">
-                  <MiniMapaRuta pedido={pedido} vehiculo={vehiculo} unidad={pedido.posicionVehiculo} />
-                  <figcaption className="font-sans font-medium text-[12px] text-[#64748B]">
-                    nuevo pedido insertado en la ruta de {vehiculo.codigo}
-                  </figcaption>
-                </figure>
-              )}
-
-              <div className="bg-[#EDF2FC] rounded-[8px] px-[12px] py-[10px] flex items-center gap-[8px] text-[#1E40AF]">
-                <span className="font-sans font-medium text-[13px]" aria-hidden="true">
-                  ⟳
-                </span>
-                <p className="flex-1 font-sans text-[12px]">
-                  {replanificacion.replanifico
-                    ? `Replanificación disparada — plan actualizado en ${replanificacion.milisegundos} ms · ${replanificacion.unidadesDespachadas} ${replanificacion.unidadesDespachadas === 1 ? 'unidad despachada' : 'unidades despachadas'}.`
-                    : 'El pedido entra en la siguiente planificación del ciclo Sa.'}
-                </p>
-              </div>
+                }
+              />
+              <FilaResumen etiqueta="Cantidad a entregar" valor={`${borrador.cantidad} u. de producto P`} />
+              <FilaResumen
+                etiqueta="Tipo de servicio"
+                valor={`${esPlazoRegular(borrador.plazoHoras) ? 'Regular' : 'Priorizado'} · ${borrador.plazoHoras} horas`}
+              />
+              <FilaResumen
+                etiqueta="Hora límite calculada"
+                valor={<span className="font-mono font-bold text-slate-900">{formatearHoraRelativa(pedido.horaLimite, reloj)}</span>}
+              />
+              <FilaResumen etiqueta="Almacén de despacho" valor={almacen?.nombre ?? '—'} />
             </div>
           </div>
 
-          <div className="bg-[#E2E8F0] h-px w-full" />
+          {/* Tarjeta 2: Resultado de la Planificación */}
+          <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs flex flex-col gap-4">
+            <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
+              <h3 className="font-sans font-bold text-xs text-slate-700 tracking-wider uppercase">
+                Resultado de Planificación
+              </h3>
+              <ShieldCheck className="w-4 h-4 text-slate-400" />
+            </div>
 
-          <div className="flex items-center gap-[12px]">
+            <div className="grid grid-cols-3 gap-2.5">
+              <CeldaKpi etiqueta="Vehículo" icono={<Truck className="w-3 h-3 text-blue-600" />}>
+                <span className="font-mono font-bold text-sm text-slate-900 truncate">{nombreVehiculo}</span>
+              </CeldaKpi>
+              <CeldaKpi etiqueta="ETA" icono={<Clock className="w-3 h-3 text-slate-400" />}>
+                <span className="font-mono font-bold text-sm text-slate-900">
+                  {pedido.eta ? formatearHoraRelativa(pedido.eta, reloj) : '—'}
+                </span>
+              </CeldaKpi>
+              <CeldaKpi etiqueta="Holgura SLA">
+                <span className="flex items-center gap-1.5 font-mono font-bold text-sm">
+                  {pedido.nivelHolgura === 'AMBAR' ? (
+                    <img src={holguraAmbarTriangulo} alt="" className="block size-3.5" />
+                  ) : (
+                    <PuntoHolgura nivel={pedido.nivelHolgura} />
+                  )}
+                  <span className={COLOR_HOLGURA[pedido.nivelHolgura]}>
+                    {formatearHolgura(pedido.holguraMinutos)}
+                  </span>
+                </span>
+              </CeldaKpi>
+            </div>
+
+            {/* Minimapa de la ruta */}
+            {vehiculo && pedido.posicionVehiculo && (
+              <figure className="flex flex-col gap-1.5 mt-1">
+                <MiniMapaRuta pedido={pedido} vehiculo={vehiculo} unidad={pedido.posicionVehiculo} />
+                <figcaption className="font-sans text-[11px] text-slate-500 text-center">
+                  Nuevo nodo de entrega insertado en el plan de ruta de {vehiculo.codigo}.
+                </figcaption>
+              </figure>
+            )}
+
+            {/* Replanificación en vivo */}
+            <div className="p-3 bg-blue-50/70 rounded-xl border border-blue-200/80 flex items-center gap-2.5 text-xs text-blue-900">
+              <RefreshCw className="w-4 h-4 text-blue-700 shrink-0" />
+              <p className="leading-relaxed">
+                {replanificacion.replanifico
+                  ? `Plan optimizado por el motor en ${replanificacion.milisegundos} ms · ${replanificacion.unidadesDespachadas} ${
+                      replanificacion.unidadesDespachadas === 1 ? 'unidad en despacho' : 'unidades en despacho'
+                    }.`
+                  : 'El pedido se integrará al próximo ciclo de replanificación del planificador.'}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Acciones Finales */}
+        <div className="bg-white border border-slate-200 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-3 shadow-xs">
+          <div className="flex items-center gap-3">
             <button
               type="button"
               onClick={onVerEnLienzo}
-              className="bg-[#1E40AF] rounded-[8px] h-[44px] px-[20px] font-sans font-semibold text-[13px] text-white hover:bg-[#1E3A8A] transition"
+              className="h-10 px-5 rounded-xl bg-blue-700 hover:bg-blue-800 text-white font-sans font-medium text-xs flex items-center gap-2 shadow-xs transition"
             >
-              Ver en el lienzo
+              <MapPin className="w-4 h-4" />
+              <span>Ver seguimiento en el mapa en vivo</span>
             </button>
             <button
               type="button"
               onClick={onRegistrarOtro}
-              className="border border-[#E2E8F0] rounded-[8px] h-[44px] px-[20px] font-sans font-medium text-[13px] text-[#64748B] hover:bg-[#F8FAFC] transition"
+              className="h-10 px-4 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 font-sans font-medium text-xs flex items-center gap-1.5 transition"
             >
-              Registrar otro pedido
-            </button>
-            <button
-              type="button"
-              onClick={onVerCola}
-              className="rounded-[8px] h-[44px] px-[20px] font-sans font-medium text-[13px] text-[#1E40AF] hover:underline"
-            >
-              Ver cola de pedidos
+              <Plus className="w-4 h-4" />
+              <span>Registrar otro pedido</span>
             </button>
           </div>
-        </section>
+
+          <button
+            type="button"
+            onClick={onVerCola}
+            className="h-10 px-4 rounded-xl text-blue-700 hover:text-blue-800 hover:bg-blue-50 font-sans font-medium text-xs flex items-center gap-1.5 transition"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span>Volver a la cola de pedidos</span>
+          </button>
+        </div>
       </div>
     </div>
   );

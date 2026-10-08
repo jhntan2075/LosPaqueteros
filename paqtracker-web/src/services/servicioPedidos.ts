@@ -29,6 +29,7 @@ export function adaptarPedidoEnCola(pedido: PedidoApi, reloj: Date): PedidoEnCol
   return {
     codigo: pedido.codigo,
     cliente: pedido.cliente ?? '—',
+    destino: pedido.destino ? { x: pedido.destino.x, y: pedido.destino.y } : undefined,
     cantidad: pedido.cantidad,
     plazoHoras: Math.round((pedido.horaLimiteMs - pedido.registroMs) / MS_POR_HORA),
     horaLimite: formatearHoraRelativa(new Date(pedido.horaLimiteMs), reloj),

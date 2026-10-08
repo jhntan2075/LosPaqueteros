@@ -18,6 +18,8 @@ export interface Lienzo {
   margen: number; // px reservados alrededor de la malla (rótulos de ejes, bordes)
   /** px reservados arriba, si los controles flotantes del mapa necesitan más que `margen`. */
   margenSuperior?: number;
+  /** px reservados a la derecha, si un panel lateral está abierto. */
+  margenDerecho?: number;
   /**
    * 'contener' (por defecto): la escala mínima muestra la malla completa, con franjas libres si sobra espacio.
    * 'cubrir': la escala mínima llena todo el lienzo; la malla sobresale en un eje y se recorre arrastrando.
@@ -29,40 +31,49 @@ export interface Lienzo {
 export const ESCALA_MAXIMA = 80;
 
 const superior = (lienzo: Lienzo) => lienzo.margenSuperior ?? lienzo.margen;
+const derecho = (lienzo: Lienzo) => lienzo.margenDerecho ?? lienzo.margen;
 
-/** Escala mínima permitida: la que contiene la malla completa o la que cubre todo el lienzo. */
+/** Escala mínima permitida para encuadrar la malla completa (70 × 50 km) dentro del área visible. */
 export const escalaDeEncuadre = (lienzo: Lienzo) => {
-  const porAncho = (lienzo.ancho - 2 * lienzo.margen) / MALLA_ANCHO_KM;
-  const porAlto = (lienzo.alto - superior(lienzo) - lienzo.margen) / MALLA_ALTO_KM;
+  const d = derecho(lienzo);
+  const porAncho = Math.max(10, lienzo.ancho - lienzo.margen - d) / MALLA_ANCHO_KM;
+  const porAlto = Math.max(10, lienzo.alto - superior(lienzo) - lienzo.margen) / MALLA_ALTO_KM;
   return Math.max(0.01, lienzo.ajuste === 'cubrir' ? Math.max(porAncho, porAlto) : Math.min(porAncho, porAlto));
 };
 
-const limitarEje = (inicio: number, extension: number, disponible: number, margenInicio: number, margenFin: number) => {
-  // Si la malla cabe en el eje, se centra en el área útil; si no, sus bordes no pueden despegarse de los márgenes.
-  const util = disponible - margenInicio - margenFin;
-  if (extension <= util) return margenInicio + (util - extension) / 2;
-  return Math.min(margenInicio, Math.max(disponible - margenFin - extension, inicio));
+/** Escala mínima permitida para zoom out: permite alejarse hasta un 40% más para una vista panorámica amplia del plano extendido. */
+export const escalaMinimaPermitida = (lienzo: Lienzo) => {
+  return Math.max(0.01, escalaDeEncuadre(lienzo) * 0.6);
 };
 
-/** Ajusta una vista para que respete la escala mínima (encuadre), la máxima y los bordes de la malla. */
+const limitarEje = (inicio: number, extension: number, disponible: number, margenInicio: number, margenFin: number) => {
+  // Permite desplazar libremente el plano manteniendo visible al menos un margen del territorio operativo
+  const minInicio = margenInicio + 60 - extension;
+  const maxInicio = disponible - margenFin - 60;
+  return Math.min(maxInicio, Math.max(minInicio, inicio));
+};
+
+/** Ajusta una vista para que respete la escala mínima, máxima y los bordes de la malla. */
 export function limitarVista(vista: Vista, lienzo: Lienzo): Vista {
-  const minima = escalaDeEncuadre(lienzo);
+  const minima = escalaMinimaPermitida(lienzo);
   const escala = Math.min(Math.max(vista.escala, minima), Math.max(minima, ESCALA_MAXIMA));
   return {
     escala,
-    x: limitarEje(vista.x, MALLA_ANCHO_KM * escala, lienzo.ancho, lienzo.margen, lienzo.margen),
+    x: limitarEje(vista.x, MALLA_ANCHO_KM * escala, lienzo.ancho, lienzo.margen, derecho(lienzo)),
     y: limitarEje(vista.y, MALLA_ALTO_KM * escala, lienzo.alto, superior(lienzo), lienzo.margen),
   };
 }
 
-/** Vista inicial a la escala mínima, centrada en la malla (completa con 'contener', llenando el lienzo con 'cubrir'). */
+/** Vista inicial que encuadra la malla completa (70 × 50 km) de forma centrada y sin recortes. */
 export const vistaCompleta = (lienzo: Lienzo): Vista => {
+  const d = derecho(lienzo);
   const escala = escalaDeEncuadre(lienzo);
+  const anchoUtil = lienzo.ancho - lienzo.margen - d;
   const altoUtil = lienzo.alto - superior(lienzo) - lienzo.margen;
   return limitarVista(
     {
       escala,
-      x: (lienzo.ancho - MALLA_ANCHO_KM * escala) / 2,
+      x: lienzo.margen + (anchoUtil - MALLA_ANCHO_KM * escala) / 2,
       y: superior(lienzo) + (altoUtil - MALLA_ALTO_KM * escala) / 2,
     },
     lienzo,
@@ -74,16 +85,22 @@ export const vistaCompleta = (lienzo: Lienzo): Vista => {
  * mínima evita acercarse demasiado cuando los puntos están juntos; nunca muestra espacio fuera de la malla.
  */
 export function vistaDeLimites(puntos: Coordenada[], lienzo: Lienzo, extensionMinimaKm = 16): Vista {
+  const d = derecho(lienzo);
+  const anchoUtil = lienzo.ancho - lienzo.margen - d;
+  const altoUtil = lienzo.alto - superior(lienzo) - lienzo.margen;
   const xs = puntos.map((p) => p.x);
   const ys = puntos.map((p) => p.y);
   const anchoKm = Math.max(Math.max(...xs) - Math.min(...xs), extensionMinimaKm);
   const altoKm = Math.max(Math.max(...ys) - Math.min(...ys), extensionMinimaKm * (MALLA_ALTO_KM / MALLA_ANCHO_KM));
-  const altoUtil = lienzo.alto - superior(lienzo) - lienzo.margen;
-  const escala = Math.min((lienzo.ancho - 2 * lienzo.margen) / anchoKm, altoUtil / altoKm);
+  const escala = Math.min(anchoUtil / anchoKm, altoUtil / altoKm);
   const centroX = (Math.max(...xs) + Math.min(...xs)) / 2;
   const centroY = (Math.max(...ys) + Math.min(...ys)) / 2;
   return limitarVista(
-    { escala, x: lienzo.ancho / 2 - centroX * escala, y: superior(lienzo) + altoUtil / 2 - centroY * escala },
+    {
+      escala,
+      x: lienzo.margen + anchoUtil / 2 - centroX * escala,
+      y: superior(lienzo) + altoUtil / 2 - centroY * escala,
+    },
     lienzo,
   );
 }
