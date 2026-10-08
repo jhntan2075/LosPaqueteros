@@ -165,7 +165,7 @@ public final class CalculadoraTiempos {
         Nodo actual = ruta.getOrigen().getUbicacion();
         for (int i = 0; i < secuencia.size(); i++) {
             Entrega entrega = secuencia.get(i);
-            int tramo = distancia(escenario, actual, entrega.getDestino(), reloj);
+            int tramo = distancia(escenario, actual, entrega.getDestino(), reloj, ruta.getVehiculo());
             int llegada = CalendarioTurnos.avanzarConPausa(idVehiculo, reloj,
                     minutosDeViaje(tramo, ruta.getVehiculo().getTipo()));
             int fin = CalendarioTurnos.avanzarConPausa(idVehiculo, llegada, escenario.getTiempoServicio());
