@@ -1,0 +1,6 @@
+# CPA-013: archivo valido. Las lineas vacias y los comentarios se ignoran.
+01d00h00m:00,00,c0001,01,4
+01d06h30m:70,50,c0002,24,36
+
+01d08h15m:43,18,c0003,25,12
+02d23h59m:12,38,c0004,10,8
