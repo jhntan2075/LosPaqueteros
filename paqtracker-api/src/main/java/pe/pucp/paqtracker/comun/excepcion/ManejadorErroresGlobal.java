@@ -4,9 +4,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 import java.util.List;
 
 /**
@@ -55,6 +57,27 @@ public class ManejadorErroresGlobal {
                 .map(error -> error.getField() + ": " + error.getDefaultMessage())
                 .toList();
         return responder(HttpStatus.BAD_REQUEST, "La solicitud tiene campos invalidos", detalles);
+    }
+
+    /**
+     * @param excepcion ruta sin controlador ni recurso estatico, p. ej. la raiz del servicio
+     * @return 404
+     */
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<RespuestaError> manejarRutaInexistente(NoResourceFoundException excepcion) {
+        return responder(HttpStatus.NOT_FOUND, "No existe la ruta /" + excepcion.getResourcePath(), List.of());
+    }
+
+    /**
+     * @param excepcion ruta existente invocada con otro metodo HTTP
+     * @return 405 con los metodos admitidos
+     */
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<RespuestaError> manejarMetodoNoSoportado(HttpRequestMethodNotSupportedException excepcion) {
+        List<String> admitidos = excepcion.getSupportedHttpMethods() == null ? List.of()
+                : excepcion.getSupportedHttpMethods().stream().map(metodo -> "Metodo admitido: " + metodo).toList();
+        return responder(HttpStatus.METHOD_NOT_ALLOWED,
+                "La ruta no admite el metodo " + excepcion.getMethod(), admitidos);
     }
 
     /**

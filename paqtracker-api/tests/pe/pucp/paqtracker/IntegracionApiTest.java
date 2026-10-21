@@ -124,6 +124,9 @@ class IntegracionApiTest {
                 .body(Map.of("tipoEscenario", "SIMULACION_PERIODO", "fechaInicio", "2026-01-01",
                         "flota", Map.of("autos", 0, "motos", 0, "bicicletas", 0)))));
         assertEquals(400, estado(cliente.get().uri("/api/pedidos/XYZ?ejecucionId=no-existe")));
+        assertEquals(404, estado(cliente.get().uri("/")));
+        assertEquals(404, estado(cliente.get().uri("/api/no-existe")));
+        assertEquals(405, estado(cliente.get().uri("/api/ejecuciones/dia-a-dia/iniciar")));
     }
 
     private static int estado(RestClient.RequestHeadersSpec<?> solicitud) {
