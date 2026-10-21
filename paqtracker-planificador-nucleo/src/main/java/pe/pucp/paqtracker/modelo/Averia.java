@@ -1,5 +1,6 @@
 package pe.pucp.paqtracker.modelo;
 
+import pe.pucp.paqtracker.util.CalendarioTurnos;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -75,6 +76,40 @@ public final class Averia {
 
     public int getInstante() {
         return instante;
+    }
+
+    /**
+     * Instante en que la unidad vuelve a operar (LE-incidencias): tipo 1 a las 2 h; tipo 2 al fin del
+     * turno siguiente al de la averia; tipo 3 al inicio del primer turno de 15:00 que empieza cumplidos
+     * los 2 dias desde la averia.
+     *
+     * @return minuto absoluto de reincorporacion
+     */
+    public int getInstanteReincorporacion() {
+        return switch (tipo) {
+            case TIPO_1 -> instante + ConfiguracionDominio.AVERIA_TIPO1_MINUTOS;
+            case TIPO_2 -> CalendarioTurnos.finDelSiguienteTurno(instante);
+            case TIPO_3 -> CalendarioTurnos.proximoTurnoDeLasTres(
+                    instante + ConfiguracionDominio.AVERIA_TIPO3_MINIMO_MINUTOS);
+        };
+    }
+
+    /**
+     * @return verdadero si la unidad, tras su permanencia en el sitio, se traslada al almacen central
+     */
+    public boolean tieneTraslado() {
+        return tipo != TipoAveria.TIPO_1;
+    }
+
+    /**
+     * @return minuto absoluto del traslado instantaneo al almacen central (tipo 2 y 3)
+     * @throws IllegalStateException si la averia es tipo 1, que no se traslada
+     */
+    public int getInstanteTraslado() {
+        if (!tieneTraslado()) {
+            throw new IllegalStateException("Una averia tipo 1 no se traslada al almacen central");
+        }
+        return instante + ConfiguracionDominio.AVERIA_PERMANENCIA_SITIO_MINUTOS;
     }
 
     public int getIdVehiculo() {

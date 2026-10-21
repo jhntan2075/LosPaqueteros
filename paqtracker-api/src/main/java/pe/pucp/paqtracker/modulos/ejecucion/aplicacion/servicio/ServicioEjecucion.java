@@ -4,9 +4,11 @@ import org.springframework.stereotype.Service;
 import pe.pucp.paqtracker.comun.excepcion.RecursoNoEncontradoException;
 import pe.pucp.paqtracker.modulos.difusion.aplicacion.dto.MensajeEstadoEjecucion;
 import pe.pucp.paqtracker.modulos.difusion.aplicacion.dto.PedidoEnMapa;
+import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.dto.AveriaProgramada;
 import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.dto.DetallePedido;
 import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.dto.RespuestaEjecucion;
 import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.dto.ResultadoRegistroPedido;
+import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.dto.SolicitudAveriaEnVivo;
 import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.dto.SolicitudPedidoEnVivo;
 import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.mapeador.MapeadorEjecucion;
 import pe.pucp.paqtracker.modulos.ejecucion.dominio.RepositorioEjecucion;
@@ -82,6 +84,16 @@ public class ServicioEjecucion {
      */
     public ResultadoRegistroPedido registrarPedido(String id, SolicitudPedidoEnVivo solicitud) {
         return registro.obtener(id).registrarPedido(solicitud);
+    }
+
+    /**
+     * @param id        ejecucion en la que se registra la averia
+     * @param solicitud unidad y tipo de la averia
+     * @return averia encolada en la agenda del motor, con su instante y su reincorporacion estimada
+     * @throws RecursoNoEncontradoException si la ejecucion o la unidad no existen
+     */
+    public AveriaProgramada registrarAveria(String id, SolicitudAveriaEnVivo solicitud) {
+        return registro.obtener(id).programarAveria(solicitud);
     }
 
     /**

@@ -50,4 +50,32 @@ class AlmacenTest {
 
         assertEquals(CAPACIDAD_INTERMEDIO, intermedio.getStockDisponible());
     }
+
+    @Test
+    void reintegrar_cargaNoEntregada_devuelveElStockDescontado() {
+        Almacen intermedio = new Almacen(1, new Nodo(12, 38), false, CAPACIDAD_INTERMEDIO);
+        intermedio.descontar(24);
+
+        intermedio.reintegrar(24);
+
+        assertEquals(CAPACIDAD_INTERMEDIO, intermedio.getStockDisponible());
+    }
+
+    @Test
+    void reintegrar_trasUnaRecarga_noSuperaLaCapacidadMaxima() {
+        Almacen intermedio = new Almacen(1, new Nodo(12, 38), false, CAPACIDAD_INTERMEDIO);
+        intermedio.descontar(24);
+        intermedio.recargar();
+
+        intermedio.reintegrar(24);
+
+        assertEquals(CAPACIDAD_INTERMEDIO, intermedio.getStockDisponible());
+    }
+
+    @Test
+    void reintegrar_cantidadNegativa_lanzaIllegalArgumentException() {
+        Almacen intermedio = new Almacen(1, new Nodo(12, 38), false, CAPACIDAD_INTERMEDIO);
+
+        assertThrows(IllegalArgumentException.class, () -> intermedio.reintegrar(-1));
+    }
 }

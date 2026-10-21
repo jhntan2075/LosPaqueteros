@@ -3,10 +3,10 @@ package pe.pucp.paqtracker.modelo;
 /**
  * Estado operativo de una unidad de la flota en un instante dado.
  *
- * {@code EN_ENTREGA}, {@code FUERA_DE_TURNO} y {@code AVERIADA} aun no tienen
- * logica que los produzca: quedan declarados para las incidencias de averia y
- * para distinguir el instante de servicio dentro de una ruta, que se abordan
- * por separado.
+ * {@code EN_ENTREGA} y {@code FUERA_DE_TURNO} aun no tienen logica que los
+ * produzca: quedan declarados para distinguir el instante de servicio dentro de
+ * una ruta y el turno de la unidad, que se abordan por separado. {@code AVERIADA}
+ * lo asigna el orquestador al aplicar una averia.
  */
 public enum EstadoVehiculo {
 

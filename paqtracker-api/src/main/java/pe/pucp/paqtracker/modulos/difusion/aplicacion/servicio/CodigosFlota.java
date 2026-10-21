@@ -5,7 +5,9 @@ import pe.pucp.paqtracker.modelo.Vehiculo;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * Codigos visibles de las unidades de una ejecucion: prefijo del tipo y correlativo dentro del tipo
@@ -45,6 +47,19 @@ public final class CodigosFlota {
             throw new IllegalArgumentException("La unidad " + vehiculo.getId() + " no pertenece a la flota");
         }
         return codigo;
+    }
+
+    /**
+     * @param codigo codigo visible (A-01, M-03, B-12); se ignoran espacios y mayusculas
+     * @return identificador de la unidad con ese codigo, o vacio si no pertenece a la flota
+     */
+    public Optional<Integer> idDe(String codigo) {
+        if (codigo == null) {
+            return Optional.empty();
+        }
+        String buscado = codigo.trim().toUpperCase(Locale.ROOT);
+        return codigos.entrySet().stream().filter(entrada -> entrada.getValue().equals(buscado))
+                .map(Map.Entry::getKey).findFirst();
     }
 
     private static String prefijo(TipoVehiculo tipo) {

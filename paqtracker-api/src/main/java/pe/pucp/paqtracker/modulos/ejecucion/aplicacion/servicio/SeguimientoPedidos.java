@@ -2,6 +2,7 @@ package pe.pucp.paqtracker.modulos.ejecucion.aplicacion.servicio;
 
 import pe.pucp.paqtracker.comun.configuracion.PropiedadesDominio;
 import pe.pucp.paqtracker.comun.tiempo.LineaTiempo;
+import pe.pucp.paqtracker.modelo.Entrega;
 import pe.pucp.paqtracker.modelo.EstadoVehiculo;
 import pe.pucp.paqtracker.modelo.Pedido;
 import pe.pucp.paqtracker.modelo.Tramo;
@@ -14,8 +15,10 @@ import pe.pucp.paqtracker.modulos.difusion.aplicacion.servicio.NomenclaturaOpera
 import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.dto.DetallePedido;
 import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.dto.HitoPedido;
 import pe.pucp.paqtracker.modulos.ejecucion.dominio.EstadoPedido;
+import pe.pucp.paqtracker.simulacion.AveriaAplicada;
 import pe.pucp.paqtracker.simulacion.ResultadoPaso;
 import pe.pucp.paqtracker.simulacion.SimulacionEnCurso;
+import pe.pucp.paqtracker.simulacion.Trasbordo;
 import pe.pucp.paqtracker.simulacion.UnidadEnTransito;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -82,9 +85,9 @@ public final class SeguimientoPedidos {
     }
 
     /**
-     * Actualiza los estados con lo ocurrido en un paso: pedidos que ingresan, partes que se entregan y
-     * partes que salen. Un pedido grande puede repartirse en varias unidades; se da por entregado cuando
-     * llega su ultima parte.
+     * Actualiza los estados con lo ocurrido en un paso: pedidos que ingresan, partes que se entregan,
+     * partes que una averia libera o retrasa y partes que salen. Un pedido grande puede repartirse en
+     * varias unidades; se da por entregado cuando llega su ultima parte.
      *
      * @param paso resultado del paso
      * @return tramos de entrega que completaron un pedido en este paso
@@ -97,6 +100,7 @@ public final class SeguimientoPedidos {
                 completados.add(tramo);
             }
         }
+        paso.getAveriasAplicadas().forEach(this::registrarAveria);
         for (UnidadEnTransito unidad : paso.getUnidadesDespachadas()) {
             registrarSalida(unidad, paso.getInstante(), completados);
         }
@@ -182,7 +186,8 @@ public final class SeguimientoPedidos {
         return new IndicadoresOperacion(pedidos.size(), aTiempo, entregados - aTiempo,
                 conteo[EstadoPedido.REGISTRADO.ordinal()], conteo[EstadoPedido.EN_TRANSITO.ordinal()],
                 contarUnidades(simulacion, EstadoVehiculo.EN_RUTA),
-                contarUnidades(simulacion, EstadoVehiculo.DISPONIBLE_EN_ALMACEN), 0,
+                contarUnidades(simulacion, EstadoVehiculo.DISPONIBLE_EN_ALMACEN),
+                contarUnidades(simulacion, EstadoVehiculo.AVERIADA),
                 entregados == 0 ? 0.0 : (double) minutosEntrega / entregados, ultimoTaMs,
                 simulacion.getResultado().getReplanificaciones(), simulacion.getResultado().getDistanciaTotal(),
                 entregados == 0 ? PORCENTAJE_TOTAL : PORCENTAJE_TOTAL * aTiempo / entregados,
@@ -205,6 +210,68 @@ public final class SeguimientoPedidos {
         seguimiento.hito(tramo.getLlegada(), holgura >= 0 ? "Entregado a tiempo" : "Entregado con retraso",
                 holgura >= 0 ? "Holgura de " + holgura + " min" : "Retraso de " + (-holgura) + " min");
         return true;
+    }
+
+    /**
+     * Refleja una averia en los pedidos que llevaba la unidad: las partes liberadas (tipo 2 y 3) dejan de
+     * estar en camino y, si era la ultima, el pedido vuelve a esperar despacho; las partes retrasadas
+     * (tipo 1 en ruta) toman su nueva llegada estimada.
+     */
+    private void registrarAveria(AveriaAplicada averia) {
+        String codigo = codigosFlota.codigo(averia.vehiculo());
+        int instante = averia.averia().getInstante();
+        int tipo = averia.averia().getTipo().getNumero();
+        for (Entrega entrega : averia.entregasLiberadas()) {
+            Seguimiento seguimiento = pedidos.get(entrega.getIdPedido());
+            if (seguimiento == null || seguimiento.estado == EstadoPedido.ENTREGADO) {
+                continue;
+            }
+            seguimiento.partesEnCamino = Math.max(0, seguimiento.partesEnCamino - 1);
+            if (seguimiento.partesEnCamino == 0) {
+                seguimiento.estado = EstadoPedido.REGISTRADO;
+                seguimiento.unidad = null;
+                seguimiento.eta = 0;
+            }
+            seguimiento.hito(instante, "Liberado por averia", entrega.getCantidad() + " paquetes vuelven a "
+                    + "planificarse: la unidad " + codigo + " tuvo una averia tipo " + tipo);
+        }
+        if (averia.transitoReanudado() != null) {
+            registrarRetraso(averia.transitoReanudado(), instante, codigo);
+        }
+        for (Trasbordo trasbordo : averia.trasbordos()) {
+            registrarTrasbordo(trasbordo, instante, codigo);
+        }
+    }
+
+    private void registrarRetraso(UnidadEnTransito reanudado, int instante, String codigo) {
+        for (Tramo tramo : reanudado.getTramos()) {
+            Seguimiento seguimiento = tramo.esEntrega() && tramo.getLlegada() > instante
+                    ? pedidos.get(tramo.getIdPedido()) : null;
+            if (seguimiento == null || seguimiento.estado == EstadoPedido.ENTREGADO) {
+                continue;
+            }
+            seguimiento.actualizarEta(tramo.getLlegada());
+            seguimiento.hito(instante, "Retrasado por averia", "La unidad " + codigo
+                    + " se detuvo por una averia tipo 1 con la carga a bordo, nueva llegada estimada "
+                    + lineaTiempo.formatear(tramo.getLlegada()));
+        }
+    }
+
+    /** La parte trasbordada sigue en camino, ahora en la receptora y con su nueva llegada. */
+    private void registrarTrasbordo(Trasbordo trasbordo, int instante, String codigoAveriada) {
+        String receptora = codigosFlota.codigo(trasbordo.receptora().getVehiculo());
+        for (Tramo tramo : trasbordo.receptora().getTramos()) {
+            Seguimiento seguimiento = tramo.esEntrega() ? pedidos.get(tramo.getIdPedido()) : null;
+            if (seguimiento == null || seguimiento.estado == EstadoPedido.ENTREGADO) {
+                continue;
+            }
+            seguimiento.unidad = receptora;
+            seguimiento.actualizarEta(tramo.getLlegada());
+            seguimiento.hito(instante, "Trasbordado", tramo.getCantidad() + " paquetes pasan de " + codigoAveriada
+                    + " (averia tipo 1) a " + receptora + ", que los recoge a las "
+                    + lineaTiempo.formatear(trasbordo.getRecojo()) + "; nueva llegada estimada "
+                    + lineaTiempo.formatear(tramo.getLlegada()));
+        }
     }
 
     private void registrarSalida(UnidadEnTransito unidad, int instante, List<Tramo> completados) {
@@ -289,6 +356,14 @@ public final class SeguimientoPedidos {
 
         private void hito(int minuto, String titulo, String detalle) {
             hitos.add(new HitoPedido(lineaTiempo.aMilisegundos(minuto), titulo, detalle));
+        }
+
+        /**
+         * Una averia cambia la llegada de una parte en camino. Con una sola parte, esa es la llegada del
+         * pedido aunque ahora sea antes (un trasbordo puede adelantarla); con varias, se conserva la mayor.
+         */
+        private void actualizarEta(int llegada) {
+            eta = partesEnCamino <= 1 ? llegada : Math.max(eta, llegada);
         }
     }
 }

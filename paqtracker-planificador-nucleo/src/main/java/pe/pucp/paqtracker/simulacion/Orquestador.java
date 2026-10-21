@@ -11,7 +11,9 @@ import pe.pucp.paqtracker.modelo.Nodo;
 import pe.pucp.paqtracker.modelo.Pedido;
 import pe.pucp.paqtracker.modelo.Ruta;
 import pe.pucp.paqtracker.modelo.SolucionRuteo;
+import pe.pucp.paqtracker.modelo.TipoAveria;
 import pe.pucp.paqtracker.modelo.TipoVehiculo;
+import pe.pucp.paqtracker.modelo.Tramo;
 import pe.pucp.paqtracker.modelo.Vehiculo;
 import pe.pucp.paqtracker.planificador.AlgoritmoMetaheuristico;
 import pe.pucp.paqtracker.planificador.PlanificadorGA;
@@ -25,6 +27,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -40,9 +43,12 @@ import java.util.function.LongFunction;
  * terminan su ruta, en el almacen de destino.
  *
  * Los bloqueos son programados: se consultan via la malla al calcular tiempos.
- * El metodo replanificar es el punto de disparo; hoy lo invoca solo el reloj,
- * pero queda preparado para que una averia lo dispare en el futuro sin
- * reescribir el resto (orquestador hibrido).
+ * El metodo replanificar es el punto de disparo: lo invoca cada paso del reloj
+ * y tambien el paso que quien conduce la simulacion ejecuta fuera del salto Sa
+ * ante un evento (pedido o averia registrados en vivo).
+ *
+ * Una averia inmoviliza solo a su unidad, que el planificador deja de ver hasta
+ * reincorporarse; el resto de la flota sigue (LE-incidencias, CU-13).
  *
  * Guarda la configuracion y las operaciones de cada paso; el estado que cambia
  * entre pasos vive en {@link SimulacionEnCurso}. {@link #simular} corre la
@@ -52,6 +58,7 @@ import java.util.function.LongFunction;
 public final class Orquestador {
 
     private static final int MINUTOS_POR_DIA = 1440;
+    private static final int PRIMER_ID_LIBERADA = -1;
 
     private final List<Almacen> almacenes;
     private final List<Vehiculo> flota;
@@ -85,6 +92,13 @@ public final class Orquestador {
      * y {@link #replanificar} la necesitan sin cambiar su firma publica.
      */
     private final List<Entrega> liberadas = new ArrayList<>();
+
+    /**
+     * Siguiente identificador para una entrega liberada. Son negativos para no chocar con los que el
+     * {@link Fragmentador} asigna desde cero en cada ciclo: el cruce del GA identifica las entregas por
+     * su identificador. Se reinicia con {@link #liberadas}.
+     */
+    private int siguienteIdLiberada = PRIMER_ID_LIBERADA;
 
     /**
      * Crea un orquestador que planifica con el algoritmo genetico.
@@ -121,6 +135,7 @@ public final class Orquestador {
      * @param plazoDespachoDirecto plazo maximo, en minutos, para despacho directo sin pasar por el planificador
      * @param semilla              semilla base para reproducibilidad
      * @param fabricaAlgoritmo     crea el algoritmo de cada ciclo a partir de su semilla
+     * @throws IllegalArgumentException si una averia programada es sobre una unidad que no existe
      */
     public Orquestador(List<Almacen> almacenes, List<Vehiculo> flota, List<Pedido> pedidos,
                        List<Averia> averias, Malla malla, int saMinutos, int tiempoServicio, int plazoMaximo,
@@ -133,6 +148,11 @@ public final class Orquestador {
         this.pedidos.sort(Comparator.comparingInt(Pedido::getInstanteRegistro));
         this.averias = new ArrayList<>(averias);
         this.averias.sort(Comparator.comparingInt(Averia::getInstante));
+        for (Averia averia : this.averias) {
+            if (buscarVehiculo(averia.getIdVehiculo()) == null) {
+                throw new IllegalArgumentException("Averia sobre una unidad que no existe: " + averia);
+            }
+        }
         this.malla = malla;
         this.saMinutos = saMinutos;
         this.tiempoServicio = tiempoServicio;
@@ -183,6 +203,7 @@ public final class Orquestador {
      */
     public SimulacionEnCurso iniciar(boolean detenerEnColapso) {
         liberadas.clear();
+        siguienteIdLiberada = PRIMER_ID_LIBERADA;
         return new SimulacionEnCurso(this, pedidos, averias, detenerEnColapso);
     }
 
@@ -246,16 +267,12 @@ public final class Orquestador {
         return ultimoDiaObservado;
     }
 
-    /** Evento pendiente: fija la posicion de una unidad averiada al instante dado. */
+    /** Evento pendiente: traslada una unidad averiada (tipo 2 o 3) a un almacen al instante dado. */
     record EventoPosicion(Vehiculo vehiculo, int instante, Almacen destino) {
     }
 
-    /** Evento pendiente: devuelve una unidad averiada a disponible al instante dado. */
+    /** Evento pendiente: reincorpora una unidad averiada al instante dado. */
     record EventoDisponible(Vehiculo vehiculo, int instante) {
-    }
-
-    /** Evento pendiente: inicia el regreso vacio de una unidad tipo 1 al instante dado. */
-    record EventoRegreso(Vehiculo vehiculo, int instante) {
     }
 
     /**
@@ -280,6 +297,16 @@ public final class Orquestador {
                         pedido.getId(), pedido.getHoraLimite()));
             }
         }
+        for (Entrega entrega : liberadas) {
+            if (entrega.getHoraLimite() <= instanteFinal) {
+                resultado.sumarIncumplimientos(1);
+                resultado.registrarColapso(ColapsoLogistico.porPlazoVencidoSinDespacho(entrega.getIdPedido(),
+                        entrega.getHoraLimite()));
+                resultado.getDetalleIncumplimientos().add(String.format(
+                        "pedido %d: hora limite %d, liberado por averia y no fue entregado",
+                        entrega.getIdPedido(), entrega.getHoraLimite()));
+            }
+        }
     }
 
     /**
@@ -298,6 +325,11 @@ public final class Orquestador {
                 .filter(pedido -> pedido.getHoraLimite() <= instante)
                 .min(Comparator.comparingInt(Pedido::getHoraLimite))
                 .ifPresent(pedido -> resultado.registrarColapso(ColapsoLogistico.porPlazoVencidoSinDespacho(pedido)));
+        liberadas.stream()
+                .filter(entrega -> entrega.getHoraLimite() <= instante)
+                .min(Comparator.comparingInt(Entrega::getHoraLimite))
+                .ifPresent(entrega -> resultado.registrarColapso(ColapsoLogistico.porPlazoVencidoSinDespacho(
+                        entrega.getIdPedido(), entrega.getHoraLimite())));
     }
 
     /**
@@ -333,101 +365,225 @@ public final class Orquestador {
     }
 
     /**
-     * Procesa las averias cuyo instante ya llego: si la unidad estaba en
-     * ruta, separa lo que ya entrego de lo que aun llevaba a bordo -que se
-     * libera para que el planificador lo reasigne- y queda inmovilizada en el
-     * punto exacto donde se averio; si estaba libre, queda inmovilizada donde
-     * estaba. En ambos casos, programa su recuperacion segun el tipo.
+     * Valida una averia antes de programarla: la unidad debe existir y no estar averiada ni tener otra
+     * averia pendiente. Falla rapido para que quien la registra reciba un error claro en lugar de que
+     * se descarte al procesarla.
+     *
+     * @param averia     averia a validar
+     * @param pendientes averias programadas que aun no se aplican
+     * @throws IllegalArgumentException si la averia es nula o la unidad no existe
+     * @throws IllegalStateException    si la unidad ya esta averiada o tiene otra averia pendiente
+     */
+    void validarAveria(Averia averia, Iterable<Averia> pendientes) {
+        if (averia == null) {
+            throw new IllegalArgumentException("La averia a agregar es nula");
+        }
+        Vehiculo vehiculo = buscarVehiculo(averia.getIdVehiculo());
+        if (vehiculo == null) {
+            throw new IllegalArgumentException("No existe la unidad " + averia.getIdVehiculo());
+        }
+        if (vehiculo.getEstado() == EstadoVehiculo.AVERIADA) {
+            throw new IllegalStateException("La unidad " + vehiculo + " ya esta averiada");
+        }
+        for (Averia pendiente : pendientes) {
+            if (pendiente.getIdVehiculo() == averia.getIdVehiculo()) {
+                throw new IllegalStateException("La unidad " + vehiculo + " ya tiene una averia pendiente");
+            }
+        }
+    }
+
+    /**
+     * Aplica las averias cuyo instante ya llego. Una averia programada sobre una unidad que ya esta
+     * averiada se ignora: solo puede venir de la lista inicial (experimentacion), porque las que se
+     * agregan en vivo se validan con {@link #validarAveria}.
      *
      * @param averiasPorOcurrir cola de averias pendientes, ordenada por instante
      * @param instante          instante actual del reloj
-     * @param enRuta            unidades en transito (se remueve la averiada, si aplica)
-     * @param traslados         eventos de cambio de posicion pendientes (se agregan)
-     * @param disponibles       eventos de disponibilidad pendientes (se agregan)
-     * @param regresos          eventos de regreso al almacen pendientes (se agregan, tipo 1)
+     * @param enRuta            unidades en transito (se retira o se reemplaza la averiada)
+     * @param traslados         eventos de traslado pendientes (se agregan)
+     * @param disponibles       eventos de reincorporacion pendientes (se agregan)
      * @param resultado         resultado agregado a actualizar
+     * @return averias aplicadas en este paso, en orden de instante
      */
-    void procesarAverias(Queue<Averia> averiasPorOcurrir, int instante, List<UnidadEnTransito> enRuta,
-                                 List<EventoPosicion> traslados, List<EventoDisponible> disponibles,
-                                 List<EventoRegreso> regresos, ResultadoSimulacion resultado) {
+    List<AveriaAplicada> procesarAverias(Queue<Averia> averiasPorOcurrir, int instante,
+                                         List<UnidadEnTransito> enRuta, List<EventoPosicion> traslados,
+                                         List<EventoDisponible> disponibles, ResultadoSimulacion resultado) {
+        List<AveriaAplicada> aplicadas = new ArrayList<>();
         while (!averiasPorOcurrir.isEmpty() && averiasPorOcurrir.peek().getInstante() <= instante) {
             Averia averia = averiasPorOcurrir.poll();
             Vehiculo vehiculo = buscarVehiculo(averia.getIdVehiculo());
-            if (vehiculo == null || vehiculo.getEstado() == EstadoVehiculo.AVERIADA) {
-                continue;
+            if (vehiculo != null && vehiculo.getEstado() != EstadoVehiculo.AVERIADA) {
+                aplicadas.add(aplicarAveria(averia, vehiculo, enRuta, instante, resultado));
+                programarRecuperacion(averia, vehiculo, traslados, disponibles);
             }
-            Nodo ubicacion = vehiculo.getUbicacionActual();
-            UnidadEnTransito unidad = buscarEnTransito(enRuta, vehiculo);
-            if (unidad != null) {
-                EscenarioOperativo escenario = escenarioDirecto(averia.getInstante());
-                CalculadoraTiempos.CorteRuta corte = CalculadoraTiempos.cortarEnInstante(
-                        escenario, unidad.getRuta(), unidad.getSalida(), averia.getInstante());
-                liberadas.addAll(corte.pendientes());
-                ubicacion = corte.ubicacion();
-                enRuta.remove(unidad);
-            }
-            vehiculo.fijarUbicacionAveria(ubicacion);
-            vehiculo.setEstado(EstadoVehiculo.AVERIADA);
-            resultado.registrarAveria();
-            programarRecuperacion(averia, vehiculo, traslados, disponibles, regresos);
         }
+        return aplicadas;
     }
 
     /**
-     * Programa los eventos que devuelven una unidad averiada a operar, segun
-     * su tipo (LE-incidencias): tipo 1 solo programa el regreso vacio al
-     * almacen mas cercano; tipo 2 y 3 programan el traslado instantaneo al
-     * almacen central y, por separado, el instante en que vuelve a estar
-     * disponible.
-     *
-     * @param averia      averia que se esta procesando
-     * @param vehiculo    unidad afectada
-     * @param traslados   eventos de cambio de posicion pendientes (se agregan)
-     * @param disponibles eventos de disponibilidad pendientes (se agregan)
-     * @param regresos    eventos de regreso al almacen pendientes (se agregan, tipo 1)
+     * Inmoviliza la unidad en el punto exacto de la averia. Si estaba en ruta, tipo 1 decide entre seguir
+     * con su carga y trasbordar lo urgente ({@link GestorTrasbordo}); tipo 2 y 3 liberan lo que aun no
+     * entregaba para que el planificador lo reasigne. Si ya habia terminado su ruta, queda en su almacen de
+     * destino.
+     */
+    private AveriaAplicada aplicarAveria(Averia averia, Vehiculo vehiculo, List<UnidadEnTransito> enRuta,
+                                         int instante, ResultadoSimulacion resultado) {
+        int instanteAveria = averia.getInstante();
+        UnidadEnTransito transito = buscarEnTransito(enRuta, vehiculo);
+        GestorTrasbordo.Decision decision = new GestorTrasbordo.Decision(null, List.of());
+        List<Entrega> liberadasAhora = List.of();
+        Nodo ubicacion = vehiculo.getUbicacionActual();
+        if (transito != null && transito.getLibreEn() <= instanteAveria) {
+            enRuta.remove(transito);
+            vehiculo.setPosicion(transito.getDestino());
+            ubicacion = transito.getDestino().getUbicacion();
+        } else if (transito != null && averia.getTipo() == TipoAveria.TIPO_1) {
+            decision = decidirTipo1(transito, instanteAveria, Math.max(instanteAveria, instante), enRuta, resultado);
+            ubicacion = transito.ubicacionEn(instanteAveria);
+        } else if (transito != null) {
+            UnidadEnTransito.Corte corte = transito.cortarEn(instanteAveria);
+            liberadasAhora = liberarCarga(transito, corte, resultado);
+            enRuta.remove(transito);
+            ubicacion = corte.ubicacion();
+        }
+        vehiculo.fijarUbicacionAveria(ubicacion);
+        vehiculo.setEstado(EstadoVehiculo.AVERIADA);
+        resultado.registrarAveria();
+        int trasladoEn = averia.tieneTraslado() ? averia.getInstanteTraslado() : AveriaAplicada.SIN_TRASLADO;
+        return new AveriaAplicada(averia, vehiculo, ubicacion, liberadasAhora, transito, decision.averiada(),
+                decision.trasbordos(), averia.getInstanteReincorporacion(), trasladoEn);
+    }
+
+    /**
+     * Tipo 1 en ruta: decide que sigue a bordo y que se trasborda, reemplaza el recorrido de la averiada,
+     * pone en transito a las receptoras y corrige las metricas con las nuevas llegadas.
+     */
+    private GestorTrasbordo.Decision decidirTipo1(UnidadEnTransito transito, int instanteAveria, int salida,
+                                                  List<UnidadEnTransito> enRuta, ResultadoSimulacion resultado) {
+        EscenarioOperativo escenario = escenarioDirecto(salida);
+        GestorTrasbordo.Decision decision = new GestorTrasbordo(escenario, flota,
+                destino -> almacenDestinoDirecto(destino, escenario)).decidir(transito, instanteAveria, salida);
+        enRuta.set(enRuta.indexOf(transito), decision.averiada());
+        sumarRecorrido(transito.getVehiculo(), kilometros(decision.averiada()) - kilometros(transito), resultado);
+        for (Trasbordo trasbordo : decision.trasbordos()) {
+            UnidadEnTransito receptora = trasbordo.receptora();
+            receptora.getVehiculo().setEstado(EstadoVehiculo.EN_RUTA);
+            enRuta.add(receptora);
+            resultado.registrarUso(receptora.getVehiculo().getTipo().name());
+            sumarRecorrido(receptora.getVehiculo(), kilometros(receptora), resultado);
+        }
+        reprogramarLlegadas(transito, decision, instanteAveria, resultado);
+        return decision;
+    }
+
+    /**
+     * Reemplaza en las metricas la llegada prevista al despachar de cada entrega pendiente por la nueva
+     * (a bordo y desplazada, o en la receptora). Ajusta margenes e incumplimientos y, si alguna entrega
+     * que llegaba a tiempo pasa a llegar tarde, declara el colapso en el instante de la averia, que es
+     * cuando el incumplimiento se vuelve seguro.
+     */
+    private void reprogramarLlegadas(UnidadEnTransito transito, GestorTrasbordo.Decision decision,
+                                     int instanteAveria, ResultadoSimulacion resultado) {
+        Map<Entrega, Integer> nuevas = new IdentityHashMap<>(decision.averiada().llegadasPorEntrega());
+        Map<Entrega, Vehiculo> portadoras = new IdentityHashMap<>();
+        for (Trasbordo trasbordo : decision.trasbordos()) {
+            Map<Entrega, Integer> llegadas = trasbordo.receptora().llegadasPorEntrega();
+            nuevas.putAll(llegadas);
+            llegadas.keySet().forEach(entrega -> portadoras.put(entrega, trasbordo.receptora().getVehiculo()));
+        }
+        UnidadEnTransito.Corte antes = transito.cortarEn(instanteAveria);
+        for (int i = 0; i < antes.entregasPendientes().size(); i++) {
+            Entrega entrega = antes.entregasPendientes().get(i);
+            int anterior = antes.tramosPendientes().get(i).getLlegada();
+            int nueva = nuevas.get(entrega);
+            resultado.retirarMargenEntrega(entrega.getHoraLimite() - anterior, entrega.getCantidad());
+            resultado.registrarMargenEntrega(entrega.getHoraLimite() - nueva, entrega.getCantidad());
+            boolean eraTarde = anterior > entrega.getHoraLimite();
+            boolean esTarde = nueva > entrega.getHoraLimite();
+            if (eraTarde != esTarde) {
+                resultado.sumarIncumplimientos(esTarde ? 1 : -1);
+            }
+            if (esTarde && !eraTarde) {
+                declararTardia(entrega, nueva, instanteAveria,
+                        portadoras.getOrDefault(entrega, transito.getVehiculo()), resultado);
+            }
+        }
+    }
+
+    private static void declararTardia(Entrega entrega, int llegada, int instanteAveria, Vehiculo vehiculo,
+                                       ResultadoSimulacion resultado) {
+        resultado.registrarColapso(ColapsoLogistico.porEntregaTardia(entrega.getIdPedido(), instanteAveria,
+                entrega.getHoraLimite(), llegada, vehiculo));
+        resultado.getDetalleIncumplimientos().add(String.format(
+                "t=%d %s: averia tipo 1, hora limite %d, llega en %d, tarde por %d min", instanteAveria, vehiculo,
+                entrega.getHoraLimite(), llegada, llegada - entrega.getHoraLimite()));
+    }
+
+    private static void sumarRecorrido(Vehiculo vehiculo, int kilometros, ResultadoSimulacion resultado) {
+        resultado.sumarDistancia(kilometros);
+        resultado.sumarCosto(kilometros * vehiculo.getTipo().getCostoPorKm());
+    }
+
+    private static int kilometros(UnidadEnTransito transito) {
+        return transito.getTramos().stream().mapToInt(Tramo::getDistancia).sum();
+    }
+
+    /**
+     * Tipo 2 y 3 en ruta: libera lo que la unidad aun no entregaba y deshace lo que se conto al
+     * despacharlo, para que al redespacharse no se cuente dos veces. Devuelve la carga al almacen de
+     * salida, descuenta los kilometros que ya no se recorreran con su costo, y retira las entregas, sus
+     * margenes y sus incumplimientos previstos. Las entregas liberadas reciben un identificador propio
+     * (negativo) para no chocar con las que el fragmentador numera en cada ciclo.
+     */
+    private List<Entrega> liberarCarga(UnidadEnTransito transito, UnidadEnTransito.Corte corte,
+                                       ResultadoSimulacion resultado) {
+        List<Entrega> liberadasAhora = new ArrayList<>();
+        int carga = 0;
+        for (int i = 0; i < corte.entregasPendientes().size(); i++) {
+            Entrega entrega = corte.entregasPendientes().get(i);
+            int llegadaPrevista = corte.tramosPendientes().get(i).getLlegada();
+            carga += entrega.getCantidad();
+            resultado.retirarMargenEntrega(entrega.getHoraLimite() - llegadaPrevista, entrega.getCantidad());
+            if (llegadaPrevista > entrega.getHoraLimite()) {
+                resultado.sumarIncumplimientos(-1);
+            }
+            liberadasAhora.add(new Entrega(siguienteIdLiberada--, entrega.getIdPedido(), entrega.getDestino(),
+                    entrega.getCantidad(), entrega.getInstanteRegistro(), entrega.getPlazo()));
+        }
+        transito.getOrigen().reintegrar(carga);
+        int noRecorridos = corte.kilometrosTotales() - corte.kilometrosRecorridos();
+        resultado.sumarDistancia(-noRecorridos);
+        resultado.sumarCosto(-noRecorridos * transito.getVehiculo().getTipo().getCostoPorKm());
+        resultado.sumarEntregas(-liberadasAhora.size());
+        liberadas.addAll(liberadasAhora);
+        return liberadasAhora;
+    }
+
+    /**
+     * Programa los eventos que devuelven una unidad averiada a operar: tipo 1 solo su reincorporacion;
+     * tipo 2 y 3, ademas, el traslado instantaneo al almacen central tras su permanencia en el sitio.
      */
     private void programarRecuperacion(Averia averia, Vehiculo vehiculo, List<EventoPosicion> traslados,
-                                       List<EventoDisponible> disponibles, List<EventoRegreso> regresos) {
-        int instanteAveria = averia.getInstante();
-        switch (averia.getTipo()) {
-            case TIPO_1 -> regresos.add(new EventoRegreso(vehiculo,
-                    instanteAveria + ConfiguracionDominio.AVERIA_TIPO1_MINUTOS));
-            case TIPO_2 -> {
-                int traslado = instanteAveria + ConfiguracionDominio.AVERIA_PERMANENCIA_SITIO_MINUTOS;
-                traslados.add(new EventoPosicion(vehiculo, traslado, almacenCentral()));
-                disponibles.add(new EventoDisponible(vehiculo,
-                        CalendarioTurnos.finDelSiguienteTurno(instanteAveria)));
-            }
-            case TIPO_3 -> {
-                int traslado = instanteAveria + ConfiguracionDominio.AVERIA_PERMANENCIA_SITIO_MINUTOS;
-                traslados.add(new EventoPosicion(vehiculo, traslado, almacenCentral()));
-                int minimo = instanteAveria + ConfiguracionDominio.AVERIA_TIPO3_MINIMO_MINUTOS;
-                disponibles.add(new EventoDisponible(vehiculo, CalendarioTurnos.proximoTurnoDeLasTres(minimo)));
-            }
+                                       List<EventoDisponible> disponibles) {
+        if (averia.tieneTraslado()) {
+            traslados.add(new EventoPosicion(vehiculo, averia.getInstanteTraslado(), almacenCentral()));
         }
+        disponibles.add(new EventoDisponible(vehiculo, averia.getInstanteReincorporacion()));
     }
 
     /**
-     * Aplica los eventos de averia cuyo instante ya llego: primero los
-     * regresos (tipo 1, que a su vez programan su propio traslado y
-     * disponibilidad reales segun cuanto tarde el viaje vacio), luego los
-     * traslados de posicion y por ultimo el regreso a disponible.
+     * Aplica los eventos de averia cuyo instante ya llego: primero los traslados al almacen central y
+     * luego las reincorporaciones. Una unidad que se reincorpora con su recorrido pendiente (tipo 1 en
+     * ruta) vuelve a estar en ruta; las demas quedan disponibles donde estan.
      *
-     * @param traslados   eventos de cambio de posicion pendientes (se consumen)
-     * @param disponibles eventos de disponibilidad pendientes (se consumen)
-     * @param regresos    eventos de regreso al almacen pendientes (se consumen, tipo 1)
+     * @param traslados   eventos de traslado pendientes (se consumen)
+     * @param disponibles eventos de reincorporacion pendientes (se consumen)
+     * @param enRuta      unidades en transito
      * @param instante    instante actual del reloj
+     * @return unidades reincorporadas en este paso
      */
-    void liberarAveriados(List<EventoPosicion> traslados, List<EventoDisponible> disponibles,
-                                  List<EventoRegreso> regresos, int instante) {
-        Iterator<EventoRegreso> iteradorRegresos = regresos.iterator();
-        while (iteradorRegresos.hasNext()) {
-            EventoRegreso regreso = iteradorRegresos.next();
-            if (regreso.instante() <= instante) {
-                iniciarRegreso(regreso.vehiculo(), instante, traslados, disponibles);
-                iteradorRegresos.remove();
-            }
-        }
+    List<Vehiculo> liberarAveriados(List<EventoPosicion> traslados, List<EventoDisponible> disponibles,
+                                    List<UnidadEnTransito> enRuta, int instante) {
         Iterator<EventoPosicion> iteradorTraslados = traslados.iterator();
         while (iteradorTraslados.hasNext()) {
             EventoPosicion traslado = iteradorTraslados.next();
@@ -436,34 +592,19 @@ public final class Orquestador {
                 iteradorTraslados.remove();
             }
         }
+        List<Vehiculo> reincorporados = new ArrayList<>();
         Iterator<EventoDisponible> iteradorDisponibles = disponibles.iterator();
         while (iteradorDisponibles.hasNext()) {
             EventoDisponible disponible = iteradorDisponibles.next();
             if (disponible.instante() <= instante) {
-                disponible.vehiculo().setEstado(EstadoVehiculo.DISPONIBLE_EN_ALMACEN);
+                Vehiculo vehiculo = disponible.vehiculo();
+                vehiculo.setEstado(buscarEnTransito(enRuta, vehiculo) != null
+                        ? EstadoVehiculo.EN_RUTA : EstadoVehiculo.DISPONIBLE_EN_ALMACEN);
+                reincorporados.add(vehiculo);
                 iteradorDisponibles.remove();
             }
         }
-    }
-
-    /**
-     * Tipo 1: a diferencia de tipo 2 y 3, no hay traslado instantaneo. Calcula
-     * el almacen mas cercano al punto exacto de la averia y programa el viaje
-     * vacio real hasta ahi -consume tiempo de manejo segun la velocidad de la
-     * unidad- antes de quedar disponible.
-     *
-     * @param vehiculo    unidad que regresa
-     * @param instante    instante en que empieza el regreso
-     * @param traslados   eventos de cambio de posicion pendientes (se agrega el de llegada)
-     * @param disponibles eventos de disponibilidad pendientes (se agrega el de llegada)
-     */
-    private void iniciarRegreso(Vehiculo vehiculo, int instante, List<EventoPosicion> traslados,
-                                List<EventoDisponible> disponibles) {
-        Almacen cercano = almacenMasCercano(vehiculo.getUbicacionActual());
-        int distancia = vehiculo.getUbicacionActual().distanciaManhattan(cercano.getUbicacion());
-        int llegada = instante + CalculadoraTiempos.minutosDeViaje(distancia, vehiculo.getTipo());
-        traslados.add(new EventoPosicion(vehiculo, llegada, cercano));
-        disponibles.add(new EventoDisponible(vehiculo, llegada));
+        return reincorporados;
     }
 
     /**
@@ -503,23 +644,6 @@ public final class Orquestador {
             }
         }
         throw new IllegalStateException("No hay almacen central configurado");
-    }
-
-    /**
-     * @param desde punto de la malla desde el cual buscar
-     * @return el almacen mas cercano a ese punto, por distancia Manhattan
-     */
-    private Almacen almacenMasCercano(Nodo desde) {
-        Almacen mejor = almacenes.get(0);
-        int distanciaMinima = desde.distanciaManhattan(mejor.getUbicacion());
-        for (Almacen almacen : almacenes) {
-            int distancia = desde.distanciaManhattan(almacen.getUbicacion());
-            if (distancia < distanciaMinima) {
-                distanciaMinima = distancia;
-                mejor = almacen;
-            }
-        }
-        return mejor;
     }
 
     /**
@@ -936,8 +1060,8 @@ public final class Orquestador {
     }
 
     /**
-     * Punto de disparo de la planificacion. Preparado para ser invocado tambien
-     * por una averia en el futuro.
+     * Punto de disparo de la planificacion: lo invoca tanto el paso periodico
+     * como el paso que dispara un evento (pedido o averia en vivo).
      *
      * @param cola     cola de pedidos por planificar
      * @param instante instante actual del reloj

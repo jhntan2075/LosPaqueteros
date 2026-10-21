@@ -1,10 +1,12 @@
 package pe.pucp.paqtracker.simulacion;
 
 import pe.pucp.paqtracker.modelo.Almacen;
+import pe.pucp.paqtracker.modelo.Averia;
 import pe.pucp.paqtracker.modelo.ConfiguracionDominio;
 import pe.pucp.paqtracker.modelo.Nodo;
 import pe.pucp.paqtracker.modelo.Pedido;
 import pe.pucp.paqtracker.modelo.SolucionRuteo;
+import pe.pucp.paqtracker.modelo.TipoAveria;
 import pe.pucp.paqtracker.modelo.Tramo;
 import pe.pucp.paqtracker.modelo.Vehiculo;
 import pe.pucp.paqtracker.planificador.AlgoritmoMetaheuristico;
@@ -141,6 +143,77 @@ class SimulacionEnCursoTest {
         assertEquals(1, colapso.getIdPedido());
         assertEquals(plazo, colapso.getInstante());
         assertTrue(colapso.getVehiculo().isEmpty());
+    }
+
+    @Test
+    void avanzar_averiaTipo2AntesDeUnaEntregaDelMismoIntervalo_noLaReportaComoCompletada() {
+        SimulacionEnCurso simulacion = crearOrquestador(List.of(new Pedido(1, new Nodo(30, 18), 3, 0, PLAZO_REGULAR)))
+                .iniciar(false);
+        UnidadEnTransito transito = simulacion.avanzar(0).getUnidadesDespachadas().get(0);
+        int llegada = primeraLlegadaDeEntrega(transito);
+        simulacion.agregarAveria(new Averia(llegada - 1, transito.getVehiculo().getId(), TipoAveria.TIPO_2));
+
+        ResultadoPaso paso = simulacion.avanzar(llegada + 1);
+
+        assertTrue(paso.getEntregasCompletadas().isEmpty());
+        assertEquals(1, paso.getAveriasAplicadas().size());
+    }
+
+    @Test
+    void avanzar_averiaTipo1AntesDeUnaEntregaDelMismoIntervalo_laReportaRecienAlLlegarConRetraso() {
+        SimulacionEnCurso simulacion = crearOrquestador(List.of(new Pedido(1, new Nodo(30, 18), 3, 0, PLAZO_REGULAR)))
+                .iniciar(false);
+        UnidadEnTransito transito = simulacion.avanzar(0).getUnidadesDespachadas().get(0);
+        int llegada = primeraLlegadaDeEntrega(transito);
+        simulacion.agregarAveria(new Averia(llegada - 1, transito.getVehiculo().getId(), TipoAveria.TIPO_1));
+
+        ResultadoPaso conAveria = simulacion.avanzar(llegada + 1);
+        ResultadoPaso alLlegar = simulacion.avanzar(llegada + ConfiguracionDominio.AVERIA_TIPO1_MINUTOS);
+
+        assertTrue(conAveria.getEntregasCompletadas().isEmpty());
+        assertEquals(1, alLlegar.getEntregasCompletadas().size());
+    }
+
+    @Test
+    void agregarAveria_unidadInexistente_lanzaIllegalArgumentException() {
+        SimulacionEnCurso simulacion = crearOrquestador(List.of()).iniciar(false);
+
+        assertThrows(IllegalArgumentException.class,
+                () -> simulacion.agregarAveria(new Averia(10, 999, TipoAveria.TIPO_1)));
+        assertThrows(IllegalArgumentException.class, () -> simulacion.agregarAveria(null));
+    }
+
+    @Test
+    void agregarAveria_instanteQueYaPaso_lanzaIllegalArgumentException() {
+        SimulacionEnCurso simulacion = crearOrquestador(List.of()).iniciar(false);
+        simulacion.avanzar(SA_MINUTOS);
+
+        assertThrows(IllegalArgumentException.class,
+                () -> simulacion.agregarAveria(new Averia(SA_MINUTOS, 0, TipoAveria.TIPO_1)));
+    }
+
+    @Test
+    void agregarAveria_unidadConAveriaPendiente_lanzaIllegalStateException() {
+        SimulacionEnCurso simulacion = crearOrquestador(List.of()).iniciar(false);
+        simulacion.agregarAveria(new Averia(10, 0, TipoAveria.TIPO_1));
+
+        assertTrue(simulacion.tieneAveriaPendiente(0));
+        assertThrows(IllegalStateException.class,
+                () -> simulacion.agregarAveria(new Averia(20, 0, TipoAveria.TIPO_2)));
+    }
+
+    @Test
+    void agregarAveria_unidadYaAveriada_lanzaIllegalStateException() {
+        SimulacionEnCurso simulacion = crearOrquestador(List.of()).iniciar(false);
+        simulacion.agregarAveria(new Averia(10, 0, TipoAveria.TIPO_3));
+        simulacion.avanzar(10);
+
+        assertThrows(IllegalStateException.class,
+                () -> simulacion.agregarAveria(new Averia(20, 0, TipoAveria.TIPO_1)));
+    }
+
+    private static int primeraLlegadaDeEntrega(UnidadEnTransito transito) {
+        return transito.getTramos().stream().filter(Tramo::esEntrega).findFirst().orElseThrow().getLlegada();
     }
 
     private static Orquestador crearOrquestador(List<Pedido> pedidos) {

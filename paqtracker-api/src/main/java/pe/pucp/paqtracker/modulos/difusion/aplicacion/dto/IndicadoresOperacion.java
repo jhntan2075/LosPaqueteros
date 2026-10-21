@@ -10,7 +10,7 @@ package pe.pucp.paqtracker.modulos.difusion.aplicacion.dto;
  * @param pedidosEnTransito            despachados y aun no entregados
  * @param unidadesEnRuta               unidades en ruta
  * @param unidadesDisponibles          unidades libres en un almacen
- * @param unidadesAveriadas            unidades averiadas (aun no se modelan averias: siempre 0)
+ * @param unidadesAveriadas            unidades averiadas, en ruta o detenidas
  * @param tiempoPromedioEntregaMinutos promedio entre registro y entrega de los entregados
  * @param tiempoComputoUltimoTaMs      Ta de la ultima planificacion
  * @param replanificaciones            planificaciones ejecutadas

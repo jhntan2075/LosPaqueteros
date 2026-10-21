@@ -10,10 +10,11 @@ import pe.pucp.paqtracker.modelo.Vehiculo;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.ListIterator;
-import java.util.Queue;
+import java.util.Map;
 
 /**
  * Simulacion que avanza paso a paso. Guarda el estado que cambia de un paso al
@@ -37,12 +38,11 @@ public final class SimulacionEnCurso {
     private final Orquestador orquestador;
     private final boolean detenerEnColapso;
     private final LinkedList<Pedido> porLlegar;
-    private final Queue<Averia> averiasPorOcurrir;
+    private final LinkedList<Averia> averiasPorOcurrir;
     private final List<Pedido> cola = new ArrayList<>();
     private final List<UnidadEnTransito> enRuta = new ArrayList<>();
     private final List<Orquestador.EventoPosicion> traslados = new ArrayList<>();
     private final List<Orquestador.EventoDisponible> disponibles = new ArrayList<>();
-    private final List<Orquestador.EventoRegreso> regresos = new ArrayList<>();
     private final ResultadoSimulacion resultado = new ResultadoSimulacion();
     private int ultimoDiaRecargado;
     private int ultimoDiaObservado;
@@ -82,34 +82,58 @@ public final class SimulacionEnCurso {
         boolean colapsoPrevio = huboColapso();
         ultimoDiaObservado = orquestador.observarCierreDeDia(instante, ultimoDiaObservado, cola, resultado);
         ultimoDiaRecargado = orquestador.recargarAlmacenes(instante, ultimoDiaRecargado);
-        List<Tramo> entregas = entregasCompletadas(instante);
-        orquestador.procesarAverias(averiasPorOcurrir, instante, enRuta, traslados, disponibles, regresos,
-                resultado);
+        List<AveriaAplicada> averias = orquestador.procesarAverias(averiasPorOcurrir, instante, enRuta, traslados,
+                disponibles, resultado);
+        List<Tramo> entregas = entregasCompletadas(instante, averias);
         List<Vehiculo> liberadas = orquestador.liberarUnidades(enRuta, instante);
-        orquestador.liberarAveriados(traslados, disponibles, regresos, instante);
+        List<Vehiculo> reincorporadas = orquestador.liberarAveriados(traslados, disponibles, enRuta, instante);
         orquestador.actualizarEstadosPorTurno(instante);
         List<Pedido> incorporados = orquestador.incorporarPedidos(porLlegar, cola, instante);
         orquestador.detectarVencidosEnCola(cola, instante, resultado);
         int despachadasAntes = enRuta.size();
-        int unidadesUrgentes = orquestador.despacharUrgentes(cola, enRuta, instante, resultado);
-        long tiempoComputo = ResultadoPaso.SIN_PLANIFICACION;
-        double fitness = 0.0;
-        if (!debeDetenerse()) {
-            if (cola.isEmpty() && !orquestador.hayEntregasLiberadas()) {
-                resultado.actualizarPico(unidadesUrgentes);
-            } else {
-                long computoPrevio = resultado.getTiempoComputoTotalMs();
-                SolucionRuteo plan = planificar(instante);
-                tiempoComputo = resultado.getTiempoComputoTotalMs() - computoPrevio;
-                fitness = plan.getFitness();
-                orquestador.despachar(plan, cola, enRuta, instante, resultado, unidadesUrgentes);
-            }
-        }
+        Planificacion planificacion = despacharPendientes(instante);
         detenida = debeDetenerse();
         ultimoInstante = instante;
         List<UnidadEnTransito> despachadas = enRuta.subList(despachadasAntes, enRuta.size());
         return new ResultadoPaso(instante, incorporados, entregas, liberadas, despachadas,
-                tiempoComputo, fitness, !colapsoPrevio && huboColapso());
+                planificacion.tiempoComputoMs(), planificacion.fitness(), !colapsoPrevio && huboColapso(),
+                averias, reincorporadas);
+    }
+
+    /**
+     * Agrega una averia registrada en vivo. Se aplica en el primer paso cuyo instante alcance el de la
+     * averia, y ese paso replanifica lo que la averia libere. Conserva el orden por instante.
+     *
+     * @param averia averia a agregar; su instante debe ser posterior al ultimo paso
+     * @throws IllegalArgumentException si la averia es nula, su unidad no existe o su instante ya paso
+     * @throws IllegalStateException    si la unidad ya esta averiada, ya tiene una averia pendiente o la
+     *                                  simulacion se detuvo
+     */
+    public void agregarAveria(Averia averia) {
+        orquestador.validarAveria(averia, averiasPorOcurrir);
+        if (detenida) {
+            throw new IllegalStateException("La simulacion se detuvo por colapso en " + ultimoInstante);
+        }
+        if (averia.getInstante() <= ultimoInstante) {
+            throw new IllegalArgumentException("La averia en " + averia.getInstante()
+                    + " no es posterior al ultimo paso, en " + ultimoInstante);
+        }
+        ListIterator<Averia> iterador = averiasPorOcurrir.listIterator();
+        while (iterador.hasNext()) {
+            if (iterador.next().getInstante() > averia.getInstante()) {
+                iterador.previous();
+                break;
+            }
+        }
+        iterador.add(averia);
+    }
+
+    /**
+     * @param idVehiculo identificador de la unidad
+     * @return verdadero si la unidad tiene una averia agregada que aun no se aplica
+     */
+    public boolean tieneAveriaPendiente(int idVehiculo) {
+        return averiasPorOcurrir.stream().anyMatch(averia -> averia.getIdVehiculo() == idVehiculo);
     }
 
     /**
@@ -218,6 +242,32 @@ public final class SimulacionEnCurso {
         return detenerEnColapso && huboColapso();
     }
 
+    /** Ta y fitness de la planificacion de un paso. */
+    private record Planificacion(long tiempoComputoMs, double fitness) {
+    }
+
+    /**
+     * Despacha los urgentes y, si queda algo por atender (cola o entregas liberadas por una averia),
+     * planifica y despacha el resto.
+     *
+     * @param instante instante actual del reloj
+     * @return Ta y fitness del plan, o {@link ResultadoPaso#SIN_PLANIFICACION} si no planifico
+     */
+    private Planificacion despacharPendientes(int instante) {
+        int unidadesUrgentes = orquestador.despacharUrgentes(cola, enRuta, instante, resultado);
+        if (debeDetenerse()) {
+            return new Planificacion(ResultadoPaso.SIN_PLANIFICACION, 0.0);
+        }
+        if (cola.isEmpty() && !orquestador.hayEntregasLiberadas()) {
+            resultado.actualizarPico(unidadesUrgentes);
+            return new Planificacion(ResultadoPaso.SIN_PLANIFICACION, 0.0);
+        }
+        long computoPrevio = resultado.getTiempoComputoTotalMs();
+        SolucionRuteo plan = planificar(instante);
+        orquestador.despachar(plan, cola, enRuta, instante, resultado, unidadesUrgentes);
+        return new Planificacion(resultado.getTiempoComputoTotalMs() - computoPrevio, plan.getFitness());
+    }
+
     /**
      * Ordena la cola por hora limite, planifica y registra Ta y el fitness del
      * plan en el resultado.
@@ -236,23 +286,38 @@ public final class SimulacionEnCurso {
     }
 
     /**
-     * Tramos de entrega de las unidades en transito cuya llegada cayo entre el
-     * paso anterior (exclusive) y el actual (inclusive). Se calcula antes de
-     * liberar las unidades, porque una unidad puede entregar y volver al almacen
-     * dentro del mismo intervalo.
+     * Tramos de entrega cuya llegada cayo entre el paso anterior (exclusive) y el actual (inclusive).
+     * Se calcula antes de liberar las unidades, porque una unidad puede entregar y volver al almacen
+     * dentro del mismo intervalo, y despues de aplicar las averias: del recorrido interrumpido solo
+     * cuenta lo que llego hasta el instante de la averia, y del recorrido reanudado (tipo 1) solo lo
+     * posterior, para no reportar dos veces ni reportar algo que la averia impidio.
      *
      * @param instante instante del paso actual
+     * @param averias  averias aplicadas en este paso
      * @return tramos de entrega completados en el intervalo
      */
-    private List<Tramo> entregasCompletadas(int instante) {
+    private List<Tramo> entregasCompletadas(int instante, List<AveriaAplicada> averias) {
         List<Tramo> completadas = new ArrayList<>();
-        for (UnidadEnTransito unidad : enRuta) {
-            for (Tramo tramo : unidad.getTramos()) {
-                if (tramo.esEntrega() && tramo.getLlegada() > ultimoInstante && tramo.getLlegada() <= instante) {
-                    completadas.add(tramo);
-                }
+        Map<Vehiculo, Integer> cortes = new HashMap<>();
+        for (AveriaAplicada averia : averias) {
+            if (averia.transitoInterrumpido() != null) {
+                int corte = averia.averia().getInstante();
+                agregarEntregas(averia.transitoInterrumpido(), ultimoInstante, Math.min(corte, instante), completadas);
+                cortes.put(averia.vehiculo(), corte);
             }
         }
+        for (UnidadEnTransito unidad : enRuta) {
+            int desde = Math.max(ultimoInstante, cortes.getOrDefault(unidad.getVehiculo(), ultimoInstante));
+            agregarEntregas(unidad, desde, instante, completadas);
+        }
         return completadas;
+    }
+
+    private static void agregarEntregas(UnidadEnTransito unidad, int desde, int hasta, List<Tramo> completadas) {
+        for (Tramo tramo : unidad.getTramos()) {
+            if (tramo.esEntrega() && tramo.getLlegada() > desde && tramo.getLlegada() <= hasta) {
+                completadas.add(tramo);
+            }
+        }
     }
 }
