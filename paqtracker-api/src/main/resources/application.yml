@@ -24,6 +24,15 @@ spring:
       max-file-size: ${APP_MAX_ARCHIVO:20MB}
       max-request-size: ${APP_MAX_ARCHIVO:20MB}
 
+# Documentacion OpenAPI (/v3/api-docs) y Swagger UI (/swagger-ui.html). Se apaga con APP_SWAGGER=false.
+springdoc:
+  api-docs:
+    enabled: ${APP_SWAGGER:true}
+  swagger-ui:
+    enabled: ${APP_SWAGGER:true}
+    operations-sorter: method
+    tags-sorter: alpha
+
 paqtracker:
   datos:
     ventas: ${APP_DATOS_VENTAS:datos/ventas.v20260909}

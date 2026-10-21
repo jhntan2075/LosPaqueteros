@@ -126,6 +126,19 @@ class IntegracionApiTest {
         assertEquals(400, estado(cliente.get().uri("/api/pedidos/XYZ?ejecucionId=no-existe")));
     }
 
+    @Test
+    void documentacion_openApi_publicaLasRutasYSwaggerUi() {
+        RestClient cliente = RestClient.create("http://localhost:" + puerto);
+
+        Map<?, ?> documento = cliente.get().uri("/v3/api-docs").retrieve().body(Map.class);
+        Map<?, ?> rutas = (Map<?, ?>) documento.get("paths");
+
+        assertEquals("PaqTracker API", ((Map<?, ?>) documento.get("info")).get("title"));
+        assertNotNull(rutas.get("/api/pedidos"));
+        assertNotNull(rutas.get("/api/ejecuciones/{id}/iniciar"));
+        assertEquals(200, estado(cliente.get().uri("/swagger-ui/index.html")));
+    }
+
     private static int estado(RestClient.RequestHeadersSpec<?> solicitud) {
         HttpStatusCode codigo = solicitud.exchange((peticion, respuesta) -> respuesta.getStatusCode());
         return codigo.value();

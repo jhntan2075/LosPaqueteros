@@ -26,6 +26,8 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <spring-boot.version>4.0.1</spring-boot.version>
         <junit-jupiter.version>6.0.1</junit-jupiter.version>
+        <!-- La linea 3.0.x de springdoc corresponde a Spring Boot 4.0. -->
+        <springdoc.version>3.0.3</springdoc.version>
         <maven-compiler-plugin.version>3.14.1</maven-compiler-plugin.version>
         <maven-surefire-plugin.version>3.5.4</maven-surefire-plugin.version>
     </properties>
@@ -36,6 +38,11 @@
                 <groupId>pe.pucp.paqtracker</groupId>
                 <artifactId>paqtracker-planificador-nucleo</artifactId>
                 <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.springdoc</groupId>
+                <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+                <version>${springdoc.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.junit</groupId>
