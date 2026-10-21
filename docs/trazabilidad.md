@@ -42,7 +42,7 @@ no al núcleo del planificador).
 | CU-11 | Recarga diaria de intermedios a las 23:59:59 | Hecho | `Almacen.descontar` / `recargar`, `Orquestador.recargarAlmacenes` | `AlmacenTest` |
 | CU-11 | Stock de intermedios como restricción dura | Hecho | `Reparador` (fase 2), `InventarioProyectado` | `InventarioProyectadoTest` |
 | CU-12 | Bloqueos programados (nodo no transitable) | Hecho | `modelo.Bloqueo`, `util.Malla` | — |
-| CU-13 | Averías tipo 1, 2 y 3 | Pendiente / Motor | Solo el estado `EstadoVehiculo.AVERIADA` y el punto de disparo `Orquestador.replanificar` | — |
+| CU-13 | Averías tipo 1, 2 y 3 (registro en vivo, disparo por evento) | Parcial (backend) | `Orquestador` (aplicar, liberar, detener, recuperar), `SimulacionEnCurso.agregarAveria`, `UnidadEnTransito.cortarEn`/`detenerEn`, `MotorEjecucion.programarAveria` + `GestorEventos`, `CasoUsoRegistrarAveria`, `ControladorIncidencias`, `GestorTrasbordo` (tipo 1: seguir, trasbordar lo urgente o volver al almacén) | `OrquestadorTest`, `SimulacionEnCursoTest`, `UnidadEnTransitoTest`, `TramoTest`, `AveriaTest`, `MotorEjecucionTest`, `SeguimientoPedidosTest`, `GestorEventosTest`, `IntegracionIncidenciasTest` |
 
 ## Pruebas que faltan
 

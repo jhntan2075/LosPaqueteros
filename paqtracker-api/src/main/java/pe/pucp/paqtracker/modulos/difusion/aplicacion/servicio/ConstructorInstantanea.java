@@ -5,7 +5,6 @@ import pe.pucp.paqtracker.comun.configuracion.PropiedadesDominio;
 import pe.pucp.paqtracker.comun.tiempo.LineaTiempo;
 import pe.pucp.paqtracker.modelo.Almacen;
 import pe.pucp.paqtracker.modelo.Bloqueo;
-import pe.pucp.paqtracker.modelo.TipoTramo;
 import pe.pucp.paqtracker.modelo.Tramo;
 import pe.pucp.paqtracker.modelo.Vehiculo;
 import pe.pucp.paqtracker.modulos.difusion.aplicacion.dto.AlmacenEnMapa;
@@ -115,7 +114,8 @@ public class ConstructorInstantanea {
 
     private UnidadEnMapa construirUnidad(Vehiculo vehiculo, UnidadEnTransito transito, double minuto,
                                          ContextoInstantanea contexto) {
-        Coordenada ubicacion = RecorridoCamino.coordenada(vehiculo.getPosicion().getUbicacion());
+        // Fuera de ruta la unidad esta en su almacen, salvo si se averio en camino: queda en el punto de la averia.
+        Coordenada ubicacion = RecorridoCamino.coordenada(vehiculo.getUbicacionActual());
         TramoEnCurso tramoEnCurso = null;
         List<Coordenada> rutaRestante = List.of();
         List<ParadaPendiente> paradas = new ArrayList<>();
@@ -144,7 +144,8 @@ public class ConstructorInstantanea {
     }
 
     private TramoEnCurso construirTramo(Tramo tramo, LineaTiempo lineaTiempo) {
-        String pedido = tramo.getTipo() == TipoTramo.RETORNO ? null
+        // Sin pedido: el retorno, la detencion por averia y la parte ya recorrida de un viaje interrumpido.
+        String pedido = tramo.getIdPedido() == Tramo.SIN_PEDIDO ? null
                 : NomenclaturaOperacion.codigoPedido(tramo.getIdPedido());
         return new TramoEnCurso(tramo.getTipo().name(), RecorridoCamino.coordenada(tramo.getOrigen()),
                 RecorridoCamino.coordenada(tramo.getDestino()), lineaTiempo.aMilisegundos(tramo.getSalida()),

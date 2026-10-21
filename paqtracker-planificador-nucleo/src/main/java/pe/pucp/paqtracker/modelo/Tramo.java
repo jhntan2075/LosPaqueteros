@@ -1,6 +1,7 @@
 package pe.pucp.paqtracker.modelo;
 
 import pe.pucp.paqtracker.util.Malla;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -103,6 +104,120 @@ public final class Tramo {
      */
     public boolean esEntrega() {
         return tipo == TipoTramo.VIAJE_A_ENTREGA && idPedido != SIN_PEDIDO;
+    }
+
+    /**
+     * Kilometros del camino que la unidad ya recorrio en el instante dado. Supone avance uniforme en
+     * el tiempo, igual que el visualizador al interpolar, y se queda en el ultimo nodo alcanzado.
+     *
+     * @param instante instante a consultar
+     * @return kilometros recorridos, entre cero y la longitud del camino
+     */
+    public int kilometrosEn(int instante) {
+        int longitud = longitudCamino();
+        if (instante >= llegada) {
+            return longitud;
+        }
+        if (instante <= salida) {
+            return 0;
+        }
+        return (int) ((long) longitud * (instante - salida) / (llegada - salida));
+    }
+
+    /**
+     * @param instante instante a consultar
+     * @return nodo del camino en que se encuentra la unidad en ese instante
+     */
+    public Nodo ubicacionEn(int instante) {
+        return puntoDelCamino(kilometrosEn(instante));
+    }
+
+    /**
+     * Parte de este tramo recorrida hasta un instante, para cortar el recorrido en una averia. Si el
+     * tramo es el viaje a una entrega, la parte recortada ya no la completa: se marca sin pedido para
+     * que no cuente como entrega.
+     *
+     * @param instante instante del corte, dentro del tramo
+     * @return tramo desde la salida hasta la posicion en ese instante
+     */
+    public Tramo recortarHasta(int instante) {
+        int kilometros = kilometrosEn(instante);
+        boolean viaje = tipo == TipoTramo.VIAJE_A_ENTREGA;
+        return new Tramo(tipo, origen, puntoDelCamino(kilometros), salida, instante, kilometros,
+                viaje ? SIN_PEDIDO : idPedido, viaje ? 0 : cantidad, caminoHasta(kilometros));
+    }
+
+    /**
+     * Parte de este tramo que falta recorrer desde un instante, desplazada en el tiempo. La unidad la
+     * retoma desde la posicion que tenia en ese instante, despues de una detencion.
+     *
+     * @param instante       instante del corte, dentro del tramo
+     * @param desplazamiento minutos que la unidad estuvo detenida
+     * @return tramo desde la posicion del corte hasta el destino, con sus instantes desplazados
+     */
+    public Tramo restoDesde(int instante, int desplazamiento) {
+        int kilometros = kilometrosEn(instante);
+        return new Tramo(tipo, puntoDelCamino(kilometros), destino, instante + desplazamiento,
+                llegada + desplazamiento, Math.max(0, distancia - kilometros), idPedido, cantidad,
+                caminoDesde(kilometros));
+    }
+
+    /**
+     * @param desplazamiento minutos a desplazar
+     * @return el mismo tramo, con salida y llegada desplazadas
+     */
+    public Tramo desplazar(int desplazamiento) {
+        return new Tramo(tipo, origen, destino, salida + desplazamiento, llegada + desplazamiento, distancia,
+                idPedido, cantidad, camino);
+    }
+
+    private int longitudCamino() {
+        int total = 0;
+        for (int i = 1; i < camino.size(); i++) {
+            total += camino.get(i - 1).distanciaManhattan(camino.get(i));
+        }
+        return total;
+    }
+
+    private Nodo puntoDelCamino(int kilometros) {
+        List<Nodo> hasta = caminoHasta(kilometros);
+        return hasta.get(hasta.size() - 1);
+    }
+
+    /** Vertices desde el origen hasta el punto a esa distancia, que cierra la lista. */
+    private List<Nodo> caminoHasta(int kilometros) {
+        List<Nodo> vertices = new ArrayList<>();
+        vertices.add(camino.get(0));
+        int restante = kilometros;
+        for (int i = 1; i < camino.size() && restante > 0; i++) {
+            Nodo desde = camino.get(i - 1);
+            Nodo hasta = camino.get(i);
+            int segmento = desde.distanciaManhattan(hasta);
+            vertices.add(restante >= segmento ? hasta : avanzar(desde, hasta, restante));
+            restante -= segmento;
+        }
+        return vertices;
+    }
+
+    /** El punto a esa distancia seguido de los vertices que aun no alcanza. */
+    private List<Nodo> caminoDesde(int kilometros) {
+        List<Nodo> hasta = caminoHasta(kilometros);
+        List<Nodo> vertices = new ArrayList<>();
+        vertices.add(hasta.get(hasta.size() - 1));
+        for (int i = hasta.size() - 1; i < camino.size(); i++) {
+            if (!camino.get(i).equals(vertices.get(vertices.size() - 1))) {
+                vertices.add(camino.get(i));
+            }
+        }
+        return vertices;
+    }
+
+    /** Avanza desde un vertice hacia el siguiente, primero en x y luego en y, como el camino en L. */
+    private static Nodo avanzar(Nodo desde, Nodo hasta, int kilometros) {
+        int pasoX = Math.min(kilometros, Math.abs(hasta.getX() - desde.getX()));
+        int pasoY = kilometros - pasoX;
+        return new Nodo(desde.getX() + Integer.signum(hasta.getX() - desde.getX()) * pasoX,
+                desde.getY() + Integer.signum(hasta.getY() - desde.getY()) * pasoY);
     }
 
     public TipoTramo getTipo() {

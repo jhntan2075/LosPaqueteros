@@ -82,6 +82,24 @@ public final class Almacen {
     }
 
     /**
+     * Devuelve al inventario la carga de una salida que no llego a entregarse (averia tipo 2 o 3), para
+     * que al volver a despacharla no se descuente dos veces. Nunca supera la capacidad maxima: si hubo
+     * una recarga despues de la salida, el descuento original ya no existe. En el central no tiene
+     * efecto.
+     *
+     * @param cantidad unidades de producto a devolver
+     * @throws IllegalArgumentException si la cantidad es negativa
+     */
+    public void reintegrar(int cantidad) {
+        if (cantidad < 0) {
+            throw new IllegalArgumentException("La cantidad a reintegrar es negativa: " + cantidad);
+        }
+        if (!ilimitado) {
+            stockDisponible = Math.min(capacidadMaxima, stockDisponible + cantidad);
+        }
+    }
+
+    /**
      * Recarga el inventario a su capacidad maxima (recarga instantanea diaria).
      */
     public void recargar() {

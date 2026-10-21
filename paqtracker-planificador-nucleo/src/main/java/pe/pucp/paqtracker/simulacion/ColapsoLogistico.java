@@ -66,8 +66,20 @@ public final class ColapsoLogistico {
      * @return colapso por plazo vencido sin despacho
      */
     static ColapsoLogistico porPlazoVencidoSinDespacho(Pedido pedido) {
-        return new ColapsoLogistico(Causa.PLAZO_VENCIDO_SIN_DESPACHO, pedido.getId(), pedido.getHoraLimite(),
-                pedido.getHoraLimite(), SIN_LLEGADA, null);
+        return porPlazoVencidoSinDespacho(pedido.getId(), pedido.getHoraLimite());
+    }
+
+    /**
+     * Colapso por una parte de un pedido cuyo plazo vencio sin despacharse, por ejemplo una entrega
+     * liberada por una averia que no se volvio a despachar a tiempo.
+     *
+     * @param idPedido   pedido de la parte vencida
+     * @param horaLimite hora limite del pedido, en que se ubica el colapso
+     * @return colapso por plazo vencido sin despacho
+     */
+    static ColapsoLogistico porPlazoVencidoSinDespacho(int idPedido, int horaLimite) {
+        return new ColapsoLogistico(Causa.PLAZO_VENCIDO_SIN_DESPACHO, idPedido, horaLimite, horaLimite,
+                SIN_LLEGADA, null);
     }
 
     public Causa getCausa() {

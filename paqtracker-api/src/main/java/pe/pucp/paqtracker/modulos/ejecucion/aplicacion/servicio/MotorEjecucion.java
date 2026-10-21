@@ -3,27 +3,37 @@ package pe.pucp.paqtracker.modulos.ejecucion.aplicacion.servicio;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import pe.pucp.paqtracker.comun.excepcion.OperacionNoPermitidaException;
+import pe.pucp.paqtracker.comun.excepcion.RecursoNoEncontradoException;
 import pe.pucp.paqtracker.comun.tiempo.LineaTiempo;
+import pe.pucp.paqtracker.modelo.Averia;
 import pe.pucp.paqtracker.modelo.Bloqueo;
+import pe.pucp.paqtracker.modelo.EstadoVehiculo;
 import pe.pucp.paqtracker.modelo.Nodo;
 import pe.pucp.paqtracker.modelo.Pedido;
 import pe.pucp.paqtracker.modelo.Tramo;
+import pe.pucp.paqtracker.modelo.Vehiculo;
 import pe.pucp.paqtracker.modulos.difusion.aplicacion.dto.ContextoInstantanea;
 import pe.pucp.paqtracker.modulos.difusion.aplicacion.dto.MensajeEstadoEjecucion;
 import pe.pucp.paqtracker.modulos.difusion.aplicacion.dto.PedidoEnMapa;
 import pe.pucp.paqtracker.modulos.difusion.aplicacion.servicio.CodigosFlota;
 import pe.pucp.paqtracker.modulos.difusion.aplicacion.servicio.NomenclaturaOperacion;
+import pe.pucp.paqtracker.modulos.difusion.aplicacion.servicio.RecorridoCamino;
 import pe.pucp.paqtracker.modulos.difusion.aplicacion.servicio.ServicioDifusion;
+import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.dto.AveriaProgramada;
 import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.dto.DetallePedido;
 import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.dto.ResultadoRegistroPedido;
+import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.dto.SolicitudAveriaEnVivo;
 import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.dto.SolicitudPedidoEnVivo;
 import pe.pucp.paqtracker.modulos.ejecucion.dominio.EstadoEjecucion;
 import pe.pucp.paqtracker.modulos.ejecucion.dominio.RegistroEjecucion;
 import pe.pucp.paqtracker.modulos.ejecucion.dominio.RepositorioEjecucion;
+import pe.pucp.paqtracker.modulos.ejecucion.dominio.TipoEscenario;
+import pe.pucp.paqtracker.simulacion.AveriaAplicada;
 import pe.pucp.paqtracker.simulacion.ColapsoLogistico;
 import pe.pucp.paqtracker.simulacion.ResultadoPaso;
 import pe.pucp.paqtracker.simulacion.ResultadoSimulacion;
 import pe.pucp.paqtracker.simulacion.SimulacionEnCurso;
+import pe.pucp.paqtracker.simulacion.Trasbordo;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZonedDateTime;
@@ -67,6 +77,7 @@ public final class MotorEjecucion {
     private final int minutoInicial;
     private final CodigosFlota codigosFlota;
     private final Set<Integer> bloqueosVigentes = new HashSet<>();
+    private final GestorEventos agenda = new GestorEventos();
     private volatile EstadoEjecucion estado = EstadoEjecucion.CONFIGURADA;
     private volatile MensajeEstadoEjecucion ultimaInstantanea;
     private int siguientePaso;
@@ -205,6 +216,39 @@ public final class MotorEjecucion {
     }
 
     /**
+     * Registra una averia en el instante actual del reloj (CU-13). Valida la averia contra el estado de
+     * la ejecucion y la encola en la agenda, sin tocar la simulacion: el motor la aplica al inicio de su
+     * siguiente salto Sc y en ese momento replanifica, sin esperar al siguiente Sa.
+     *
+     * @param solicitud unidad y tipo de la averia
+     * @return averia programada, con su instante y su reincorporacion estimada
+     * @throws OperacionNoPermitidaException si el escenario no admite averias, la ejecucion no esta en
+     *                                       curso ni pausada, o la unidad ya esta averiada
+     * @throws RecursoNoEncontradoException  si la unidad no pertenece a la flota de la ejecucion
+     */
+    public AveriaProgramada programarAveria(SolicitudAveriaEnVivo solicitud) {
+        return enHiloMotor(() -> {
+            validarQueAdmiteAverias();
+            int idVehiculo = codigosFlota.idDe(solicitud.codigoUnidad()).orElseThrow(() ->
+                    new RecursoNoEncontradoException("unidad", solicitud.codigoUnidad() + " en la ejecucion "
+                            + configuracion.id()));
+            Vehiculo vehiculo = buscarVehiculo(idVehiculo);
+            String codigo = codigosFlota.codigo(vehiculo);
+            if (vehiculo.getEstado() == EstadoVehiculo.AVERIADA || agenda.tieneAveriaPendiente(idVehiculo)
+                    || simulacion.tieneAveriaPendiente(idVehiculo)) {
+                throw new OperacionNoPermitidaException("La unidad " + codigo + " ya esta averiada");
+            }
+            int instante = Math.max((int) Math.floor(minutoVisible()), simulacion.getUltimoInstante() + 1);
+            agenda.encolar(new GestorEventos.EventoAveria(idVehiculo, solicitud.tipo(), instante));
+            Averia averia = new Averia(instante, idVehiculo, solicitud.tipo());
+            return new AveriaProgramada(configuracion.id(), codigo, solicitud.tipo().getNumero(),
+                    lineaTiempo.aMilisegundos(instante),
+                    lineaTiempo.aMilisegundos(averia.getInstanteReincorporacion()),
+                    averia.tieneTraslado() ? lineaTiempo.aMilisegundos(averia.getInstanteTraslado()) : null);
+        });
+    }
+
+    /**
      * @return todos los pedidos registrados en la ejecucion, con su estado (CU-04)
      */
     public List<PedidoEnMapa> consultarPedidos() {
@@ -231,13 +275,61 @@ public final class MotorEjecucion {
     }
 
     /**
-     * Procesa un salto de consumo: ejecuta los pasos Sa vencidos y difunde la instantanea.
+     * Las averias se registran a mano durante la operacion dia a dia y la simulacion de periodo (CU-13);
+     * la simulacion hasta el colapso corre sin intervencion del operador. La ejecucion debe haber
+     * arrancado y no haber terminado.
+     */
+    private void validarQueAdmiteAverias() {
+        if (configuracion.tipoEscenario() == TipoEscenario.COLAPSO_LOGISTICO) {
+            throw new OperacionNoPermitidaException("La ejecucion " + configuracion.id()
+                    + " es una simulacion hasta el colapso: las averias se registran solo en la operacion dia a"
+                    + " dia y en la simulacion de periodo");
+        }
+        if (estado != EstadoEjecucion.EN_CURSO && estado != EstadoEjecucion.PAUSADA) {
+            throw new OperacionNoPermitidaException("La ejecucion " + configuracion.id()
+                    + " no esta activa (estado " + estado + "): solo admite averias en curso o pausada");
+        }
+    }
+
+    private Vehiculo buscarVehiculo(int idVehiculo) {
+        return simulacion.getFlota().stream().filter(vehiculo -> vehiculo.getId() == idVehiculo).findFirst()
+                .orElseThrow(() -> new IllegalStateException("La unidad " + idVehiculo + " no esta en la flota"));
+    }
+
+    /**
+     * Entrega a la simulacion las averias encoladas cuyo instante ya llego y ejecuta de inmediato un paso
+     * que las aplica y replanifica (disparo por evento). Si el ultimo paso ya cayo en el instante de la
+     * averia, se aplica un minuto despues: un paso no puede repetir su instante.
+     *
+     * @param minuto minuto simulado actual
+     */
+    private void aplicarEventosAgendados(double minuto) {
+        List<GestorEventos.EventoAveria> eventos = agenda.entregarHasta(minuto);
+        if (eventos.isEmpty() || simulacion.estaDetenida()) {
+            return;
+        }
+        int instantePaso = simulacion.getUltimoInstante() + 1;
+        for (GestorEventos.EventoAveria evento : eventos) {
+            int instante = Math.max(evento.instante(), simulacion.getUltimoInstante() + 1);
+            simulacion.agregarAveria(new Averia(instante, evento.idVehiculo(), evento.tipo()));
+            instantePaso = Math.max(instantePaso, instante);
+        }
+        ejecutarPaso(instantePaso);
+        while (siguientePaso <= instantePaso) {
+            siguientePaso += configuracion.saMinutos();
+        }
+    }
+
+    /**
+     * Procesa un salto de consumo: aplica los eventos agendados, ejecuta los pasos Sa vencidos y difunde
+     * la instantanea.
      */
     private void procesarTick() {
         if (estado != EstadoEjecucion.EN_CURSO) {
             return;
         }
         double minuto = minutoVisible();
+        aplicarEventosAgendados(minuto);
         int pasos = 0;
         while (siguientePaso <= minuto && pasos < configuracion.maxPasosPorTick() && !simulacion.estaDetenida()) {
             ejecutarPaso(siguientePaso);
@@ -300,6 +392,12 @@ public final class MotorEjecucion {
             evento("NUEVO_PEDIDO", "Pedido " + codigo + " registrado: " + pedido.getCantidad() + " paquetes a "
                     + pedido.getDestino(), instanteMs, Map.of("codigoPedido", codigo));
         }
+        paso.getAveriasAplicadas().forEach(this::difundirAveria);
+        for (Vehiculo vehiculo : paso.getUnidadesReincorporadas()) {
+            String codigo = codigosFlota.codigo(vehiculo);
+            evento("UNIDAD_REINCORPORADA", "Unidad " + codigo + " reincorporada tras su averia", instanteMs,
+                    Map.of("unidad", codigo, "estado", vehiculo.getEstado().name()));
+        }
         if (paso.huboPlanificacion()) {
             evento("PLAN_ACTUALIZADO", "Planificacion en " + paso.getTiempoComputoMs() + " ms: "
                     + paso.getUnidadesDespachadas().size() + " unidades despachadas", instanteMs,
@@ -318,6 +416,51 @@ public final class MotorEjecucion {
             evento("ALERTA_COLAPSO", "Colapso logistico: el pedido " + codigo + " no se puede entregar a tiempo",
                     instanteMs, detalleColapso(colapso, codigo));
         }
+    }
+
+    /**
+     * Difunde una averia aplicada: unidad, tipo, punto en que quedo, si conserva su carga (tipo 1 en ruta),
+     * pedidos que vuelven a planificarse (tipo 2 y 3) y cuando se traslada y se reincorpora.
+     */
+    private void difundirAveria(AveriaAplicada aplicada) {
+        Averia averia = aplicada.averia();
+        String codigo = codigosFlota.codigo(aplicada.vehiculo());
+        List<String> pedidos = aplicada.entregasLiberadas().stream()
+                .map(entrega -> NomenclaturaOperacion.codigoPedido(entrega.getIdPedido())).distinct().toList();
+        Map<String, Object> detalle = new LinkedHashMap<>();
+        detalle.put("unidad", codigo);
+        detalle.put("tipo", averia.getTipo().getNumero());
+        detalle.put("ubicacion", RecorridoCamino.coordenada(aplicada.ubicacion()));
+        detalle.put("conservaCarga", aplicada.conservaCarga());
+        detalle.put("pedidosLiberados", pedidos);
+        detalle.put("unidadesReceptoras", aplicada.trasbordos().stream()
+                .map(trasbordo -> codigosFlota.codigo(trasbordo.receptora().getVehiculo())).toList());
+        detalle.put("reincorporacionMs", lineaTiempo.aMilisegundos(aplicada.disponibleEn()));
+        if (aplicada.trasladoEn() != AveriaAplicada.SIN_TRASLADO) {
+            detalle.put("trasladoCentralMs", lineaTiempo.aMilisegundos(aplicada.trasladoEn()));
+        }
+        String liberados = pedidos.isEmpty() ? "" : ": " + pedidos.size() + " pedidos vuelven a planificarse";
+        evento("UNIDAD_AVERIADA", "Unidad " + codigo + " averiada (tipo " + averia.getTipo().getNumero() + ")"
+                + liberados, lineaTiempo.aMilisegundos(averia.getInstante()), detalle);
+        aplicada.trasbordos().forEach(trasbordo -> difundirTrasbordo(codigo, averia, trasbordo));
+    }
+
+    /**
+     * Difunde un trasbordo decidido ante una averia tipo 1: que unidad recoge que pedidos, donde, a que
+     * hora llega al punto y cuando entrega el ultimo.
+     */
+    private void difundirTrasbordo(String codigoAveriada, Averia averia, Trasbordo trasbordo) {
+        String receptora = codigosFlota.codigo(trasbordo.receptora().getVehiculo());
+        List<String> pedidos = trasbordo.entregas().stream()
+                .map(entrega -> NomenclaturaOperacion.codigoPedido(entrega.getIdPedido())).distinct().toList();
+        Map<String, Object> detalle = new LinkedHashMap<>();
+        detalle.put("unidadAveriada", codigoAveriada);
+        detalle.put("unidadReceptora", receptora);
+        detalle.put("pedidos", pedidos);
+        detalle.put("ubicacion", RecorridoCamino.coordenada(trasbordo.punto()));
+        detalle.put("recojoMs", lineaTiempo.aMilisegundos(trasbordo.getRecojo()));
+        evento("TRASBORDO", "Unidad " + receptora + " recoge " + pedidos.size() + " pedidos urgentes de "
+                + codigoAveriada, lineaTiempo.aMilisegundos(averia.getInstante()), detalle);
     }
 
     /**

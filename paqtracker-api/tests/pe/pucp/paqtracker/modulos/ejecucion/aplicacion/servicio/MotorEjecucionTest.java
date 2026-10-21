@@ -3,10 +3,12 @@ package pe.pucp.paqtracker.modulos.ejecucion.aplicacion.servicio;
 import org.junit.jupiter.api.Test;
 import pe.pucp.paqtracker.comun.configuracion.PropiedadesDominio;
 import pe.pucp.paqtracker.comun.excepcion.OperacionNoPermitidaException;
+import pe.pucp.paqtracker.comun.excepcion.RecursoNoEncontradoException;
 import pe.pucp.paqtracker.comun.tiempo.LineaTiempo;
 import pe.pucp.paqtracker.modelo.Bloqueo;
 import pe.pucp.paqtracker.modelo.Nodo;
 import pe.pucp.paqtracker.modelo.Pedido;
+import pe.pucp.paqtracker.modelo.TipoAveria;
 import pe.pucp.paqtracker.modulos.difusion.aplicacion.dto.BloqueoEnMapa;
 import pe.pucp.paqtracker.modulos.difusion.aplicacion.dto.Coordenada;
 import pe.pucp.paqtracker.modulos.difusion.aplicacion.dto.MensajeEstadoEjecucion;
@@ -17,8 +19,10 @@ import pe.pucp.paqtracker.modulos.difusion.aplicacion.servicio.ConstructorInstan
 import pe.pucp.paqtracker.modulos.difusion.aplicacion.servicio.NomenclaturaOperacion;
 import pe.pucp.paqtracker.modulos.difusion.aplicacion.servicio.ServicioDifusion;
 import pe.pucp.paqtracker.modulos.difusion.dominio.PuertoDifusion;
+import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.dto.AveriaProgramada;
 import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.dto.DetallePedido;
 import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.dto.ResultadoRegistroPedido;
+import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.dto.SolicitudAveriaEnVivo;
 import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.dto.SolicitudPedidoEnVivo;
 import pe.pucp.paqtracker.modulos.ejecucion.dominio.EstadoEjecucion;
 import pe.pucp.paqtracker.modulos.ejecucion.dominio.RegistroEjecucion;
@@ -45,6 +49,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Executors;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -56,6 +62,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class MotorEjecucionTest {
 
     private static final ZoneId ZONA = ZoneId.of("America/Lima");
+    private static final ZonedDateTime INICIO = ZonedDateTime.of(2026, 1, 1, 0, 0, 0, 0, ZONA);
     private static final double FACTOR = 60.0;
     private static final int SA = 30;
     private static final int HORIZONTE = 2 * 1440;
@@ -256,8 +263,195 @@ class MotorEjecucionTest {
         assertTrue(motor.consultarPedido(999).isEmpty());
     }
 
+    @Test
+    void programarAveria_ejecucionEnCurso_laEncolaYLaAplicaRecienEnElSiguienteTick() {
+        MotorEjecucion motor = crearMotor(List.of(), false);
+        motor.preparar();
+        motor.iniciar();
+        pared.avanzar(Duration.ofSeconds(70));
+        motor.procesarTickAhora();
+
+        AveriaProgramada programada = motor.programarAveria(new SolicitudAveriaEnVivo("A-01", TipoAveria.TIPO_2));
+
+        assertEquals("A-01", programada.codigoUnidad());
+        assertEquals(2, programada.tipo());
+        assertEquals(INICIO.plusMinutes(70).toInstant().toEpochMilli(), programada.instanteMs());
+        assertEquals(INICIO.plusMinutes(70 + 240).toInstant().toEpochMilli(), programada.trasladoCentralMs());
+        assertEquals("DISPONIBLE_EN_ALMACEN", unidad(motor, "A-01").estado());
+        assertFalse(hayEvento("UNIDAD_AVERIADA"));
+
+        motor.procesarTickAhora();
+
+        assertEquals("AVERIADA", unidad(motor, "A-01").estado());
+        assertEquals(1, motor.getUltimaInstantanea().indicadores().unidadesAveriadas());
+        Map<String, Object> detalle = detalleDe("UNIDAD_AVERIADA");
+        assertEquals("A-01", detalle.get("unidad"));
+        assertEquals(2, detalle.get("tipo"));
+        assertEquals(false, detalle.get("conservaCarga"));
+    }
+
+    @Test
+    void programarAveria_tipo2EnRutaConCarga_liberaLosPedidosYReplanificaEnElMismoTick() {
+        MotorEjecucion motor = crearMotor(pedidos(), false);
+        motor.preparar();
+        motor.iniciar();
+        pared.avanzar(Duration.ofSeconds(5));
+        motor.procesarTickAhora();
+        UnidadEnMapa cargada = unidadConCarga(motor);
+
+        motor.programarAveria(new SolicitudAveriaEnVivo(cargada.codigo(), TipoAveria.TIPO_2));
+        motor.procesarTickAhora();
+
+        List<String> tipos = eventos.stream().map(MensajeEventoEjecucion::tipo).toList();
+        int indiceAveria = tipos.indexOf("UNIDAD_AVERIADA");
+        assertTrue(tipos.subList(indiceAveria, tipos.size()).contains("PLAN_ACTUALIZADO"));
+        assertFalse(((List<?>) detalleDe("UNIDAD_AVERIADA").get("pedidosLiberados")).isEmpty());
+        UnidadEnMapa averiada = unidad(motor, cargada.codigo());
+        assertEquals("AVERIADA", averiada.estado());
+        assertEquals(0, averiada.cargaActual());
+        assertEquals(detalleDe("UNIDAD_AVERIADA").get("ubicacion"), averiada.ubicacionActual());
+        assertNotEquals(new Coordenada(27, 14), averiada.ubicacionActual());
+    }
+
+    @Test
+    void programarAveria_tipo1EnRutaConCarga_quedaDetenidaConSuCargaYSeReincorpora() {
+        MotorEjecucion motor = crearMotor(pedidos(), false);
+        motor.preparar();
+        motor.iniciar();
+        pared.avanzar(Duration.ofSeconds(5));
+        motor.procesarTickAhora();
+        UnidadEnMapa cargada = unidadConCarga(motor);
+
+        motor.programarAveria(new SolicitudAveriaEnVivo(cargada.codigo(), TipoAveria.TIPO_1));
+        motor.procesarTickAhora();
+
+        UnidadEnMapa detenida = unidad(motor, cargada.codigo());
+        assertEquals("AVERIADA", detenida.estado());
+        assertEquals(cargada.cargaActual(), detenida.cargaActual());
+        assertEquals("AVERIA", detenida.tramoEnCurso().tipo());
+        assertEquals(true, detalleDe("UNIDAD_AVERIADA").get("conservaCarga"));
+
+        // Se reincorpora a los 125 minutos simulados: hace falta un paso Sa posterior.
+        pared.avanzar(Duration.ofMinutes(3));
+        motor.procesarTickAhora();
+
+        assertTrue(hayEvento("UNIDAD_REINCORPORADA"));
+        assertNotEquals("AVERIADA", unidad(motor, cargada.codigo()).estado());
+    }
+
+    @Test
+    void programarAveria_tipo1ConUnPedidoUrgenteABordo_loTrasbordaAOtraUnidadYLoDifunde() {
+        MotorEjecucion motor = crearMotor(List.of(new Pedido(1, new Nodo(30, 18), 3, 0, 60)), false);
+        motor.preparar();
+        motor.iniciar();
+        pared.avanzar(Duration.ofSeconds(5));
+        motor.procesarTickAhora();
+        UnidadEnMapa cargada = unidadConCarga(motor);
+
+        motor.programarAveria(new SolicitudAveriaEnVivo(cargada.codigo(), TipoAveria.TIPO_1));
+        motor.procesarTickAhora();
+
+        Map<String, Object> trasbordo = detalleDe("TRASBORDO");
+        String receptora = (String) trasbordo.get("unidadReceptora");
+        assertEquals(cargada.codigo(), trasbordo.get("unidadAveriada"));
+        assertEquals(List.of(NomenclaturaOperacion.codigoPedido(1)), trasbordo.get("pedidos"));
+        assertEquals(false, detalleDe("UNIDAD_AVERIADA").get("conservaCarga"));
+        assertEquals("VIAJE_A_TRASBORDO", unidad(motor, receptora).tramoEnCurso().tipo());
+        DetallePedido pedido = motor.consultarPedido(1).orElseThrow();
+        assertEquals(receptora, pedido.pedido().unidad());
+        assertEquals("Trasbordado", pedido.hitos().get(pedido.hitos().size() - 1).titulo());
+    }
+
+    @Test
+    void programarAveria_ejecucionPausada_seAplicaAlReanudar() {
+        MotorEjecucion motor = crearMotor(List.of(), false);
+        motor.preparar();
+        motor.iniciar();
+        pared.avanzar(Duration.ofSeconds(70));
+        motor.procesarTickAhora();
+        motor.pausar();
+
+        motor.programarAveria(new SolicitudAveriaEnVivo("M-01", TipoAveria.TIPO_3));
+        motor.procesarTickAhora();
+        assertFalse(hayEvento("UNIDAD_AVERIADA"));
+
+        motor.iniciar();
+        motor.procesarTickAhora();
+        assertEquals("AVERIADA", unidad(motor, "M-01").estado());
+    }
+
+    @Test
+    void programarAveria_ejecucionSinIniciar_lanzaOperacionNoPermitida() {
+        MotorEjecucion motor = crearMotor(List.of(), false);
+        motor.preparar();
+
+        assertThrows(OperacionNoPermitidaException.class,
+                () -> motor.programarAveria(new SolicitudAveriaEnVivo("A-01", TipoAveria.TIPO_1)));
+    }
+
+    @Test
+    void programarAveria_ejecucionTerminada_lanzaOperacionNoPermitida() {
+        MotorEjecucion motor = crearMotor(List.of(), false);
+        motor.preparar();
+        motor.iniciar();
+        motor.detener();
+
+        assertThrows(OperacionNoPermitidaException.class,
+                () -> motor.programarAveria(new SolicitudAveriaEnVivo("A-01", TipoAveria.TIPO_1)));
+    }
+
+    @Test
+    void programarAveria_simulacionHastaElColapso_lanzaOperacionNoPermitida() {
+        MotorEjecucion motor = crearMotor(List.of(), List.of(), ComposicionFlota.porDefecto(), false,
+                TipoEscenario.COLAPSO_LOGISTICO);
+        motor.preparar();
+        motor.iniciar();
+
+        assertThrows(OperacionNoPermitidaException.class,
+                () -> motor.programarAveria(new SolicitudAveriaEnVivo("A-01", TipoAveria.TIPO_1)));
+    }
+
+    @Test
+    void programarAveria_unidadQueNoEsDeLaFlota_lanzaRecursoNoEncontrado() {
+        MotorEjecucion motor = crearMotor(List.of(), false);
+        motor.preparar();
+        motor.iniciar();
+
+        assertThrows(RecursoNoEncontradoException.class,
+                () -> motor.programarAveria(new SolicitudAveriaEnVivo("Z-99", TipoAveria.TIPO_1)));
+    }
+
+    @Test
+    void programarAveria_unidadYaAveriadaOConAveriaEncolada_lanzaOperacionNoPermitida() {
+        MotorEjecucion motor = crearMotor(List.of(), false);
+        motor.preparar();
+        motor.iniciar();
+        motor.programarAveria(new SolicitudAveriaEnVivo("B-01", TipoAveria.TIPO_2));
+
+        assertThrows(OperacionNoPermitidaException.class,
+                () -> motor.programarAveria(new SolicitudAveriaEnVivo("B-01", TipoAveria.TIPO_1)));
+        pared.avanzar(Duration.ofSeconds(10));
+        motor.procesarTickAhora();
+        assertThrows(OperacionNoPermitidaException.class,
+                () -> motor.programarAveria(new SolicitudAveriaEnVivo("B-01", TipoAveria.TIPO_1)));
+    }
+
     private boolean hayEvento(String tipo) {
         return eventos.stream().anyMatch(evento -> evento.tipo().equals(tipo));
+    }
+
+    private Map<String, Object> detalleDe(String tipo) {
+        return eventos.stream().filter(evento -> evento.tipo().equals(tipo)).findFirst().orElseThrow().detalle();
+    }
+
+    private static UnidadEnMapa unidad(MotorEjecucion motor, String codigo) {
+        return motor.getUltimaInstantanea().unidades().stream().filter(unidad -> unidad.codigo().equals(codigo))
+                .findFirst().orElseThrow();
+    }
+
+    private static UnidadEnMapa unidadConCarga(MotorEjecucion motor) {
+        return motor.getUltimaInstantanea().unidades().stream().filter(unidad -> unidad.cargaActual() > 0)
+                .findFirst().orElseThrow();
     }
 
     private MotorEjecucion crearMotor(List<Pedido> pedidos, boolean detenerEnColapso) {
@@ -266,15 +460,20 @@ class MotorEjecucionTest {
 
     private MotorEjecucion crearMotor(List<Pedido> pedidos, List<Bloqueo> bloqueos, ComposicionFlota flota,
                                       boolean detenerEnColapso) {
+        return crearMotor(pedidos, bloqueos, flota, detenerEnColapso, TipoEscenario.SIMULACION_PERIODO);
+    }
+
+    private MotorEjecucion crearMotor(List<Pedido> pedidos, List<Bloqueo> bloqueos, ComposicionFlota flota,
+                                      boolean detenerEnColapso, TipoEscenario tipoEscenario) {
         PropiedadesDominio propiedades = PropiedadesPrueba.crear();
-        LineaTiempo lineaTiempo = new LineaTiempo(ZonedDateTime.of(2026, 1, 1, 0, 0, 0, 0, ZONA));
+        LineaTiempo lineaTiempo = new LineaTiempo(INICIO);
         SimulacionEnCurso simulacion = new ServicioPlanificacion(new FabricaAlgoritmo()).prepararSimulacion(
                 new SolicitudPreparacionSimulacion(pedidos, bloqueos, AlgoritmoPlanificacion.GA, 1L, SA,
                         detenerEnColapso, flota));
         SeguimientoPedidos seguimiento = new SeguimientoPedidos(lineaTiempo, propiedades.semaforo(),
                 CodigosFlota.de(simulacion.getFlota()), 100);
         ConfiguracionMotor configuracion = new ConfiguracionMotor("prueba", "Prueba",
-                TipoEscenario.SIMULACION_PERIODO, AlgoritmoPlanificacion.GA, LocalDate.of(2026, 1, 1), 2, FACTOR,
+                tipoEscenario, AlgoritmoPlanificacion.GA, LocalDate.of(2026, 1, 1), 2, FACTOR,
                 SC_SIN_TICK_PROGRAMADO, SA, Integer.MAX_VALUE, pared.instant(), flota);
         PuertoDifusion puerto = new PuertoDifusion() {
             @Override

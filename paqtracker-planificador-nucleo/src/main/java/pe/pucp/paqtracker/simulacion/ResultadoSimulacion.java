@@ -117,6 +117,27 @@ public final class ResultadoSimulacion {
     }
 
     /**
+     * Deshace un {@link #registrarMargenEntrega} con los mismos valores. Se usa cuando una averia
+     * cambia la llegada de una entrega ya despachada: tipo 1 la retrasa y tipo 2 y 3 la liberan para
+     * que vuelva a despacharse, y sin retirarla se contaria dos veces.
+     *
+     * @param holgura  holgura con que se registro la entrega
+     * @param productos productos con que se registro la entrega
+     */
+    public void retirarMargenEntrega(int holgura, int productos) {
+        this.productosEntregados -= productos;
+        if (holgura < 0) {
+            this.retrasoTotalMinutos -= -holgura;
+            this.entregasTarde--;
+            this.productosFueraDePlazo -= productos;
+            this.retrasoPonderadoPorProductos -= (long) -holgura * productos;
+            return;
+        }
+        this.holguraTotalMinutos -= holgura;
+        this.entregasATiempo--;
+    }
+
+    /**
      * @return unidades de producto despachadas, contadas sobre las entregas que
      *         salieron en una ruta
      */

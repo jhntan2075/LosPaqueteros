@@ -131,54 +131,6 @@ public final class CalculadoraTiempos {
     }
 
     /**
-     * Resultado de cortar una ruta en un instante dado.
-     *
-     * @param ubicacion  nodo en que se encuentra la unidad en ese instante
-     * @param pendientes entregas de la secuencia original aun no completadas
-     */
-    public record CorteRuta(Nodo ubicacion, List<Entrega> pendientes) {
-    }
-
-    /**
-     * Corta una ruta en un instante dado -por ejemplo, una averia a mitad de
-     * camino- separando lo que la unidad ya entrego de lo que aun llevaba a
-     * bordo. Recorre la secuencia con la misma logica que {@link #recorrer}
-     * (incluida la pausa de refrigerio), pero se detiene en la primera entrega
-     * que no llega a completarse -llegada mas servicio- antes del corte: esa y
-     * las siguientes quedan pendientes, y la ubicacion de la unidad es el
-     * destino de la ultima entrega que si completo (o el origen, si ninguna).
-     *
-     * @param escenario     escenario operativo con malla y tiempo de servicio
-     * @param ruta          ruta a cortar
-     * @param salida        instante absoluto de salida del almacen de origen
-     * @param instanteCorte instante en el que se corta la ruta
-     * @return ubicacion de la unidad y entregas pendientes en ese instante
-     */
-    public static CorteRuta cortarEnInstante(EscenarioOperativo escenario, Ruta ruta,
-                                             int salida, int instanteCorte) {
-        List<Entrega> secuencia = ruta.getSecuencia();
-        if (secuencia.isEmpty() || salida >= instanteCorte) {
-            return new CorteRuta(ruta.getOrigen().getUbicacion(), new ArrayList<>(secuencia));
-        }
-        int reloj = salida;
-        int idVehiculo = ruta.getVehiculo().getId();
-        Nodo actual = ruta.getOrigen().getUbicacion();
-        for (int i = 0; i < secuencia.size(); i++) {
-            Entrega entrega = secuencia.get(i);
-            int tramo = distancia(escenario, actual, entrega.getDestino(), reloj, ruta.getVehiculo());
-            int llegada = CalendarioTurnos.avanzarConPausa(idVehiculo, reloj,
-                    minutosDeViaje(tramo, ruta.getVehiculo().getTipo()));
-            int fin = CalendarioTurnos.avanzarConPausa(idVehiculo, llegada, escenario.getTiempoServicio());
-            if (fin > instanteCorte) {
-                return new CorteRuta(actual, new ArrayList<>(secuencia.subList(i, secuencia.size())));
-            }
-            reloj = fin;
-            actual = entrega.getDestino();
-        }
-        return new CorteRuta(actual, List.of());
-    }
-
-    /**
      * Recorre una ruta igual que {@link #recorrer} y devuelve cada tramo con sus
      * instantes: viaje a cada entrega, acondicionamiento en su destino y retorno
      * al almacen. La llegada del ultimo tramo coincide con el instante de fin de
@@ -191,16 +143,56 @@ public final class CalculadoraTiempos {
      * @return tramos en orden de recorrido; vacio si la ruta no tiene entregas
      */
     public static List<Tramo> trazar(EscenarioOperativo escenario, Ruta ruta, int salida) {
-        List<Tramo> tramos = new ArrayList<>();
         if (ruta.getSecuencia().isEmpty()) {
-            return tramos;
+            return new ArrayList<>();
         }
+        Nodo destino = ruta.getDestino() == null ? null : ruta.getDestino().getUbicacion();
+        return trazarDesde(escenario, ruta.getVehiculo(), ruta.getOrigen().getUbicacion(), ruta.getSecuencia(),
+                destino, salida);
+    }
+
+    /**
+     * Viaje sin entrega entre dos puntos, con la misma distancia, pausa de refrigerio y camino que
+     * {@link #trazar}; por ejemplo, el de la unidad que va a recoger un trasbordo.
+     *
+     * @param escenario escenario operativo con la malla vigente
+     * @param vehiculo  unidad que viaja
+     * @param origen    nodo de partida
+     * @param destino   nodo de llegada
+     * @param tipo      naturaleza del tramo
+     * @param salida    instante absoluto de salida
+     * @return tramo del viaje, sin pedido
+     */
+    public static Tramo trazarViaje(EscenarioOperativo escenario, Vehiculo vehiculo, Nodo origen, Nodo destino,
+                                    TipoTramo tipo, int salida) {
+        int distancia = distancia(escenario, origen, destino, salida, vehiculo);
+        int llegada = CalendarioTurnos.avanzarConPausa(vehiculo.getId(), salida,
+                minutosDeViaje(distancia, vehiculo.getTipo()));
+        return new Tramo(tipo, origen, destino, salida, llegada, distancia, Tramo.SIN_PEDIDO, 0,
+                camino(escenario, origen, destino, salida, vehiculo));
+    }
+
+    /**
+     * Traza un recorrido que parte de un punto cualquiera de la malla, no necesariamente un almacen: por
+     * ejemplo, el de una unidad que retoma su ruta desde el punto de una averia. Sin entregas, el
+     * recorrido es solo el retorno.
+     *
+     * @param escenario escenario operativo con malla y tiempo de servicio
+     * @param vehiculo  unidad que recorre
+     * @param inicio    nodo de partida
+     * @param secuencia entregas en orden de visita
+     * @param destino   almacen de retorno, o null si el recorrido termina en la ultima entrega
+     * @param salida    instante absoluto de salida
+     * @return tramos en orden de recorrido
+     */
+    public static List<Tramo> trazarDesde(EscenarioOperativo escenario, Vehiculo vehiculo, Nodo inicio,
+                                          List<Entrega> secuencia, Nodo destino, int salida) {
+        List<Tramo> tramos = new ArrayList<>();
         int reloj = salida;
-        Vehiculo vehiculo = ruta.getVehiculo();
         int idVehiculo = vehiculo.getId();
         TipoVehiculo tipo = vehiculo.getTipo();
-        Nodo actual = ruta.getOrigen().getUbicacion();
-        for (Entrega entrega : ruta.getSecuencia()) {
+        Nodo actual = inicio;
+        for (Entrega entrega : secuencia) {
             int distancia = distancia(escenario, actual, entrega.getDestino(), reloj, vehiculo);
             int llegada = CalendarioTurnos.avanzarConPausa(idVehiculo, reloj, minutosDeViaje(distancia, tipo));
             tramos.add(new Tramo(TipoTramo.VIAJE_A_ENTREGA, actual, entrega.getDestino(), reloj, llegada,
@@ -211,12 +203,8 @@ public final class CalculadoraTiempos {
                     reloj, 0, entrega.getIdPedido(), 0));
             actual = entrega.getDestino();
         }
-        if (ruta.getDestino() != null) {
-            Nodo almacen = ruta.getDestino().getUbicacion();
-            int distancia = distancia(escenario, actual, almacen, reloj, vehiculo);
-            int llegada = CalendarioTurnos.avanzarConPausa(idVehiculo, reloj, minutosDeViaje(distancia, tipo));
-            tramos.add(new Tramo(TipoTramo.RETORNO, actual, almacen, reloj, llegada, distancia,
-                    Tramo.SIN_PEDIDO, 0, camino(escenario, actual, almacen, reloj, vehiculo)));
+        if (destino != null) {
+            tramos.add(trazarViaje(escenario, vehiculo, actual, destino, TipoTramo.RETORNO, reloj));
         }
         return tramos;
     }
