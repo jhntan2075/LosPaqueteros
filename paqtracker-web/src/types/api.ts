@@ -30,6 +30,34 @@ export interface ParadaPendienteApi {
   etaMs: number;
 }
 
+/** Avería vigente de una unidad (AveriaEnCurso en la API). */
+export interface AveriaEnCursoApi {
+  tipo: 1 | 2 | 3;
+  desdeMs: number;
+  reincorporacionMs: number;
+  trasladoCentralMs: number | null;
+}
+
+/** Respuesta de POST /api/ejecuciones/{id}/averias: la avería queda programada para el siguiente Sc. */
+export interface RespuestaRegistroAveriaApi {
+  id: number;
+  ejecucionId: string;
+  unidad: string;
+  tipo: 1 | 2 | 3;
+  estado: 'PROGRAMADA';
+  instanteMs: number;
+  reincorporacionMs: number;
+  trasladoCentralMs: number | null;
+}
+
+/** GET /api/ejecuciones/{id}/averias/estimacion: qué pasaría si se registrara ahora cada tipo. */
+export interface EstimacionAveriaApi {
+  tipo: 1 | 2 | 3;
+  instanteMs: number;
+  reincorporacionMs: number;
+  trasladoCentralMs: number | null;
+}
+
 export interface UnidadEnMapaApi {
   id: number;
   codigo: string;
@@ -44,6 +72,8 @@ export interface UnidadEnMapaApi {
   tramoEnCurso: TramoEnCursoApi | null;
   rutaRestante: CoordenadaApi[];
   paradas: ParadaPendienteApi[];
+  /** Avería vigente si la unidad está averiada; null en los demás estados. */
+  averia: AveriaEnCursoApi | null;
 }
 
 export interface AlmacenEnMapaApi {

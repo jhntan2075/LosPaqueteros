@@ -3,7 +3,8 @@ import { Search, ZoomIn, ZoomOut, Maximize2, Layers, MapIcon } from 'lucide-reac
 import { ALMACENES, MALLA_ALTO_KM, MALLA_ANCHO_KM, UNIDADES } from '../../config/dominio';
 import { NOMBRE_HOLGURA, NOMBRE_INVENTARIO } from '../../config/glosario';
 import { useTamanoElemento } from '../../hooks/useTamanoElemento';
-import { capitalizar } from '../../lib/formato';
+import { capitalizar, formatearMomento } from '../../lib/formato';
+import { useDatosOperacion } from '../../hooks/useDatosOperacion';
 import {
   acercarEn,
   escalaDeEncuadre,
@@ -513,11 +514,11 @@ interface CapasMapaProps {
   nodoActivo: Coordenada;
 }
 
-/** Porcentaje de stock de un almacén intermedio; undefined en el central o sin datos. */
 /** Contenido del tooltip y punto del mapa sobre el que se ancla (encima del símbolo). */
 function contenidoTooltip(
   objeto: ObjetoHover,
   datos: Pick<GridMapProps, 'unidades' | 'destinos' | 'bloqueos'> & { almacenes: AlmacenOperacion[] },
+  reloj: Date,
 ): { titulo: string; detalle: string; color?: string; punto: Coordenada; alzaPx: number } | null {
   if (objeto.tipo === 'pedido') {
     const d = datos.destinos.find((x) => x.pedido === objeto.codigo);
@@ -532,7 +533,9 @@ function contenidoTooltip(
     return {
       titulo: `${capitalizar(UNIDADES[u.tipo].nombre)} ${u.codigo}`,
       detalle: averiada
-        ? 'Averiada'
+        ? u.averia
+          ? `Averiada · tipo ${u.averia.tipo} · vuelve ${formatearMomento(u.averia.vuelve, reloj)}`
+          : 'Averiada'
         : `Carga ${u.carga}/${capacidad} · ${capacidad === 0 ? 0 : Math.round((u.carga / capacidad) * 100)} %${u.estado === 'EN_REFRIGERIO' ? ' · en refrigerio' : ''}`,
       color: colorDeUnidad(u),
       punto: u.posicion,
@@ -566,7 +569,9 @@ function contenidoTooltip(
 const TooltipObjeto: React.FC<
   { objeto: ObjetoHover; vista: Vista; lienzo: Lienzo } & Pick<GridMapProps, 'unidades' | 'destinos' | 'bloqueos'> & { almacenes: AlmacenOperacion[] }
 > = ({ objeto, vista, lienzo, ...datos }) => {
-  const contenido = contenidoTooltip(objeto, datos);
+  // El mapa siempre se dibuja dentro del contexto de una ejecución: su reloj fecha la reincorporación.
+  const { reloj } = useDatosOperacion();
+  const contenido = contenidoTooltip(objeto, datos, reloj);
   if (!contenido) return null;
   const p = proyectar(vista, contenido.punto);
   const MEDIO_ANCHO = 90;
@@ -586,6 +591,7 @@ const TooltipObjeto: React.FC<
   );
 };
 
+/** Porcentaje de stock de un almacén intermedio; undefined en el central o sin datos. */
 const stockDe = (almacenes: AlmacenOperacion[], id: AlmacenOperacion['id']) =>
   almacenes.find((a) => a.id === id)?.porcentajeStock ?? undefined;
 

@@ -25,6 +25,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 class IntegracionIncidenciasTest {
 
     private static final int ACEPTADA = 202;
+    private static final int SIN_CONTENIDO = 204;
     private static final int SOLICITUD_INVALIDA = 400;
     private static final int NO_ENCONTRADO = 404;
     private static final int CONFLICTO = 409;
@@ -86,6 +87,53 @@ class IntegracionIncidenciasTest {
         assertEquals(CONFLICTO, registrar(cliente, colapso, Map.of("unidad", "A-01", "tipo", 1)));
         detener(cliente, configurada);
         detener(cliente, colapso);
+    }
+
+    @Test
+    void estimarAveria_ejecucionEnCurso_devuelveUnaEstimacionPorTipoSinRegistrar() {
+        RestClient cliente = cliente();
+        String id = crear(cliente, "SIMULACION_PERIODO");
+        cliente.post().uri("/api/ejecuciones/{id}/iniciar", id).retrieve().toBodilessEntity();
+
+        List<?> estimaciones = cliente.get().uri("/api/ejecuciones/{id}/averias/estimacion", id).retrieve().body(List.class);
+
+        assertEquals(3, estimaciones.size());
+        Map<?, ?> tipo1 = (Map<?, ?>) estimaciones.get(0);
+        assertEquals(1, tipo1.get("tipo"));
+        assertNull(tipo1.get("trasladoCentralMs"));
+        assertNotNull(((Map<?, ?>) estimaciones.get(1)).get("trasladoCentralMs"));
+        assertEquals(0, repositorio.listarPorEjecucion(id).size());
+        assertEquals(NO_ENCONTRADO, estado(cliente.get().uri("/api/ejecuciones/no-existe/averias/estimacion")));
+        detener(cliente, id);
+    }
+
+    @Test
+    void cancelarAveria_programada_responde204YQuedaCanceladaEnLaBitacora() {
+        RestClient cliente = cliente();
+        String id = crear(cliente, "SIMULACION_PERIODO");
+        cliente.post().uri("/api/ejecuciones/{id}/iniciar", id).retrieve().toBodilessEntity();
+        Map<?, ?> registrada = cliente.post().uri("/api/ejecuciones/{id}/averias", id)
+                .contentType(MediaType.APPLICATION_JSON).body(Map.of("unidad", "A-01", "tipo", 3))
+                .retrieve().body(Map.class);
+        long averiaId = ((Number) registrada.get("id")).longValue();
+
+        assertEquals(SIN_CONTENIDO, cancelar(cliente, id, averiaId));
+
+        assertNotNull(repositorio.buscar(averiaId).orElseThrow().canceladaEn());
+        assertEquals(CONFLICTO, cancelar(cliente, id, averiaId));
+        assertEquals(NO_ENCONTRADO, cancelar(cliente, id, 999_999));
+        assertEquals(NO_ENCONTRADO, cancelar(cliente, "otra-ejecucion", averiaId));
+        assertEquals(ACEPTADA, registrar(cliente, id, Map.of("unidad", "A-01", "tipo", 1)));
+        detener(cliente, id);
+    }
+
+    private static int cancelar(RestClient cliente, String id, long averiaId) {
+        return estado(cliente.delete().uri("/api/ejecuciones/{id}/averias/{averiaId}", id, averiaId));
+    }
+
+    private static int estado(RestClient.RequestHeadersSpec<?> peticion) {
+        HttpStatusCode codigo = peticion.exchange((solicitud, respuesta) -> respuesta.getStatusCode());
+        return codigo.value();
     }
 
     private RestClient cliente() {

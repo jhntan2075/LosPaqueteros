@@ -47,6 +47,16 @@ public final class GestorEventos {
     }
 
     /**
+     * Retira la averia encolada de una unidad, si aun no se entrego al motor.
+     *
+     * @param idVehiculo identificador de la unidad
+     * @return verdadero si habia una averia encolada y se retiro
+     */
+    public boolean cancelar(int idVehiculo) {
+        return averias.removeIf(evento -> evento.idVehiculo() == idVehiculo);
+    }
+
+    /**
      * Entrega y retira los eventos cuyo instante ya llego.
      *
      * @param minuto minuto simulado actual

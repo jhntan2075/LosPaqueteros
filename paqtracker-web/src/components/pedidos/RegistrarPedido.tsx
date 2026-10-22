@@ -16,6 +16,7 @@ import { ErrorDeApi } from '../../services/clienteApi';
 import { registrarPedido } from '../../services/servicioPedidos';
 import type { Coordenada } from '../../types/domain';
 import type { PedidoRegistrado } from '../../types/pedidos';
+import { IndicadorRadio } from '../layout/IndicadorRadio';
 import { MiniMapaMalla } from '../map/MiniMapaMalla';
 import { MarcadorAlmacen, PinDestino, RotuloMapa } from './iconos';
 
@@ -328,14 +329,15 @@ export const RegistrarPedido: React.FC<RegistrarPedidoProps> = ({ onCancelar, on
                       onChange={() => setPlazoHoras(plazo)}
                       className="sr-only"
                     />
-                    <span
-                      className={`text-[11px] font-sans font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded ${
-                        regular
-                          ? 'bg-slate-100 text-slate-600'
-                          : 'bg-amber-100/80 text-amber-800'
-                      }`}
-                    >
-                      {tipoDeEntrega(plazo)}
+                    <span className="flex items-center gap-[6px]">
+                      <IndicadorRadio marcado={seleccionado} />
+                      <span
+                        className={`text-[11px] font-sans font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded ${
+                          regular ? 'bg-slate-100 text-slate-600' : 'bg-amber-100/80 text-amber-800'
+                        }`}
+                      >
+                        {tipoDeEntrega(plazo)}
+                      </span>
                     </span>
                     <span
                       className={`tabular-nums font-bold text-base mt-1 ${

@@ -35,6 +35,9 @@ public class EntidadAveria {
     @Column(name = "registrada_en", nullable = false)
     private LocalDateTime registradaEn;
 
+    @Column(name = "cancelada_en")
+    private LocalDateTime canceladaEn;
+
     /** Constructor requerido por JPA. */
     protected EntidadAveria() {
     }
@@ -77,5 +80,16 @@ public class EntidadAveria {
 
     public LocalDateTime getRegistradaEn() {
         return registradaEn;
+    }
+
+    public LocalDateTime getCanceladaEn() {
+        return canceladaEn;
+    }
+
+    /**
+     * @param canceladaEn instante real en que se deshizo la averia, UTC
+     */
+    public void marcarCancelada(LocalDateTime canceladaEn) {
+        this.canceladaEn = canceladaEn;
     }
 }

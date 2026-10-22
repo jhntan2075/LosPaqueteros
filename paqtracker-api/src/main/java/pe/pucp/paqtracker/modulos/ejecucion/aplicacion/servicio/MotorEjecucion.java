@@ -10,8 +10,10 @@ import pe.pucp.paqtracker.modelo.Bloqueo;
 import pe.pucp.paqtracker.modelo.EstadoVehiculo;
 import pe.pucp.paqtracker.modelo.Nodo;
 import pe.pucp.paqtracker.modelo.Pedido;
+import pe.pucp.paqtracker.modelo.TipoAveria;
 import pe.pucp.paqtracker.modelo.Tramo;
 import pe.pucp.paqtracker.modelo.Vehiculo;
+import pe.pucp.paqtracker.modulos.difusion.aplicacion.dto.AveriaEnCurso;
 import pe.pucp.paqtracker.modulos.difusion.aplicacion.dto.ContextoInstantanea;
 import pe.pucp.paqtracker.modulos.difusion.aplicacion.dto.MensajeEstadoEjecucion;
 import pe.pucp.paqtracker.modulos.difusion.aplicacion.dto.PedidoEnMapa;
@@ -21,6 +23,7 @@ import pe.pucp.paqtracker.modulos.difusion.aplicacion.servicio.RecorridoCamino;
 import pe.pucp.paqtracker.modulos.difusion.aplicacion.servicio.ServicioDifusion;
 import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.dto.AveriaProgramada;
 import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.dto.DetallePedido;
+import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.dto.EstimacionAveria;
 import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.dto.ResultadoRegistroPedido;
 import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.dto.SolicitudAveriaEnVivo;
 import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.dto.SolicitudPedidoEnVivo;
@@ -37,6 +40,8 @@ import pe.pucp.paqtracker.simulacion.Trasbordo;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZonedDateTime;
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -78,6 +83,8 @@ public final class MotorEjecucion {
     private final CodigosFlota codigosFlota;
     private final Set<Integer> bloqueosVigentes = new HashSet<>();
     private final GestorEventos agenda = new GestorEventos();
+    /** Averias aplicadas que siguen vigentes, por unidad; se difunden en cada instantanea. */
+    private final Map<Integer, AveriaEnCurso> averiasEnCurso = new HashMap<>();
     private volatile EstadoEjecucion estado = EstadoEjecucion.CONFIGURADA;
     private volatile MensajeEstadoEjecucion ultimaInstantanea;
     private int siguientePaso;
@@ -238,7 +245,7 @@ public final class MotorEjecucion {
                     || simulacion.tieneAveriaPendiente(idVehiculo)) {
                 throw new OperacionNoPermitidaException("La unidad " + codigo + " ya esta averiada");
             }
-            int instante = Math.max((int) Math.floor(minutoVisible()), simulacion.getUltimoInstante() + 1);
+            int instante = instanteParaAveria();
             agenda.encolar(new GestorEventos.EventoAveria(idVehiculo, solicitud.tipo(), instante));
             Averia averia = new Averia(instante, idVehiculo, solicitud.tipo());
             return new AveriaProgramada(configuracion.id(), codigo, solicitud.tipo().getNumero(),
@@ -246,6 +253,48 @@ public final class MotorEjecucion {
                     lineaTiempo.aMilisegundos(averia.getInstanteReincorporacion()),
                     averia.tieneTraslado() ? lineaTiempo.aMilisegundos(averia.getInstanteTraslado()) : null);
         });
+    }
+
+    /**
+     * Deshace la averia programada de una unidad mientras el motor aun no la aplica.
+     *
+     * @param codigoUnidad codigo visible de la unidad
+     * @throws RecursoNoEncontradoException  si la unidad no existe en la ejecucion
+     * @throws OperacionNoPermitidaException si la unidad no tiene una averia por aplicarse (ya se aplico)
+     */
+    public void cancelarAveria(String codigoUnidad) {
+        enHiloMotor(() -> {
+            int idVehiculo = codigosFlota.idDe(codigoUnidad).orElseThrow(() ->
+                    new RecursoNoEncontradoException("unidad", codigoUnidad + " en la ejecucion " + configuracion.id()));
+            if (!agenda.cancelar(idVehiculo)) {
+                throw new OperacionNoPermitidaException("La averia de " + codigoUnidad
+                        + " ya se aplico: no se puede deshacer");
+            }
+            return null;
+        });
+    }
+
+    /**
+     * Cuando se aplicaria y cuando volveria a operar una unidad si ahora se registrara una averia de cada
+     * tipo. No registra nada: es la misma cuenta que {@link #programarAveria}.
+     *
+     * @return una estimacion por tipo, de 1 a 3
+     */
+    public List<EstimacionAveria> estimarAverias() {
+        return enHiloMotor(() -> {
+            int instante = instanteParaAveria();
+            return Arrays.stream(TipoAveria.values()).map(tipo -> {
+                Averia averia = new Averia(instante, -1, tipo);
+                return new EstimacionAveria(tipo.getNumero(), lineaTiempo.aMilisegundos(instante),
+                        lineaTiempo.aMilisegundos(averia.getInstanteReincorporacion()),
+                        averia.tieneTraslado() ? lineaTiempo.aMilisegundos(averia.getInstanteTraslado()) : null);
+            }).toList();
+        });
+    }
+
+    /** Primer minuto en que el motor puede aplicar una averia registrada ahora. */
+    private int instanteParaAveria() {
+        return Math.max((int) Math.floor(minutoVisible()), simulacion.getUltimoInstante() + 1);
     }
 
     /**
@@ -399,6 +448,7 @@ public final class MotorEjecucion {
         }
         paso.getAveriasAplicadas().forEach(this::difundirAveria);
         for (Vehiculo vehiculo : paso.getUnidadesReincorporadas()) {
+            averiasEnCurso.remove(vehiculo.getId());
             String codigo = codigosFlota.codigo(vehiculo);
             evento("UNIDAD_REINCORPORADA", "Unidad " + codigo + " reincorporada tras su averia", instanteMs,
                     Map.of("unidad", codigo, "estado", vehiculo.getEstado().name()));
@@ -445,9 +495,14 @@ public final class MotorEjecucion {
         detalle.put("unidadesRespaldo", aplicada.respaldos().stream()
                 .map(respaldo -> codigosFlota.codigo(respaldo.getVehiculo())).toList());
         detalle.put("reincorporacionMs", lineaTiempo.aMilisegundos(aplicada.disponibleEn()));
+        Long trasladoMs = null;
         if (aplicada.trasladoEn() != AveriaAplicada.SIN_TRASLADO) {
-            detalle.put("trasladoCentralMs", lineaTiempo.aMilisegundos(aplicada.trasladoEn()));
+            trasladoMs = lineaTiempo.aMilisegundos(aplicada.trasladoEn());
+            detalle.put("trasladoCentralMs", trasladoMs);
         }
+        averiasEnCurso.put(aplicada.vehiculo().getId(), new AveriaEnCurso(averia.getTipo().getNumero(),
+                lineaTiempo.aMilisegundos(averia.getInstante()), lineaTiempo.aMilisegundos(aplicada.disponibleEn()),
+                trasladoMs));
         String liberados = pedidos.isEmpty() ? "" : ": " + pedidos.size() + " pedidos vuelven a planificarse";
         evento("UNIDAD_AVERIADA", "Unidad " + codigo + " averiada (tipo " + averia.getTipo().getNumero() + ")"
                 + liberados, lineaTiempo.aMilisegundos(averia.getInstante()), detalle);
@@ -510,7 +565,8 @@ public final class MotorEjecucion {
         ContextoInstantanea contexto = new ContextoInstantanea(configuracion.id(),
                 configuracion.tipoEscenario().name(), estado.name(), pasoSc++, minutoInicial, minuto, lineaTiempo,
                 ZonedDateTime.now(relojPared), reloj.getInicioReal(), reloj.getFactorAceleracion(), codigosFlota,
-                seguimiento.pedidosActivos(minuto), seguimiento.indicadores(simulacion, minuto));
+                seguimiento.pedidosActivos(minuto), seguimiento.indicadores(simulacion, minuto),
+                Map.copyOf(averiasEnCurso));
         ultimaInstantanea = difusion.difundirEstado(contexto, simulacion);
     }
 

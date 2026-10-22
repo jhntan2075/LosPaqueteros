@@ -5,9 +5,11 @@ import pe.pucp.paqtracker.comun.configuracion.PropiedadesDominio;
 import pe.pucp.paqtracker.comun.tiempo.LineaTiempo;
 import pe.pucp.paqtracker.modelo.Almacen;
 import pe.pucp.paqtracker.modelo.Bloqueo;
+import pe.pucp.paqtracker.modelo.EstadoVehiculo;
 import pe.pucp.paqtracker.modelo.Tramo;
 import pe.pucp.paqtracker.modelo.Vehiculo;
 import pe.pucp.paqtracker.modulos.difusion.aplicacion.dto.AlmacenEnMapa;
+import pe.pucp.paqtracker.modulos.difusion.aplicacion.dto.AveriaEnCurso;
 import pe.pucp.paqtracker.modulos.difusion.aplicacion.dto.BloqueoEnMapa;
 import pe.pucp.paqtracker.modulos.difusion.aplicacion.dto.ContextoInstantanea;
 import pe.pucp.paqtracker.modulos.difusion.aplicacion.dto.Coordenada;
@@ -136,11 +138,13 @@ public class ConstructorInstantanea {
             }
         }
         Almacen origen = transito == null ? vehiculo.getPosicion() : transito.getOrigen();
+        AveriaEnCurso averia = vehiculo.getEstado() == EstadoVehiculo.AVERIADA
+                ? contexto.averias().get(vehiculo.getId()) : null;
         return new UnidadEnMapa(vehiculo.getId(), contexto.codigosFlota().codigo(vehiculo),
                 NomenclaturaOperacion.tipoUnidad(vehiculo.getTipo()), vehiculo.getCapacidad(), carga,
                 (double) carga / vehiculo.getCapacidad(), vehiculo.getTipo().getVelocidad(),
                 vehiculo.getEstado().name(), NomenclaturaOperacion.codigoAlmacen(origen), ubicacion, tramoEnCurso,
-                rutaRestante, paradas);
+                rutaRestante, paradas, averia);
     }
 
     private TramoEnCurso construirTramo(Tramo tramo, LineaTiempo lineaTiempo) {

@@ -21,6 +21,13 @@ export const formatearHoraRelativa = (fecha: Date, referencia: Date) => {
   return dias === 0 ? formatearHora(fecha) : `${formatearHora(fecha)} +${dias}d`;
 };
 
+/** Momento respecto del reloj de la ejecución: "hoy 14:32", "mañana 23:00" o "24/10 15:00". */
+export const formatearMomento = (fecha: Date, referencia: Date) => {
+  const dias = diasDeDiferencia(referencia, fecha);
+  const dia = dias === 0 ? 'hoy' : dias === 1 ? 'mañana' : formatearDiaMes(fecha);
+  return `${dia} ${formatearHora(fecha)}`;
+};
+
 /** 240 → "4 h 00 min"; 38 → "38 min". */
 export const formatearDuracion = (minutos: number) => {
   const total = Math.max(0, Math.round(minutos));

@@ -18,6 +18,7 @@ import { PLAZOS_HORAS, UNIDADES, esPlazoRegular, type PlazoHoras, type TipoUnida
 import { ESTADO_EN_ESPERA, NOMBRE_HOLGURA, RANGO_HOLGURA, etiquetaPlazo } from '../../config/glosario';
 import { capitalizar, formatearMiles } from '../../lib/formato';
 import { useCerrarConEscape } from '../../hooks/useCerrarConEscape';
+import { useFocoAtrapado } from '../../hooks/useFocoAtrapado';
 import { useColaPedidos } from '../../hooks/usePedidos';
 import { useDatosOperacion } from '../../hooks/useDatosOperacion';
 import { useTrazabilidadPedido } from '../../hooks/useTrazabilidadPedido';
@@ -145,7 +146,9 @@ const DrawerDetallePedido: React.FC<{
   const hitos = useTrazabilidadPedido(ejecucionId, pedido.codigo, pedido.estado);
   const estadoInfo = ESTADOS[pedido.estado];
   const cerrarRef = useRef<HTMLButtonElement>(null);
+  const dialogo = useRef<HTMLElement>(null);
   useCerrarConEscape(true, onCerrar);
+  useFocoAtrapado(dialogo);
   useEffect(() => {
     cerrarRef.current?.focus();
   }, []);
@@ -154,6 +157,7 @@ const DrawerDetallePedido: React.FC<{
     <>
       <div className="fixed inset-0 z-30 bg-black/20" onClick={onCerrar} aria-hidden="true" />
       <aside
+        ref={dialogo}
         role="dialog"
         aria-modal="true"
         aria-labelledby="detalle-pedido-titulo"

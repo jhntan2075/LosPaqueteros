@@ -1,10 +1,14 @@
-import { defineConfig } from 'vite'
+import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 
 // Configuración de desarrollo con proxy inverso hacia paqtracker-api (Spring Boot en puerto 3000)
 // Esto replica el comportamiento del Nginx de producción (DA-06) y evita problemas de CORS.
 export default defineConfig({
   plugins: [react()],
+  test: {
+    environment: 'node',
+    include: ['src/**/*.test.{ts,tsx}'],
+  },
   server: {
     port: 5173,
     proxy: {

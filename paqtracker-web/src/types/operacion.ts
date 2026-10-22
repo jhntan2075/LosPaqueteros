@@ -41,7 +41,17 @@ export interface UnidadOperacion {
   conductor: string;
   alimentacion: { hora: string; cumplida: boolean };
   minutosOciosa?: number;
-  averia?: { tipo: 1 | 2 | 3; fueraDeServicio: string };
+  /** Avería vigente, solo si la unidad está averiada. */
+  averia?: AveriaUnidad;
+}
+
+export interface AveriaUnidad {
+  tipo: 1 | 2 | 3;
+  desde: Date;
+  /** Instante simulado en que vuelve a operar. */
+  vuelve: Date;
+  /** Traslado al almacén central (tipos 2 y 3); null en el tipo 1. */
+  trasladoCentral: Date | null;
 }
 
 export interface HitoTrazabilidad {

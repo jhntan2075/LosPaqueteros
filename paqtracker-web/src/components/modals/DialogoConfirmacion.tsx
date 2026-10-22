@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { useCerrarConEscape } from '../../hooks/useCerrarConEscape';
+import { useFocoAtrapado } from '../../hooks/useFocoAtrapado';
 
 // Confirmación de acciones que no se pueden deshacer. El foco arranca en "Cancelar": un Enter
 // apresurado no ejecuta la acción.
@@ -17,8 +18,11 @@ interface DialogoConfirmacionProps {
   onCancelar: () => void;
 }
 
-export const DialogoConfirmacion: React.FC<DialogoConfirmacionProps> = ({
-  abierto,
+/** Se monta solo mientras está abierto, para tomar el foco al abrir y devolverlo al cerrar. */
+export const DialogoConfirmacion: React.FC<DialogoConfirmacionProps> = ({ abierto, ...props }) =>
+  abierto ? <ContenidoConfirmacion {...props} /> : null;
+
+const ContenidoConfirmacion: React.FC<Omit<DialogoConfirmacionProps, 'abierto'>> = ({
   titulo,
   descripcion,
   textoConfirmar,
@@ -29,15 +33,17 @@ export const DialogoConfirmacion: React.FC<DialogoConfirmacionProps> = ({
   onCancelar,
 }) => {
   const cancelarRef = useRef<HTMLButtonElement>(null);
-  useCerrarConEscape(abierto && !enCurso, onCancelar);
+  const dialogo = useRef<HTMLDivElement>(null);
+  useCerrarConEscape(!enCurso, onCancelar);
+  useFocoAtrapado(dialogo);
   useEffect(() => {
-    if (abierto) cancelarRef.current?.focus();
-  }, [abierto]);
-  if (!abierto) return null;
+    cancelarRef.current?.focus();
+  }, []);
 
   return (
     <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4 leading-[normal]">
       <div
+        ref={dialogo}
         role="alertdialog"
         aria-modal="true"
         aria-labelledby="dialogo-confirmacion-titulo"
@@ -57,7 +63,7 @@ export const DialogoConfirmacion: React.FC<DialogoConfirmacionProps> = ({
             type="button"
             onClick={onCancelar}
             disabled={enCurso}
-            className="h-[34px] px-[14px] rounded-[4px] border border-[#CBD5E1] font-sans font-medium text-[13px] text-[#0F172A] hover:bg-[#F8FAFC] disabled:opacity-50"
+            className="h-[34px] px-[14px] rounded-[6px] border border-[#CBD5E1] font-sans font-medium text-[13px] text-[#0F172A] hover:bg-[#F8FAFC] disabled:opacity-50"
           >
             Cancelar
           </button>
@@ -65,7 +71,7 @@ export const DialogoConfirmacion: React.FC<DialogoConfirmacionProps> = ({
             type="button"
             onClick={onConfirmar}
             disabled={enCurso}
-            className="h-[34px] px-[14px] rounded-[4px] bg-[#B91C1C] hover:bg-[#991B1B] font-sans font-semibold text-[13px] text-white disabled:opacity-60"
+            className="h-[34px] px-[14px] rounded-[6px] bg-[#B91C1C] hover:bg-[#991B1B] font-sans font-semibold text-[13px] text-white disabled:opacity-60"
           >
             {enCurso && textoEnCurso ? textoEnCurso : textoConfirmar}
           </button>

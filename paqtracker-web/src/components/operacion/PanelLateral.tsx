@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { ALMACENES, CORTE_OCUPACION, UNIDADES } from '../../config/dominio';
-import { NOMBRE_HOLGURA, NOMBRE_INVENTARIO, RANGO_HOLGURA, etiquetaPlazo } from '../../config/glosario';
+import { ESTADO_UNIDAD, NOMBRE_HOLGURA, NOMBRE_INVENTARIO, RANGO_HOLGURA, etiquetaPlazo, nombreAveria } from '../../config/glosario';
+import { admisionDeAverias, useAveriaPendiente, useAverias } from '../../hooks/useAverias';
 import { useDatosOperacion } from '../../hooks/useDatosOperacion';
 import { useTrazabilidadPedido } from '../../hooks/useTrazabilidadPedido';
-import { capitalizar } from '../../lib/formato';
+import { capitalizar, formatearHora, formatearMomento } from '../../lib/formato';
 import { distanciaDesdeOrigen, fueraDelAlmacen, nivelDeOcupacion, pedidosEnRiesgo, unidadPorCodigo } from '../../lib/operacion';
 import { turnoVigente } from '../../lib/turnos';
 import type { Coordenada } from '../../types/domain';
@@ -14,6 +15,8 @@ import { COLOR_HOLGURA } from '../pedidos/estilos';
 import { PuntoHolgura } from '../pedidos/iconos';
 import { BitacoraEventos } from './BitacoraEventos';
 import { FilaConBarra, TituloSeccion } from './comunes';
+import { useAvisos } from '../../hooks/useAvisos';
+import { DialogoRegistrarAveria } from './DialogoRegistrarAveria';
 import { EstadoFlota } from './EstadoFlota';
 
 import trianguloAmbar from '../../assets/figma/pedidos/holgura-ambar-triangulo.svg';
@@ -202,13 +205,6 @@ const DetallePedido: React.FC<{ pedido: PedidoOperacion } & Omit<PanelLateralPro
 
 // --- Detalle de vehículo -------------------------------------------------------------------------
 
-const ESTADO_UNIDAD: Record<UnidadOperacion['estado'], string> = {
-  EN_RUTA: 'En ruta',
-  EN_REFRIGERIO: 'En refrigerio',
-  DISPONIBLE: 'Disponible',
-  FUERA_DE_TURNO: 'Fuera de turno',
-  AVERIADA: 'Averiada',
-};
 
 const Paradas: React.FC<{ unidad: UnidadOperacion; onSeleccionar: PanelLateralProps['onSeleccionar'] }> = ({ unidad, onSeleccionar }) => (
   <section className="px-[12px] pt-[9px] pb-[6px] flex flex-col gap-[6px]">
@@ -233,14 +229,43 @@ const Paradas: React.FC<{ unidad: UnidadOperacion; onSeleccionar: PanelLateralPr
   </section>
 );
 
-const DetalleVehiculo: React.FC<{ unidad: UnidadOperacion } & Omit<PanelLateralProps, 'seleccion' | 'onCerrar'>> = ({
-  unidad,
-  onSeleccionar,
-  onCentrar,
-}) => {
+/** Abre el diálogo de registro de avería; con unidad, ya elegida. */
+type AbrirRegistroAveria = (unidad?: string) => void;
+
+/** Recuadro de la avería vigente, con el mismo formato que los recuadros de holgura y ocupación. */
+const RecuadroAveria: React.FC<{ unidad: UnidadOperacion; reloj: Date }> = ({ unidad, reloj }) => (
+  <div className="border border-[#B91C1C] bg-[#FEF2F2] rounded-[4px] px-[12px] py-[8px] flex flex-col gap-[3px] text-[12px]">
+    <span className="flex items-center gap-[6px] font-semibold text-[13px] text-[#B91C1C]">
+      <span aria-hidden="true">✕</span> Averiada{unidad.averia && ` · ${nombreAveria(unidad.averia.tipo)}`}
+    </span>
+    {unidad.averia ? (
+      <>
+        <span className="text-[#0F172A] tabular-nums">
+          Desde {formatearMomento(unidad.averia.desde, reloj)} · vuelve a operar {formatearMomento(unidad.averia.vuelve, reloj)}
+        </span>
+        {unidad.averia.trasladoCentral && (
+          <span className="text-[#64748B] tabular-nums">Traslado al almacén central: {formatearMomento(unidad.averia.trasladoCentral, reloj)}</span>
+        )}
+      </>
+    ) : (
+      <span className="text-[#64748B]">Fuera de servicio hasta su reincorporación.</span>
+    )}
+  </div>
+);
+
+const DetalleVehiculo: React.FC<
+  { unidad: UnidadOperacion; onRegistrarAveria: AbrirRegistroAveria; onDeshacerAveria: (unidad: string) => void } & Omit<
+    PanelLateralProps,
+    'seleccion' | 'onCerrar'
+  >
+> = ({ unidad, onSeleccionar, onCentrar, onRegistrarAveria, onDeshacerAveria }) => {
   const [pestana, setPestana] = useState<'resumen' | 'ruta'>('resumen');
   const parametros = UNIDADES[unidad.tipo];
-  const { reloj } = useDatosOperacion();
+  const datos = useDatosOperacion();
+  const { reloj } = datos;
+  const pendiente = useAveriaPendiente(datos, unidad.codigo);
+  const admision = admisionDeAverias(datos);
+  const averiada = unidad.estado === 'AVERIADA';
   const turno = turnoVigente(reloj);
   const nivel = nivelDeOcupacion(unidad.carga, unidad.capacidad);
   const fraccion = unidad.capacidad === 0 ? 0 : unidad.carga / unidad.capacidad;
@@ -271,7 +296,23 @@ const DetalleVehiculo: React.FC<{ unidad: UnidadOperacion } & Omit<PanelLateralP
       <div className="flex-1 min-h-0 overflow-y-auto">
         {pestana === 'resumen' && (
           <>
-            <div className="p-[12px] border-b border-[#E2E8F0]">
+            <div className="p-[12px] border-b border-[#E2E8F0] flex flex-col gap-[8px]">
+              {averiada && <RecuadroAveria unidad={unidad} reloj={reloj} />}
+              {pendiente && (
+                <div className="border border-[#BFDBFE] bg-[#EFF6FF] rounded-[4px] px-[12px] py-[8px] flex items-center gap-[8px] text-[12px] text-[#1E40AF]">
+                  <p role="status">
+                    Avería registrada ({nombreAveria(pendiente.tipo).toLowerCase()}) · se aplica a las{' '}
+                    <span className="tabular-nums">{formatearHora(new Date(pendiente.instanteMs))}</span>
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => onDeshacerAveria(unidad.codigo)}
+                    className="ml-auto font-medium whitespace-nowrap hover:underline"
+                  >
+                    Cancelar avería
+                  </button>
+                </div>
+              )}
               <div className={`border rounded-[4px] px-[12px] pt-[8px] pb-[10px] flex flex-col gap-[8px] ${BORDE_NIVEL[nivel]}`}>
                 <div className="flex items-center justify-between">
                   <div className="flex flex-col">
@@ -297,7 +338,6 @@ const DetalleVehiculo: React.FC<{ unidad: UnidadOperacion } & Omit<PanelLateralP
             <div className="py-[4px] border-b border-[#E2E8F0]">
               <Dato etiqueta="Tipo / velocidad" valor={`${capitalizar(parametros.nombre)} · ${parametros.velocidadKmH} km/h`} />
 
-              {unidad.averia && <Dato etiqueta="Avería" valor={`tipo ${unidad.averia.tipo} · fuera ${unidad.averia.fueraDeServicio}`} />}
               <Dato etiqueta="Conductor" valor={unidad.conductor} />
               <Dato etiqueta="Turno vigente" valor={turno.actual} />
               <Dato etiqueta="Próximo turno" valor={turno.siguiente} />
@@ -318,11 +358,15 @@ const DetalleVehiculo: React.FC<{ unidad: UnidadOperacion } & Omit<PanelLateralP
         <button type="button" onClick={() => onCentrar(unidad.posicion)} className="font-sans font-medium text-[#1E40AF] hover:underline">
           Centrar en el mapa
         </button>
-        {pestana !== 'ruta' && unidad.ruta.length > 0 && (
-          <button type="button" onClick={() => setPestana('ruta')} className="font-sans font-medium text-[#1E40AF] hover:underline">
-            Ver ruta completa ›
-          </button>
-        )}
+        {!averiada &&
+          !pendiente &&
+          (admision.admite ? (
+            <button type="button" onClick={() => onRegistrarAveria(unidad.codigo)} className="font-medium text-[#B91C1C] hover:underline">
+              Registrar avería
+            </button>
+          ) : (
+            <span className="text-[#64748B]">{admision.motivo}</span>
+          ))}
       </Acciones>
     </>
   );
@@ -421,10 +465,15 @@ const DetalleAlmacen: React.FC<{ codigo: string } & Omit<PanelLateralProps, 'sel
 
 // --- Incidencias ---------------------------------------------------------------------------------
 
-const ListaIncidencias: React.FC<Pick<PanelLateralProps, 'onSeleccionar' | 'onCentrar'>> = ({ onSeleccionar, onCentrar }) => {
+const ListaIncidencias: React.FC<Pick<PanelLateralProps, 'onSeleccionar' | 'onCentrar'> & { onRegistrarAveria: AbrirRegistroAveria }> = ({
+  onSeleccionar,
+  onCentrar,
+  onRegistrarAveria,
+}) => {
   const datos = useDatosOperacion();
   const riesgo = pedidosEnRiesgo(datos);
   const averiadas = datos.flota.filter((u) => u.estado === 'AVERIADA');
+  const admision = admisionDeAverias(datos);
   const bloqueos = datos.bloqueos;
   return (
     <div className="flex-1 min-h-0 overflow-y-auto">
@@ -443,14 +492,30 @@ const ListaIncidencias: React.FC<Pick<PanelLateralProps, 'onSeleccionar' | 'onCe
         ))}
       </section>
       <section className="px-[12px] pt-[10px] pb-[8px] flex flex-col gap-[4px] border-b border-[#E2E8F0]">
-        <TituloSeccion derecha={averiadas.length}>Averías activas</TituloSeccion>
+        <TituloSeccion
+          derecha={
+            <span className="flex items-center gap-[10px]">
+              {averiadas.length}
+              {admision.admite && (
+                <button type="button" onClick={() => onRegistrarAveria()} className="font-sans font-medium text-[#B91C1C] hover:underline">
+                  + Registrar avería
+                </button>
+              )}
+            </span>
+          }
+        >
+          Averías activas
+        </TituloSeccion>
+        {!admision.admite && <p className="text-[12px] text-[#64748B]">{admision.motivo}</p>}
+        {averiadas.length === 0 && <p className="text-[12px] text-[#64748B]">Ninguna unidad averiada.</p>}
         {averiadas.map((u) => (
           <FilaConBarra
             key={u.codigo}
             color="rojo"
             titulo={nombreUnidad(u)}
-            detalle={`tipo ${u.averia?.tipo} · fuera de servicio ${u.averia?.fueraDeServicio}`}
-            detalleMono
+            detalle={
+              u.averia ? `${nombreAveria(u.averia.tipo)} · vuelve ${formatearMomento(u.averia.vuelve, datos.reloj)}` : 'Fuera de servicio'
+            }
             onClick={() => onSeleccionar({ tipo: 'vehiculo', codigo: u.codigo })}
             className="py-[5px] rounded"
           />
@@ -480,6 +545,19 @@ export const PanelLateral: React.FC<PanelLateralProps> = ({
   onCentrar,
 }) => {
   const datos = useDatosOperacion();
+  const mostrarAviso = useAvisos();
+  const { cancelar } = useAverias();
+  const deshacerAveria = async (codigoUnidad: string) => {
+    try {
+      await cancelar(datos.ejecucionId, codigoUnidad);
+      mostrarAviso({ texto: `Avería de ${codigoUnidad} cancelada: sigue en servicio.` });
+    } catch (e) {
+      mostrarAviso({ tipo: 'error', texto: e instanceof Error ? e.message : 'No se pudo deshacer la avería.' });
+    }
+  };
+  // Diálogo de registro de avería: null cerrado; con unidad, abierto desde su detalle.
+  const [registro, setRegistro] = useState<{ unidad?: string } | null>(null);
+  const abrirRegistro: AbrirRegistroAveria = (codigo) => setRegistro({ unidad: codigo });
   const esDetalle = seleccion.tipo === 'pedido' || seleccion.tipo === 'vehiculo' || seleccion.tipo === 'almacen';
   const pedido = seleccion.tipo === 'pedido' ? datos.pedidos[seleccion.codigo] : undefined;
   const unidad = seleccion.tipo === 'vehiculo' ? unidadPorCodigo(datos, seleccion.codigo) : undefined;
@@ -513,13 +591,37 @@ export const PanelLateral: React.FC<PanelLateralProps> = ({
         </button>
       </div>
       {pedido && <DetallePedido key={pedido.codigo} pedido={pedido} onSeleccionar={onSeleccionar} onCentrar={onCentrar} />}
-      {unidad && <DetalleVehiculo key={unidad.codigo} unidad={unidad} onSeleccionar={onSeleccionar} onCentrar={onCentrar} />}
+      {unidad && (
+        <DetalleVehiculo
+          key={unidad.codigo}
+          unidad={unidad}
+          onSeleccionar={onSeleccionar}
+          onCentrar={onCentrar}
+          onRegistrarAveria={abrirRegistro}
+          onDeshacerAveria={deshacerAveria}
+        />
+      )}
       {seleccion.tipo === 'almacen' && (
         <DetalleAlmacen key={seleccion.codigo} codigo={seleccion.codigo} onSeleccionar={onSeleccionar} onCentrar={onCentrar} />
       )}
-      {seleccion.tipo === 'incidencias' && <ListaIncidencias onSeleccionar={onSeleccionar} onCentrar={onCentrar} />}
+      {seleccion.tipo === 'incidencias' && <ListaIncidencias onSeleccionar={onSeleccionar} onCentrar={onCentrar} onRegistrarAveria={abrirRegistro} />}
       {seleccion.tipo === 'flota' && <EstadoFlota />}
       {seleccion.tipo === 'bitacora' && <BitacoraEventos />}
+      {registro && (
+        <DialogoRegistrarAveria
+          unidadInicial={registro.unidad}
+          onCerrar={() => setRegistro(null)}
+          onRegistrada={(respuesta) => {
+            setRegistro(null);
+            onSeleccionar({ tipo: 'vehiculo', codigo: respuesta.unidad });
+            mostrarAviso({
+              texto: `Avería registrada en ${respuesta.unidad} · vuelve a operar ${formatearMomento(new Date(respuesta.reincorporacionMs), datos.reloj)}`,
+              // Deshacer es la acción más valiosa justo después de registrar; la bitácora está a una pestaña.
+              accion: { etiqueta: 'Deshacer', alHacer: () => deshacerAveria(respuesta.unidad) },
+            });
+          }}
+        />
+      )}
     </aside>
   );
 };

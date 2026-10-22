@@ -1,4 +1,5 @@
 import { CORTE_HOLGURA, CORTE_INVENTARIO, CORTE_OCUPACION, esPlazoRegular } from './dominio';
+import type { EstadoUnidad } from '../types/operacion';
 import type { NivelHolgura } from '../types/pedidos';
 
 // Glosario de la interfaz: un solo nombre por concepto en todas las pantallas. Si un término cambia,
@@ -47,6 +48,40 @@ export const tipoDeEntrega = (plazoHoras: number) => (esPlazoRegular(plazoHoras)
 
 /** "Regular 36 h", "Priorizado 4 h". */
 export const etiquetaPlazo = (plazoHoras: number) => `${tipoDeEntrega(plazoHoras)} ${plazoHoras} h`;
+
+/**
+ * Tipos de avería (TipoAveria del planificador): nombre, un ejemplo reconocible, cuánto dura y qué pasa con
+ * los pedidos que la unidad lleva. La hora exacta de reincorporación la calcula el servidor.
+ */
+const REPLANIFICA = (varios: boolean) =>
+  `${varios ? 'vuelven a planificarse con otras unidades' : 'vuelve a planificarse con otra unidad'}. La unidad se traslada al almacén central.`;
+
+export const TIPO_AVERIA: Record<
+  1 | 2 | 3,
+  { nombre: string; ejemplo: string; duracion: string; impacto: (varios: boolean) => string }
+> = {
+  1: {
+    nombre: 'Menor',
+    ejemplo: 'llanta desinflada',
+    duracion: '2 h detenida en el lugar',
+    impacto: (varios) =>
+      varios ? 'se quedan en la unidad; otra unidad en ruta puede recogerlos.' : 'se queda en la unidad; otra unidad en ruta puede recogerlo.',
+  },
+  2: { nombre: 'Intermedia', ejemplo: 'falla de transmisión', duracion: 'Hasta el fin del siguiente turno', impacto: REPLANIFICA },
+  3: { nombre: 'Mayor', ejemplo: 'mantenimiento', duracion: '2 días o más', impacto: REPLANIFICA },
+};
+
+/** "Tipo 2 · Intermedia". */
+export const nombreAveria = (tipo: 1 | 2 | 3) => `Tipo ${tipo} · ${TIPO_AVERIA[tipo].nombre}`;
+
+/** Estado de una unidad de la flota. */
+export const ESTADO_UNIDAD: Record<EstadoUnidad, string> = {
+  EN_RUTA: 'En ruta',
+  EN_REFRIGERIO: 'En refrigerio',
+  DISPONIBLE: 'Disponible',
+  FUERA_DE_TURNO: 'Fuera de turno',
+  AVERIADA: 'Averiada',
+};
 
 /** Pedido registrado que aún no sale a ruta (estado REGISTRADO del servidor). */
 export const ESTADO_EN_ESPERA = 'En espera';

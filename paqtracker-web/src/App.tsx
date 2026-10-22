@@ -1,11 +1,13 @@
 import { useCallback, useState } from 'react';
 import { TopNavbar, type TabModulo } from './components/layout/TopNavbar';
+import { ProveedorAvisos } from './components/layout/Avisos';
 import { EstadoConexion } from './components/layout/EstadoConexion';
 import { FooterBar } from './components/layout/FooterBar';
 import { ModuloOperacion } from './components/operacion/ModuloOperacion';
 import { ModuloPedidos } from './components/pedidos/ModuloPedidos';
 import { ModuloSimulacion } from './components/simulacion/ModuloSimulacion';
 import { ContextoDatosOperacion, useEjecucionEnVivo } from './hooks/useDatosOperacion';
+import { ProveedorAverias } from './components/layout/ProveedorAverias';
 import { useConexionStomp } from './hooks/useConexionStomp';
 import { useSegundosDesde } from './hooks/useSegundosDesde';
 import { formatearFechaNumerica, formatearMiles } from './lib/formato';
@@ -109,61 +111,65 @@ export default function App() {
   const relojDiaADia = datos && tabActiva !== 'simulacion' ? datos.reloj : null;
 
   return (
-    <div className="flex flex-col h-screen w-screen overflow-hidden bg-[#F8FAFC]">
-      <TopNavbar
-        tabActiva={tabActiva}
-        onCambiarTab={(tab) => (tab === 'pedidos' ? abrirPedidos('cola') : setTabActiva(tab))}
-        relojSimulado={relojDiaADia ? formatearFechaNumerica(relojDiaADia, true) : undefined}
-        turno={relojDiaADia ? turnoVigente(relojDiaADia).actual : undefined}
-        conectado={conectado}
-      />
+    <ProveedorAvisos>
+      <ProveedorAverias>
+        <div className="flex flex-col h-screen w-screen overflow-hidden bg-[#F8FAFC]">
+          <TopNavbar
+            tabActiva={tabActiva}
+            onCambiarTab={(tab) => (tab === 'pedidos' ? abrirPedidos('cola') : setTabActiva(tab))}
+            relojSimulado={relojDiaADia ? formatearFechaNumerica(relojDiaADia, true) : undefined}
+            turno={relojDiaADia ? turnoVigente(relojDiaADia).actual : undefined}
+            conectado={conectado}
+          />
 
-      <ContextoDatosOperacion.Provider value={datos}>
-        <div className="flex-1 flex flex-col min-h-0 min-w-0 overflow-hidden">
-          <main className="flex-1 relative flex overflow-hidden bg-[#F8FAFC]">
-            {tabActiva === 'operacion' &&
-              (datos ? (
-                <ModuloOperacion
-                  subvista={subvistaOperacion}
-                  onCambiarSubvista={setSubvistaOperacion}
-                  onHoverCoordenada={setNodoHover}
-                  pedidoAEnfocar={pedidoAEnfocar}
-                  onPedidoEnfocado={limpiarPedidoAEnfocar}
+          <ContextoDatosOperacion.Provider value={datos}>
+            <div className="flex-1 flex flex-col min-h-0 min-w-0 overflow-hidden">
+              <main className="flex-1 relative flex overflow-hidden bg-[#F8FAFC]">
+                {tabActiva === 'operacion' &&
+                  (datos ? (
+                    <ModuloOperacion
+                      subvista={subvistaOperacion}
+                      onCambiarSubvista={setSubvistaOperacion}
+                      onHoverCoordenada={setNodoHover}
+                      pedidoAEnfocar={pedidoAEnfocar}
+                      onPedidoEnfocado={limpiarPedidoAEnfocar}
+                    />
+                  ) : (
+                    sinDatos
+                  ))}
+
+                {tabActiva === 'pedidos' &&
+                  (datos ? (
+                    <ModuloPedidos vista={vistaPedidos} onCambiarVista={setVistaPedidos} onVerEnLienzo={verPedidoEnLienzo} />
+                  ) : (
+                    sinDatos
+                  ))}
+
+                {/* Simulación queda montada aunque se cambie de pestaña: la corrida elegida no se pierde */}
+                <div className={tabActiva === 'simulacion' ? 'flex-1 flex flex-col min-h-0 min-w-0' : 'hidden'}>
+                  <ModuloSimulacion />
+                </div>
+
+                {tabActiva === 'metricas' && (datos ? <PanelMetricas datos={datos} /> : sinDatos)}
+              </main>
+
+              {datos && !pantallaCompleta && tabActiva !== 'simulacion' && (
+                <FooterBar
+                  nodoSeleccionado={enLienzo ? nodoHover : undefined}
+                  totalPedidos={datos.resumen.total}
+                  entregados={datos.resumen.entregados}
+                  enRuta={datos.resumen.enRuta}
+                  criticos={pedidosEnRiesgo(datos).filter((p) => p.nivel === 'ROJO').length}
+                  bloqueosActivos={datos.bloqueos.length}
+                  averiasActivas={datos.flota.filter((u) => u.estado === 'AVERIADA').length}
+                  segundosDesdeActualizacion={segundosActualizado}
+                  conectado={conectado}
                 />
-              ) : (
-                sinDatos
-              ))}
-
-            {tabActiva === 'pedidos' &&
-              (datos ? (
-                <ModuloPedidos vista={vistaPedidos} onCambiarVista={setVistaPedidos} onVerEnLienzo={verPedidoEnLienzo} />
-              ) : (
-                sinDatos
-              ))}
-
-            {/* Simulación queda montada aunque se cambie de pestaña: la corrida elegida no se pierde */}
-            <div className={tabActiva === 'simulacion' ? 'flex-1 flex flex-col min-h-0 min-w-0' : 'hidden'}>
-              <ModuloSimulacion />
+              )}
             </div>
-
-            {tabActiva === 'metricas' && (datos ? <PanelMetricas datos={datos} /> : sinDatos)}
-          </main>
-
-          {datos && !pantallaCompleta && tabActiva !== 'simulacion' && (
-            <FooterBar
-              nodoSeleccionado={enLienzo ? nodoHover : undefined}
-              totalPedidos={datos.resumen.total}
-              entregados={datos.resumen.entregados}
-              enRuta={datos.resumen.enRuta}
-              criticos={pedidosEnRiesgo(datos).filter((p) => p.nivel === 'ROJO').length}
-              bloqueosActivos={datos.bloqueos.length}
-              averiasActivas={datos.flota.filter((u) => u.estado === 'AVERIADA').length}
-              segundosDesdeActualizacion={segundosActualizado}
-              conectado={conectado}
-            />
-          )}
+          </ContextoDatosOperacion.Provider>
         </div>
-      </ContextoDatosOperacion.Provider>
-    </div>
+      </ProveedorAverias>
+    </ProveedorAvisos>
   );
 }
