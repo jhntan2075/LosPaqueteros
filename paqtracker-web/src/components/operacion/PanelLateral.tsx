@@ -48,16 +48,16 @@ const PESTANAS: { tipo: 'incidencias' | 'flota' | 'bitacora'; etiqueta: string }
 ];
 
 const BORDE_NIVEL: Record<NivelHolgura, string> = {
-  ROJO: 'border-[#B91C1C]',
-  AMBAR: 'border-[#B45309]',
-  VERDE: 'border-[#15803D]',
-  CERRADO: 'border-[#CBD5E1]',
+  ROJO: 'border-critical-600',
+  AMBAR: 'border-warn-500',
+  VERDE: 'border-ok-600',
+  CERRADO: 'border-neutral-300',
 };
 const FONDO_NIVEL: Record<NivelHolgura, string> = {
-  ROJO: 'bg-[#B91C1C]',
-  AMBAR: 'bg-[#B45309]',
-  VERDE: 'bg-[#15803D]',
-  CERRADO: 'bg-[#94A3B8]',
+  ROJO: 'bg-critical-600',
+  AMBAR: 'bg-warn-500',
+  VERDE: 'bg-ok-600',
+  CERRADO: 'bg-neutral-400',
 };
 
 const Semaforo: React.FC<{ nivel: NivelHolgura }> = ({ nivel }) =>
@@ -65,8 +65,8 @@ const Semaforo: React.FC<{ nivel: NivelHolgura }> = ({ nivel }) =>
 
 const Dato: React.FC<{ etiqueta: string; valor: React.ReactNode }> = ({ etiqueta, valor }) => (
   <div className="h-[22px] px-[12px] flex items-center justify-between gap-[12px] text-[12px]">
-    <span className="font-sans text-[#64748B] whitespace-nowrap">{etiqueta}</span>
-    <span className="tabular-nums text-[#0F172A] whitespace-nowrap truncate">{valor}</span>
+    <span className="font-sans text-neutral-500 whitespace-nowrap">{etiqueta}</span>
+    <span className="tabular-nums text-neutral-900 whitespace-nowrap truncate">{valor}</span>
   </div>
 );
 
@@ -76,7 +76,7 @@ const Subpestanas = <T extends string>({ opciones, activa, onCambiar, derecha }:
   onCambiar: (valor: T) => void;
   derecha?: React.ReactNode;
 }) => (
-  <div className="h-[29px] px-[12px] flex items-center gap-[14px] border-b border-[#E2E8F0] text-[12px]" role="tablist">
+  <div className="h-[29px] px-[12px] flex items-center gap-[14px] border-b border-neutral-200 text-[12px]" role="tablist">
     {opciones.map(({ valor, etiqueta }) => (
       <button
         key={valor}
@@ -84,29 +84,29 @@ const Subpestanas = <T extends string>({ opciones, activa, onCambiar, derecha }:
         role="tab"
         aria-selected={activa === valor}
         onClick={() => onCambiar(valor)}
-        className={`font-sans ${activa === valor ? 'font-semibold text-[#0F172A]' : 'text-[#64748B] hover:text-[#0F172A]'}`}
+        className={`font-sans ${activa === valor ? 'font-semibold text-neutral-900' : 'text-neutral-500 hover:text-neutral-900'}`}
       >
         {etiqueta}
       </button>
     ))}
-    {derecha && <span className="ml-auto tabular-nums text-[#64748B]">{derecha}</span>}
+    {derecha && <span className="ml-auto tabular-nums text-neutral-500">{derecha}</span>}
   </div>
 );
 
 const EncabezadoObjeto: React.FC<{ onVolver: () => void; titulo: React.ReactNode; estado: string }> = ({ onVolver, titulo, estado }) => (
-  <div className="px-[12px] pt-[9px] pb-[9px] border-b border-[#E2E8F0] flex flex-col gap-[6px]">
-    <button type="button" onClick={onVolver} className="self-start font-sans text-[12px] text-[#1E40AF] hover:underline">
+  <div className="px-[12px] pt-[9px] pb-[9px] border-b border-neutral-200 flex flex-col gap-[6px]">
+    <button type="button" onClick={onVolver} className="self-start font-sans text-[12px] text-primary-600 hover:underline">
       ‹ Volver
     </button>
     <div className="flex items-center gap-[8px]">
-      <h3 className="tabular-nums font-semibold text-[14px] text-[#0F172A] flex items-center gap-[7px]">{titulo}</h3>
-      <span className="ml-auto border border-[#E2E8F0] rounded-[4px] px-[6px] py-[2px] font-sans font-medium text-[12px] text-[#0F172A]">{estado}</span>
+      <h3 className="tabular-nums font-semibold text-[14px] text-neutral-900 flex items-center gap-[7px]">{titulo}</h3>
+      <span className="ml-auto border border-neutral-200 rounded-[4px] px-[6px] py-[2px] font-sans font-medium text-[12px] text-neutral-900">{estado}</span>
     </div>
   </div>
 );
 
 const Acciones: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <div className="h-[32px] px-[12px] flex items-center justify-between border-t border-[#E2E8F0] text-[12px] shrink-0">{children}</div>
+  <div className="h-[32px] px-[12px] flex items-center justify-between border-t border-neutral-200 text-[12px] shrink-0">{children}</div>
 );
 
 const nombreUnidad = (u: UnidadOperacion) => `${capitalizar(UNIDADES[u.tipo].nombre)} ${u.codigo}`;
@@ -120,14 +120,14 @@ const Trazabilidad: React.FC<{ hitos: HitoTrazabilidad[] }> = ({ hitos }) => {
     <section className="px-[12px] pt-[9px] pb-[6px] flex flex-col gap-[8px]">
       <TituloSeccion derecha={reasignaciones > 0 ? `${reasignaciones} reasignación${reasignaciones > 1 ? 'es' : ''}` : undefined}>Trazabilidad</TituloSeccion>
       <ol className="flex flex-col gap-[8px]">
-        {hitos.length === 0 && <li className="font-sans text-[12px] text-[#64748B]">Sin hitos registrados.</li>}
+        {hitos.length === 0 && <li className="font-sans text-[12px] text-neutral-500">Sin hitos registrados.</li>}
         {hitos.map((hito, i) => (
           <li key={`${hito.titulo}-${i}`} className="flex gap-[10px] text-[12px] leading-[normal]">
-            <time className="w-[34px] tabular-nums text-[#64748B] shrink-0">{hito.hora}</time>
-            <span className={`mt-[4px] size-[6px] rounded-full shrink-0 ${hito.reciente ? 'bg-[#1E40AF]' : 'bg-[#94A3B8]'}`} />
+            <time className="w-[34px] tabular-nums text-neutral-500 shrink-0">{hito.hora}</time>
+            <span className={`mt-[4px] size-[6px] rounded-full shrink-0 ${hito.reciente ? 'bg-primary-600' : 'bg-neutral-400'}`} />
             <span className="flex flex-col min-w-0">
-              <span className="font-sans font-semibold text-[#0F172A]">{hito.titulo}</span>
-              <span className="font-sans text-[#64748B] truncate">{hito.detalle}</span>
+              <span className="font-sans font-semibold text-neutral-900">{hito.titulo}</span>
+              <span className="font-sans text-neutral-500 truncate">{hito.detalle}</span>
             </span>
           </li>
         ))}
@@ -151,24 +151,24 @@ const DetallePedido: React.FC<{ pedido: PedidoOperacion } & Omit<PanelLateralPro
     <>
       <EncabezadoObjeto onVolver={() => onSeleccionar({ tipo: 'incidencias' })} titulo={`Pedido ${pedido.codigo}`} estado={pedido.estado} />
       <div className="flex-1 min-h-0 overflow-y-auto">
-        <div className="p-[12px] border-b border-[#E2E8F0]">
+        <div className="p-[12px] border-b border-neutral-200">
           <div className={`border rounded-[4px] px-[12px] py-[8px] flex items-center justify-between ${BORDE_NIVEL[pedido.nivel]}`}>
             <div className="flex flex-col">
-              <span className="flex items-center gap-[8px] font-sans text-[12px] text-[#64748B]">
+              <span className="flex items-center gap-[8px] font-sans text-[12px] text-neutral-500">
                 <Semaforo nivel={pedido.nivel} /> holgura restante
               </span>
               <span className={`tabular-nums font-semibold text-[22px] ${COLOR_HOLGURA[pedido.nivel]}`}>{pedido.holgura}</span>
             </div>
             <div className="flex flex-col items-end text-[12px]">
               <span className={`tabular-nums ${COLOR_HOLGURA[pedido.nivel]}`}>{Math.round(fraccion * 100)} % del plazo total</span>
-              <span className="font-sans text-[#64748B]">
+              <span className="font-sans text-neutral-500">
                 {NOMBRE_HOLGURA[pedido.nivel]}
                 {pedido.nivel !== 'CERRADO' && ` · ${RANGO_HOLGURA[pedido.nivel]}`}
               </span>
             </div>
           </div>
         </div>
-        <div className="py-[4px] border-b border-[#E2E8F0]">
+        <div className="py-[4px] border-b border-neutral-200">
           <Dato etiqueta="Cliente" valor={pedido.cliente} />
           <Dato etiqueta="Cantidad" valor={`${pedido.cantidad} unidades de P`} />
           <Dato etiqueta="Tipo de entrega" valor={etiquetaPlazo(pedido.plazoHoras)} />
@@ -195,7 +195,7 @@ const DetallePedido: React.FC<{ pedido: PedidoOperacion } & Omit<PanelLateralPro
         <Trazabilidad hitos={hitos} />
       </div>
       <Acciones>
-        <button type="button" onClick={() => onCentrar(pedido.destino)} className="font-sans font-medium text-[#1E40AF] hover:underline">
+        <button type="button" onClick={() => onCentrar(pedido.destino)} className="font-sans font-medium text-primary-600 hover:underline">
           Centrar en el mapa
         </button>
       </Acciones>
@@ -209,20 +209,20 @@ const DetallePedido: React.FC<{ pedido: PedidoOperacion } & Omit<PanelLateralPro
 const Paradas: React.FC<{ unidad: UnidadOperacion; onSeleccionar: PanelLateralProps['onSeleccionar'] }> = ({ unidad, onSeleccionar }) => (
   <section className="px-[12px] pt-[9px] pb-[6px] flex flex-col gap-[6px]">
     <TituloSeccion derecha={unidad.totalParadas > 0 ? `parada ${unidad.paradaActual} de ${unidad.totalParadas}` : undefined}>Próximas paradas</TituloSeccion>
-    {unidad.paradas.length === 0 && <p className="font-sans text-[12px] text-[#64748B]">Sin paradas asignadas.</p>}
+    {unidad.paradas.length === 0 && <p className="font-sans text-[12px] text-neutral-500">Sin paradas asignadas.</p>}
     {unidad.paradas.map((p) => (
       <button
         key={p.pedido}
         type="button"
         onClick={() => onSeleccionar({ tipo: 'pedido', codigo: p.pedido })}
-        className="h-[24px] flex items-center gap-[8px] text-[12px] hover:bg-[#F8FAFC] -mx-[4px] px-[4px] rounded"
+        className="h-[24px] flex items-center gap-[8px] text-[12px] hover:bg-neutral-50 -mx-[4px] px-[4px] rounded"
       >
         <Semaforo nivel={p.nivel} />
-        <span className="tabular-nums font-semibold text-[#0F172A]">{p.pedido}</span>
-        <span className="tabular-nums text-[#64748B]">
+        <span className="tabular-nums font-semibold text-neutral-900">{p.pedido}</span>
+        <span className="tabular-nums text-neutral-500">
           ({p.destino.x},{p.destino.y})
         </span>
-        <span className="ml-auto tabular-nums text-[#64748B]">ETA {p.eta}</span>
+        <span className="ml-auto tabular-nums text-neutral-500">ETA {p.eta}</span>
         <span className={`tabular-nums font-medium ${COLOR_HOLGURA[p.nivel]}`}>{p.holgura}</span>
       </button>
     ))}
@@ -234,21 +234,21 @@ type AbrirRegistroAveria = (unidad?: string) => void;
 
 /** Recuadro de la avería vigente, con el mismo formato que los recuadros de holgura y ocupación. */
 const RecuadroAveria: React.FC<{ unidad: UnidadOperacion; reloj: Date }> = ({ unidad, reloj }) => (
-  <div className="border border-[#B91C1C] bg-[#FEF2F2] rounded-[4px] px-[12px] py-[8px] flex flex-col gap-[3px] text-[12px]">
-    <span className="flex items-center gap-[6px] font-semibold text-[13px] text-[#B91C1C]">
+  <div className="border border-critical-600 bg-critical-50 rounded-[4px] px-[12px] py-[8px] flex flex-col gap-[3px] text-[12px]">
+    <span className="flex items-center gap-[6px] font-semibold text-[13px] text-critical-600">
       <span aria-hidden="true">✕</span> Averiada{unidad.averia && ` · ${nombreAveria(unidad.averia.tipo)}`}
     </span>
     {unidad.averia ? (
       <>
-        <span className="text-[#0F172A] tabular-nums">
+        <span className="text-neutral-900 tabular-nums">
           Desde {formatearMomento(unidad.averia.desde, reloj)} · vuelve a operar {formatearMomento(unidad.averia.vuelve, reloj)}
         </span>
         {unidad.averia.trasladoCentral && (
-          <span className="text-[#64748B] tabular-nums">Traslado al almacén central: {formatearMomento(unidad.averia.trasladoCentral, reloj)}</span>
+          <span className="text-neutral-500 tabular-nums">Traslado al almacén central: {formatearMomento(unidad.averia.trasladoCentral, reloj)}</span>
         )}
       </>
     ) : (
-      <span className="text-[#64748B]">Fuera de servicio hasta su reincorporación.</span>
+      <span className="text-neutral-500">Fuera de servicio hasta su reincorporación.</span>
     )}
   </div>
 );
@@ -296,10 +296,10 @@ const DetalleVehiculo: React.FC<
       <div className="flex-1 min-h-0 overflow-y-auto">
         {pestana === 'resumen' && (
           <>
-            <div className="p-[12px] border-b border-[#E2E8F0] flex flex-col gap-[8px]">
+            <div className="p-[12px] border-b border-neutral-200 flex flex-col gap-[8px]">
               {averiada && <RecuadroAveria unidad={unidad} reloj={reloj} />}
               {pendiente && (
-                <div className="border border-[#BFDBFE] bg-[#EFF6FF] rounded-[4px] px-[12px] py-[8px] flex items-center gap-[8px] text-[12px] text-[#1E40AF]">
+                <div className="border border-primary-100 bg-primary-50 rounded-[4px] px-[12px] py-[8px] flex items-center gap-[8px] text-[12px] text-primary-600">
                   <p role="status">
                     Avería registrada ({nombreAveria(pendiente.tipo).toLowerCase()}) · se aplica a las{' '}
                     <span className="tabular-nums">{formatearHora(new Date(pendiente.instanteMs))}</span>
@@ -316,7 +316,7 @@ const DetalleVehiculo: React.FC<
               <div className={`border rounded-[4px] px-[12px] pt-[8px] pb-[10px] flex flex-col gap-[8px] ${BORDE_NIVEL[nivel]}`}>
                 <div className="flex items-center justify-between">
                   <div className="flex flex-col">
-                    <span className="flex items-center gap-[8px] font-sans text-[12px] text-[#64748B]">
+                    <span className="flex items-center gap-[8px] font-sans text-[12px] text-neutral-500">
                       <Semaforo nivel={nivel} /> ocupación
                     </span>
                     <span className={`tabular-nums font-semibold text-[22px] ${COLOR_HOLGURA[nivel]}`}>
@@ -325,17 +325,17 @@ const DetalleVehiculo: React.FC<
                   </div>
                   <div className="flex flex-col items-end text-[12px]">
                     <span className={`tabular-nums ${COLOR_HOLGURA[nivel]}`}>{Math.round(fraccion * 100)} % de capacidad</span>
-                    <span className="font-sans text-[#64748B]">
+                    <span className="font-sans text-neutral-500">
                       ámbar desde {CORTE_OCUPACION.ambar * 100} %, rojo desde {CORTE_OCUPACION.rojo * 100} %
                     </span>
                   </div>
                 </div>
-                <div className="h-[4px] bg-[#E2E8F0] rounded-full overflow-hidden">
+                <div className="h-[4px] bg-neutral-200 rounded-full overflow-hidden">
                   <div className={`h-full rounded-full ${FONDO_NIVEL[nivel]}`} style={{ width: `${Math.min(100, fraccion * 100)}%` }} />
                 </div>
               </div>
             </div>
-            <div className="py-[4px] border-b border-[#E2E8F0]">
+            <div className="py-[4px] border-b border-neutral-200">
               <Dato etiqueta="Tipo / velocidad" valor={`${capitalizar(parametros.nombre)} · ${parametros.velocidadKmH} km/h`} />
 
               <Dato etiqueta="Conductor" valor={unidad.conductor} />
@@ -349,23 +349,23 @@ const DetalleVehiculo: React.FC<
         )}
         {(pestana === 'resumen' || pestana === 'ruta') && <Paradas unidad={unidad} onSeleccionar={onSeleccionar} />}
         {pestana === 'ruta' && unidad.ruta.length > 0 && (
-          <p className="px-[12px] py-[6px] tabular-nums text-[12px] text-[#64748B]">
+          <p className="px-[12px] py-[6px] tabular-nums text-[12px] text-neutral-500">
             {unidad.ruta.map((p) => `(${p.x},${p.y})`).join(' → ')}
           </p>
         )}
       </div>
       <Acciones>
-        <button type="button" onClick={() => onCentrar(unidad.posicion)} className="font-sans font-medium text-[#1E40AF] hover:underline">
+        <button type="button" onClick={() => onCentrar(unidad.posicion)} className="font-sans font-medium text-primary-600 hover:underline">
           Centrar en el mapa
         </button>
         {!averiada &&
           !pendiente &&
           (admision.admite ? (
-            <button type="button" onClick={() => onRegistrarAveria(unidad.codigo)} className="font-medium text-[#B91C1C] hover:underline">
+            <button type="button" onClick={() => onRegistrarAveria(unidad.codigo)} className="font-medium text-critical-600 hover:underline">
               Registrar avería
             </button>
           ) : (
-            <span className="text-[#64748B]">{admision.motivo}</span>
+            <span className="text-neutral-500">{admision.motivo}</span>
           ))}
       </Acciones>
     </>
@@ -397,12 +397,12 @@ const DetalleAlmacen: React.FC<{ codigo: string } & Omit<PanelLateralProps, 'sel
         estado={central ? 'Central' : 'Intermedio'}
       />
       <div className="flex-1 min-h-0 overflow-y-auto">
-        <div className="p-[12px] border-b border-[#E2E8F0]">
+        <div className="p-[12px] border-b border-neutral-200">
           {conStock && nivel ? (
             <div className={`border rounded-[4px] px-[12px] pt-[8px] pb-[10px] flex flex-col gap-[8px] ${BORDE_NIVEL[nivel]}`}>
               <div className="flex items-center justify-between">
                 <div className="flex flex-col">
-                  <span className="flex items-center gap-[8px] text-[12px] text-[#64748B]">
+                  <span className="flex items-center gap-[8px] text-[12px] text-neutral-500">
                     <Semaforo nivel={nivel} /> stock
                   </span>
                   <span className={`tabular-nums font-semibold text-[22px] ${COLOR_HOLGURA[nivel]}`}>
@@ -411,43 +411,43 @@ const DetalleAlmacen: React.FC<{ codigo: string } & Omit<PanelLateralProps, 'sel
                 </div>
                 <div className="flex flex-col items-end text-[12px]">
                   <span className={`tabular-nums ${COLOR_HOLGURA[nivel]}`}>{Math.round(fraccion * 100)} % de capacidad</span>
-                  <span className="text-[#64748B]">{NOMBRE_INVENTARIO[nivel]}</span>
+                  <span className="text-neutral-500">{NOMBRE_INVENTARIO[nivel]}</span>
                 </div>
               </div>
-              <div className="h-[4px] bg-[#E2E8F0] rounded-full overflow-hidden">
+              <div className="h-[4px] bg-neutral-200 rounded-full overflow-hidden">
                 <div className={`h-full rounded-full ${FONDO_NIVEL[nivel]}`} style={{ width: `${Math.min(100, fraccion * 100)}%` }} />
               </div>
             </div>
           ) : (
-            <p className="text-[12px] text-[#64748B]">
+            <p className="text-[12px] text-neutral-500">
               {central ? 'Stock ilimitado: abastece a toda la red y no se agota.' : 'Sin datos de stock en este momento.'}
             </p>
           )}
         </div>
-        <div className="py-[4px] border-b border-[#E2E8F0]">
+        <div className="py-[4px] border-b border-neutral-200">
           <Dato etiqueta="Ubicación" valor={`(${almacen.ubicacion.x},${almacen.ubicacion.y})`} />
           {!central && <Dato etiqueta="Recarga" valor="a su capacidad, cada día a las 23:59" />}
           <Dato etiqueta="Unidades en ruta desde aquí" valor={salieron.length} />
         </div>
         <section className="px-[12px] pt-[9px] pb-[6px] flex flex-col gap-[6px]">
           <TituloSeccion derecha={salieron.length > 0 ? salieron.length : undefined}>Unidades que salieron de aquí</TituloSeccion>
-          {salieron.length === 0 && <p className="text-[12px] text-[#64748B]">Ninguna unidad en ruta salió de este almacén.</p>}
+          {salieron.length === 0 && <p className="text-[12px] text-neutral-500">Ninguna unidad en ruta salió de este almacén.</p>}
           {salieron.map((u) => (
             <button
               key={u.codigo}
               type="button"
               onClick={() => onSeleccionar({ tipo: 'vehiculo', codigo: u.codigo })}
-              className="h-[24px] flex items-center gap-[8px] text-[12px] hover:bg-[#F8FAFC] -mx-[4px] px-[4px] rounded"
+              className="h-[24px] flex items-center gap-[8px] text-[12px] hover:bg-neutral-50 -mx-[4px] px-[4px] rounded"
             >
-              <span className="font-semibold text-[#0F172A]">{nombreUnidad(u)}</span>
+              <span className="font-semibold text-neutral-900">{nombreUnidad(u)}</span>
               {u.estado === 'AVERIADA' ? (
-                <span className="text-[#B91C1C]">averiada</span>
+                <span className="text-critical-600">averiada</span>
               ) : (
-                <span className="tabular-nums text-[#64748B]">
+                <span className="tabular-nums text-neutral-500">
                   {u.carga}/{u.capacidad} · {u.paradas.length} {u.paradas.length === 1 ? 'parada' : 'paradas'}
                 </span>
               )}
-              <span className="ml-auto text-[#64748B]" aria-hidden="true">
+              <span className="ml-auto text-neutral-500" aria-hidden="true">
                 ›
               </span>
             </button>
@@ -455,7 +455,7 @@ const DetalleAlmacen: React.FC<{ codigo: string } & Omit<PanelLateralProps, 'sel
         </section>
       </div>
       <Acciones>
-        <button type="button" onClick={() => onCentrar(almacen.ubicacion)} className="font-medium text-[#1E40AF] hover:underline">
+        <button type="button" onClick={() => onCentrar(almacen.ubicacion)} className="font-medium text-primary-600 hover:underline">
           Centrar en el mapa
         </button>
       </Acciones>
@@ -477,7 +477,7 @@ const ListaIncidencias: React.FC<Pick<PanelLateralProps, 'onSeleccionar' | 'onCe
   const bloqueos = datos.bloqueos;
   return (
     <div className="flex-1 min-h-0 overflow-y-auto">
-      <section className="px-[12px] pt-[10px] pb-[8px] flex flex-col gap-[4px] border-b border-[#E2E8F0]">
+      <section className="px-[12px] pt-[10px] pb-[8px] flex flex-col gap-[4px] border-b border-neutral-200">
         <TituloSeccion derecha={riesgo.length}>Pedidos en riesgo · menor holgura</TituloSeccion>
         {riesgo.map((p) => (
           <FilaConBarra
@@ -491,13 +491,13 @@ const ListaIncidencias: React.FC<Pick<PanelLateralProps, 'onSeleccionar' | 'onCe
           />
         ))}
       </section>
-      <section className="px-[12px] pt-[10px] pb-[8px] flex flex-col gap-[4px] border-b border-[#E2E8F0]">
+      <section className="px-[12px] pt-[10px] pb-[8px] flex flex-col gap-[4px] border-b border-neutral-200">
         <TituloSeccion
           derecha={
             <span className="flex items-center gap-[10px]">
               {averiadas.length}
               {admision.admite && (
-                <button type="button" onClick={() => onRegistrarAveria()} className="font-sans font-medium text-[#B91C1C] hover:underline">
+                <button type="button" onClick={() => onRegistrarAveria()} className="font-sans font-medium text-critical-600 hover:underline">
                   + Registrar avería
                 </button>
               )}
@@ -506,8 +506,8 @@ const ListaIncidencias: React.FC<Pick<PanelLateralProps, 'onSeleccionar' | 'onCe
         >
           Averías activas
         </TituloSeccion>
-        {!admision.admite && <p className="text-[12px] text-[#64748B]">{admision.motivo}</p>}
-        {averiadas.length === 0 && <p className="text-[12px] text-[#64748B]">Ninguna unidad averiada.</p>}
+        {!admision.admite && <p className="text-[12px] text-neutral-500">{admision.motivo}</p>}
+        {averiadas.length === 0 && <p className="text-[12px] text-neutral-500">Ninguna unidad averiada.</p>}
         {averiadas.map((u) => (
           <FilaConBarra
             key={u.codigo}
@@ -564,11 +564,11 @@ export const PanelLateral: React.FC<PanelLateralProps> = ({
   return (
     <aside
       aria-label="Incidencias, flota y bitácora"
-      className="absolute right-[12px] top-0 bottom-0 z-20 w-[340px] bg-white border border-[#E2E8F0] rounded-[10px] shadow-[0px_2px_12px_0px_rgba(0,0,0,0.16)] flex flex-col overflow-hidden leading-[normal]"
+      className="absolute right-[12px] top-0 bottom-0 z-20 w-[340px] bg-white border border-neutral-200 rounded-[10px] shadow-[0px_2px_12px_0px_rgba(0,0,0,0.16)] flex flex-col overflow-hidden leading-[normal]"
       data-sin-zoom
       onPointerDown={(e) => e.stopPropagation()}
     >
-      <div className="h-[36px] px-[12px] flex items-center gap-[16px] border-b border-[#E2E8F0] text-[12px] shrink-0" role="tablist">
+      <div className="h-[36px] px-[12px] flex items-center gap-[16px] border-b border-neutral-200 text-[12px] shrink-0" role="tablist">
         {PESTANAS.map(({ tipo, etiqueta }) => (
           <button
             key={tipo}
@@ -576,17 +576,17 @@ export const PanelLateral: React.FC<PanelLateralProps> = ({
             role="tab"
             aria-selected={seleccion.tipo === tipo}
             onClick={() => onSeleccionar({ tipo })}
-            className={`h-full font-sans border-b-2 ${seleccion.tipo === tipo ? 'border-[#1E40AF] text-[#1E40AF] font-medium' : 'border-transparent text-[#64748B] hover:text-[#0F172A]'}`}
+            className={`h-full font-sans border-b-2 ${seleccion.tipo === tipo ? 'border-primary-600 text-primary-600 font-medium' : 'border-transparent text-neutral-500 hover:text-neutral-900'}`}
           >
             {etiqueta}
           </button>
         ))}
         {esDetalle && (
-          <span className="h-full flex items-center font-sans font-medium text-[#0F172A] border-b-2 border-[#1E40AF]">
+          <span className="h-full flex items-center font-sans font-medium text-neutral-900 border-b-2 border-primary-600">
             Detalle
           </span>
         )}
-        <button type="button" onClick={onCerrar} aria-label="Cerrar panel" className="ml-auto size-[22px] rounded text-[#64748B] hover:bg-[#F1F5F9] hover:text-[#0F172A]">
+        <button type="button" onClick={onCerrar} aria-label="Cerrar panel" className="ml-auto size-[22px] rounded text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900">
           ✕
         </button>
       </div>

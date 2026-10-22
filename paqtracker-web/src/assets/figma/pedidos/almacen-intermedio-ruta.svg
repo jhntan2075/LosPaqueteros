@@ -2,10 +2,10 @@
 <g id="almacen/Interm. 2 / 18 %">
 <g id="dep&#195;&#179;sito intermedio" filter="url(#filter0_d_0_31)">
 <path d="M20 9L32 17V31H8V17L20 9Z" fill="white"/>
-<path d="M20 9L32 17V31H8V17L20 9Z" stroke="#B45309" stroke-width="2" stroke-linejoin="round"/>
+<path d="M20 9L32 17V31H8V17L20 9Z" stroke="#FB8229" stroke-width="2" stroke-linejoin="round"/>
 </g>
-<rect id="ocupaci&#195;&#179;n &#194;&#183; vac&#195;&#173;o" x="10" y="18" width="20" height="12" rx="1" fill="#E2E8F0"/>
-<rect id="ocupaci&#195;&#179;n &#194;&#183; nivel" x="10" y="27.84" width="20" height="2.16" rx="1" fill="#B45309"/>
+<rect id="ocupaci&#195;&#179;n &#194;&#183; vac&#195;&#173;o" x="10" y="18" width="20" height="12" rx="1" fill="#D3DAE6"/>
+<rect id="ocupaci&#195;&#179;n &#194;&#183; nivel" x="10" y="27.84" width="20" height="2.16" rx="1" fill="#FB8229"/>
 </g>
 <defs>
 <filter id="filter0_d_0_31" x="5" y="7" width="30" height="28" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">

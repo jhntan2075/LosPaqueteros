@@ -22,7 +22,7 @@ export const ModuloPedidos: React.FC<ModuloPedidosProps> = ({ vista, onCambiarVi
 
   if (vista === 'registrar' || (vista === 'registrado' && !registrado)) {
     return (
-      <div className="flex-1 flex flex-col min-h-0 bg-[#F8FAFC]">
+      <div className="flex-1 flex flex-col min-h-0 bg-neutral-50">
         <EncabezadoPedidos
           titulo="Registrar nuevo pedido"
           subtitulo="Con el cliente, el destino y el plazo se estima si llega a tiempo antes de registrarlo"
@@ -41,7 +41,7 @@ export const ModuloPedidos: React.FC<ModuloPedidosProps> = ({ vista, onCambiarVi
 
   if (vista === 'registrado' && registrado) {
     return (
-      <div className="flex-1 flex flex-col min-h-0 bg-[#F8FAFC]">
+      <div className="flex-1 flex flex-col min-h-0 bg-neutral-50">
         <EncabezadoPedidos
           titulo="Pedido registrado"
           onVolver={volverACola}
@@ -59,7 +59,7 @@ export const ModuloPedidos: React.FC<ModuloPedidosProps> = ({ vista, onCambiarVi
   }
 
   return (
-    <div className="flex-1 flex flex-col min-h-0 bg-[#F8FAFC] p-4 lg:p-6 overflow-hidden">
+    <div className="flex-1 flex flex-col min-h-0 bg-neutral-50 p-4 lg:p-6 overflow-hidden">
       <ColaPedidos
         onRegistrar={() => onCambiarVista('registrar')}
         onVerEnLienzo={onVerEnLienzo}

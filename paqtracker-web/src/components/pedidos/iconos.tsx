@@ -53,8 +53,8 @@ export const MarcadorAlmacen: React.FC<{ almacen: IdAlmacen; cx: number; cy: num
     {almacen === 'INTERMEDIO_1' && (
       <>
         <img src={depositoIntermedio} alt="" className="absolute block max-w-none left-[5px] top-[7px]" />
-        <div className="absolute bg-[#E2E8F0] h-[12px] left-[10px] rounded-[1px] top-[18px] w-[20px]" />
-        <div className="absolute bg-[#15803D] h-[7.44px] left-[10px] rounded-[1px] top-[22.56px] w-[20px]" />
+        <div className="absolute bg-neutral-200 h-[12px] left-[10px] rounded-[1px] top-[18px] w-[20px]" />
+        <div className="absolute bg-ok-600 h-[7.44px] left-[10px] rounded-[1px] top-[22.56px] w-[20px]" />
       </>
     )}
     {almacen === 'INTERMEDIO_2' && (

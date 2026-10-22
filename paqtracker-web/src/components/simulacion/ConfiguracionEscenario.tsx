@@ -25,11 +25,11 @@ const ARCHIVOS: { tipo: TipoArchivo; etiqueta: string }[] = [
 ];
 
 const ESTADO_EJECUCION: Record<EstadoEjecucionApi, { texto: string; clase: string }> = {
-  CONFIGURADA: { texto: 'Configurada', clase: 'bg-[#F1F5F9] text-[#64748B]' },
-  EN_CURSO: { texto: 'En curso', clase: 'bg-[#DBEAFE] text-[#1E40AF]' },
-  PAUSADA: { texto: 'Pausada', clase: 'bg-[#FEF3E5] text-[#B45309]' },
-  FINALIZADA: { texto: 'Finalizada', clase: 'bg-[#DCFCE7] text-[#15803D]' },
-  COLAPSADA: { texto: 'Colapsada', clase: 'border border-[#B91C1C] text-[#B91C1C]' },
+  CONFIGURADA: { texto: 'Configurada', clase: 'bg-neutral-100 text-neutral-600' },
+  EN_CURSO: { texto: 'En curso', clase: 'bg-primary-100 text-primary-600' },
+  PAUSADA: { texto: 'Pausada', clase: 'bg-warn-50 text-warn-700' },
+  FINALIZADA: { texto: 'Finalizada', clase: 'bg-ok-50 text-ok-700' },
+  COLAPSADA: { texto: 'Colapsada', clase: 'border border-critical-600 text-critical-600' },
 };
 
 const Seccion: React.FC<{ numero?: string; titulo: string; resumen: React.ReactNode; resumenPendiente?: boolean; children: React.ReactNode }> = ({
@@ -41,17 +41,17 @@ const Seccion: React.FC<{ numero?: string; titulo: string; resumen: React.ReactN
 }) => {
   const [abierta, setAbierta] = useState(true);
   return (
-    <section className="bg-white border border-[#E2E8F0] rounded-[10px]">
+    <section className="bg-white border border-neutral-200 rounded-[10px]">
       <button
         type="button"
         onClick={() => setAbierta(!abierta)}
         aria-expanded={abierta}
         className="w-full h-[48px] px-[15px] flex items-center gap-[14px] text-left"
       >
-        {numero && <span className="tabular-nums text-[12px] text-[#64748B]">{numero}</span>}
-        <h2 className="font-sans font-semibold text-[14px] text-[#0F172A]">{titulo}</h2>
-        <span className={`ml-auto tabular-nums text-[12px] ${resumenPendiente ? 'text-[#64748B]' : 'text-[#0F172A]'}`}>{resumen}</span>
-        <span className={`text-[11px] text-[#64748B] transition-transform ${abierta ? '' : 'rotate-180'}`} aria-hidden="true">
+        {numero && <span className="tabular-nums text-[12px] text-neutral-500">{numero}</span>}
+        <h2 className="font-sans font-semibold text-[14px] text-neutral-900">{titulo}</h2>
+        <span className={`ml-auto tabular-nums text-[12px] ${resumenPendiente ? 'text-neutral-500' : 'text-neutral-900'}`}>{resumen}</span>
+        <span className={`text-[11px] text-neutral-500 transition-transform ${abierta ? '' : 'rotate-180'}`} aria-hidden="true">
           ▲
         </span>
       </button>
@@ -61,7 +61,7 @@ const Seccion: React.FC<{ numero?: string; titulo: string; resumen: React.ReactN
 };
 
 const Etiqueta: React.FC<{ htmlFor?: string; children: React.ReactNode }> = ({ htmlFor, children }) => (
-  <label htmlFor={htmlFor} className="font-sans text-[12px] text-[#334155]">
+  <label htmlFor={htmlFor} className="font-sans text-[12px] text-neutral-700">
     {children}
   </label>
 );
@@ -81,26 +81,26 @@ const RanuraArchivo: React.FC<{
       <Etiqueta htmlFor={id}>{etiqueta}</Etiqueta>
       <div
         className={`w-full max-w-[420px] h-[32px] px-[10px] rounded-[6px] flex items-center gap-[10px] text-[12px] ${
-          archivo ? 'border border-[#CBD5E1] bg-white' : 'border border-dashed border-[#94A3B8] bg-[#F8FAFC]'
+          archivo ? 'border border-neutral-300 bg-white' : 'border border-dashed border-neutral-400 bg-neutral-50'
         }`}
       >
         {subiendo ? (
-          <span className="tabular-nums text-[#64748B]">Validando en el servidor…</span>
+          <span className="tabular-nums text-neutral-500">Validando en el servidor…</span>
         ) : archivo ? (
           <>
-            <span className="tabular-nums text-[#0F172A] truncate">"{archivo.nombre}"</span>
-            <span className="ml-auto tabular-nums text-[#64748B] whitespace-nowrap">
+            <span className="tabular-nums text-neutral-900 truncate">"{archivo.nombre}"</span>
+            <span className="ml-auto tabular-nums text-neutral-500 whitespace-nowrap">
               {formatearMiles(archivo.registros)} {archivo.registros === 1 ? nombres.singular : nombres.plural} · {archivo.mes}
             </span>
           </>
         ) : (
-          <span className="tabular-nums text-[#64748B]">Opcional · se usan los datos ya cargados</span>
+          <span className="tabular-nums text-neutral-500">Opcional · se usan los datos ya cargados</span>
         )}
         <button
           type="button"
           disabled={subiendo}
           onClick={() => entrada.current?.click()}
-          className={`font-sans font-medium text-[#1E40AF] hover:underline whitespace-nowrap disabled:text-[#94A3B8] ${archivo || subiendo ? '' : 'ml-auto'}`}
+          className={`font-sans font-medium text-primary-600 hover:underline whitespace-nowrap disabled:text-neutral-400 ${archivo || subiendo ? '' : 'ml-auto'}`}
         >
           {archivo ? 'Reemplazar' : 'Subir archivo'}
         </button>
@@ -118,21 +118,21 @@ const RanuraArchivo: React.FC<{
         />
       </div>
       {archivo && archivo.lineasInvalidas.length > 0 && (
-        <p className="font-sans text-[12px] text-[#B91C1C]">
+        <p className="font-sans text-[12px] text-critical-600">
           {archivo.lineasInvalidas.length} {archivo.lineasInvalidas.length === 1 ? 'línea no respeta' : 'líneas no respetan'} el formato (línea{' '}
           {archivo.lineasInvalidas.slice(0, 5).join(', ')}
           {archivo.lineasInvalidas.length > 5 ? '…' : ''}): el archivo no se guardó. Corrígelo y vuelve a subirlo.
         </p>
       )}
-      {archivo && archivo.guardado && <p className="font-sans text-[12px] text-[#15803D]">Guardado para el mes {archivo.mes}.</p>}
+      {archivo && archivo.guardado && <p className="font-sans text-[12px] text-ok-600">Guardado para el mes {archivo.mes}.</p>}
     </div>
   );
 };
 
 const FilaResumen: React.FC<{ etiqueta: string; valor?: string }> = ({ etiqueta, valor }) => (
-  <div className="h-[33px] flex items-center justify-between border-b border-dashed border-[#E2E8F0] text-[12px]">
-    <span className="font-sans text-[#64748B]">{etiqueta}</span>
-    <span className={`tabular-nums ${valor ? 'text-[#0F172A]' : 'text-[#64748B]'} truncate pl-[12px]`}>{valor ?? '—'}</span>
+  <div className="h-[33px] flex items-center justify-between border-b border-dashed border-neutral-200 text-[12px]">
+    <span className="font-sans text-neutral-500">{etiqueta}</span>
+    <span className={`tabular-nums ${valor ? 'text-neutral-900' : 'text-neutral-500'} truncate pl-[12px]`}>{valor ?? '—'}</span>
   </div>
 );
 
@@ -143,19 +143,19 @@ const ListaEjecuciones: React.FC<{ onAbrir: (ejecucion: EjecucionApi) => void }>
   return (
     <Seccion titulo="Abrir una simulación existente" resumen={`${simulaciones.length} en el servidor`} resumenPendiente={simulaciones.length === 0}>
       <div className="flex items-center text-[12px]">
-        <span className="font-sans text-[#64748B]">Ábrelas desde cualquier dispositivo; todos ven la misma corrida.</span>
-        <button type="button" onClick={recargar} className="ml-auto font-sans font-medium text-[#1E40AF] hover:underline">
+        <span className="font-sans text-neutral-500">Ábrelas desde cualquier dispositivo; todos ven la misma corrida.</span>
+        <button type="button" onClick={recargar} className="ml-auto font-sans font-medium text-primary-600 hover:underline">
           Actualizar
         </button>
       </div>
-      {error && <p className="font-sans text-[12px] text-[#B91C1C]">{error}</p>}
-      {!error && !cargando && simulaciones.length === 0 && <p className="font-sans text-[12px] text-[#64748B]">Aún no hay simulaciones.</p>}
+      {error && <p className="font-sans text-[12px] text-critical-600">{error}</p>}
+      {!error && !cargando && simulaciones.length === 0 && <p className="font-sans text-[12px] text-neutral-500">Aún no hay simulaciones.</p>}
       {simulaciones.map((e) => (
-        <div key={e.id} className="h-[36px] flex items-center gap-[10px] border-b border-dashed border-[#E2E8F0] text-[12px]">
+        <div key={e.id} className="h-[36px] flex items-center gap-[10px] border-b border-dashed border-neutral-200 text-[12px]">
           <span className={`rounded-[4px] px-[6px] py-[2px] font-sans font-medium ${ESTADO_EJECUCION[e.estado].clase}`}>{ESTADO_EJECUCION[e.estado].texto}</span>
-          <span className="font-sans text-[#0F172A] truncate">{e.nombre}</span>
-          <span className="tabular-nums text-[#64748B] whitespace-nowrap">{e.relojSimulado ?? ''}</span>
-          <button type="button" onClick={() => onAbrir(e)} className="ml-auto font-sans font-medium text-[#1E40AF] hover:underline whitespace-nowrap">
+          <span className="font-sans text-neutral-900 truncate">{e.nombre}</span>
+          <span className="tabular-nums text-neutral-500 whitespace-nowrap">{e.relojSimulado ?? ''}</span>
+          <button type="button" onClick={() => onAbrir(e)} className="ml-auto font-sans font-medium text-primary-600 hover:underline whitespace-nowrap">
             Ver corrida ›
           </button>
         </div>
@@ -237,9 +237,9 @@ export const ConfiguracionEscenario: React.FC<ConfiguracionEscenarioProps> = ({ 
 
   return (
     <div className="flex-1 flex flex-col min-h-0 leading-[normal]">
-      <header className="h-[80px] bg-white border-b border-[#E2E8F0] px-[24px] flex flex-col justify-center gap-[6px] shrink-0">
-        <h1 className="font-sans font-semibold text-[18px] text-[#0F172A]">Configuración de escenario</h1>
-        <p className="font-sans text-[12px] text-[#64748B]">Abre una simulación que ya esté en el servidor o configura una nueva.</p>
+      <header className="h-[80px] bg-white border-b border-neutral-200 px-[24px] flex flex-col justify-center gap-[6px] shrink-0">
+        <h1 className="font-sans font-semibold text-[18px] text-neutral-900">Configuración de escenario</h1>
+        <p className="font-sans text-[12px] text-neutral-500">Abre una simulación que ya esté en el servidor o configura una nueva.</p>
       </header>
 
       <div className="flex-1 min-h-0 overflow-y-auto">
@@ -247,7 +247,7 @@ export const ConfiguracionEscenario: React.FC<ConfiguracionEscenarioProps> = ({ 
           <div className="flex-1 min-w-0 flex flex-col gap-[12px]">
             <ListaEjecuciones onAbrir={onAbrir} />
 
-            <h2 className="mt-[12px] font-sans font-semibold text-[14px] text-[#0F172A]">Nueva simulación</h2>
+            <h2 className="mt-[12px] font-sans font-semibold text-[14px] text-neutral-900">Nueva simulación</h2>
 
             <Seccion numero="01" titulo="Escenario" resumen="">
               <fieldset className="grid grid-cols-1 sm:grid-cols-2 gap-[12px]">
@@ -257,8 +257,8 @@ export const ConfiguracionEscenario: React.FC<ConfiguracionEscenarioProps> = ({ 
                   return (
                     <label
                       key={opcion.valor}
-                      className={`min-h-[69px] px-[13px] py-[10px] rounded-[6px] text-left flex flex-col justify-center gap-[6px] transition cursor-pointer has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[#1E40AF]/40 ${
-                        activo ? 'bg-[#EAF1FD] border-2 border-[#1E40AF]' : 'bg-[#F8FAFC] border border-[#E2E8F0] hover:border-[#CBD5E1]'
+                      className={`min-h-[69px] px-[13px] py-[10px] rounded-[6px] text-left flex flex-col justify-center gap-[6px] transition cursor-pointer has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-primary-600/40 ${
+                        activo ? 'bg-primary-50 border-2 border-primary-600' : 'bg-neutral-50 border border-neutral-200 hover:border-neutral-300'
                       }`}
                     >
                       <input
@@ -269,11 +269,11 @@ export const ConfiguracionEscenario: React.FC<ConfiguracionEscenarioProps> = ({ 
                         onChange={() => setEscenario(opcion.valor)}
                         className="sr-only"
                       />
-                      <span className={`flex items-center gap-[8px] font-sans font-semibold text-[14px] ${activo ? 'text-[#1E40AF]' : 'text-[#0F172A]'}`}>
+                      <span className={`flex items-center gap-[8px] font-sans font-semibold text-[14px] ${activo ? 'text-primary-600' : 'text-neutral-900'}`}>
                         <IndicadorRadio marcado={activo} />
                         {opcion.titulo}
                       </span>
-                      <span className="font-sans text-[12px] text-[#64748B]">{opcion.descripcion}</span>
+                      <span className="font-sans text-[12px] text-neutral-500">{opcion.descripcion}</span>
                     </label>
                   );
                 })}
@@ -287,7 +287,7 @@ export const ConfiguracionEscenario: React.FC<ConfiguracionEscenarioProps> = ({ 
                 type="date"
                 value={fecha}
                 onChange={(e) => setFecha(e.target.value)}
-                className="w-[180px] h-[32px] px-[10px] border border-[#CBD5E1] rounded-[6px] tabular-nums text-[12px] text-[#0F172A] outline-none focus:border-[#1E40AF]"
+                className="w-[180px] h-[32px] px-[10px] border border-neutral-300 rounded-[6px] tabular-nums text-[12px] text-neutral-900 outline-none focus:border-primary-600"
               />
             </Seccion>
 
@@ -295,7 +295,7 @@ export const ConfiguracionEscenario: React.FC<ConfiguracionEscenarioProps> = ({ 
               {ARCHIVOS.map(({ tipo, etiqueta }) => (
                 <RanuraArchivo key={tipo} tipo={tipo} etiqueta={etiqueta} archivo={archivos[tipo]} subiendo={subiendo === tipo} onCargar={(a) => cargar(tipo, a)} />
               ))}
-              <p className="border-l-[3px] border-[#94A3B8] pl-[9px] font-sans text-[12px] text-[#64748B]">
+              <p className="border-l-[3px] border-neutral-400 pl-[9px] font-sans text-[12px] text-neutral-500">
                 El servidor valida cada línea con el mismo lector del planificador y guarda el archivo para su mes. Las averías se incorporan en una entrega
                 posterior.
               </p>
@@ -319,7 +319,7 @@ export const ConfiguracionEscenario: React.FC<ConfiguracionEscenarioProps> = ({ 
                       max={MAXIMO_POR_TIPO}
                       value={flota[clave]}
                       onChange={(e) => cambiarFlota(clave, e.target.value)}
-                      className="w-[100px] h-[32px] px-[10px] border border-[#CBD5E1] rounded-[6px] tabular-nums text-[12px] text-[#0F172A] outline-none focus:border-[#1E40AF]"
+                      className="w-[100px] h-[32px] px-[10px] border border-neutral-300 rounded-[6px] tabular-nums text-[12px] text-neutral-900 outline-none focus:border-primary-600"
                     />
                   </div>
                 ))}
@@ -328,8 +328,8 @@ export const ConfiguracionEscenario: React.FC<ConfiguracionEscenarioProps> = ({ 
 
           </div>
 
-          <aside className="w-full lg:w-[360px] shrink-0 lg:sticky lg:top-0 bg-white border border-[#E2E8F0] rounded-[10px]">
-            <h2 className="h-[48px] px-[15px] flex items-center border-b border-[#E2E8F0] font-sans font-semibold text-[14px] text-[#0F172A]">Resumen de la corrida</h2>
+          <aside className="w-full lg:w-[360px] shrink-0 lg:sticky lg:top-0 bg-white border border-neutral-200 rounded-[10px]">
+            <h2 className="h-[48px] px-[15px] flex items-center border-b border-neutral-200 font-sans font-semibold text-[14px] text-neutral-900">Resumen de la corrida</h2>
             <div className="px-[15px] pt-[8px] pb-[16px] flex flex-col">
               <FilaResumen etiqueta="Escenario" valor={ESCENARIOS.find((e) => e.valor === escenario)!.titulo} />
               <FilaResumen etiqueta="Inicio" valor={inicioValido ? formatearFechaLarga(inicio, false) : undefined} />
@@ -344,13 +344,13 @@ export const ConfiguracionEscenario: React.FC<ConfiguracionEscenarioProps> = ({ 
                 type="button"
                 onClick={ejecutar}
                 disabled={!listo}
-                className="mt-[24px] h-[44px] rounded-[6px] bg-[#1E40AF] hover:bg-[#1E3A8A] disabled:bg-[#94A3B8] disabled:cursor-not-allowed text-white font-sans font-semibold text-[14px] transition"
+                className="mt-[24px] h-[44px] rounded-[6px] bg-primary-600 hover:bg-primary-700 disabled:bg-neutral-400 disabled:cursor-not-allowed text-white font-sans font-semibold text-[14px] transition"
               >
                 {enviando ? 'Creando simulación…' : 'Ejecutar simulación'}
               </button>
-              {error && <p className="mt-[10px] border-l-[3px] border-[#B91C1C] pl-[9px] font-sans text-[12px] text-[#B91C1C]">{error}</p>}
+              {error && <p className="mt-[10px] border-l-[3px] border-critical-600 pl-[9px] font-sans text-[12px] text-critical-600">{error}</p>}
               {!listo && !enviando && faltantes.length > 0 && (
-                <p className="mt-[10px] border-l-[3px] border-[#94A3B8] pl-[9px] font-sans text-[12px] text-[#64748B]">
+                <p className="mt-[10px] border-l-[3px] border-neutral-400 pl-[9px] font-sans text-[12px] text-neutral-500">
                   Define {faltantes.join(', ').replace(/, ([^,]*)$/, ' y $1')} para continuar.
                 </p>
               )}

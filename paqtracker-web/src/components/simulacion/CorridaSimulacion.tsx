@@ -102,7 +102,7 @@ const CorridaEnVivo: React.FC<CorridaSimulacionProps & { recibidoEnMs: number }>
         onSalir={onSalir}
         onVerInforme={() => setVerInforme(true)}
       />
-      <main className="flex-1 relative flex min-h-0 bg-[#F8FAFC]">
+      <main className="flex-1 relative flex min-h-0 bg-neutral-50">
         <GridMap
           ref={mapaRef}
           variante="simulacion"
