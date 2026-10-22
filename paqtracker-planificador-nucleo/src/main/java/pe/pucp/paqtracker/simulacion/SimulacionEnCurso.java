@@ -72,6 +72,21 @@ public final class SimulacionEnCurso {
      * @throws IllegalStateException    si la simulacion ya se detuvo por colapso
      */
     public ResultadoPaso avanzar(int instante) {
+        return avanzar(instante, true);
+    }
+
+    /**
+     * Avanza el reloj hasta el instante indicado y ejecuta un paso. El paso que dispara una averia en vivo
+     * no planifica: la averia se repara en el momento (trasvase o respaldo) y la cola espera al siguiente
+     * salto Sa, para no alterar su ritmo.
+     *
+     * @param instante   instante del paso; debe ser mayor que el del paso anterior
+     * @param planificar falso para no despachar urgentes ni planificar la cola en este paso
+     * @return lo ocurrido en el paso
+     * @throws IllegalArgumentException si el instante no avanza
+     * @throws IllegalStateException    si la simulacion ya se detuvo por colapso
+     */
+    public ResultadoPaso avanzar(int instante, boolean planificar) {
         if (instante <= ultimoInstante) {
             throw new IllegalArgumentException(
                     "El instante " + instante + " no avanza respecto de " + ultimoInstante);
@@ -91,10 +106,13 @@ public final class SimulacionEnCurso {
         List<Pedido> incorporados = orquestador.incorporarPedidos(porLlegar, cola, instante);
         orquestador.detectarVencidosEnCola(cola, instante, resultado);
         int despachadasAntes = enRuta.size();
-        Planificacion planificacion = despacharPendientes(instante);
+        Planificacion planificacion = planificar ? despacharPendientes(instante)
+                : new Planificacion(ResultadoPaso.SIN_PLANIFICACION, 0.0);
         detenida = debeDetenerse();
         ultimoInstante = instante;
-        List<UnidadEnTransito> despachadas = enRuta.subList(despachadasAntes, enRuta.size());
+        List<UnidadEnTransito> despachadas = new ArrayList<>();
+        averias.forEach(averia -> despachadas.addAll(averia.respaldos()));
+        despachadas.addAll(enRuta.subList(despachadasAntes, enRuta.size()));
         return new ResultadoPaso(instante, incorporados, entregas, liberadas, despachadas,
                 planificacion.tiempoComputoMs(), planificacion.fitness(), !colapsoPrevio && huboColapso(),
                 averias, reincorporadas);
@@ -102,7 +120,7 @@ public final class SimulacionEnCurso {
 
     /**
      * Agrega una averia registrada en vivo. Se aplica en el primer paso cuyo instante alcance el de la
-     * averia, y ese paso replanifica lo que la averia libere. Conserva el orden por instante.
+     * averia, y ese paso repara lo que la averia afecte. Conserva el orden por instante.
      *
      * @param averia averia a agregar; su instante debe ser posterior al ultimo paso
      * @throws IllegalArgumentException si la averia es nula, su unidad no existe o su instante ya paso

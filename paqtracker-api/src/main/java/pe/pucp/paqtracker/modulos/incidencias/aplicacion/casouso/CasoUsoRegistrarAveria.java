@@ -17,7 +17,7 @@ import java.time.Instant;
 
 /**
  * Implementa CU-13 Registrar averia: valida la averia, la encola en la agenda del motor de la ejecucion
- * (que la aplica y replanifica en su siguiente salto Sc) y guarda su registro. No modifica el estado de la
+ * (que la aplica y repara su carga en su siguiente salto Sc) y guarda su registro. No modifica el estado de la
  * simulacion directamente.
  */
 @Service

@@ -25,6 +25,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Sigue el estado de cada pedido de una ejecucion a partir de lo que reporta cada paso de la
@@ -213,27 +215,22 @@ public final class SeguimientoPedidos {
     }
 
     /**
-     * Refleja una averia en los pedidos que llevaba la unidad: las partes liberadas (tipo 2 y 3) dejan de
-     * estar en camino y, si era la ultima, el pedido vuelve a esperar despacho; las partes retrasadas
-     * (tipo 1 en ruta) toman su nueva llegada estimada.
+     * Refleja una averia en los pedidos que llevaba la unidad: las partes liberadas (vuelven a la cola) y las
+     * respaldadas (salen en otra unidad desde un almacen, que se registra como despacho en este mismo paso)
+     * dejan de estar en camino en la averiada y, si era la ultima, el pedido vuelve a esperar despacho; las
+     * partes que siguen a bordo (tipo 1) toman su nueva llegada estimada; las trasvasadas pasan a su receptora.
      */
     private void registrarAveria(AveriaAplicada averia) {
         String codigo = codigosFlota.codigo(averia.vehiculo());
         int instante = averia.averia().getInstante();
-        int tipo = averia.averia().getTipo().getNumero();
+        String causa = "la unidad " + codigo + " tuvo una averia tipo " + averia.averia().getTipo().getNumero();
         for (Entrega entrega : averia.entregasLiberadas()) {
-            Seguimiento seguimiento = pedidos.get(entrega.getIdPedido());
-            if (seguimiento == null || seguimiento.estado == EstadoPedido.ENTREGADO) {
-                continue;
-            }
-            seguimiento.partesEnCamino = Math.max(0, seguimiento.partesEnCamino - 1);
-            if (seguimiento.partesEnCamino == 0) {
-                seguimiento.estado = EstadoPedido.REGISTRADO;
-                seguimiento.unidad = null;
-                seguimiento.eta = 0;
-            }
-            seguimiento.hito(instante, "Liberado por averia", entrega.getCantidad() + " paquetes vuelven a "
-                    + "planificarse: la unidad " + codigo + " tuvo una averia tipo " + tipo);
+            retirarParte(entrega, instante, "Liberado por averia", entrega.getCantidad()
+                    + " paquetes vuelven a planificarse en el siguiente ciclo: " + causa);
+        }
+        for (Entrega entrega : averia.entregasRespaldadas()) {
+            retirarParte(entrega, instante, "Respaldo por averia", entrega.getCantidad()
+                    + " paquetes salen en otra unidad desde un almacen: " + causa);
         }
         if (averia.transitoReanudado() != null) {
             registrarRetraso(averia.transitoReanudado(), instante, codigo);
@@ -257,18 +254,45 @@ public final class SeguimientoPedidos {
         }
     }
 
-    /** La parte trasbordada sigue en camino, ahora en la receptora y con su nueva llegada. */
+    /** Una parte que la averiada deja de llevar: sale del conteo en camino y, si era la ultima, el pedido espera. */
+    private void retirarParte(Entrega entrega, int instante, String titulo, String detalle) {
+        Seguimiento seguimiento = pedidos.get(entrega.getIdPedido());
+        if (seguimiento == null || seguimiento.estado == EstadoPedido.ENTREGADO) {
+            return;
+        }
+        seguimiento.partesEnCamino = Math.max(0, seguimiento.partesEnCamino - 1);
+        if (seguimiento.partesEnCamino == 0) {
+            seguimiento.estado = EstadoPedido.REGISTRADO;
+            seguimiento.unidad = null;
+            seguimiento.eta = 0;
+        }
+        seguimiento.hito(instante, titulo, detalle);
+    }
+
+    /**
+     * La parte trasvasada sigue en camino, ahora en la receptora y con su nueva llegada; los pedidos propios de
+     * la receptora toman la llegada que les deja el desvio.
+     */
     private void registrarTrasbordo(Trasbordo trasbordo, int instante, String codigoAveriada) {
         String receptora = codigosFlota.codigo(trasbordo.receptora().getVehiculo());
+        Set<Integer> trasvasados = trasbordo.entregas().stream().map(Entrega::getIdPedido)
+                .collect(Collectors.toSet());
         for (Tramo tramo : trasbordo.receptora().getTramos()) {
-            Seguimiento seguimiento = tramo.esEntrega() ? pedidos.get(tramo.getIdPedido()) : null;
+            Seguimiento seguimiento = tramo.esEntrega() && tramo.getLlegada() > instante
+                    ? pedidos.get(tramo.getIdPedido()) : null;
             if (seguimiento == null || seguimiento.estado == EstadoPedido.ENTREGADO) {
                 continue;
             }
-            seguimiento.unidad = receptora;
             seguimiento.actualizarEta(tramo.getLlegada());
-            seguimiento.hito(instante, "Trasbordado", tramo.getCantidad() + " paquetes pasan de " + codigoAveriada
-                    + " (averia tipo 1) a " + receptora + ", que los recoge a las "
+            if (!trasvasados.contains(tramo.getIdPedido())) {
+                seguimiento.hito(instante, "Desvio por trasvase", "La unidad " + receptora + " se desvia a recoger "
+                        + "carga de " + codigoAveriada + "; nueva llegada estimada "
+                        + lineaTiempo.formatear(tramo.getLlegada()));
+                continue;
+            }
+            seguimiento.unidad = receptora;
+            seguimiento.hito(instante, "Trasvasado", tramo.getCantidad() + " paquetes pasan de " + codigoAveriada
+                    + " (averiada) a " + receptora + ", que los recoge a las "
                     + lineaTiempo.formatear(trasbordo.getRecojo()) + "; nueva llegada estimada "
                     + lineaTiempo.formatear(tramo.getLlegada()));
         }

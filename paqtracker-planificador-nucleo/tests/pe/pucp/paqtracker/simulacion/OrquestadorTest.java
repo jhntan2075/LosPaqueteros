@@ -24,9 +24,9 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Pruebas de las averias en el orquestador: reglas de cada tipo y correccion de stock y metricas al
- * liberar la carga, y decision de trasbordo del tipo 1. Un solo pedido a 7 km del central, para saber que
- * unidad lo lleva. Semilla fija.
+ * Pruebas de las averias en el orquestador: reglas de cada tipo, trasvase a unidades en ruta, respaldo
+ * desde un almacen y correccion de stock y metricas. Pedidos a pocos km del central, para saber que unidad
+ * lleva cada uno. Semilla fija.
  */
 class OrquestadorTest {
 
@@ -35,6 +35,10 @@ class OrquestadorTest {
     private static final int PLAZO_REGULAR = 2160;
     private static final int INSTANTE_AVERIA = 5;
     private static final int MINUTOS_DIA = 1440;
+    /** Plazo de 1 h: esperando las 2 h de una averia tipo 1 llega tarde. */
+    private static final Pedido PEDIDO_URGENTE = new Pedido(1, new Nodo(30, 18), 3, 0, 60);
+    /** Cerca del urgente y un minuto despues, para que salga en otra unidad (el GA juntaria ambos). */
+    private static final Pedido PEDIDO_VECINO = new Pedido(2, new Nodo(32, 18), 3, 1, PLAZO_REGULAR);
 
     private final List<Almacen> almacenes = ConfiguracionDominio.crearAlmacenes();
 
@@ -100,32 +104,40 @@ class OrquestadorTest {
     }
 
     @Test
-    void averiaTipo1_entregaUrgente_laTrasbordaAUnaUnidadLibreQueLaEntregaATiempo() {
-        SimulacionEnCurso simulacion = iniciar(flotaEnCentral(), pedidoCercano(60));
-        Vehiculo averiada = simulacion.avanzar(0).getUnidadesDespachadas().get(0).getVehiculo();
-        simulacion.agregarAveria(new Averia(INSTANTE_AVERIA, averiada.getId(), TipoAveria.TIPO_1));
+    void averiaTipo1_entregaQueLlegariaTardeEsperando_laTrasvasaAUnaUnidadEnRutaCercana() {
+        SimulacionEnCurso simulacion = iniciar(flotaEnCentral(), List.of(PEDIDO_URGENTE, PEDIDO_VECINO));
+        ResultadoPaso salida = simulacion.avanzar(0);
+        UnidadEnTransito averiada = portadora(salida, PEDIDO_URGENTE.getId());
+        Vehiculo receptoraEsperada = portadora(simulacion.avanzar(1), PEDIDO_VECINO.getId()).getVehiculo();
+        simulacion.agregarAveria(new Averia(INSTANTE_AVERIA, averiada.getVehiculo().getId(), TipoAveria.TIPO_1));
 
         AveriaAplicada aplicada = simulacion.avanzar(INSTANTE_AVERIA).getAveriasAplicadas().get(0);
 
         Trasbordo trasbordo = aplicada.trasbordos().get(0);
         UnidadEnTransito receptora = trasbordo.receptora();
-        assertNotSame(averiada, receptora.getVehiculo());
+        assertEquals(receptoraEsperada, receptora.getVehiculo());
         assertEquals(EstadoVehiculo.EN_RUTA, receptora.getVehiculo().getEstado());
-        assertEquals(TipoTramo.VIAJE_A_TRASBORDO, receptora.getTramos().get(0).getTipo());
-        assertEquals(aplicada.ubicacion(), receptora.getTramos().get(0).getDestino());
-        assertTrue(trasbordo.getRecojo() <= INSTANTE_AVERIA + ConfiguracionDominio.AVERIA_TIPO1_MINUTOS);
-        assertTrue(llegadaDeEntrega(receptora) <= 60);
+        Tramo trasvase = tramoDeTipo(receptora, TipoTramo.TRASVASE);
+        assertEquals(aplicada.ubicacion(), trasvase.getOrigen());
+        assertEquals(ConfiguracionDominio.TRASVASE_MINUTOS, trasvase.getLlegada() - trasvase.getSalida());
+        assertEquals(trasbordo.getRecojo(), trasvase.getSalida());
+        assertTrue(trasvase.getLlegada() <= INSTANTE_AVERIA + ConfiguracionDominio.AVERIA_TIPO1_MINUTOS);
+        assertTrue(llegadaDe(receptora, PEDIDO_URGENTE.getId()) <= PEDIDO_URGENTE.getHoraLimite());
+        assertTrue(llegadaDe(receptora, PEDIDO_VECINO.getId()) <= PEDIDO_VECINO.getHoraLimite());
+        assertTrue(aplicada.respaldos().isEmpty());
         assertFalse(aplicada.conservaCarga());
+        assertTrue(simulacion.getUnidadesEnTransito().contains(receptora));
         assertFalse(simulacion.huboColapso());
         assertEquals(0, simulacion.getResultado().getTotalIncumplimientos());
-        assertTrue(simulacion.getUnidadesEnTransito().contains(receptora));
     }
 
     @Test
-    void averiaTipo1_trasbordoDeTodaLaCarga_laAveriadaVuelveAlAlmacenYLasMetricasCuentanAmbosRecorridos() {
-        SimulacionEnCurso simulacion = iniciar(flotaEnCentral(), pedidoCercano(60));
-        Vehiculo averiada = simulacion.avanzar(0).getUnidadesDespachadas().get(0).getVehiculo();
-        simulacion.agregarAveria(new Averia(INSTANTE_AVERIA, averiada.getId(), TipoAveria.TIPO_1));
+    void averiaTipo1_trasvase_entregaCadaPedidoUnaVezYLasMetricasCuentanLosRecorridosNuevos() {
+        SimulacionEnCurso simulacion = iniciar(flotaEnCentral(), List.of(PEDIDO_URGENTE, PEDIDO_VECINO));
+        ResultadoPaso salida = simulacion.avanzar(0);
+        UnidadEnTransito averiada = portadora(salida, PEDIDO_URGENTE.getId());
+        simulacion.avanzar(1);
+        simulacion.agregarAveria(new Averia(INSTANTE_AVERIA, averiada.getVehiculo().getId(), TipoAveria.TIPO_1));
 
         AveriaAplicada aplicada = simulacion.avanzar(INSTANTE_AVERIA).getAveriasAplicadas().get(0);
         List<Tramo> entregas = new ArrayList<>();
@@ -133,22 +145,49 @@ class OrquestadorTest {
             entregas.addAll(simulacion.avanzar(instante).getEntregasCompletadas());
         }
 
-        List<Tramo> vuelta = aplicada.transitoReanudado().getTramos();
-        assertEquals(TipoTramo.RETORNO, vuelta.get(vuelta.size() - 1).getTipo());
-        assertEquals(aplicada.ubicacion(), vuelta.get(vuelta.size() - 1).getOrigen());
         UnidadEnTransito receptora = aplicada.trasbordos().get(0).receptora();
-        assertEquals(1, entregas.size());
-        assertEquals(llegadaDeEntrega(receptora), entregas.get(0).getLlegada());
         ResultadoSimulacion resultado = simulacion.getResultado();
-        assertEquals(1, resultado.getTotalEntregas());
-        assertEquals(3, resultado.getProductosEntregados());
+        assertEquals(2, entregas.size());
+        assertEquals(2, resultado.getTotalEntregas());
+        assertEquals(0, resultado.getTotalIncumplimientos());
         assertEquals(kilometros(aplicada.transitoReanudado()) + kilometros(receptora), resultado.getDistanciaTotal());
-        assertEquals(EstadoVehiculo.DISPONIBLE_EN_ALMACEN, averiada.getEstado());
+        assertEquals(EstadoVehiculo.DISPONIBLE_EN_ALMACEN, averiada.getVehiculo().getEstado());
     }
 
     @Test
-    void averiaTipo1_holguraBajoElUmbralAunqueLlegueATiempo_tambienTrasborda() {
-        // Plazo de 4 h: esperando las 2 h llega a tiempo, pero con menos de 120 min de holgura.
+    void averiaTipo1_sinReceptoraEnRuta_saleUnRespaldoDelAlmacenConProductoNuevo() {
+        SimulacionEnCurso simulacion = iniciar(flotaEnCentral(), List.of(PEDIDO_URGENTE));
+        Vehiculo averiada = simulacion.avanzar(0).getUnidadesDespachadas().get(0).getVehiculo();
+        simulacion.agregarAveria(new Averia(INSTANTE_AVERIA, averiada.getId(), TipoAveria.TIPO_1));
+
+        ResultadoPaso paso = simulacion.avanzar(INSTANTE_AVERIA);
+        AveriaAplicada aplicada = paso.getAveriasAplicadas().get(0);
+        List<Tramo> entregas = new ArrayList<>();
+        for (int instante = SA_MINUTOS; instante <= MINUTOS_DIA; instante += SA_MINUTOS) {
+            entregas.addAll(simulacion.avanzar(instante).getEntregasCompletadas());
+        }
+
+        assertTrue(aplicada.trasbordos().isEmpty());
+        assertEquals(1, aplicada.respaldos().size());
+        assertEquals(1, aplicada.entregasRespaldadas().size());
+        UnidadEnTransito respaldo = aplicada.respaldos().get(0);
+        assertNotSame(averiada, respaldo.getVehiculo());
+        assertEquals(almacenes.get(0), respaldo.getOrigen());
+        assertEquals(List.of(respaldo), paso.getUnidadesDespachadas());
+        List<Tramo> vuelta = aplicada.transitoReanudado().getTramos();
+        assertEquals(TipoTramo.RETORNO, vuelta.get(vuelta.size() - 1).getTipo());
+        assertFalse(aplicada.conservaCarga());
+        assertEquals(1, entregas.size());
+        assertEquals(llegadaDe(respaldo, PEDIDO_URGENTE.getId()), entregas.get(0).getLlegada());
+        ResultadoSimulacion resultado = simulacion.getResultado();
+        assertEquals(1, resultado.getTotalEntregas());
+        assertEquals(0, resultado.getTotalIncumplimientos());
+        assertEquals(kilometros(aplicada.transitoReanudado()) + kilometros(respaldo), resultado.getDistanciaTotal());
+    }
+
+    @Test
+    void averiaTipo1_entregaQueAunLlegaATiempoEsperando_sigueABordoAunqueTengaPocaHolgura() {
+        // Plazo de 4 h: esperando las 2 h llega a tiempo, con menos de 120 min de holgura.
         SimulacionEnCurso simulacion = iniciar(flotaEnCentral(), pedidoCercano(240));
         UnidadEnTransito transito = simulacion.avanzar(0).getUnidadesDespachadas().get(0);
         int holguraEsperando = 240 - llegadaDeEntrega(transito) - ConfiguracionDominio.AVERIA_TIPO1_MINUTOS;
@@ -157,55 +196,29 @@ class OrquestadorTest {
 
         AveriaAplicada aplicada = simulacion.avanzar(INSTANTE_AVERIA).getAveriasAplicadas().get(0);
 
-        assertEquals(1, aplicada.trasbordos().size());
+        assertTrue(aplicada.trasbordos().isEmpty());
+        assertTrue(aplicada.respaldos().isEmpty());
+        assertTrue(aplicada.conservaCarga());
     }
 
     @Test
-    void averiaTipo1_receptoraQueTambienLlegaTardePeroAntes_trasbordaIgual() {
-        // Plazo de 10 min: la entrega ya salia tarde; la receptora no la salva, pero reduce el retraso.
-        SimulacionEnCurso simulacion = iniciar(flotaEnCentral(), pedidoCercano(10));
-        Vehiculo averiada = simulacion.avanzar(0).getUnidadesDespachadas().get(0).getVehiculo();
-        assertEquals(1, simulacion.getResultado().getTotalIncumplimientos());
-        simulacion.agregarAveria(new Averia(INSTANTE_AVERIA, averiada.getId(), TipoAveria.TIPO_1));
-
-        AveriaAplicada aplicada = simulacion.avanzar(INSTANTE_AVERIA).getAveriasAplicadas().get(0);
-
-        assertEquals(1, aplicada.trasbordos().size());
-        assertTrue(llegadaDeEntrega(aplicada.trasbordos().get(0).receptora()) > 10);
-        assertEquals(1, simulacion.getResultado().getTotalIncumplimientos());
-    }
-
-    @Test
-    void averiaTipo1_receptoraQueNoAlcanzaElPuntoEnLasDosHoras_noTrasbordaYLaEntregaSigueABordo() {
-        // La unica unidad libre es una bicicleta en el intermedio de (57, 27), a mas de 2 h del punto.
-        List<Vehiculo> flota = List.of(new Vehiculo(0, TipoVehiculo.AUTO, almacenes.get(0)),
-                new Vehiculo(1, TipoVehiculo.BICICLETA, almacenes.get(2)));
-        SimulacionEnCurso simulacion = iniciar(flota, pedidoCercano(60));
-        Vehiculo averiada = simulacion.avanzar(0).getUnidadesDespachadas().get(0).getVehiculo();
-        assertEquals(0, averiada.getId());
+    void averiaTipo1_receptoraQueNoTerminaElTrasvaseAntesDeQueLaAveriadaReanude_noTrasvasa() {
+        // La otra unidad en ruta sale del intermedio de (57, 27): en moto tarda mas de 90 min al punto.
+        List<Vehiculo> flota = List.of(new Vehiculo(0, TipoVehiculo.MOTOCICLETA, almacenes.get(0)),
+                new Vehiculo(1, TipoVehiculo.MOTOCICLETA, almacenes.get(2)));
+        Pedido lejano = new Pedido(2, new Nodo(60, 30), 3, 1, PLAZO_REGULAR);
+        SimulacionEnCurso simulacion = iniciar(flota, List.of(PEDIDO_URGENTE, lejano));
+        ResultadoPaso salida = simulacion.avanzar(0);
+        assertEquals(flota.get(0), portadora(salida, PEDIDO_URGENTE.getId()).getVehiculo());
+        assertEquals(flota.get(1), portadora(simulacion.avanzar(1), lejano.getId()).getVehiculo());
         simulacion.agregarAveria(new Averia(INSTANTE_AVERIA, 0, TipoAveria.TIPO_1));
 
         AveriaAplicada aplicada = simulacion.avanzar(INSTANTE_AVERIA).getAveriasAplicadas().get(0);
 
         assertTrue(aplicada.trasbordos().isEmpty());
+        assertTrue(aplicada.respaldos().isEmpty());
         assertTrue(aplicada.conservaCarga());
-        assertEquals(EstadoVehiculo.DISPONIBLE_EN_ALMACEN, flota.get(1).getEstado());
-    }
-
-    @Test
-    void averiaTipo1_receptoraDeUnIntermedio_noDescuentaStockPorLaCargaTrasbordada() {
-        Almacen intermedio = almacenes.get(1);
-        List<Vehiculo> flota = List.of(new Vehiculo(0, TipoVehiculo.MOTOCICLETA, intermedio),
-                new Vehiculo(1, TipoVehiculo.MOTOCICLETA, intermedio));
-        Pedido pedido = new Pedido(1, new Nodo(14, 36), 3, 0, 60);
-        SimulacionEnCurso simulacion = iniciar(flota, List.of(pedido));
-        Vehiculo averiada = simulacion.avanzar(0).getUnidadesDespachadas().get(0).getVehiculo();
-        simulacion.agregarAveria(new Averia(2, averiada.getId(), TipoAveria.TIPO_1));
-
-        AveriaAplicada aplicada = simulacion.avanzar(2).getAveriasAplicadas().get(0);
-
-        assertEquals(1, aplicada.trasbordos().size());
-        assertEquals(intermedio.getCapacidadMaxima() - pedido.getCantidad(), intermedio.getStockDisponible());
+        assertTrue(simulacion.huboColapso());
     }
 
     @Test
@@ -226,7 +239,7 @@ class OrquestadorTest {
     }
 
     @Test
-    void averiaTipo2_unidadEnRuta_liberaLaCargaYOtraUnidadLaLlevaEnElMismoPaso() {
+    void averiaTipo2_unidadEnRutaSinReceptora_saleUnRespaldoEnElMismoPasoSinPlanificar() {
         SimulacionEnCurso simulacion = iniciar(flotaEnCentral(), pedidoCercano(PLAZO_REGULAR));
         UnidadEnTransito transito = simulacion.avanzar(0).getUnidadesDespachadas().get(0);
         Vehiculo vehiculo = transito.getVehiculo();
@@ -235,12 +248,12 @@ class OrquestadorTest {
         ResultadoPaso paso = simulacion.avanzar(INSTANTE_AVERIA);
 
         AveriaAplicada aplicada = paso.getAveriasAplicadas().get(0);
-        assertEquals(1, aplicada.entregasLiberadas().size());
-        assertTrue(aplicada.entregasLiberadas().get(0).getId() < 0);
+        assertTrue(aplicada.entregasLiberadas().isEmpty());
+        assertEquals(1, aplicada.entregasRespaldadas().size());
         assertEquals(transito.ubicacionEn(INSTANTE_AVERIA), aplicada.ubicacion());
         assertEquals(EstadoVehiculo.AVERIADA, vehiculo.getEstado());
-        assertTrue(paso.huboPlanificacion());
-        assertEquals(1, paso.getUnidadesDespachadas().size());
+        assertFalse(paso.huboPlanificacion());
+        assertEquals(aplicada.respaldos(), paso.getUnidadesDespachadas());
         assertNotSame(vehiculo, paso.getUnidadesDespachadas().get(0).getVehiculo());
         assertFalse(simulacion.getUnidadesEnTransito().stream().anyMatch(unidad -> unidad.getVehiculo() == vehiculo));
     }
@@ -264,7 +277,8 @@ class OrquestadorTest {
     }
 
     @Test
-    void averiaTipo2_salidaDesdeUnIntermedio_descuentaElStockUnaSolaVez() {
+    void averiaTipo2_respaldoDesdeUnIntermedio_descuentaProductoNuevoYNoDevuelveLaCargaDeLaAveriada() {
+        // La carga de la averiada va con ella al central (ilimitado); el respaldo sale con producto nuevo.
         Almacen intermedio = almacenes.get(1);
         List<Vehiculo> flota = List.of(new Vehiculo(0, TipoVehiculo.MOTOCICLETA, intermedio),
                 new Vehiculo(1, TipoVehiculo.MOTOCICLETA, intermedio));
@@ -277,7 +291,51 @@ class OrquestadorTest {
         UnidadEnTransito reemplazo = simulacion.avanzar(2).getUnidadesDespachadas().get(0);
 
         assertEquals(intermedio, reemplazo.getOrigen());
-        assertEquals(intermedio.getCapacidadMaxima() - pedido.getCantidad(), intermedio.getStockDisponible());
+        assertEquals(intermedio.getCapacidadMaxima() - 2 * pedido.getCantidad(), intermedio.getStockDisponible());
+    }
+
+    @Test
+    void averiaTipo2_unidadEnRutaCercana_trasvasaTodoLoPendienteAunqueTengaHolgura() {
+        Pedido regular = new Pedido(1, new Nodo(30, 18), 3, 0, PLAZO_REGULAR);
+        Pedido vecino = new Pedido(2, new Nodo(32, 18), 3, 1, PLAZO_REGULAR);
+        List<Vehiculo> flota = List.of(new Vehiculo(0, TipoVehiculo.MOTOCICLETA, almacenes.get(0)),
+                new Vehiculo(1, TipoVehiculo.MOTOCICLETA, almacenes.get(0)));
+        SimulacionEnCurso simulacion = iniciar(flota, List.of(regular, vecino));
+        ResultadoPaso salida = simulacion.avanzar(0);
+        simulacion.avanzar(1);
+        UnidadEnTransito averiada = portadora(salida, regular.getId());
+        simulacion.agregarAveria(new Averia(INSTANTE_AVERIA, averiada.getVehiculo().getId(), TipoAveria.TIPO_2));
+
+        AveriaAplicada aplicada = simulacion.avanzar(INSTANTE_AVERIA).getAveriasAplicadas().get(0);
+
+        assertEquals(1, aplicada.trasbordos().size());
+        UnidadEnTransito receptora = aplicada.trasbordos().get(0).receptora();
+        assertNotSame(averiada.getVehiculo(), receptora.getVehiculo());
+        assertTrue(tramoDeTipo(receptora, TipoTramo.TRASVASE).getLlegada()
+                <= INSTANTE_AVERIA + ConfiguracionDominio.AVERIA_PERMANENCIA_SITIO_MINUTOS);
+        assertTrue(aplicada.entregasLiberadas().isEmpty());
+        assertTrue(aplicada.respaldos().isEmpty());
+        assertNull(aplicada.transitoReanudado());
+        assertEquals(0, simulacion.getResultado().getTotalIncumplimientos());
+        assertEquals(2, simulacion.getResultado().getTotalEntregas());
+    }
+
+    @Test
+    void averiaEnVivo_pasoSinPlanificar_reparaLaAveriaPeroLaColaEsperaAlSiguienteSa() {
+        Pedido tardio = new Pedido(3, new Nodo(20, 20), 2, INSTANTE_AVERIA, PLAZO_REGULAR);
+        SimulacionEnCurso simulacion = iniciar(flotaEnCentral(), List.of(PEDIDO_URGENTE, tardio));
+        Vehiculo averiada = simulacion.avanzar(0).getUnidadesDespachadas().get(0).getVehiculo();
+        simulacion.agregarAveria(new Averia(INSTANTE_AVERIA, averiada.getId(), TipoAveria.TIPO_1));
+
+        ResultadoPaso evento = simulacion.avanzar(INSTANTE_AVERIA, false);
+        ResultadoPaso siguienteSa = simulacion.avanzar(SA_MINUTOS);
+
+        assertFalse(evento.huboPlanificacion());
+        assertEquals(List.of(tardio), evento.getPedidosIncorporados());
+        assertEquals(evento.getAveriasAplicadas().get(0).respaldos(), evento.getUnidadesDespachadas());
+        assertTrue(siguienteSa.huboPlanificacion());
+        assertEquals(tardio.getId(), siguienteSa.getUnidadesDespachadas().get(0).getRuta().getSecuencia().get(0)
+                .getIdPedido());
     }
 
     @Test
@@ -362,6 +420,21 @@ class OrquestadorTest {
 
     private static int llegadaDeEntrega(UnidadEnTransito transito) {
         return transito.getTramos().stream().filter(Tramo::esEntrega).findFirst().orElseThrow().getLlegada();
+    }
+
+    private static UnidadEnTransito portadora(ResultadoPaso paso, int idPedido) {
+        return paso.getUnidadesDespachadas().stream()
+                .filter(unidad -> unidad.getTramos().stream().anyMatch(tramo -> tramo.getIdPedido() == idPedido))
+                .findFirst().orElseThrow();
+    }
+
+    private static int llegadaDe(UnidadEnTransito transito, int idPedido) {
+        return transito.getTramos().stream().filter(tramo -> tramo.esEntrega() && tramo.getIdPedido() == idPedido)
+                .findFirst().orElseThrow().getLlegada();
+    }
+
+    private static Tramo tramoDeTipo(UnidadEnTransito transito, TipoTramo tipo) {
+        return transito.getTramos().stream().filter(tramo -> tramo.getTipo() == tipo).findFirst().orElseThrow();
     }
 
     private static int kilometros(UnidadEnTransito transito) {

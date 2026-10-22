@@ -4,6 +4,24 @@ Formato basado en Keep a Changelog; versionado semántico (MAJOR.MINOR.PATCH).
 
 ## [Sin publicar]
 
+### Averías: trasvase a unidades en ruta y respaldo desde almacén
+- El mismo procedimiento para los tres tipos de avería en ruta:
+  1. tipo 1: lo que llega a tiempo esperando las 2 h sigue a bordo;
+  2. lo demás (y todo lo de tipo 2 y 3) se trasvasa a unidades **en ruta**: prefiltro con
+     Manhattan (espacio libre, holgura propia que cubra el desvío, llegada a tiempo) y trazado
+     exacto de las 5 que llegan antes. Cada entrega va a la receptora que la entrega antes, solo
+     si llega a tiempo y sin dejar tarde las entregas propias de la receptora (LE-041/042);
+  3. lo que no se trasvasa sale, si llega a tiempo, en una unidad libre del almacén con stock
+     que llegue antes, con producto nuevo;
+  4. lo que queda sigue a bordo (tipo 1) o vuelve a la cola del siguiente Sa (tipo 2 y 3).
+- El trasvase toma 30 min (`TRASVASE_MINUTOS`, tramo `TRASVASE`) y debe terminar antes de que
+  la averiada se vaya: 2 h en tipo 1 y 4 h (traslado al central) en tipo 2 y 3.
+- Tipo 2 y 3 ya no devuelven la carga al almacén de origen: va con la unidad al central.
+- El paso que dispara una avería en vivo ya no replanifica la cola; esta espera al siguiente Sa.
+- Las unidades libres en almacén ya no son receptoras de trasbordo: las reemplaza el respaldo.
+- Seguimiento de pedidos: hitos `Trasvasado`, `Desvio por trasvase` y `Respaldo por averia`;
+  el evento `UNIDAD_AVERIADA` agrega `pedidosRespaldados` y `unidadesRespaldo`.
+
 ### Front conectado a la API (`paqtracker-web`)
 - Los mocks se reemplazan por datos en vivo:
   - capa `services/` (cliente REST, cliente STOMP único con re-suscripción, adaptador de la

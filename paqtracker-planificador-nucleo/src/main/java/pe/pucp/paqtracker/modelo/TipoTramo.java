@@ -17,6 +17,9 @@ public enum TipoTramo {
     /** Detencion por una averia tipo 1: la unidad queda inmovilizada en el punto con su carga. */
     AVERIA,
 
-    /** Desplazamiento desde el almacen hasta una unidad con averia tipo 1, para recoger su carga urgente. */
-    VIAJE_A_TRASBORDO
+    /** Desvio de una unidad en ruta hasta una unidad averiada, para recoger parte de su carga. */
+    VIAJE_A_TRASBORDO,
+
+    /** Trasvase de la carga de una unidad averiada a la receptora: la receptora no se mueve. */
+    TRASVASE
 }
