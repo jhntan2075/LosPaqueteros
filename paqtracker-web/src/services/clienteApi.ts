@@ -6,6 +6,8 @@ import type {
   MensajeEstadoApi,
   PedidoApi,
   RegistroPedidoApi,
+  EstimacionAveriaApi,
+  RespuestaRegistroAveriaApi,
   SolicitudEjecucionApi,
 } from '../types/api';
 
@@ -44,6 +46,20 @@ async function solicitar<T>(ruta: string, opciones: RequestInit = {}): Promise<T
   return (await respuesta.json()) as T;
 }
 
+/** DELETE que responde 204 sin cuerpo. */
+async function eliminar(ruta: string): Promise<void> {
+  let respuesta: Response;
+  try {
+    respuesta = await fetch(`${BASE}${ruta}`, { method: 'DELETE' });
+  } catch {
+    throw new ErrorDeApi(0, 'No se pudo conectar con el servidor');
+  }
+  if (!respuesta.ok) {
+    const cuerpo = (await respuesta.json().catch(() => null)) as ErrorApi | null;
+    throw new ErrorDeApi(respuesta.status, cuerpo?.mensaje ?? `Error ${respuesta.status}`, cuerpo?.detalles ?? []);
+  }
+}
+
 const enviarJson = <T>(ruta: string, cuerpo?: unknown) =>
   solicitar<T>(ruta, {
     method: 'POST',
@@ -73,6 +89,16 @@ export const clienteApi = {
     solicitar<DetallePedidoApi>(`/pedidos/${encodeURIComponent(codigo)}?ejecucionId=${encodeURIComponent(ejecucionId)}`),
   registrarPedido: (pedido: { cliente: string; x: number; y: number; cantidad: number; plazoHoras: number }) =>
     enviarJson<RegistroPedidoApi>('/pedidos', pedido),
+
+  /** CU-13: registra una avería en el instante actual del reloj de la ejecución. */
+  registrarAveria: (ejecucionId: string, unidad: string, tipo: 1 | 2 | 3) =>
+    enviarJson<RespuestaRegistroAveriaApi>(`/ejecuciones/${encodeURIComponent(ejecucionId)}/averias`, { unidad, tipo }),
+  /** Deshace una avería mientras sigue programada; 409 si el motor ya la aplicó. */
+  cancelarAveria: (ejecucionId: string, averiaId: number) =>
+    eliminar(`/ejecuciones/${encodeURIComponent(ejecucionId)}/averias/${averiaId}`),
+  /** Cuándo volvería a operar una unidad si ahora se registrara cada tipo de avería. No registra nada. */
+  estimarAverias: (ejecucionId: string) =>
+    solicitar<EstimacionAveriaApi[]>(`/ejecuciones/${encodeURIComponent(ejecucionId)}/averias/estimacion`),
 
   /** Mes en formato YYYYMM. */
   subirVentas: (archivo: File, mes: string) => subirArchivo('/archivos/pedidos', archivo, mes),

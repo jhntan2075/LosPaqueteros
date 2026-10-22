@@ -5,6 +5,7 @@ import { mensajeDeError, useEjecuciones } from '../../hooks/useEjecuciones';
 import { formatearFechaLarga, formatearMiles } from '../../lib/formato';
 import { NOMBRE_REGISTRO, mesDeArchivo, subirArchivo } from '../../services/servicioArchivos';
 import type { ComposicionFlotaApi, EjecucionApi, EstadoEjecucionApi } from '../../types/api';
+import { IndicadorRadio } from '../layout/IndicadorRadio';
 import type { ArchivoCargado, EscenarioSimulacion, TipoArchivo } from '../../types/simulacion';
 
 // Configuración de escenario (Figma "Configuración de escenario · vacío / completado"). Crea una
@@ -268,7 +269,10 @@ export const ConfiguracionEscenario: React.FC<ConfiguracionEscenarioProps> = ({ 
                         onChange={() => setEscenario(opcion.valor)}
                         className="sr-only"
                       />
-                      <span className={`font-sans font-semibold text-[14px] ${activo ? 'text-[#1E40AF]' : 'text-[#0F172A]'}`}>{opcion.titulo}</span>
+                      <span className={`flex items-center gap-[8px] font-sans font-semibold text-[14px] ${activo ? 'text-[#1E40AF]' : 'text-[#0F172A]'}`}>
+                        <IndicadorRadio marcado={activo} />
+                        {opcion.titulo}
+                      </span>
                       <span className="font-sans text-[12px] text-[#64748B]">{opcion.descripcion}</span>
                     </label>
                   );

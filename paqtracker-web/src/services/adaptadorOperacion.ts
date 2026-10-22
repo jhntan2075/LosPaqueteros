@@ -124,6 +124,14 @@ function adaptarUnidad(unidad: UnidadEnMapaApi, pedidos: Record<string, PedidoOp
     origen: unidad.almacenOrigen,
     carga: unidad.cargaActual,
     capacidad: unidad.capacidadMaxima,
+    averia: unidad.averia
+      ? {
+          tipo: unidad.averia.tipo,
+          desde: new Date(unidad.averia.desdeMs),
+          vuelve: new Date(unidad.averia.reincorporacionMs),
+          trasladoCentral: unidad.averia.trasladoCentralMs === null ? null : new Date(unidad.averia.trasladoCentralMs),
+        }
+      : undefined,
     ruta,
     paradas,
     paradaActual: paradas.length > 0 ? 1 : 0,
@@ -146,6 +154,40 @@ function adaptarBloqueo(bloqueo: BloqueoEnMapaApi): BloqueoOperacion[] {
   }));
 }
 
+const plural = (n: number, singular: string, pluralTexto: string) => `${n} ${n === 1 ? singular : pluralTexto}`;
+const lista = (valor: unknown) => (Array.isArray(valor) ? (valor as string[]) : []);
+
+/**
+ * Texto de la bitácora para los eventos de averías, armado con su detalle (el mensaje del servidor no lleva
+ * tildes ni la ubicación). Devuelve null si el detalle no trae lo necesario y se usa el mensaje original.
+ */
+function detalleDeAveria(evento: MensajeEventoApi): string | null {
+  const d = evento.detalle;
+  if (evento.tipo === 'UNIDAD_AVERIADA' && typeof d.unidad === 'string') {
+    const liberados = lista(d.pedidosLiberados).length;
+    const receptoras = lista(d.unidadesReceptoras);
+    const efecto = d.conservaCarga
+      ? receptoras.length > 0
+        ? `conserva su carga; la recoge ${receptoras.join(', ')}`
+        : 'conserva su carga'
+      : liberados > 0
+        ? `${plural(liberados, 'pedido vuelve', 'pedidos vuelven')} a planificarse`
+        : 'no llevaba pedidos';
+    return `${d.unidad} · tipo ${d.tipo} · ${efecto}`;
+  }
+  if (evento.tipo === 'TRASBORDO' && typeof d.unidadReceptora === 'string') {
+    const ubicacion = d.ubicacion as { x: number; y: number } | undefined;
+    const recojo = typeof d.recojoMs === 'number' ? ` · ${horaConSegundos(new Date(d.recojoMs)).slice(0, 5)}` : '';
+    return `${d.unidadReceptora} recoge ${plural(lista(d.pedidos).length, 'pedido', 'pedidos')} de ${d.unidadAveriada}${
+      ubicacion ? ` en (${ubicacion.x},${ubicacion.y})` : ''
+    }${recojo}`;
+  }
+  if (evento.tipo === 'UNIDAD_REINCORPORADA' && typeof d.unidad === 'string') {
+    return `${d.unidad} vuelve a operar tras su avería`;
+  }
+  return null;
+}
+
 /** Evento de la API como entrada de la bitácora. */
 export function adaptarEvento(evento: MensajeEventoApi): EventoBitacora {
   // Un tipo que el servidor agregue después no rompe la bitácora: se muestra con su mensaje.
@@ -156,7 +198,7 @@ export function adaptarEvento(evento: MensajeEventoApi): EventoBitacora {
     instanteMs: evento.timestampSimuladoMs,
     hora: horaConSegundos(new Date(evento.timestampSimuladoMs)),
     titulo: tarde ? 'Entrega con retraso' : formato.titulo,
-    detalle: evento.mensaje,
+    detalle: detalleDeAveria(evento) ?? evento.mensaje,
     categoria: formato.categoria,
     color: tarde ? 'rojo' : formato.color,
   };

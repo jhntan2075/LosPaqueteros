@@ -1,7 +1,7 @@
 import React from 'react';
 import { UNIDADES, type TipoUnidad } from '../../config/dominio';
 import { RANGO_OCUPACION } from '../../config/glosario';
-import { capitalizar } from '../../lib/formato';
+import { capitalizar, formatearMomento } from '../../lib/formato';
 import { useDatosOperacion } from '../../hooks/useDatosOperacion';
 import { estadoFlota, nivelDeOcupacion } from '../../lib/operacion';
 import { COLOR_HOLGURA } from '../pedidos/estilos';
@@ -27,7 +27,9 @@ const Leyenda: React.FC<{ color: string; etiqueta: string; valor: number }> = ({
 
 /** Pestaña "Flota" del panel lateral del mapa (Operación y corrida de simulación). */
 export const EstadoFlota: React.FC = () => {
-  const flota = estadoFlota(useDatosOperacion());
+  const datos = useDatosOperacion();
+  const { reloj } = datos;
+  const flota = estadoFlota(datos);
   const utilizacion = flota.total === 0 ? 0 : Math.round((flota.enRuta / flota.total) * 100);
   // Cada unidad cae en un solo segmento; los que valen 0 no se dibujan ni aparecen en la leyenda.
   const segmentos = [
@@ -44,7 +46,7 @@ export const EstadoFlota: React.FC = () => {
       color: 'rojo' as const,
       titulo: `${unidades(flota.averiadas.length)} ${flota.averiadas.length === 1 ? 'averiada' : 'averiadas'}`,
       detalle: flota.averiadas
-        .map((u) => `${capitalizar(UNIDADES[u.tipo].nombre)} ${u.codigo}${u.averia ? ` (${u.averia.fueraDeServicio})` : ''}`)
+        .map((u) => `${capitalizar(UNIDADES[u.tipo].nombre)} ${u.codigo}${u.averia ? ` (tipo ${u.averia.tipo}, vuelve ${formatearMomento(u.averia.vuelve, reloj)})` : ''}`)
         .join(' · '),
     },
     flota.llenas.length > 0 && {
