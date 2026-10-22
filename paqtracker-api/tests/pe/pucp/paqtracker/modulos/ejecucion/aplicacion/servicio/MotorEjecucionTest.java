@@ -9,6 +9,7 @@ import pe.pucp.paqtracker.modelo.Bloqueo;
 import pe.pucp.paqtracker.modelo.Nodo;
 import pe.pucp.paqtracker.modelo.Pedido;
 import pe.pucp.paqtracker.modelo.TipoAveria;
+import pe.pucp.paqtracker.modulos.difusion.aplicacion.dto.AveriaEnCurso;
 import pe.pucp.paqtracker.modulos.difusion.aplicacion.dto.BloqueoEnMapa;
 import pe.pucp.paqtracker.modulos.difusion.aplicacion.dto.Coordenada;
 import pe.pucp.paqtracker.modulos.difusion.aplicacion.dto.MensajeEstadoEjecucion;
@@ -21,6 +22,7 @@ import pe.pucp.paqtracker.modulos.difusion.aplicacion.servicio.ServicioDifusion;
 import pe.pucp.paqtracker.modulos.difusion.dominio.PuertoDifusion;
 import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.dto.AveriaProgramada;
 import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.dto.DetallePedido;
+import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.dto.EstimacionAveria;
 import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.dto.HitoPedido;
 import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.dto.ResultadoRegistroPedido;
 import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.dto.SolicitudAveriaEnVivo;
@@ -50,6 +52,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Executors;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -443,6 +446,88 @@ class MotorEjecucionTest {
         motor.procesarTickAhora();
         assertThrows(OperacionNoPermitidaException.class,
                 () -> motor.programarAveria(new SolicitudAveriaEnVivo("B-01", TipoAveria.TIPO_1)));
+    }
+
+    @Test
+    void estimarAverias_ejecucionEnCurso_devuelveLosTresTiposSinRegistrarNada() {
+        MotorEjecucion motor = crearMotor(List.of(), false);
+        motor.preparar();
+        motor.iniciar();
+
+        List<EstimacionAveria> estimaciones = motor.estimarAverias();
+
+        assertEquals(List.of(1, 2, 3), estimaciones.stream().map(EstimacionAveria::tipo).toList());
+        EstimacionAveria tipo1 = estimaciones.get(0);
+        assertEquals(Duration.ofHours(2).toMillis(), tipo1.reincorporacionMs() - tipo1.instanteMs());
+        assertNull(tipo1.trasladoCentralMs());
+        assertNotNull(estimaciones.get(1).trasladoCentralMs());
+        assertTrue(estimaciones.get(2).reincorporacionMs() - estimaciones.get(2).instanteMs() >= Duration.ofDays(2).toMillis());
+        // No registró nada: la unidad sigue admitiendo una avería.
+        motor.programarAveria(new SolicitudAveriaEnVivo("A-01", TipoAveria.TIPO_1));
+    }
+
+    @Test
+    void estimarAverias_coincideConLoQueDevuelveElRegistro() {
+        MotorEjecucion motor = crearMotor(List.of(), false);
+        motor.preparar();
+        motor.iniciar();
+        pared.avanzar(Duration.ofSeconds(70));
+        motor.procesarTickAhora();
+        EstimacionAveria estimada = motor.estimarAverias().get(1);
+
+        AveriaProgramada programada = motor.programarAveria(new SolicitudAveriaEnVivo("A-01", TipoAveria.TIPO_2));
+
+        assertEquals(estimada.instanteMs(), programada.instanteMs());
+        assertEquals(estimada.reincorporacionMs(), programada.reincorporacionMs());
+        assertEquals(estimada.trasladoCentralMs(), programada.trasladoCentralMs());
+    }
+
+    @Test
+    void cancelarAveria_averiaProgramada_laRetiraYLaUnidadAdmiteOtra() {
+        MotorEjecucion motor = crearMotor(List.of(), false);
+        motor.preparar();
+        motor.iniciar();
+        motor.programarAveria(new SolicitudAveriaEnVivo("A-01", TipoAveria.TIPO_3));
+
+        motor.cancelarAveria("A-01");
+        pared.avanzar(Duration.ofSeconds(10));
+        motor.procesarTickAhora();
+
+        assertEquals("DISPONIBLE_EN_ALMACEN", unidad(motor, "A-01").estado());
+        assertFalse(hayEvento("UNIDAD_AVERIADA"));
+        assertThrows(OperacionNoPermitidaException.class, () -> motor.cancelarAveria("A-01"));
+        motor.programarAveria(new SolicitudAveriaEnVivo("A-01", TipoAveria.TIPO_1));
+    }
+
+    @Test
+    void cancelarAveria_yaAplicada_lanzaOperacionNoPermitidaYLaInstantaneaLaMuestra() {
+        MotorEjecucion motor = crearMotor(List.of(), false);
+        motor.preparar();
+        motor.iniciar();
+        AveriaProgramada programada = motor.programarAveria(new SolicitudAveriaEnVivo("A-01", TipoAveria.TIPO_2));
+        pared.avanzar(Duration.ofSeconds(10));
+        motor.procesarTickAhora();
+
+        OperacionNoPermitidaException rechazo = assertThrows(OperacionNoPermitidaException.class,
+                () -> motor.cancelarAveria("A-01"));
+
+        assertTrue(rechazo.getMessage().contains("ya se aplico"));
+        AveriaEnCurso averia = unidad(motor, "A-01").averia();
+        assertNotNull(averia);
+        assertEquals(2, averia.tipo());
+        assertEquals(programada.instanteMs(), averia.desdeMs());
+        assertEquals(programada.reincorporacionMs(), averia.reincorporacionMs());
+        assertEquals(programada.trasladoCentralMs(), averia.trasladoCentralMs());
+        assertNull(unidad(motor, "A-02").averia(), "solo la unidad averiada lleva avería");
+    }
+
+    @Test
+    void cancelarAveria_unidadQueNoEsDeLaFlota_lanzaRecursoNoEncontrado() {
+        MotorEjecucion motor = crearMotor(List.of(), false);
+        motor.preparar();
+        motor.iniciar();
+
+        assertThrows(RecursoNoEncontradoException.class, () -> motor.cancelarAveria("Z-99"));
     }
 
     private boolean hayEvento(String tipo) {
