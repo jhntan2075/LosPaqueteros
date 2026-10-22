@@ -5,12 +5,7 @@ import { CorridaSimulacion } from './CorridaSimulacion';
 
 // Flujo de Simulación: configuración de escenario (o elegir una existente) → corrida → informe.
 
-interface ModuloSimulacionProps {
-  onVerBitacoraCompleta: () => void;
-  onAbrirLeyenda: () => void;
-}
-
-export const ModuloSimulacion: React.FC<ModuloSimulacionProps> = ({ onVerBitacoraCompleta, onAbrirLeyenda }) => {
+export const ModuloSimulacion: React.FC = () => {
   const [ejecucion, setEjecucion] = useState<EjecucionApi | null>(null);
 
   if (!ejecucion) {
@@ -21,8 +16,6 @@ export const ModuloSimulacion: React.FC<ModuloSimulacionProps> = ({ onVerBitacor
       key={ejecucion.id}
       ejecucion={ejecucion}
       onSalir={() => setEjecucion(null)}
-      onVerBitacoraCompleta={onVerBitacoraCompleta}
-      onAbrirLeyenda={onAbrirLeyenda}
     />
   );
 };

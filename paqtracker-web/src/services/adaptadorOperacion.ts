@@ -30,10 +30,19 @@ const MS_POR_MINUTO = 60_000;
 const MS_POR_HORA = 3_600_000;
 
 const ESTADO_PEDIDO: Record<PedidoEnMapaApi['estado'], PedidoOperacion['estado']> = {
-  REGISTRADO: 'Registrado',
+  REGISTRADO: 'En espera',
   EN_TRANSITO: 'En tránsito',
-  // Los entregados no se muestran como activos; el valor solo completa el registro.
-  ENTREGADO: 'En tránsito',
+  ENTREGADO: 'Entregado',
+};
+
+/** EstadoVehiculo del planificador → estado de la vista. Un estado desconocido se muestra como disponible. */
+const ESTADO_UNIDAD: Record<string, UnidadOperacion['estado']> = {
+  EN_RUTA: 'EN_RUTA',
+  EN_ENTREGA: 'EN_RUTA',
+  EN_REFRIGERIO: 'EN_REFRIGERIO',
+  DISPONIBLE_EN_ALMACEN: 'DISPONIBLE',
+  FUERA_DE_TURNO: 'FUERA_DE_TURNO',
+  AVERIADA: 'AVERIADA',
 };
 
 const EVENTO: Record<TipoEventoApi, { titulo: string; categoria: CategoriaEvento; color: EventoBitacora['color'] }> = {
@@ -43,6 +52,9 @@ const EVENTO: Record<TipoEventoApi, { titulo: string; categoria: CategoriaEvento
   BLOQUEO_INICIADO: { titulo: 'Bloqueo iniciado', categoria: 'INCIDENCIA', color: 'ambar' },
   BLOQUEO_LEVANTADO: { titulo: 'Bloqueo levantado', categoria: 'INCIDENCIA', color: 'gris' },
   ALERTA_COLAPSO: { titulo: 'Colapso logístico', categoria: 'INCIDENCIA', color: 'rojo' },
+  UNIDAD_AVERIADA: { titulo: 'Unidad averiada', categoria: 'INCIDENCIA', color: 'rojo' },
+  TRASBORDO: { titulo: 'Trasbordo de carga', categoria: 'INCIDENCIA', color: 'ambar' },
+  UNIDAD_REINCORPORADA: { titulo: 'Unidad reincorporada', categoria: 'INCIDENCIA', color: 'gris' },
   EJECUCION_FINALIZADA: { titulo: 'Ejecución finalizada', categoria: 'OPERACION', color: 'gris' },
 };
 
@@ -107,10 +119,11 @@ function adaptarUnidad(unidad: UnidadEnMapaApi, pedidos: Record<string, PedidoOp
   return {
     codigo: unidad.codigo,
     tipo: unidad.tipo,
-    estado: unidad.estado === 'EN_RUTA' ? 'EN_RUTA' : 'DISPONIBLE',
+    estado: ESTADO_UNIDAD[unidad.estado] ?? 'DISPONIBLE',
     posicion,
     origen: unidad.almacenOrigen,
     carga: unidad.cargaActual,
+    capacidad: unidad.capacidadMaxima,
     ruta,
     paradas,
     paradaActual: paradas.length > 0 ? 1 : 0,
@@ -135,7 +148,8 @@ function adaptarBloqueo(bloqueo: BloqueoEnMapaApi): BloqueoOperacion[] {
 
 /** Evento de la API como entrada de la bitácora. */
 export function adaptarEvento(evento: MensajeEventoApi): EventoBitacora {
-  const formato = EVENTO[evento.tipo];
+  // Un tipo que el servidor agregue después no rompe la bitácora: se muestra con su mensaje.
+  const formato = EVENTO[evento.tipo] ?? { titulo: 'Evento', categoria: 'OPERACION', color: 'gris' };
   const tarde = evento.tipo === 'PEDIDO_ENTREGADO' && evento.detalle.aTiempo === false;
   return {
     id: evento.id,
@@ -162,7 +176,7 @@ function resumir(mensaje: MensajeEstadoApi, pedidos: PedidoEnMapaApi[], ahoraMs:
     enRuta: i.pedidosEnTransito,
     enEspera: i.pedidosPendientes,
     sinRuta: i.pedidosPendientes,
-    proximaEntregaMin: proximas.length === 0 ? 0 : Math.round(Math.min(...proximas)),
+    proximaEntregaMin: proximas.length === 0 ? null : Math.round(Math.min(...proximas)),
     saturacion: mensaje.unidades.length === 0 ? 0 : i.unidadesEnRuta / mensaje.unidades.length,
   };
 }

@@ -1,38 +1,50 @@
 import React from 'react';
+import { RANGO_HOLGURA } from '../../config/glosario';
 
 export interface FooterBarProps {
   nodoSeleccionado?: { x: number; y: number };
   totalPedidos?: number;
   entregados?: number;
   enRuta?: number;
-  enRiesgo?: number;
+  /** Pedidos en nivel crítico (rojo) del semáforo de holgura. */
+  criticos?: number;
   bloqueosActivos?: number;
   averiasActivas?: number;
   segundosDesdeActualizacion?: number;
-  onAbrirLeyenda?: () => void;
-  /** Si se indica, "actualizado hace N s" abre la bitácora de eventos. */
-  onVerBitacora?: () => void;
+  /** Estado de la conexión STOMP; sin conexión, el indicador deja de mostrarse como en vivo. */
+  conectado?: boolean;
   /** Reemplaza "actualizado hace N s" (p. ej. "mapa congelado al detectar el colapso"). */
   estadoAlerta?: string;
 }
+
+const SEGUNDOS_SIN_ACTUALIZAR = 10;
+
+const formatearAntiguedad = (segundos: number) => (segundos < 60 ? `${segundos} s` : `${Math.floor(segundos / 60)} min`);
 
 export const FooterBar: React.FC<FooterBarProps> = ({
   nodoSeleccionado,
   totalPedidos = 0,
   entregados = 0,
   enRuta = 0,
-  enRiesgo = 0,
+  criticos = 0,
   bloqueosActivos = 0,
   averiasActivas = 0,
   segundosDesdeActualizacion = 0,
-  onAbrirLeyenda,
-  onVerBitacora,
+  conectado = true,
   estadoAlerta,
 }) => {
+  // El estado llega cada Sc (1 s): pasado el umbral sin instantáneas, el dato ya no es "en vivo".
+  const desfasado = segundosDesdeActualizacion >= SEGUNDOS_SIN_ACTUALIZAR;
+  const hace = formatearAntiguedad(segundosDesdeActualizacion);
+  const indicador = !conectado
+    ? { punto: 'bg-[#B91C1C]', texto: `sin conexión · último dato hace ${hace}`, color: 'text-[#B91C1C]' }
+    : desfasado
+      ? { punto: 'bg-[#B45309]', texto: `sin actualizaciones hace ${hace}`, color: 'text-[#B45309]' }
+      : { punto: 'bg-[#15803D] animate-pulse', texto: `actualizado hace ${hace}`, color: 'text-[#64748B]' };
   const actualizacion = (
     <>
-      <span className="w-1.5 h-1.5 bg-[#15803D] rounded-full animate-pulse"></span>
-      <span className="text-[#64748B] font-sans text-[12px]">actualizado hace {segundosDesdeActualizacion} s</span>
+      <span className={`w-1.5 h-1.5 rounded-full ${indicador.punto}`}></span>
+      <span className={`font-sans text-[12px] ${indicador.color}`}>{indicador.texto}</span>
     </>
   );
   return (
@@ -43,7 +55,7 @@ export const FooterBar: React.FC<FooterBarProps> = ({
           <>
             <div className="flex items-center gap-1.5 flex-shrink-0">
               <span className="text-[#64748B] font-sans font-normal">nodo</span>
-              <span className="text-[#0F172A] font-mono font-medium">
+              <span className="text-[#0F172A] tabular-nums font-medium">
                 ({nodoSeleccionado.x},{nodoSeleccionado.y})
               </span>
             </div>
@@ -55,37 +67,37 @@ export const FooterBar: React.FC<FooterBarProps> = ({
         {/* Pedidos */}
         <div className="flex items-center gap-1.5 flex-shrink-0">
           <span className="text-[#64748B] font-sans font-normal">pedidos</span>
-          <span className="text-[#0F172A] font-mono font-medium">{totalPedidos}</span>
+          <span className="text-[#0F172A] tabular-nums font-medium">{totalPedidos}</span>
         </div>
 
         {/* Entregados */}
         <div className="flex items-center gap-1.5 flex-shrink-0">
           <span className="text-[#64748B] font-sans font-normal">entregados</span>
-          <span className="text-[#0F172A] font-mono font-medium">{entregados}</span>
+          <span className="text-[#0F172A] tabular-nums font-medium">{entregados}</span>
         </div>
 
         {/* En ruta */}
         <div className="flex items-center gap-1.5 flex-shrink-0">
-          <span className="text-[#64748B] font-sans font-normal">en ruta</span>
-          <span className="text-[#0F172A] font-mono font-medium">{enRuta}</span>
+          <span className="text-[#64748B] font-sans font-normal">en tránsito</span>
+          <span className="text-[#0F172A] tabular-nums font-medium">{enRuta}</span>
         </div>
 
         {/* En riesgo */}
         <div className="flex items-center gap-1.5 flex-shrink-0">
-          <span className="text-[#64748B] font-sans font-normal">en riesgo</span>
-          <span className="text-[#B91C1C] font-mono font-medium">{enRiesgo}</span>
+          <span className="text-[#64748B] font-sans font-normal">críticos</span>
+          <span className="text-[#B91C1C] tabular-nums font-medium">{criticos}</span>
         </div>
 
         {/* Bloqueos activos */}
         <div className="flex items-center gap-1.5 flex-shrink-0">
           <span className="text-[#64748B] font-sans font-normal">bloqueos activos</span>
-          <span className="text-[#B45309] font-mono font-medium">{bloqueosActivos}</span>
+          <span className="text-[#B45309] tabular-nums font-medium">{bloqueosActivos}</span>
         </div>
 
         {/* Averías activas */}
         <div className="flex items-center gap-1.5 flex-shrink-0">
           <span className="text-[#64748B] font-sans font-normal">averías activas</span>
-          <span className="text-[#B91C1C] font-mono font-medium">{averiasActivas}</span>
+          <span className="text-[#B91C1C] tabular-nums font-medium">{averiasActivas}</span>
         </div>
       </div>
 
@@ -96,43 +108,28 @@ export const FooterBar: React.FC<FooterBarProps> = ({
 
           <div className="flex items-center gap-1">
             <span className="w-[7px] h-[7px] bg-[#15803D] rounded-[1px] inline-block"></span>
-            <span className="text-[#15803D] font-mono font-normal">&gt; 40 %</span>
+            <span className="text-[#15803D] tabular-nums font-normal">{RANGO_HOLGURA.VERDE}</span>
           </div>
 
           <div className="flex items-center gap-1">
-            <span className="text-[#B45309] text-[10px] leading-none">▲</span>
-            <span className="text-[#B45309] font-mono font-normal">15–40 %</span>
+            <span className="text-[#B45309] text-[11px] leading-none">▲</span>
+            <span className="text-[#B45309] tabular-nums font-normal">{RANGO_HOLGURA.AMBAR}</span>
           </div>
 
           <div className="flex items-center gap-1">
             <span className="w-[7px] h-[7px] bg-[#B91C1C] rounded-full inline-block"></span>
-            <span className="text-[#B91C1C] font-mono font-normal">&lt; 15 %</span>
+            <span className="text-[#B91C1C] tabular-nums font-normal">{RANGO_HOLGURA.ROJO}</span>
           </div>
         </div>
 
-        {/* Ver leyenda (solo sobre el lienzo) */}
-        {onAbrirLeyenda && (
-          <button
-            onClick={onAbrirLeyenda}
-            className="flex items-center gap-1 text-[#1E40AF] hover:text-blue-800 transition font-sans cursor-pointer"
-          >
-            <span className="font-semibold text-xs leading-none">?</span>
-            <span className="font-medium text-[12px]">Ver leyenda</span>
-          </button>
-        )}
-
         <div className="w-[1px] h-[14px] bg-[#E2E8F0]"></div>
 
-        {/* Timestamp de actualización: abre la bitácora de eventos si se indica */}
+        {/* Antigüedad del último dato recibido */}
         {estadoAlerta ? (
           <div className="flex items-center gap-1.5">
             <span className="w-1.5 h-1.5 bg-[#B91C1C] rounded-full"></span>
             <span className="text-[#64748B] font-sans text-[12px]">{estadoAlerta}</span>
           </div>
-        ) : onVerBitacora ? (
-          <button type="button" onClick={onVerBitacora} title="Ver bitácora de eventos" className="flex items-center gap-1.5 hover:underline">
-            {actualizacion}
-          </button>
         ) : (
           <div className="flex items-center gap-1.5">{actualizacion}</div>
         )}

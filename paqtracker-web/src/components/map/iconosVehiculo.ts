@@ -1,4 +1,6 @@
 import type { TipoUnidad } from '../../config/dominio';
+import { nivelDeOcupacion } from '../../lib/operacion';
+import type { UnidadOperacion } from '../../types/operacion';
 
 import autoSvg from '../../assets/figma/pedidos/icono-auto.svg?raw';
 import motoSvg from '../../assets/figma/pedidos/icono-moto.svg?raw';
@@ -25,6 +27,19 @@ const FUENTES: Record<TipoUnidad, FuenteIcono> = {
   MOTO: { svg: motoSvg, colorOriginal: '#B45309', ancho: 29.393, alto: 19.6566, centroX: 4.3 + 20.79 / 2, centroY: 3.3 + 11.06 / 2 },
   BICICLETA: { svg: biciSvg, colorOriginal: '#15803D', ancho: 30.0502, alto: 21.6361, centroX: 4.3 + 21.45 / 2, centroY: 3.3 + 13.04 / 2 },
 };
+
+/** Semáforo de carga (verde, ámbar, rojo) y gris cuando no hay dato. */
+export const COLOR_CARGA = { VERDE: '#15803D', AMBAR: '#B45309', ROJO: '#B91C1C', CERRADO: '#94A3B8' } as const;
+export const COLOR_SIN_DATO = '#64748B';
+const COLOR_AVERIADA = '#B91C1C';
+
+/** Color de una unidad en toda la interfaz: rojo si está averiada; si no, el semáforo de su carga. */
+export const colorDeUnidad = (u: Pick<UnidadOperacion, 'estado' | 'carga' | 'capacidad'>) =>
+  u.estado === 'AVERIADA' ? COLOR_AVERIADA : COLOR_CARGA[nivelDeOcupacion(u.carga, u.capacidad)];
+
+/** Color de un conjunto de unidades por su carga total; gris si no hay capacidad (ninguna fuera). */
+export const colorDeCarga = (carga: number, capacidad: number) =>
+  capacidad === 0 ? COLOR_SIN_DATO : COLOR_CARGA[nivelDeOcupacion(carga, capacidad)];
 
 export interface IconoVehiculoMapa {
   href: string;

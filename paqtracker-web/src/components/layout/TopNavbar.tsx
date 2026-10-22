@@ -1,16 +1,7 @@
 import React from 'react';
-import {
-  LayoutGrid,
-  Package,
-  GitFork,
-  PlayCircle,
-  BarChart3,
-  Sliders,
-  Clock,
-  Radio,
-} from 'lucide-react';
+import { LayoutGrid, Package, PlayCircle, BarChart3, Clock, Radio } from 'lucide-react';
 
-export type TabModulo = 'operacion' | 'pedidos' | 'planes' | 'simulacion' | 'metricas' | 'ajustes';
+export type TabModulo = 'operacion' | 'pedidos' | 'simulacion' | 'metricas';
 
 interface TopNavbarProps {
   tabActiva: TabModulo;
@@ -30,10 +21,8 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
   const menuItems = [
     { id: 'operacion' as TabModulo, label: 'Operación', icon: LayoutGrid },
     { id: 'pedidos' as TabModulo, label: 'Pedidos', icon: Package },
-    { id: 'planes' as TabModulo, label: 'Planes', icon: GitFork },
     { id: 'simulacion' as TabModulo, label: 'Simulación', icon: PlayCircle },
     { id: 'metricas' as TabModulo, label: 'Métricas', icon: BarChart3 },
-    { id: 'ajustes' as TabModulo, label: 'Ajustes', icon: Sliders },
   ];
 
   return (
@@ -43,7 +32,7 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
         {/* Isotipo y Nombre */}
         <div className="flex items-center gap-2 shrink-0">
           <div className="w-[30px] h-[30px] bg-[#1E40AF] rounded-[6px] flex items-center justify-center shadow-xs">
-            <span className="text-white font-mono font-bold text-sm">P</span>
+            <span className="text-white tabular-nums font-bold text-sm">P</span>
           </div>
           <span className="font-sans font-bold text-[14px] text-slate-900 tracking-tight hidden sm:inline">
             PaqTracker
@@ -62,7 +51,8 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
               <button
                 key={item.id}
                 onClick={() => onCambiarTab(item.id)}
-                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-[6px] text-[12px] font-mono font-medium transition cursor-pointer ${
+                aria-current={esActivo ? 'page' : undefined}
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-[6px] text-[12px] tabular-nums font-medium transition cursor-pointer ${
                   esActivo
                     ? 'bg-[#DBEAFE] text-[#1E40AF] shadow-xs font-semibold'
                     : 'text-[#64748B] hover:text-[#0F172A] hover:bg-slate-100'
@@ -79,13 +69,16 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
         </nav>
       </div>
 
-      {/* 2. Lado Derecho: Reloj, Turno, Estado de Conexión y Usuario */}
+      {/* 2. Lado Derecho: Reloj, Turno y Estado de Conexión (sin usuario: aún no hay autenticación) */}
       <div className="flex items-center gap-2 sm:gap-3 shrink-0 ml-2">
-        {/* Reloj de la Operación */}
+        {/* Reloj de la operación día a día (oculto en Simulación, que muestra el de su corrida) */}
         {relojSimulado && (
-          <div className="flex items-center gap-1.5 bg-[#F8FAFC] border border-[#E2E8F0] rounded-[6px] px-2.5 py-1 shrink-0">
+          <div
+            className="flex items-center gap-1.5 bg-[#F8FAFC] border border-[#E2E8F0] rounded-[6px] px-2.5 py-1 shrink-0"
+            title="Reloj de la operación día a día"
+          >
             <Clock className="w-3.5 h-3.5 text-[#64748B]" />
-            <span className="font-mono font-semibold text-[12px] sm:text-[13px] text-[#0F172A]">
+            <span className="tabular-nums font-semibold text-[12px] sm:text-[13px] text-[#0F172A]">
               {relojSimulado}
             </span>
           </div>
@@ -93,38 +86,21 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
 
         {/* Turno */}
         {turno && (
-          <span className="bg-[#DBEAFE] text-[#1E40AF] rounded-[4px] px-2 py-1 font-mono font-medium text-[11px] shrink-0 hidden md:inline">
+          <span className="bg-[#DBEAFE] text-[#1E40AF] rounded-[4px] px-2 py-1 tabular-nums font-medium text-[11px] shrink-0 hidden md:inline">
             Turno {turno}
           </span>
         )}
 
-        {/* Indicador EN VIVO / STOMP */}
+        {/* Conexión con el servidor */}
         <span
-          title={conectado ? 'Recibiendo estado en vivo por STOMP' : 'Sin conexión con el servidor'}
+          title={conectado ? 'Conectado: el estado llega en vivo desde el servidor' : 'Sin conexión con el servidor: reintentando'}
           className={`rounded-[4px] px-2.5 py-1 flex items-center gap-1.5 font-sans font-semibold text-[11px] tracking-wider shrink-0 ${
-            conectado ? 'bg-[#DBEAFE] text-[#1E40AF]' : 'bg-[#F1F5F9] text-[#64748B]'
+            conectado ? 'bg-[#DBEAFE] text-[#1E40AF]' : 'bg-[#FEF2F2] text-[#B91C1C]'
           }`}
         >
-          <Radio className={`w-3 h-3 ${conectado ? 'text-[#1E40AF] animate-pulse' : 'text-[#94A3B8]'}`} />
-          <span className="hidden sm:inline">{conectado ? 'EN VIVO' : 'SIN CONEXIÓN'}</span>
+          <Radio className={`w-3 h-3 ${conectado ? 'text-[#1E40AF] animate-pulse' : 'text-[#B91C1C]'}`} />
+          <span className="hidden sm:inline">{conectado ? 'CONECTADO' : 'SIN CONEXIÓN'}</span>
         </span>
-
-        {/* Separador vertical */}
-        <div className="h-5 w-[1px] bg-[#E2E8F0] shrink-0" />
-
-        {/* Perfil del Operador */}
-        <div
-          className="flex items-center gap-2 p-1 rounded-[6px] hover:bg-slate-100 transition cursor-pointer"
-          title="Operador JD · J. Doe"
-        >
-          <div className="w-[28px] h-[28px] bg-[#DBEAFE] border border-[#BFDBFE] rounded-full flex items-center justify-center shrink-0">
-            <span className="text-[#1E40AF] font-mono font-bold text-[11px]">JD</span>
-          </div>
-          <div className="hidden xl:flex flex-col text-left leading-none">
-            <span className="font-mono text-[11px] font-semibold text-[#0F172A]">J. Doe</span>
-            <span className="text-[10px] text-[#64748B]">Operador</span>
-          </div>
-        </div>
       </div>
     </header>
   );

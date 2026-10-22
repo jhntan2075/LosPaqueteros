@@ -1,5 +1,6 @@
 import React, { useRef, useState } from 'react';
-import { CORTE_HOLGURA, UNIDADES } from '../../config/dominio';
+import { UNIDADES } from '../../config/dominio';
+import { NOMBRE_HOLGURA, RANGO_HOLGURA } from '../../config/glosario';
 import { mensajeDeError, useEjecuciones } from '../../hooks/useEjecuciones';
 import { formatearFechaLarga, formatearMiles } from '../../lib/formato';
 import { NOMBRE_REGISTRO, mesDeArchivo, subirArchivo } from '../../services/servicioArchivos';
@@ -30,7 +31,7 @@ const ESTADO_EJECUCION: Record<EstadoEjecucionApi, { texto: string; clase: strin
   COLAPSADA: { texto: 'Colapsada', clase: 'border border-[#B91C1C] text-[#B91C1C]' },
 };
 
-const Seccion: React.FC<{ numero: string; titulo: string; resumen: React.ReactNode; resumenPendiente?: boolean; children: React.ReactNode }> = ({
+const Seccion: React.FC<{ numero?: string; titulo: string; resumen: React.ReactNode; resumenPendiente?: boolean; children: React.ReactNode }> = ({
   numero,
   titulo,
   resumen,
@@ -39,17 +40,17 @@ const Seccion: React.FC<{ numero: string; titulo: string; resumen: React.ReactNo
 }) => {
   const [abierta, setAbierta] = useState(true);
   return (
-    <section className="bg-white border border-[#E2E8F0] rounded-[4px]">
+    <section className="bg-white border border-[#E2E8F0] rounded-[10px]">
       <button
         type="button"
         onClick={() => setAbierta(!abierta)}
         aria-expanded={abierta}
         className="w-full h-[48px] px-[15px] flex items-center gap-[14px] text-left"
       >
-        <span className="font-mono text-[12px] text-[#94A3B8]">{numero}</span>
+        {numero && <span className="tabular-nums text-[12px] text-[#64748B]">{numero}</span>}
         <h2 className="font-sans font-semibold text-[14px] text-[#0F172A]">{titulo}</h2>
-        <span className={`ml-auto font-mono text-[12px] ${resumenPendiente ? 'text-[#94A3B8]' : 'text-[#0F172A]'}`}>{resumen}</span>
-        <span className={`text-[9px] text-[#94A3B8] transition-transform ${abierta ? '' : 'rotate-180'}`} aria-hidden="true">
+        <span className={`ml-auto tabular-nums text-[12px] ${resumenPendiente ? 'text-[#64748B]' : 'text-[#0F172A]'}`}>{resumen}</span>
+        <span className={`text-[11px] text-[#64748B] transition-transform ${abierta ? '' : 'rotate-180'}`} aria-hidden="true">
           ▲
         </span>
       </button>
@@ -78,21 +79,21 @@ const RanuraArchivo: React.FC<{
     <div className="flex flex-col gap-[8px] mb-[6px]">
       <Etiqueta htmlFor={id}>{etiqueta}</Etiqueta>
       <div
-        className={`w-[420px] h-[32px] px-[10px] rounded-[2px] flex items-center gap-[10px] text-[12px] ${
+        className={`w-full max-w-[420px] h-[32px] px-[10px] rounded-[6px] flex items-center gap-[10px] text-[12px] ${
           archivo ? 'border border-[#CBD5E1] bg-white' : 'border border-dashed border-[#94A3B8] bg-[#F8FAFC]'
         }`}
       >
         {subiendo ? (
-          <span className="font-mono text-[#64748B]">Validando en el servidor…</span>
+          <span className="tabular-nums text-[#64748B]">Validando en el servidor…</span>
         ) : archivo ? (
           <>
-            <span className="font-mono text-[#0F172A] truncate">"{archivo.nombre}"</span>
-            <span className="ml-auto font-mono text-[#64748B] whitespace-nowrap">
+            <span className="tabular-nums text-[#0F172A] truncate">"{archivo.nombre}"</span>
+            <span className="ml-auto tabular-nums text-[#64748B] whitespace-nowrap">
               {formatearMiles(archivo.registros)} {archivo.registros === 1 ? nombres.singular : nombres.plural} · {archivo.mes}
             </span>
           </>
         ) : (
-          <span className="font-mono text-[#94A3B8]">Opcional · se usan los datos ya cargados</span>
+          <span className="tabular-nums text-[#64748B]">Opcional · se usan los datos ya cargados</span>
         )}
         <button
           type="button"
@@ -130,7 +131,7 @@ const RanuraArchivo: React.FC<{
 const FilaResumen: React.FC<{ etiqueta: string; valor?: string }> = ({ etiqueta, valor }) => (
   <div className="h-[33px] flex items-center justify-between border-b border-dashed border-[#E2E8F0] text-[12px]">
     <span className="font-sans text-[#64748B]">{etiqueta}</span>
-    <span className={`font-mono ${valor ? 'text-[#0F172A]' : 'text-[#94A3B8]'} truncate pl-[12px]`}>{valor ?? '—'}</span>
+    <span className={`tabular-nums ${valor ? 'text-[#0F172A]' : 'text-[#64748B]'} truncate pl-[12px]`}>{valor ?? '—'}</span>
   </div>
 );
 
@@ -139,7 +140,7 @@ const ListaEjecuciones: React.FC<{ onAbrir: (ejecucion: EjecucionApi) => void }>
   const { ejecuciones, cargando, error, recargar } = useEjecuciones();
   const simulaciones = ejecuciones.filter((e) => e.tipoEscenario !== 'DIA_A_DIA').reverse();
   return (
-    <Seccion numero="00" titulo="Simulaciones existentes" resumen={`${simulaciones.length} en el servidor`} resumenPendiente={simulaciones.length === 0}>
+    <Seccion titulo="Abrir una simulación existente" resumen={`${simulaciones.length} en el servidor`} resumenPendiente={simulaciones.length === 0}>
       <div className="flex items-center text-[12px]">
         <span className="font-sans text-[#64748B]">Ábrelas desde cualquier dispositivo; todos ven la misma corrida.</span>
         <button type="button" onClick={recargar} className="ml-auto font-sans font-medium text-[#1E40AF] hover:underline">
@@ -147,12 +148,12 @@ const ListaEjecuciones: React.FC<{ onAbrir: (ejecucion: EjecucionApi) => void }>
         </button>
       </div>
       {error && <p className="font-sans text-[12px] text-[#B91C1C]">{error}</p>}
-      {!error && !cargando && simulaciones.length === 0 && <p className="font-sans text-[12px] text-[#94A3B8]">Aún no hay simulaciones.</p>}
+      {!error && !cargando && simulaciones.length === 0 && <p className="font-sans text-[12px] text-[#64748B]">Aún no hay simulaciones.</p>}
       {simulaciones.map((e) => (
         <div key={e.id} className="h-[36px] flex items-center gap-[10px] border-b border-dashed border-[#E2E8F0] text-[12px]">
           <span className={`rounded-[4px] px-[6px] py-[2px] font-sans font-medium ${ESTADO_EJECUCION[e.estado].clase}`}>{ESTADO_EJECUCION[e.estado].texto}</span>
           <span className="font-sans text-[#0F172A] truncate">{e.nombre}</span>
-          <span className="font-mono text-[#94A3B8] whitespace-nowrap">{e.relojSimulado ?? ''}</span>
+          <span className="tabular-nums text-[#64748B] whitespace-nowrap">{e.relojSimulado ?? ''}</span>
           <button type="button" onClick={() => onAbrir(e)} className="ml-auto font-sans font-medium text-[#1E40AF] hover:underline whitespace-nowrap">
             Ver corrida ›
           </button>
@@ -237,35 +238,42 @@ export const ConfiguracionEscenario: React.FC<ConfiguracionEscenarioProps> = ({ 
     <div className="flex-1 flex flex-col min-h-0 leading-[normal]">
       <header className="h-[80px] bg-white border-b border-[#E2E8F0] px-[24px] flex flex-col justify-center gap-[6px] shrink-0">
         <h1 className="font-sans font-semibold text-[18px] text-[#0F172A]">Configuración de escenario</h1>
-        <p className="font-sans text-[12px] text-[#64748B]">Un solo planificador, tres escenarios. Lo que cambia son los parámetros de esta pantalla.</p>
+        <p className="font-sans text-[12px] text-[#64748B]">Abre una simulación que ya esté en el servidor o configura una nueva.</p>
       </header>
 
       <div className="flex-1 min-h-0 overflow-y-auto">
-        <div className="flex gap-[24px] items-start p-[24px] min-w-[1100px]">
+        <div className="flex flex-col lg:flex-row gap-[24px] items-stretch lg:items-start p-[24px]">
           <div className="flex-1 min-w-0 flex flex-col gap-[12px]">
             <ListaEjecuciones onAbrir={onAbrir} />
 
+            <h2 className="mt-[12px] font-sans font-semibold text-[14px] text-[#0F172A]">Nueva simulación</h2>
+
             <Seccion numero="01" titulo="Escenario" resumen="">
-              <div className="grid grid-cols-2 gap-[12px]" role="radiogroup" aria-label="Escenario">
+              <fieldset className="grid grid-cols-1 sm:grid-cols-2 gap-[12px]">
+                <legend className="sr-only">Escenario</legend>
                 {ESCENARIOS.map((opcion) => {
                   const activo = opcion.valor === escenario;
                   return (
-                    <button
+                    <label
                       key={opcion.valor}
-                      type="button"
-                      role="radio"
-                      aria-checked={activo}
-                      onClick={() => setEscenario(opcion.valor)}
-                      className={`h-[69px] px-[13px] rounded-[2px] text-left flex flex-col justify-center gap-[6px] transition ${
+                      className={`min-h-[69px] px-[13px] py-[10px] rounded-[6px] text-left flex flex-col justify-center gap-[6px] transition cursor-pointer has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[#1E40AF]/40 ${
                         activo ? 'bg-[#EAF1FD] border-2 border-[#1E40AF]' : 'bg-[#F8FAFC] border border-[#E2E8F0] hover:border-[#CBD5E1]'
                       }`}
                     >
+                      <input
+                        type="radio"
+                        name="escenario"
+                        value={opcion.valor}
+                        checked={activo}
+                        onChange={() => setEscenario(opcion.valor)}
+                        className="sr-only"
+                      />
                       <span className={`font-sans font-semibold text-[14px] ${activo ? 'text-[#1E40AF]' : 'text-[#0F172A]'}`}>{opcion.titulo}</span>
                       <span className="font-sans text-[12px] text-[#64748B]">{opcion.descripcion}</span>
-                    </button>
+                    </label>
                   );
                 })}
-              </div>
+              </fieldset>
             </Seccion>
 
             <Seccion numero="02" titulo="Periodo" resumen={inicioValido ? formatearFechaLarga(inicio, false) : 'Sin definir'} resumenPendiente={!inicioValido}>
@@ -275,7 +283,7 @@ export const ConfiguracionEscenario: React.FC<ConfiguracionEscenarioProps> = ({ 
                 type="date"
                 value={fecha}
                 onChange={(e) => setFecha(e.target.value)}
-                className="w-[180px] h-[32px] px-[10px] border border-[#CBD5E1] rounded-[2px] font-mono text-[12px] text-[#0F172A] outline-none focus:border-[#1E40AF]"
+                className="w-[180px] h-[32px] px-[10px] border border-[#CBD5E1] rounded-[6px] tabular-nums text-[12px] text-[#0F172A] outline-none focus:border-[#1E40AF]"
               />
             </Seccion>
 
@@ -307,39 +315,32 @@ export const ConfiguracionEscenario: React.FC<ConfiguracionEscenarioProps> = ({ 
                       max={MAXIMO_POR_TIPO}
                       value={flota[clave]}
                       onChange={(e) => cambiarFlota(clave, e.target.value)}
-                      className="w-[100px] h-[32px] px-[10px] border border-[#CBD5E1] rounded-[2px] font-mono text-[12px] text-[#0F172A] outline-none focus:border-[#1E40AF]"
+                      className="w-[100px] h-[32px] px-[10px] border border-[#CBD5E1] rounded-[6px] tabular-nums text-[12px] text-[#0F172A] outline-none focus:border-[#1E40AF]"
                     />
                   </div>
                 ))}
               </div>
             </Seccion>
 
-            <Seccion numero="05" titulo="Rango de semáforo (holgura)" resumen={`${CORTE_HOLGURA.ambar * 100} % / ${CORTE_HOLGURA.rojo * 100} % · CF-02`}>
-              <div className="flex h-[8px] mt-[4px] rounded-[1px] overflow-hidden" role="img" aria-label="Cortes del semáforo de holgura">
-                <span className="bg-[#B91C1C]" style={{ width: `${CORTE_HOLGURA.rojo * 100}%` }} />
-                <span className="bg-[#B45309]" style={{ width: `${(CORTE_HOLGURA.ambar - CORTE_HOLGURA.rojo) * 100}%` }} />
-                <span className="bg-[#15803D] flex-1" />
-              </div>
-              <p className="mt-[6px] border-l-[3px] border-[#94A3B8] pl-[9px] font-sans text-[12px] text-[#334155]">
-                Se aplican los cortes vigentes de CF-02 (rojo bajo {CORTE_HOLGURA.rojo * 100} % de holgura, ámbar hasta {CORTE_HOLGURA.ambar * 100} %). Su edición se
-                incorpora con la configuración de la operación.
-              </p>
-            </Seccion>
           </div>
 
-          <aside className="w-[360px] shrink-0 sticky top-0 bg-white border border-[#E2E8F0] rounded-[4px]">
+          <aside className="w-full lg:w-[360px] shrink-0 lg:sticky lg:top-0 bg-white border border-[#E2E8F0] rounded-[10px]">
             <h2 className="h-[48px] px-[15px] flex items-center border-b border-[#E2E8F0] font-sans font-semibold text-[14px] text-[#0F172A]">Resumen de la corrida</h2>
             <div className="px-[15px] pt-[8px] pb-[16px] flex flex-col">
               <FilaResumen etiqueta="Escenario" valor={ESCENARIOS.find((e) => e.valor === escenario)!.titulo} />
               <FilaResumen etiqueta="Inicio" valor={inicioValido ? formatearFechaLarga(inicio, false) : undefined} />
               <FilaResumen etiqueta="Pedidos" valor={resumenArchivo('pedidos')} />
               <FilaResumen etiqueta="Bloqueos" valor={resumenArchivo('bloqueos')} />
-              <FilaResumen etiqueta="Flota" valor={`${flota.autos} A · ${flota.motos} M · ${flota.bicicletas} B`} />
+              <FilaResumen etiqueta="Flota" valor={`${flota.autos} autos · ${flota.motos} motos · ${flota.bicicletas} bicis`} />
+              <FilaResumen
+                etiqueta="Semáforo de holgura"
+                valor={`${NOMBRE_HOLGURA.ROJO} ${RANGO_HOLGURA.ROJO} · ${NOMBRE_HOLGURA.AMBAR} ${RANGO_HOLGURA.AMBAR}`}
+              />
               <button
                 type="button"
                 onClick={ejecutar}
                 disabled={!listo}
-                className="mt-[24px] h-[44px] rounded-[2px] bg-[#1E40AF] hover:bg-[#1E3A8A] disabled:bg-[#94A3B8] disabled:cursor-not-allowed text-white font-sans font-semibold text-[14px] transition"
+                className="mt-[24px] h-[44px] rounded-[6px] bg-[#1E40AF] hover:bg-[#1E3A8A] disabled:bg-[#94A3B8] disabled:cursor-not-allowed text-white font-sans font-semibold text-[14px] transition"
               >
                 {enviando ? 'Creando simulación…' : 'Ejecutar simulación'}
               </button>

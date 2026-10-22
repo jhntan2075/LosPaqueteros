@@ -42,13 +42,32 @@ hooks/useDatosOperacion     arma DatosOperacion y lo reparte por contexto
 
 | Pestaña | Contenido |
 |---|---|
-| Operación | Mapa en vivo, incidencias, flota y bitácora del día a día |
+| Operación | Mapa en vivo del día a día; incidencias, flota y bitácora en el panel lateral del mapa |
 | Pedidos | Cola (CU-04), registro manual con replanificación inmediata (CU-01, CU-12) |
 | Simulación | Crear o abrir una simulación de 5 días o hasta el colapso, corrida en vivo, diagnóstico e informe |
-| Planes / Métricas | Ta, planificaciones, cumplimiento y ocupación del día a día |
+| Métricas | Cumplimiento, unidades en ruta y planificador (Ta, planificaciones, distancia) del día a día |
 
 No hay controles de velocidad: el factor k lo fija el servidor y es el mismo para todos los
 que observan una ejecución.
+
+## Tipografía
+
+Una sola familia en todo el sistema: **Fira Sans** (Google Fonts, cargada en `index.html`). No se
+usa fuente monoespaciada.
+
+| Peso | Clase | Uso |
+|---|---|---|
+| 400 | `font-normal` | Texto corrido, ayudas, valores de tablas |
+| 500 | `font-medium` | Botones, pestañas, etiquetas de estado, datos destacados |
+| 600 | `font-semibold` | Títulos de sección y de panel, cifras de KPI |
+| 700 | `font-bold` | Títulos de página y cifras principales |
+
+- **Datos numéricos** (horas, fechas, cifras, códigos como `#1088` o `A-04`, coordenadas):
+  clase `tabular-nums`, para que los dígitos tengan el mismo ancho y las columnas y relojes no
+  "bailen" al cambiar de valor. Los rótulos SVG del mapa la heredan de `index.css`.
+- Solo se cargan los pesos 400 a 700; si una pantalla necesita otro peso o cursiva, se agrega
+  primero a la URL de la fuente en `index.html` y a esta tabla.
+- No se usan `font-mono` ni otras familias: `tailwind.config.js` solo define `sans`.
 
 ## Variables
 

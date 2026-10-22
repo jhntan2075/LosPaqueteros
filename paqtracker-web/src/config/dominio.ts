@@ -36,6 +36,12 @@ export const CORTE_OCUPACION = { ambar: 0.7, rojo: 0.9 };
 /** Holgura restante (CF-02): rojo bajo 15 % del plazo, ámbar hasta 40 %. */
 export const CORTE_HOLGURA = { rojo: 0.15, ambar: 0.4 };
 
+/**
+ * Stock de un almacén intermedio sobre su capacidad: rojo bajo 20 %, ámbar hasta 50 %. El nivel lo
+ * calcula paqtracker-api (APP_INVENTARIO_ROJO / APP_INVENTARIO_AMBAR); aquí solo se rotula en la leyenda.
+ */
+export const CORTE_INVENTARIO = { rojo: 0.2, ambar: 0.5 };
+
 /** Orden de evaluación: de la unidad más lenta a la más rápida. */
 export const TIPOS_UNIDAD: TipoUnidad[] = ['BICICLETA', 'MOTO', 'AUTO'];
 

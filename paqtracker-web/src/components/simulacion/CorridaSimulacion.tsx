@@ -1,7 +1,9 @@
 import React, { useMemo, useRef, useState } from 'react';
 import { ContextoDatosOperacion, useDatosOperacion, useEjecucionEnVivo } from '../../hooks/useDatosOperacion';
+import { useConexionStomp } from '../../hooks/useConexionStomp';
 import { useControlEjecucion } from '../../hooks/useEjecuciones';
-import { estadoFlota, pedidosEnRiesgo, resumenRiesgo } from '../../lib/operacion';
+import { useSegundosDesde } from '../../hooks/useSegundosDesde';
+import { estadoFlota, fueraDelAlmacen, pedidosEnRiesgo, resumenRiesgo } from '../../lib/operacion';
 import type { EjecucionApi } from '../../types/api';
 import type { Coordenada } from '../../types/domain';
 import type { EscenarioSimulacion, EstadoCorrida, MarcaAvance } from '../../types/simulacion';
@@ -19,28 +21,31 @@ import { InformeCorrida } from './InformeCorrida';
 // corre en paqtracker-api: cualquier dispositivo que la abra ve lo mismo.
 
 const ANCHO_PANEL_PX = 340 + 12;
+const DIA_MS = 24 * 3600 * 1000;
+/** Margen para no confundir una corrida que llegó a su horizonte con una detenida a mano. */
+const TOLERANCIA_HORIZONTE_MS = 60_000;
 const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
 
 interface CorridaSimulacionProps {
   ejecucion: EjecucionApi;
   onSalir: () => void;
-  onVerBitacoraCompleta: () => void;
-  onAbrirLeyenda: () => void;
 }
 
 export const CorridaSimulacion: React.FC<CorridaSimulacionProps> = (props) => {
-  const { datos, error } = useEjecucionEnVivo(props.ejecucion.id);
+  const { datos, error, recibidoEnMs } = useEjecucionEnVivo(props.ejecucion.id);
   if (!datos) return <EstadoConexion titulo={props.ejecucion.nombre} error={error} />;
   return (
     <ContextoDatosOperacion.Provider value={datos}>
-      <CorridaEnVivo {...props} />
+      <CorridaEnVivo {...props} recibidoEnMs={recibidoEnMs} />
     </ContextoDatosOperacion.Provider>
   );
 };
 
-const CorridaEnVivo: React.FC<CorridaSimulacionProps> = ({ ejecucion, onSalir, onVerBitacoraCompleta, onAbrirLeyenda }) => {
+const CorridaEnVivo: React.FC<CorridaSimulacionProps & { recibidoEnMs: number }> = ({ ejecucion, onSalir, recibidoEnMs }) => {
   const datos = useDatosOperacion();
-  const { detener } = useControlEjecucion(ejecucion.id);
+  const { detener, error: errorDetener } = useControlEjecucion(ejecucion.id);
+  const conectado = useConexionStomp();
+  const segundosActualizado = useSegundosDesde(recibidoEnMs);
   const mapaRef = useRef<GridMapHandle>(null);
   const [panel, setPanel] = useState<SeleccionPanel | null>(null);
   const [verInforme, setVerInforme] = useState(false);
@@ -48,15 +53,23 @@ const CorridaEnVivo: React.FC<CorridaSimulacionProps> = ({ ejecucion, onSalir, o
   const [diagnosticoCerrado, setDiagnosticoCerrado] = useState(false);
   const [nodo, setNodo] = useState<Coordenada>({ x: 19, y: 9 });
 
+  // El servidor marca FINALIZADA tanto al llegar al horizonte como al detenerla: se distingue por el avance.
+  const llegoAlHorizonte = datos.transcurridoSimuladoMs >= ejecucion.dias * DIA_MS - TOLERANCIA_HORIZONTE_MS;
   const estado: EstadoCorrida =
-    datos.estadoEjecucion === 'COLAPSADA' ? 'COLAPSO' : datos.estadoEjecucion === 'FINALIZADA' ? 'COMPLETADA' : 'EJECUCION';
+    datos.estadoEjecucion === 'COLAPSADA'
+      ? 'COLAPSO'
+      : datos.estadoEjecucion === 'FINALIZADA'
+        ? llegoAlHorizonte
+          ? 'COMPLETADA'
+          : 'DETENIDA'
+        : 'EJECUCION';
   const colapso = estado === 'COLAPSO';
   const verDiagnostico = colapso && !diagnosticoCerrado && panel === null;
   const flota = estadoFlota(datos);
   const riesgo = pedidosEnRiesgo(datos);
   const dia = `${datos.reloj.getDate()} ${MESES[datos.reloj.getMonth()]}`;
   const destinos: DestinoMapa[] = useMemo(
-    () => datos.flota.flatMap((u) => u.paradas.map((p) => ({ pedido: p.pedido, destino: p.destino, nivel: p.nivel, unidad: u.codigo }))),
+    () => datos.flota.flatMap((u) => u.paradas.map((p) => ({ pedido: p.pedido, destino: p.destino, nivel: p.nivel, holgura: p.holgura, unidad: u.codigo }))),
     [datos.flota],
   );
   // Las marcas de avance salen de la bitácora: planificaciones e incidencias.
@@ -85,6 +98,7 @@ const CorridaEnVivo: React.FC<CorridaSimulacionProps> = ({ ejecucion, onSalir, o
         factorAceleracion={datos.factorAceleracion}
         marcas={marcas}
         onDetener={detener}
+        errorDetener={errorDetener}
         onSalir={onSalir}
         onVerInforme={() => setVerInforme(true)}
       />
@@ -92,23 +106,23 @@ const CorridaEnVivo: React.FC<CorridaSimulacionProps> = ({ ejecucion, onSalir, o
         <GridMap
           ref={mapaRef}
           variante="simulacion"
-          unidades={datos.flota.filter((u) => u.estado !== 'DISPONIBLE')}
+          unidades={datos.flota.filter(fueraDelAlmacen)}
           destinos={destinos}
           bloqueos={datos.bloqueos}
           almacenes={datos.almacenes}
-          seleccion={panel && (panel.tipo === 'pedido' || panel.tipo === 'vehiculo') ? panel : null}
+          seleccion={panel && (panel.tipo === 'pedido' || panel.tipo === 'vehiculo' || panel.tipo === 'almacen') ? panel : null}
           anchoPanelDerecho={panel || verDiagnostico ? ANCHO_PANEL_PX : 0}
-          riesgo={riesgo.length}
+          riesgo={resumenRiesgo(datos)}
           onSeleccionar={setPanel}
           onAbrirIncidencias={() => setPanel({ tipo: 'incidencias' })}
+          onAbrirPanel={(pestana) => setPanel({ tipo: pestana })}
           onHoverCoordenada={setNodo}
-          onAyuda={onAbrirLeyenda}
           slotKpis={
             <RailKpis
               resumen={datos.resumen}
               riesgo={resumenRiesgo(datos)}
               flota={{ ...flota, averiadas: flota.averiadas.length }}
-              notaSaturacion={colapso ? 'al detectarse el colapso' : 'Alerta desde 0,70'}
+              notaSaturacion={colapso ? 'Al detectarse el colapso' : undefined}
               onVerFlota={() => setPanel({ tipo: 'flota' })}
               onVerIncidencias={() => setPanel({ tipo: 'incidencias' })}
             />
@@ -116,12 +130,10 @@ const CorridaEnVivo: React.FC<CorridaSimulacionProps> = ({ ejecucion, onSalir, o
         >
           {panel && (
             <PanelLateral
-              pestanasCorrida
               seleccion={panel}
               onSeleccionar={setPanel}
               onCerrar={() => setPanel(null)}
               onCentrar={(punto) => mapaRef.current?.centrarEn(punto)}
-              onVerBitacoraCompleta={onVerBitacoraCompleta}
             />
           )}
           {verDiagnostico && (
@@ -134,17 +146,26 @@ const CorridaEnVivo: React.FC<CorridaSimulacionProps> = ({ ejecucion, onSalir, o
           )}
         </GridMap>
       </main>
+      {/* Terminada la corrida el servidor deja de difundir: la antigüedad del dato ya no indica un problema. */}
       <FooterBar
         nodoSeleccionado={nodo}
         totalPedidos={datos.resumen.total}
         entregados={datos.resumen.entregados}
         enRuta={datos.resumen.enRuta}
-        enRiesgo={riesgo.filter((p) => p.nivel === 'ROJO').length}
+        criticos={riesgo.filter((p) => p.nivel === 'ROJO').length}
         bloqueosActivos={datos.bloqueos.length}
         averiasActivas={flota.averiadas.length}
-        segundosDesdeActualizacion={1}
-        onAbrirLeyenda={onAbrirLeyenda}
-        estadoAlerta={colapso ? 'mapa congelado al detectar el colapso' : undefined}
+        segundosDesdeActualizacion={segundosActualizado}
+        conectado={conectado}
+        estadoAlerta={
+          colapso
+            ? 'mapa congelado al detectar el colapso'
+            : estado === 'COMPLETADA'
+              ? 'simulación completada · estado final'
+              : estado === 'DETENIDA'
+                ? 'simulación detenida · estado al detenerla'
+                : undefined
+        }
       />
     </div>
   );

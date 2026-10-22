@@ -1,5 +1,6 @@
 import React from 'react';
 import type { IdAlmacen, TipoUnidad } from '../../config/dominio';
+import { iconoVehiculo } from '../map/iconosVehiculo';
 import type { NivelHolgura } from '../../types/pedidos';
 
 import holguraRojo from '../../assets/figma/pedidos/holgura-rojo.svg';
@@ -82,13 +83,24 @@ export const IconoVehiculo: React.FC<{ tipo: TipoUnidad; cx: number; cy: number 
   );
 };
 
-/** Unidad en ruta: halo de 26 px centrado en el nodo, con el ícono ligeramente elevado como en el diseño. */
-export const UnidadEnMapa: React.FC<{ tipo: TipoUnidad; cx: number; cy: number }> = ({ tipo, cx, cy }) => (
-  <>
-    <img src={halo} alt="" className="absolute block max-w-none" style={{ left: cx - 13, top: cy - 13 }} />
-    <IconoVehiculo tipo={tipo} cx={cx + 1.4} cy={cy - 4.5} />
-  </>
-);
+/**
+ * Unidad en ruta: halo de 26 px centrado en el nodo, con el ícono ligeramente elevado como en el diseño.
+ * El ícono toma el color de la unidad (semáforo de carga, o rojo si está averiada), igual que en el mapa.
+ */
+export const UnidadEnMapa: React.FC<{ tipo: TipoUnidad; color: string; cx: number; cy: number }> = ({ tipo, color, cx, cy }) => {
+  const icono = iconoVehiculo(tipo, color);
+  return (
+    <>
+      <img src={halo} alt="" className="absolute block max-w-none" style={{ left: cx - 13, top: cy - 13 }} />
+      <img
+        src={icono.href}
+        alt=""
+        className="absolute block max-w-none"
+        style={{ left: cx + 1.4 - icono.centroX, top: cy - 4.5 - icono.centroY }}
+      />
+    </>
+  );
+};
 
 /** Pin de destino (caja de 18 × 24 en Figma) con la punta sobre (x, y). */
 export const PinDestino: React.FC<{ variante: 'riesgo' | 'ambar'; x: number; y: number }> = ({ variante, x, y }) => (

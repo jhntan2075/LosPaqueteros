@@ -5,10 +5,14 @@ import type { EstadoEjecucionApi, IndicadoresApi, TipoEscenarioApi } from './api
 
 // Modelos de vista del módulo Operación (lienzo en vivo, OP-07 flota, OP-09 bitácora).
 
-/** Subvistas de Operación en la barra lateral expandida. */
+/** Mapa de Operación: 'vivo' sin panel, o la pestaña abierta del panel lateral. */
 export type SubvistaOperacion = 'vivo' | 'incidencias' | 'flota' | 'bitacora';
 
-export type EstadoUnidad = 'EN_RUTA' | 'DISPONIBLE' | 'AVERIADA';
+/**
+ * Estado de una unidad, a partir de EstadoVehiculo del planificador. EN_RUTA agrupa EN_RUTA y EN_ENTREGA
+ * (la unidad está haciendo su ruta); DISPONIBLE es DISPONIBLE_EN_ALMACEN.
+ */
+export type EstadoUnidad = 'EN_RUTA' | 'EN_REFRIGERIO' | 'DISPONIBLE' | 'FUERA_DE_TURNO' | 'AVERIADA';
 
 export interface Parada {
   pedido: string; // "#1088"
@@ -24,7 +28,10 @@ export interface UnidadOperacion {
   estado: EstadoUnidad;
   posicion: Coordenada;
   origen: IdAlmacen;
+  /** Paquetes a bordo que aún no entrega: baja con cada entrega. */
   carga: number;
+  /** Capacidad de la unidad según el servidor (capacidadMaxima). */
+  capacidad: number;
   /** Recorrido completo desde el almacén de origen; el tramo hasta `posicion` ya se recorrió. */
   ruta: Coordenada[];
   paradas: Parada[];
@@ -56,7 +63,7 @@ export interface PedidoOperacion {
   holgura: string;
   holguraMinutos: number;
   nivel: NivelHolgura;
-  estado: 'En tránsito' | 'Planificado' | 'Registrado';
+  estado: 'En espera' | 'En tránsito' | 'Entregado';
   destino: Coordenada;
   unidad: string; // código de la unidad asignada
   trazabilidad: HitoTrazabilidad[];
@@ -92,7 +99,8 @@ export interface ResumenPedidos {
   enRuta: number;
   enEspera: number;
   sinRuta: number;
-  proximaEntregaMin: number;
+  /** Minutos hasta la próxima entrega en tránsito; null si no hay ninguna en camino. */
+  proximaEntregaMin: number | null;
   saturacion: number;
 }
 

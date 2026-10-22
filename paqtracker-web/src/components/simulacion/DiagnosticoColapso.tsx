@@ -1,5 +1,6 @@
 import React from 'react';
 import { ALMACENES } from '../../config/dominio';
+import { etiquetaPlazo } from '../../config/glosario';
 import { useDatosOperacion } from '../../hooks/useDatosOperacion';
 import { estadoFlota, pedidosEnRiesgo } from '../../lib/operacion';
 import type { EventoBitacora } from '../../types/operacion';
@@ -21,14 +22,14 @@ const Titulo: React.FC<{ numero: string; children: React.ReactNode; derecha?: st
     <h3 className="min-w-0 truncate font-sans font-semibold text-[12px] text-[#64748B] tracking-[0.7px] uppercase">
       {numero} · {children}
     </h3>
-    {derecha && <span className="ml-auto font-mono text-[12px] text-[#94A3B8] whitespace-nowrap">{derecha}</span>}
+    {derecha && <span className="ml-auto tabular-nums text-[12px] text-[#64748B] whitespace-nowrap">{derecha}</span>}
   </div>
 );
 
 const Dato: React.FC<{ etiqueta: string; valor: string; color?: string }> = ({ etiqueta, valor, color = 'text-[#0F172A]' }) => (
   <div className="flex justify-between gap-[8px] text-[12px]">
     <span className="font-sans text-[#64748B] whitespace-nowrap">{etiqueta}</span>
-    <span className={`font-mono font-medium whitespace-nowrap ${color}`}>{valor}</span>
+    <span className={`tabular-nums font-medium whitespace-nowrap ${color}`}>{valor}</span>
   </div>
 );
 
@@ -69,10 +70,10 @@ export const DiagnosticoColapso: React.FC<DiagnosticoColapsoProps> = ({ diaColap
       <div className="flex-1 min-h-0 overflow-y-auto">
         <section className="px-[12px] pt-[10px] pb-[10px] flex flex-col gap-[7px] border-b border-[#E2E8F0]">
           <Titulo numero="01" derecha="últimos eventos">Antes — deterioro previo</Titulo>
-          {previos.length === 0 && <p className="font-sans text-[12px] text-[#94A3B8]">Sin eventos registrados en esta vista.</p>}
+          {previos.length === 0 && <p className="font-sans text-[12px] text-[#64748B]">Sin eventos registrados en esta vista.</p>}
           {previos.map((evento) => (
             <div key={evento.id} className="flex gap-[10px] text-[12px]">
-              <time className="w-[52px] font-mono text-[#94A3B8] shrink-0">{evento.hora}</time>
+              <time className="w-[52px] tabular-nums text-[#64748B] shrink-0">{evento.hora}</time>
               <span className={`font-sans ${COLOR_HOLGURA[NIVEL_POR_COLOR[evento.color]]}`}>{evento.detalle}</span>
             </div>
           ))}
@@ -81,11 +82,11 @@ export const DiagnosticoColapso: React.FC<DiagnosticoColapsoProps> = ({ diaColap
         <section className="px-[12px] pt-[10px] pb-[10px] flex flex-col gap-[8px] border-b border-[#E2E8F0]">
           <Titulo numero="02" derecha={diaColapso}>Instante — pedido que rompe el plazo</Titulo>
           {critico ? (
-            <div className="border border-[#B91C1C] rounded-[4px] px-[12px] py-[10px] flex flex-col gap-[6px]">
+            <div className="border border-[#B91C1C] rounded-[6px] px-[12px] py-[10px] flex flex-col gap-[6px]">
               <div className="flex items-center">
-                <span className="font-mono font-semibold text-[14px] text-[#0F172A]">Pedido {critico.codigo}</span>
+                <span className="tabular-nums font-semibold text-[14px] text-[#0F172A]">Pedido {critico.codigo}</span>
                 <span className="ml-auto border border-[#B91C1C] rounded-[4px] px-[6px] py-[1px] font-sans font-medium text-[12px] text-[#B91C1C]">
-                  {critico.plazoHoras === 36 ? 'Regular' : 'Priorizado'} {critico.plazoHoras} h
+                  {etiquetaPlazo(critico.plazoHoras)}
                 </span>
               </div>
               <Dato etiqueta="Destino / Cantidad" valor={`(${critico.destino.x},${critico.destino.y}) · ${critico.cantidad} u`} />
@@ -99,21 +100,21 @@ export const DiagnosticoColapso: React.FC<DiagnosticoColapsoProps> = ({ diaColap
         </section>
 
         <section className="px-[12px] pt-[10px] pb-[12px] flex flex-col gap-[8px]">
-          <Titulo numero="03">Después — causa dominante</Titulo>
-          <div className="bg-[#FEF2F2] border border-[#FECACA] rounded-[4px] px-[10px] py-[8px] flex items-center gap-[8px] text-[12px]">
-            <span className="text-[#B91C1C] text-[10px]">▲</span>
+          <Titulo numero="03">Después — causa probable</Titulo>
+          <div className="bg-[#FEF2F2] border border-[#FECACA] rounded-[6px] px-[10px] py-[8px] flex items-center gap-[8px] text-[12px]">
+            <span className="text-[#B91C1C] text-[11px]">▲</span>
             <span className="font-sans font-semibold text-[#0F172A]">{causa.titulo}</span>
-            <span className="ml-auto font-mono text-[#B91C1C]">{causa.detalle}</span>
+            <span className="ml-auto tabular-nums text-[#B91C1C]">{causa.detalle}</span>
           </div>
           <div className="flex items-center text-[12px] mt-[4px]">
             <span className="font-sans font-semibold text-[#0F172A]">Almacenes en el instante del quiebre</span>
-            <span className="ml-auto font-mono text-[#94A3B8]">recarga a las 00:00</span>
+            <span className="ml-auto tabular-nums text-[#64748B]">recarga a las 23:59</span>
           </div>
           {intermedios.map((a) => {
             const fraccion = (a.stock as number) / (a.capacidad as number);
             return (
               <div key={a.id} className="flex flex-col gap-[4px]">
-                <span className={`font-mono text-[12px] truncate ${a.nivel === 'ROJO' ? 'text-[#B91C1C]' : 'text-[#0F172A]'}`}>
+                <span className={`tabular-nums text-[12px] truncate ${a.nivel === 'ROJO' ? 'text-[#B91C1C]' : 'text-[#0F172A]'}`}>
                   {ALMACENES.find((x) => x.id === a.id)?.nombre} · {a.stock}/{a.capacidad} u · {Math.round(fraccion * 100)} %
                 </span>
                 <div className="h-[4px] bg-[#E2E8F0] rounded-full overflow-hidden">
@@ -129,10 +130,10 @@ export const DiagnosticoColapso: React.FC<DiagnosticoColapsoProps> = ({ diaColap
       </div>
 
       <div className="p-[12px] border-t border-[#E2E8F0] flex gap-[8px] shrink-0">
-        <button type="button" onClick={onEstadoCompleto} className="flex-1 h-[32px] border border-[#CBD5E1] rounded-[2px] font-sans font-medium text-[12px] text-[#0F172A] hover:bg-[#F8FAFC]">
+        <button type="button" onClick={onEstadoCompleto} className="flex-1 h-[32px] border border-[#CBD5E1] rounded-[6px] font-sans font-medium text-[12px] text-[#0F172A] hover:bg-[#F8FAFC]">
           Estado completo del sistema
         </button>
-        <button type="button" onClick={onVerInforme} className="flex-1 h-[32px] rounded-[2px] bg-[#1E40AF] hover:bg-[#1E3A8A] font-sans font-semibold text-[12px] text-white">
+        <button type="button" onClick={onVerInforme} className="flex-1 h-[32px] rounded-[6px] bg-[#1E40AF] hover:bg-[#1E3A8A] font-sans font-semibold text-[12px] text-white">
           Ver informe
         </button>
       </div>

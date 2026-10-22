@@ -3,10 +3,21 @@
 @tailwind utilities;
 
 :root {
-  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  font-family: 'Fira Sans', system-ui, sans-serif;
   line-height: 1.5;
   font-weight: 400;
-  color-scheme: light dark;
+  color-scheme: light;
+}
+
+/* Rótulos del mapa (ejes, almacenes, unidades): dígitos de ancho fijo, como el resto de los datos. */
+svg text {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Foco visible para teclado en todo lo interactivo (el mouse no lo muestra). */
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 2px solid #1e40af;
+  outline-offset: 2px;
 }
 
 body {

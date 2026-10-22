@@ -5,6 +5,9 @@ import type { NivelHolgura } from '../types/pedidos';
 
 // Derivados puros del estado de operación (antes vivían en los datos de ejemplo).
 
+/** Unidad fuera del almacén (en ruta, en refrigerio o averiada): se dibuja en el mapa y puede llevar carga. */
+export const fueraDelAlmacen = (u: UnidadOperacion) => u.estado !== 'DISPONIBLE' && u.estado !== 'FUERA_DE_TURNO';
+
 /** Semáforo de ocupación de una unidad (CF-02). */
 export const nivelDeOcupacion = (carga: number, capacidad: number): NivelHolgura => {
   const fraccion = capacidad === 0 ? 0 : carga / capacidad;
@@ -36,19 +39,30 @@ export function estadoFlota(datos: DatosOperacion) {
   const enRuta = porEstado('EN_RUTA');
   const porTipo = (Object.keys(UNIDADES) as TipoUnidad[]).map((tipo) => {
     const delTipo = flota.filter((u) => u.tipo === tipo);
-    const enRutaTipo = delTipo.filter((u) => u.estado === 'EN_RUTA');
-    const ocupacion = enRutaTipo.length === 0 ? 0 : enRutaTipo.reduce((s, u) => s + u.carga / UNIDADES[tipo].capacidad, 0) / enRutaTipo.length;
-    return { tipo, enRuta: enRutaTipo.length, total: delTipo.length, ocupacion };
+    // Carga a bordo: paquetes sin entregar sobre la capacidad de las unidades fuera del almacén. Baja a
+    // medida que entregan; null si ninguna unidad del tipo está fuera.
+    const fuera = delTipo.filter(fueraDelAlmacen);
+    const capacidadFuera = fuera.reduce((s, u) => s + u.capacidad, 0);
+    const cargaFuera = fuera.reduce((s, u) => s + u.carga, 0);
+    return {
+      tipo,
+      enRuta: delTipo.filter((u) => u.estado === 'EN_RUTA').length,
+      total: delTipo.length,
+      carga: cargaFuera,
+      capacidad: capacidadFuera,
+      cargaABordo: capacidadFuera === 0 ? null : cargaFuera / capacidadFuera,
+    };
   });
   return {
     total: flota.length,
     enRuta: enRuta.length,
     disponibles: porEstado('DISPONIBLE').length,
+    enRefrigerio: porEstado('EN_REFRIGERIO'),
+    fueraDeTurno: porEstado('FUERA_DE_TURNO').length,
     averiadas: porEstado('AVERIADA'),
     porTipo,
-    llenas: enRuta.filter((u) => u.carga >= UNIDADES[u.tipo].capacidad),
+    llenas: enRuta.filter((u) => u.carga >= u.capacidad),
     ociosas: [] as UnidadOperacion[],
-    sinAlimentacion: flota.filter((u) => !u.alimentacion.cumplida),
   };
 }
 

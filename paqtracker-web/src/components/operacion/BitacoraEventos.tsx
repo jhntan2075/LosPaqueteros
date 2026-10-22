@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useDatosOperacion } from '../../hooks/useDatosOperacion';
 import type { CategoriaEvento, EventoBitacora } from '../../types/operacion';
-import { FilaConBarra, PanelCompleto, TituloSeccion } from './comunes';
+import { FilaConBarra } from './comunes';
 
 // OP-09 · Bitácora de eventos (Figma 1:4555). Implementado sobre la captura del frame: el contexto de
 // diseño no estuvo disponible (límite de llamadas de Figma), así que medidas y espaciados son aproximados.
@@ -28,17 +28,10 @@ function exportarCsv(eventos: EventoBitacora[]) {
   setTimeout(() => URL.revokeObjectURL(enlace.href), 0);
 }
 
-/**
- * `compacto`: pestaña del panel derecho de la corrida, sin marco ni cierre; el pie enlaza a la
- * bitácora completa (OP-09) con `onVerCompleta`.
- */
-export const BitacoraEventos: React.FC<{ onCerrar?: () => void; compacto?: boolean; onVerCompleta?: () => void }> = ({
-  onCerrar,
-  compacto = false,
-  onVerCompleta,
-}) => {
+/** Pestaña "Bitácora" del panel lateral del mapa (Operación y corrida de simulación). */
+export const BitacoraEventos: React.FC = () => {
   const [filtro, setFiltro] = useState<Filtro>('TODOS');
-  // "Congelar lista" fija los eventos visibles para leerlos sin que se desplacen con los nuevos.
+  // "Pausar lista" fija los eventos visibles para leerlos sin que se desplacen con los nuevos.
   const [congelados, setCongelados] = useState<EventoBitacora[] | null>(null);
   const [verTodos, setVerTodos] = useState(false);
 
@@ -48,17 +41,15 @@ export const BitacoraEventos: React.FC<{ onCerrar?: () => void; compacto?: boole
   const base = verTodos ? fuente : recientes;
   const visibles = filtro === 'TODOS' ? base : base.filter((e) => e.categoria === filtro);
 
-  const contenido = (
+  return (
     <>
-      <div className={`px-[12px] ${compacto ? 'pt-[10px]' : 'pt-[14px]'} pb-[10px] flex flex-col gap-[10px] border-b border-[#E2E8F0]`}>
-        {!compacto && <TituloSeccion onCerrar={onCerrar}>Bitácora de eventos</TituloSeccion>}
-        <div className="flex gap-[4px]" role="tablist" aria-label="Filtrar eventos">
+      <div className="px-[12px] pt-[10px] pb-[10px] flex flex-col gap-[10px] border-b border-[#E2E8F0]">
+        <div className="flex gap-[4px]" role="group" aria-label="Filtrar eventos">
           {FILTROS.map(({ valor, etiqueta }) => (
             <button
               key={valor}
               type="button"
-              role="tab"
-              aria-selected={filtro === valor}
+              aria-pressed={filtro === valor}
               onClick={() => setFiltro(valor)}
               className={`px-[7px] py-[3px] rounded-[4px] text-[12px] font-sans ${
                 filtro === valor ? 'bg-[#DBEAFE] text-[#1E40AF] font-medium' : 'bg-white border border-[#E2E8F0] text-[#64748B] hover:border-[#CBD5E1]'
@@ -70,8 +61,8 @@ export const BitacoraEventos: React.FC<{ onCerrar?: () => void; compacto?: boole
         </div>
         <div className="flex items-center text-[12px]">
           <p className="font-sans text-[#64748B]">
-            {visibles.length} eventos {verTodos ? 'registrados en la corrida' : 'en los últimos 30 min simulados'}
-            {congelados && ' · lista congelada'}
+            {visibles.length} {visibles.length === 1 ? 'evento' : 'eventos'} {verTodos ? 'registrados' : 'en los últimos 30 min simulados'}
+            {congelados && ' · lista en pausa'}
           </p>
           <button
             type="button"
@@ -81,7 +72,7 @@ export const BitacoraEventos: React.FC<{ onCerrar?: () => void; compacto?: boole
               congelados ? 'bg-[#DBEAFE] text-[#1E40AF] font-medium' : 'bg-white border border-[#E2E8F0] text-[#0F172A] hover:bg-[#F8FAFC]'
             }`}
           >
-            {congelados ? 'reanudar lista' : 'congelar lista'}
+            {congelados ? 'Reanudar lista' : 'Pausar lista'}
           </button>
         </div>
       </div>
@@ -94,7 +85,7 @@ export const BitacoraEventos: React.FC<{ onCerrar?: () => void; compacto?: boole
               titulo={e.titulo}
               detalle={e.detalle}
               className="px-[12px] py-[8px] min-h-[47px]"
-              derecha={<time className="font-mono text-[12px] text-[#94A3B8] whitespace-nowrap">{e.hora}</time>}
+              derecha={<time className="tabular-nums text-[12px] text-[#64748B] whitespace-nowrap">{e.hora}</time>}
             />
           </li>
         ))}
@@ -102,22 +93,13 @@ export const BitacoraEventos: React.FC<{ onCerrar?: () => void; compacto?: boole
       </ol>
 
       <div className="h-[32px] px-[12px] flex items-center text-[12px] border-t border-[#E2E8F0] shrink-0">
-        {compacto ? (
-          <button type="button" onClick={onVerCompleta} className="font-sans font-medium text-[#1E40AF] hover:underline">
-            Ver bitácora completa (OP-09)
-          </button>
-        ) : (
-          <>
-            <button type="button" onClick={() => setVerTodos(!verTodos)} className="font-sans font-medium text-[#1E40AF] hover:underline">
-              {verTodos ? 'Solo los últimos 30 min' : 'Todos los eventos registrados'}
-            </button>
-            <button type="button" onClick={() => exportarCsv(visibles)} className="ml-auto font-sans text-[#64748B] hover:text-[#0F172A]">
-              exportar CSV
-            </button>
-          </>
-        )}
+        <button type="button" onClick={() => setVerTodos(!verTodos)} className="font-sans font-medium text-[#1E40AF] hover:underline">
+          {verTodos ? 'Ver solo los últimos 30 min' : 'Ver todos los eventos'}
+        </button>
+        <button type="button" onClick={() => exportarCsv(visibles)} className="ml-auto font-sans text-[#64748B] hover:text-[#0F172A]">
+          Exportar CSV
+        </button>
       </div>
     </>
   );
-  return compacto ? contenido : <PanelCompleto etiqueta="Bitácora de eventos">{contenido}</PanelCompleto>;
 };

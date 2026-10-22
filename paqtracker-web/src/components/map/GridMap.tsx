@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useImperativeHandle, forwardRef } from 'react';
-import { Search, ZoomIn, ZoomOut, Maximize2, Layers } from 'lucide-react';
+import { Search, ZoomIn, ZoomOut, Maximize2, Layers, MapIcon } from 'lucide-react';
 import { ALMACENES, MALLA_ALTO_KM, MALLA_ANCHO_KM, UNIDADES } from '../../config/dominio';
+import { NOMBRE_HOLGURA, NOMBRE_INVENTARIO } from '../../config/glosario';
 import { useTamanoElemento } from '../../hooks/useTamanoElemento';
 import { capitalizar } from '../../lib/formato';
 import {
@@ -16,8 +17,10 @@ import {
   type Lienzo,
   type Vista,
 } from '../../lib/malla';
-import { nivelDeOcupacion } from '../../lib/operacion';
-import { iconoVehiculo } from './iconosVehiculo';
+import { fueraDelAlmacen } from '../../lib/operacion';
+import { colorDeUnidad, iconoVehiculo } from './iconosVehiculo';
+import { LeyendaMapa } from './LeyendaMapa';
+import { AlmacenCentral, AlmacenIntermedio, CENTRO_CABEZA_PIN, MarcaBloqueo, PinDestino } from './simbolos';
 import haloSeleccion from '../../assets/figma/pedidos/halo.svg';
 import type { Coordenada } from '../../types/domain';
 import type { AlmacenOperacion, BloqueoOperacion, UnidadOperacion } from '../../types/operacion';
@@ -28,14 +31,33 @@ export interface DestinoMapa {
   pedido: string;
   destino: Coordenada;
   nivel: NivelHolgura;
+  /** Holgura restante ya formateada, para el tooltip del pin. */
+  holgura: string;
   unidad: string;
 }
 
-export type ObjetoMapa = { tipo: 'pedido'; codigo: string } | { tipo: 'vehiculo'; codigo: string };
+export type PestanaPanel = 'incidencias' | 'flota' | 'bitacora';
+
+const ACCESOS_PANEL: { pestana: PestanaPanel; etiqueta: string }[] = [
+  { pestana: 'incidencias', etiqueta: 'Incidencias' },
+  { pestana: 'flota', etiqueta: 'Flota' },
+  { pestana: 'bitacora', etiqueta: 'Bitácora' },
+];
+
+export type ObjetoMapa =
+  | { tipo: 'pedido'; codigo: string }
+  | { tipo: 'vehiculo'; codigo: string }
+  | { tipo: 'almacen'; codigo: string };
+
+/** Objeto bajo el cursor: muestra su tooltip. Los bloqueos tienen tooltip pero no se seleccionan. */
+type ObjetoHover = { tipo: ObjetoMapa['tipo'] | 'bloqueo'; codigo: string };
 
 export interface GridMapHandle {
-  /** Centra el mapa en un nodo, acercando si hace falta para que se distinga. */
-  centrarEn: (punto: Coordenada) => void;
+  /**
+   * Centra el mapa en un nodo, acercando si hace falta para que se distinga. Devuelve false si el
+   * mapa aún no midió su contenedor y no pudo centrar.
+   */
+  centrarEn: (punto: Coordenada) => boolean;
 }
 
 interface GridMapProps {
@@ -47,16 +69,15 @@ interface GridMapProps {
   seleccion: ObjetoMapa | null;
   /** Ancho ocupado por un panel flotante a la derecha; los controles de zoom se corren a su izquierda. */
   anchoPanelDerecho?: number;
-  riesgo: number;
+  /** Pedidos en riesgo por nivel del semáforo de holgura. */
+  riesgo: { rojo: number; ambar: number };
   onSeleccionar: (objeto: ObjetoMapa) => void;
   onAbrirIncidencias: () => void;
+  /** Abre el panel lateral en una de sus pestañas; sin valor no se muestran los accesos. */
+  onAbrirPanel?: (pestana: PestanaPanel) => void;
   onHoverCoordenada?: (coord: Coordenada) => void;
-  /**
-   * 'simulacion': barra reducida (búsqueda y riesgo), botón de ayuda y vista rápida al tocar una
-   * unidad; el detalle completo se abre desde la vista rápida.
-   */
+  /** 'simulacion': barra reducida (búsqueda y riesgo); tocar un objeto abre su detalle igual que en Operación. */
   variante?: 'operacion' | 'simulacion';
-  onAyuda?: () => void;
   /** Componente de KPIs flotantes para renderizar en la barra de controles del mapa */
   slotKpis?: React.ReactNode;
   children?: React.ReactNode;
@@ -74,7 +95,29 @@ const TOLERANCIA_CLIC_PX = 4;
 /** Escala mínima (px/km) al centrar en un objeto. */
 const ESCALA_AL_CENTRAR = 26;
 
-const PIN_PATH = 'M -10 -26 C -10 -31 10 -31 10 -26 C 10 -19 0 -4 0 0 C 0 -4 -10 -19 -10 -26 Z';
+/** Longitudes "redondas" para la barra de escala; se elige la que mide entre 40 y 120 px. */
+const LARGOS_ESCALA_KM = [1, 2, 5, 10, 20, 50];
+const barraEscala = (pxPorKm: number) => {
+  const km = LARGOS_ESCALA_KM.find((largo) => largo * pxPorKm >= 40) ?? LARGOS_ESCALA_KM[LARGOS_ESCALA_KM.length - 1];
+  return { km, px: Math.round(km * pxPorKm) };
+};
+
+/** La leyenda abierta o cerrada se recuerda por navegador; sin almacenamiento, arranca cerrada. */
+const CLAVE_LEYENDA = 'paqtracker.leyendaAbierta';
+const leerLeyendaAbierta = () => {
+  try {
+    return localStorage.getItem(CLAVE_LEYENDA) === '1';
+  } catch {
+    return false;
+  }
+};
+const guardarLeyendaAbierta = (abierta: boolean) => {
+  try {
+    localStorage.setItem(CLAVE_LEYENDA, abierta ? '1' : '0');
+  } catch {
+    // Sin almacenamiento disponible: la preferencia dura solo esta sesión.
+  }
+};
 
 const COLOR_NIVEL: Record<NivelHolgura, string> = { ROJO: '#B91C1C', AMBAR: '#B45309', VERDE: '#15803D', CERRADO: '#94A3B8' };
 
@@ -100,9 +143,9 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
     riesgo,
     onSeleccionar,
     onAbrirIncidencias,
+    onAbrirPanel,
     onHoverCoordenada,
     variante = 'operacion',
-    onAyuda,
     slotKpis,
     children,
   },
@@ -127,18 +170,24 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
   const [terminoBusqueda, setTerminoBusqueda] = useState('');
   const [sinResultados, setSinResultados] = useState(false);
   const [nodoActivo, setNodoActivo] = useState<Coordenada>({ x: 19, y: 9 });
-  const [almacenInspeccionado, setAlmacenInspeccionado] = useState<string | null>(null);
+  // Hover: se guarda el objeto, no la posición del cursor, así el mapa no se redibuja con cada movimiento.
+  const [hover, setHover] = useState<ObjetoHover | null>(null);
   const [capasAbiertas, setCapasAbiertas] = useState(false);
-  const [vistaRapida, setVistaRapida] = useState<string | null>(null);
+  const [leyendaAbierta, setLeyendaAbierta] = useState(leerLeyendaAbierta);
+  const alternarLeyenda = (abierta: boolean) => {
+    setLeyendaAbierta(abierta);
+    guardarLeyendaAbierta(abierta);
+  };
   const enSimulacion = variante === 'simulacion';
   const [capas, setCapas] = useState<Record<Capa, boolean>>({ rutas: true, unidades: true, destinos: true, bloqueos: true, almacenes: true });
 
   // Centra el nodo en el área libre (descontando el panel derecho).
   const centrarEn = (punto: Coordenada) => {
-    if (!vista) return;
+    if (!vista) return false;
     const escala = Math.max(vista.escala, ESCALA_AL_CENTRAR);
     const centroX = (ancho - anchoPanelDerecho) / 2;
     setVistaUsuario(limitarVista({ escala, x: centroX - punto.x * escala, y: alto / 2 - punto.y * escala }, lienzo));
+    return true;
   };
   useImperativeHandle(ref, () => ({ centrarEn }));
 
@@ -174,6 +223,7 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
     if (e.button !== 0 || !vista || destino.closest('button, input, a, [data-sin-zoom]')) return;
     e.currentTarget.setPointerCapture(e.pointerId);
     setIsDragging(true);
+    setHover(null);
     arrastreRef.current = {
       x: e.clientX - vista.x,
       y: e.clientY - vista.y,
@@ -188,6 +238,14 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
     if (!vista || !containerRef.current) return;
     if (isDragging) {
       setVistaUsuario(limitarVista({ ...vista, x: e.clientX - arrastreRef.current.x, y: e.clientY - arrastreRef.current.y }, lienzo));
+    }
+    if (!isDragging) {
+      const objeto = (e.target as Element).closest('[data-objeto]')?.getAttribute('data-objeto') ?? null;
+      const actual = hover ? `${hover.tipo}:${hover.codigo}` : null;
+      if (objeto !== actual) {
+        const [tipo, codigo] = objeto ? objeto.split(':') : [];
+        setHover(objeto ? { tipo: tipo as ObjetoHover['tipo'], codigo } : null);
+      }
     }
     const rect = containerRef.current.getBoundingClientRect();
     const nodo = nodoEn(vista, e.clientX - rect.left, e.clientY - rect.top);
@@ -206,9 +264,7 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
     const fueClic = Math.hypot(e.clientX - a.inicioX, e.clientY - a.inicioY) <= TOLERANCIA_CLIC_PX;
     if (!fueClic || !a.objeto) return;
     const [tipo, codigo] = a.objeto.split(':');
-    if (tipo === 'almacen') setAlmacenInspeccionado(codigo);
-    else if (tipo === 'vehiculo' && enSimulacion) setVistaRapida(codigo);
-    else onSeleccionar({ tipo: tipo as ObjetoMapa['tipo'], codigo });
+    if (tipo !== 'bloqueo') onSeleccionar({ tipo: tipo as ObjetoMapa['tipo'], codigo });
   };
 
   const buscar = (evento: React.FormEvent) => {
@@ -235,7 +291,6 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
   const enEscalaMinima = !vista || vista.escala <= escalaMinima * 1.001;
   const averiadas = unidades.filter((u) => u.estado === 'AVERIADA').length;
   const derechaControles = anchoPanelDerecho > 0 ? anchoPanelDerecho + 24 : 16;
-  const almacen = ALMACENES.find((a) => a.id === almacenInspeccionado);
 
   return (
     <div
@@ -244,16 +299,17 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
       onPointerCancel={handlePointerUp}
+      onPointerLeave={() => setHover(null)}
       className={`relative flex-1 w-full h-full bg-white overflow-hidden select-none touch-none ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
     >
       {/* 1. Barra flotante: búsqueda, riesgo, bloqueos y averías, capas */}
       <div className="absolute left-3 top-3 z-10 flex items-center gap-2">
-        <form onSubmit={buscar} className={`${ESTILO_PILDORA} w-[206px] px-3 gap-2`} role="search">
+        <form onSubmit={buscar} className={`${ESTILO_PILDORA} relative w-[206px] px-3 gap-2`} role="search">
           <Search className="w-3.5 h-3.5 text-[#64748B] shrink-0" />
           <input
             type="search"
-            placeholder="Buscar pedido o unidad"
-            aria-label="Buscar pedido o unidad (p. ej. #1088 o A-04)"
+            placeholder="Pedido o unidad (#1088, A-04)"
+            aria-label="Buscar pedido o unidad en el mapa"
             list="mapa-objetos"
             value={terminoBusqueda}
             onChange={(e) => {
@@ -264,6 +320,13 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
               sinResultados ? 'text-[#B91C1C]' : 'text-[#0F172A]'
             } placeholder-[#94A3B8]`}
           />
+          <span role="status" className="absolute left-0 top-[36px] whitespace-nowrap">
+            {sinResultados && (
+              <span className="block bg-white border border-[#FECACA] rounded-[6px] px-2 py-1 font-sans text-[12px] text-[#B91C1C] shadow-xs">
+                No hay pedidos ni unidades en el mapa con «{terminoBusqueda.trim()}»
+              </span>
+            )}
+          </span>
           <datalist id="mapa-objetos">
             {destinos.map((d) => (
               <option key={d.pedido} value={d.pedido} />
@@ -274,20 +337,27 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
           </datalist>
         </form>
 
-        <button type="button" onClick={onAbrirIncidencias} className={`${ESTILO_PILDORA} px-3 gap-1.5 hover:bg-slate-50`}>
+        <button
+          type="button"
+          onClick={onAbrirIncidencias}
+          aria-label={`${riesgo.rojo} pedidos críticos y ${riesgo.ambar} ajustados. Ver incidencias`}
+          className={`${ESTILO_PILDORA} px-3 gap-1.5 hover:bg-slate-50`}
+        >
           <span className="w-2 h-2 bg-[#B91C1C] rounded-full"></span>
-          <span className="text-[#B91C1C] font-mono font-medium text-[12px]">{riesgo}</span>
+          <span className="text-[#B91C1C] tabular-nums font-medium text-[12px]">{riesgo.rojo}</span>
+          <span className="text-[#B45309] text-[11px] leading-none" aria-hidden="true">▲</span>
+          <span className="text-[#B45309] tabular-nums font-medium text-[12px]">{riesgo.ambar}</span>
           <span className="text-[#64748B] font-sans text-[12px]">en riesgo</span>
         </button>
 
         {!enSimulacion && (
         <button type="button" onClick={onAbrirIncidencias} className={`${ESTILO_PILDORA} px-3.5 gap-1.5 hover:bg-slate-50`}>
           <span className="w-2 h-2 bg-[#B45309] rounded-full"></span>
-          <span className="text-[#B45309] font-mono font-medium text-[12px]">{bloqueos.length}</span>
+          <span className="text-[#B45309] tabular-nums font-medium text-[12px]">{bloqueos.length}</span>
           <span className="text-[#64748B] font-sans text-[12px]">bloqueos</span>
           <span className="w-1.5"></span>
           <span className="w-2 h-2 bg-[#B91C1C] rounded-full"></span>
-          <span className="text-[#B91C1C] font-mono font-medium text-[12px]">{averiadas}</span>
+          <span className="text-[#B91C1C] tabular-nums font-medium text-[12px]">{averiadas}</span>
           <span className="text-[#64748B] font-sans text-[12px]">averías</span>
         </button>
         )}
@@ -329,15 +399,23 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
         {slotKpis}
       </div>
 
-      {enSimulacion && onAyuda && anchoPanelDerecho === 0 && (
-        <button
-          type="button"
-          onClick={onAyuda}
-          title="Leyenda del lienzo"
-          className="absolute right-4 top-3 z-10 size-[32px] bg-white shadow-[0px_1px_4px_rgba(0,0,0,0.13)] rounded-full border-2 border-[#1E40AF] hover:bg-blue-50 flex items-center justify-center"
+      {/* Accesos al panel lateral: aparecen donde se abre y se ocultan mientras está abierto */}
+      {onAbrirPanel && anchoPanelDerecho === 0 && (
+        <nav
+          aria-label="Paneles del mapa"
+          className="absolute right-4 top-3 z-10 h-[32px] bg-white shadow-[0px_1px_4px_rgba(0,0,0,0.13)] rounded-full border border-[#E2E8F0] flex items-center px-1 gap-0.5"
         >
-          <span className="text-[#1E40AF] font-sans font-semibold text-[13px] leading-none">?</span>
-        </button>
+          {ACCESOS_PANEL.map(({ pestana, etiqueta }) => (
+            <button
+              key={pestana}
+              type="button"
+              onClick={() => onAbrirPanel(pestana)}
+              className="h-[26px] px-3 rounded-full font-sans text-[12px] text-[#0F172A] hover:bg-slate-100"
+            >
+              {etiqueta}
+            </button>
+          ))}
+        </nav>
       )}
 
       {/* 2. Controles de zoom (a la izquierda del panel derecho si está abierto) */}
@@ -348,7 +426,8 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
         <button
           onClick={() => acercarAlCentro(1.25)}
           className="w-8 h-8 flex items-center justify-center hover:bg-slate-100 rounded-lg text-[#64748B] hover:text-[#0F172A] transition cursor-pointer"
-          title="Ampliar mapa (+)"
+          title="Acercar"
+          aria-label="Acercar"
         >
           <ZoomIn className="w-4 h-4" />
         </button>
@@ -356,7 +435,8 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
           onClick={() => acercarAlCentro(0.8)}
           disabled={enEscalaMinima}
           className="w-8 h-8 flex items-center justify-center hover:bg-slate-100 rounded-lg text-[#64748B] hover:text-[#0F172A] transition cursor-pointer disabled:opacity-40 disabled:cursor-default disabled:hover:bg-transparent"
-          title="Reducir mapa (-)"
+          title="Alejar"
+          aria-label="Alejar"
         >
           <ZoomOut className="w-4 h-4" />
         </button>
@@ -364,18 +444,36 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
         <button
           onClick={() => setVistaUsuario(null)}
           className="w-8 h-8 flex items-center justify-center hover:bg-slate-100 rounded-lg text-[#64748B] hover:text-[#0F172A] transition cursor-pointer"
-          title="Restablecer vista completa (100%)"
+          title="Ver la malla completa"
+          aria-label="Ver la malla completa"
         >
           <Maximize2 className="w-3.5 h-3.5" />
         </button>
-        <span className="text-[9px] font-mono text-center text-[#94A3B8] font-bold block">
+        <span className="text-[11px] tabular-nums text-center text-[#64748B] font-bold block">
           {vista ? Math.round((vista.escala / escalaBase) * 100) : 100}%
         </span>
       </div>
 
-      {/* 3. Escala */}
-      <div className="absolute left-4 bottom-12 z-10 bg-white/95 backdrop-blur-xs px-2.5 py-1 rounded-md border border-[#E2E8F0] text-[11px] font-mono text-[#64748B] shadow-xs pointer-events-none">
-        1 km = {vista ? vista.escala.toFixed(1).replace('.', ',') : '—'} px
+      {/* 3. Leyenda (panel flotante, no modal) y barra de escala */}
+      <div className="absolute left-4 bottom-4 z-20 flex flex-col items-start gap-2">
+        {leyendaAbierta && <LeyendaMapa onCerrar={() => alternarLeyenda(false)} />}
+        <div className="flex items-end gap-2">
+          <button
+            type="button"
+            onClick={() => alternarLeyenda(!leyendaAbierta)}
+            aria-expanded={leyendaAbierta}
+            className={`${ESTILO_PILDORA} px-3 gap-1.5 hover:bg-slate-50 ${leyendaAbierta ? 'border-[#1E40AF]' : ''}`}
+          >
+            <MapIcon className="w-3.5 h-3.5 text-[#64748B]" />
+            <span className="text-[#0F172A] font-sans text-[12px]">Leyenda</span>
+          </button>
+          {vista && (
+            <div className="bg-white/95 backdrop-blur-xs px-2.5 py-1 rounded-md border border-[#E2E8F0] shadow-xs pointer-events-none flex flex-col gap-[3px]">
+              <span className="tabular-nums text-[11px] text-[#475569]">{barraEscala(vista.escala).km} km</span>
+              <span className="block h-[5px] border-x-2 border-b-2 border-[#475569]" style={{ width: barraEscala(vista.escala).px }} />
+            </div>
+          )}
+        </div>
       </div>
 
       {/* 4. Lienzo: la geometría se proyecta con la vista; los marcadores conservan su tamaño en pantalla */}
@@ -393,100 +491,15 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
         />
       )}
 
-      {/* Inspección rápida de almacenes */}
-      {almacen && (
-        <div
-          data-sin-zoom
-          className="absolute bottom-12 left-1/2 -translate-x-1/2 z-20 bg-white border border-[#CBD5E1] shadow-lg rounded-lg p-3 text-xs flex items-center gap-4"
-        >
-          <span className="font-mono text-[#0F172A]">
-            Almacén {almacen.nombre} ({almacen.ubicacion.x},{almacen.ubicacion.y})
-            {stockDe(almacenes, almacen.id) !== undefined && ` · Stock: ${stockDe(almacenes, almacen.id)}%`}
-          </span>
-          <button onClick={() => setAlmacenInspeccionado(null)} aria-label="Cerrar" className="text-[#64748B] hover:text-[#0F172A] font-bold">
-            ✕
-          </button>
-        </div>
-      )}
-
-      {vista && vistaRapida && (
-        <VistaRapidaUnidad
-          unidad={unidades.find((u) => u.codigo === vistaRapida)}
-          punto={proyectar(vista, unidades.find((u) => u.codigo === vistaRapida)?.posicion ?? { x: 0, y: 0 })}
-          lienzo={lienzo}
-          onCerrar={() => setVistaRapida(null)}
-          onVerDetalle={() => {
-            onSeleccionar({ tipo: 'vehiculo', codigo: vistaRapida });
-            setVistaRapida(null);
-          }}
-        />
+      {/* Tooltip del objeto bajo el cursor (identifica; el detalle se abre con clic) */}
+      {vista && hover && !isDragging && (
+        <TooltipObjeto objeto={hover} vista={vista} lienzo={lienzo} unidades={unidades} destinos={destinos} bloqueos={bloqueos} almacenes={almacenes} />
       )}
 
       {children}
     </div>
   );
 });
-
-/** Tarjeta flotante con lo esencial de una unidad (corrida de simulación). */
-const VistaRapidaUnidad: React.FC<{
-  unidad?: UnidadOperacion;
-  punto: { x: number; y: number };
-  lienzo: Lienzo;
-  onCerrar: () => void;
-  onVerDetalle: () => void;
-}> = ({ unidad, punto, lienzo, onCerrar, onVerDetalle }) => {
-  if (!unidad) return null;
-  const capacidad = UNIDADES[unidad.tipo].capacidad;
-  const averiada = unidad.estado === 'AVERIADA';
-  const nivelCarga = nivelDeOcupacion(unidad.carga, capacidad);
-  const color = averiada ? '#B91C1C' : COLOR_NIVEL[nivelCarga];
-  const icono = iconoVehiculo(unidad.tipo, color);
-  const peor = [...unidad.paradas].sort((a, b) => a.holgura.localeCompare(b.holgura))[0];
-  const ANCHO = 210;
-  const ALTO = 160;
-  const left = Math.min(Math.max(punto.x + 18, 8), lienzo.ancho - ANCHO - 8);
-  const top = Math.min(Math.max(punto.y - ALTO + 10, 56), lienzo.alto - ALTO - 8);
-  const nombre = `${capitalizar(UNIDADES[unidad.tipo].nombre)} ${unidad.codigo}`;
-  return (
-    <div
-      data-sin-zoom
-      role="dialog"
-      aria-label={`Vista rápida de ${nombre}`}
-      onPointerDown={(e) => e.stopPropagation()}
-      className="absolute z-20 bg-white border border-[#E2E8F0] rounded-[10px] shadow-[0px_2px_12px_0px_rgba(0,0,0,0.16)] leading-[normal] text-[12px]"
-      style={{ left, top, width: ANCHO }}
-    >
-      <div className="px-[14px] pt-[12px] pb-[10px] flex items-start gap-[8px] border-b border-[#E2E8F0]">
-        <img src={icono.href} alt="" className="block -ml-[4px] -mt-[3px]" />
-        <div className="flex flex-col">
-          <span className="font-mono font-semibold text-[13px] text-[#0F172A]">{nombre}</span>
-          <span className="font-sans text-[#64748B]">{averiada ? 'Averiada' : unidad.estado === 'EN_RUTA' ? 'En ruta' : 'Disponible'}</span>
-        </div>
-        <button type="button" onClick={onCerrar} aria-label="Cerrar vista rápida" className="ml-auto text-[#64748B] hover:text-[#0F172A]">
-          ✕
-        </button>
-      </div>
-      <div className="px-[14px] py-[8px] flex flex-col gap-[8px] border-b border-[#E2E8F0]">
-        <div className="flex justify-between">
-          <span className="font-sans text-[#64748B]">Ocupación</span>
-          <span className="font-mono font-medium" style={{ color }}>
-            {nivelCarga === 'AMBAR' ? '▲ ' : ''}
-            {unidad.carga} / {capacidad}
-          </span>
-        </div>
-        <div className="flex justify-between">
-          <span className="font-sans text-[#64748B]">Holgura mínima a bordo</span>
-          <span className="font-mono font-medium" style={{ color: peor ? COLOR_NIVEL[peor.nivel] : '#94A3B8' }}>
-            {peor ? `● ${peor.holgura}` : '—'}
-          </span>
-        </div>
-      </div>
-      <button type="button" onClick={onVerDetalle} className="px-[14px] py-[10px] font-sans font-medium text-[#1E40AF] hover:underline">
-        Ver detalle completo ›
-      </button>
-    </div>
-  );
-};
 
 interface CapasMapaProps {
   vista: Vista;
@@ -501,6 +514,78 @@ interface CapasMapaProps {
 }
 
 /** Porcentaje de stock de un almacén intermedio; undefined en el central o sin datos. */
+/** Contenido del tooltip y punto del mapa sobre el que se ancla (encima del símbolo). */
+function contenidoTooltip(
+  objeto: ObjetoHover,
+  datos: Pick<GridMapProps, 'unidades' | 'destinos' | 'bloqueos'> & { almacenes: AlmacenOperacion[] },
+): { titulo: string; detalle: string; color?: string; punto: Coordenada; alzaPx: number } | null {
+  if (objeto.tipo === 'pedido') {
+    const d = datos.destinos.find((x) => x.pedido === objeto.codigo);
+    if (!d) return null;
+    return { titulo: `Pedido ${d.pedido}`, detalle: `Holgura ${d.holgura} · ${NOMBRE_HOLGURA[d.nivel].toLowerCase()}`, color: COLOR_NIVEL[d.nivel], punto: d.destino, alzaPx: 30 };
+  }
+  if (objeto.tipo === 'vehiculo') {
+    const u = datos.unidades.find((x) => x.codigo === objeto.codigo);
+    if (!u) return null;
+    const capacidad = u.capacidad;
+    const averiada = u.estado === 'AVERIADA';
+    return {
+      titulo: `${capitalizar(UNIDADES[u.tipo].nombre)} ${u.codigo}`,
+      detalle: averiada
+        ? 'Averiada'
+        : `Carga ${u.carga}/${capacidad} · ${capacidad === 0 ? 0 : Math.round((u.carga / capacidad) * 100)} %${u.estado === 'EN_REFRIGERIO' ? ' · en refrigerio' : ''}`,
+      color: colorDeUnidad(u),
+      punto: u.posicion,
+      alzaPx: 16,
+    };
+  }
+  if (objeto.tipo === 'almacen') {
+    const a = ALMACENES.find((x) => x.id === objeto.codigo);
+    if (!a) return null;
+    const estado = datos.almacenes.find((x) => x.id === a.id);
+    const conStock = estado?.porcentajeStock != null && estado.nivel && estado.nivel !== 'CERRADO';
+    return {
+      titulo: `Almacén ${a.nombre}`,
+      detalle: conStock ? `Stock ${estado.porcentajeStock} % · ${NOMBRE_INVENTARIO[estado.nivel as 'ROJO'].toLowerCase()}` : 'Stock ilimitado',
+      color: conStock ? COLOR_NIVEL[estado.nivel as 'ROJO'] : undefined,
+      punto: a.ubicacion,
+      alzaPx: 20,
+    };
+  }
+  const b = datos.bloqueos.find((x) => x.id === objeto.codigo);
+  if (!b) return null;
+  return {
+    titulo: 'Tramo bloqueado',
+    detalle: `Hasta ${b.fin}`,
+    color: COLOR_NIVEL.ROJO,
+    punto: { x: (b.desde.x + b.hasta.x) / 2, y: (b.desde.y + b.hasta.y) / 2 },
+    alzaPx: 14,
+  };
+}
+
+const TooltipObjeto: React.FC<
+  { objeto: ObjetoHover; vista: Vista; lienzo: Lienzo } & Pick<GridMapProps, 'unidades' | 'destinos' | 'bloqueos'> & { almacenes: AlmacenOperacion[] }
+> = ({ objeto, vista, lienzo, ...datos }) => {
+  const contenido = contenidoTooltip(objeto, datos);
+  if (!contenido) return null;
+  const p = proyectar(vista, contenido.punto);
+  const MEDIO_ANCHO = 90;
+  const left = Math.min(Math.max(p.x, MEDIO_ANCHO + 8), lienzo.ancho - MEDIO_ANCHO - 8);
+  return (
+    <div
+      role="tooltip"
+      className="absolute z-20 pointer-events-none -translate-x-1/2 -translate-y-full bg-[#0F172A] text-white rounded-[6px] px-[10px] py-[6px] shadow-lg leading-[normal] whitespace-nowrap"
+      style={{ left, top: p.y - contenido.alzaPx }}
+    >
+      <p className="font-semibold text-[12px] tabular-nums">{contenido.titulo}</p>
+      <p className="flex items-center gap-[6px] text-[12px] text-[#CBD5E1] tabular-nums">
+        {contenido.color && <span className="size-[7px] rounded-full shrink-0" style={{ background: contenido.color }} />}
+        {contenido.detalle}
+      </p>
+    </div>
+  );
+};
+
 const stockDe = (almacenes: AlmacenOperacion[], id: AlmacenOperacion['id']) =>
   almacenes.find((a) => a.id === id)?.porcentajeStock ?? undefined;
 
@@ -592,7 +677,7 @@ const CapasMapa: React.FC<CapasMapaProps> = ({ vista, lienzo, capas, unidades, d
         const x = origen.x + i * 10 * vista.escala;
         if (x < 14 || x > lienzo.ancho - 16) return null;
         return (
-          <text key={`rx${i}`} x={x} y={yRotulosX} fill="#94A3B8" fontSize="11" fontFamily="Fira Code" textAnchor="middle" {...halo}>
+          <text key={`rx${i}`} x={x} y={yRotulosX} fill="#94A3B8" fontSize="11" textAnchor="middle" {...halo}>
             {i * 10}k
           </text>
         );
@@ -602,7 +687,7 @@ const CapasMapa: React.FC<CapasMapaProps> = ({ vista, lienzo, capas, unidades, d
         const topeSuperior = hayEspacioSuperior ? 14 : yRotulosX + 16;
         if (y < topeSuperior || y > lienzo.alto - 6) return null;
         return (
-          <text key={`ry${i}`} x={xRotulosY} y={y} fill="#94A3B8" fontSize="11" fontFamily="Fira Code" textAnchor={anchorY} {...halo}>
+          <text key={`ry${i}`} x={xRotulosY} y={y} fill="#94A3B8" fontSize="11" textAnchor={anchorY} {...halo}>
             {i * 10}k
           </text>
         );
@@ -636,10 +721,8 @@ const CapasMapa: React.FC<CapasMapaProps> = ({ vista, lienzo, capas, unidades, d
           return (
             <g key={b.id}>
               <line x1={a.x} y1={a.y} x2={z.x} y2={z.y} stroke="#B91C1C" strokeWidth="4" strokeLinecap="round" opacity="0.55" />
-              <g transform={`translate(${m.x}, ${m.y})`}>
-                <title>{`Bloqueo (${b.desde.x},${b.desde.y})–(${b.hasta.x},${b.hasta.y}) hasta ${b.fin}`}</title>
-                <circle r="10" fill="#FEE2E2" />
-                <path d="M -6 -6 L 6 6 M -6 6 L 6 -6" stroke="#B91C1C" strokeWidth="2.5" />
+              <g transform={`translate(${m.x}, ${m.y})`} data-objeto={`bloqueo:${b.id}`}>
+                <MarcaBloqueo />
               </g>
             </g>
           );
@@ -653,22 +736,15 @@ const CapasMapa: React.FC<CapasMapaProps> = ({ vista, lienzo, capas, unidades, d
           const nivel = almacenes.find((a) => a.id === almacen.id)?.nivel;
           const etiqueta = stock === undefined ? almacen.nombre : `${almacen.nombreCorto.replace('Int.', 'Interm.')} / ${stock} %`;
           // Semáforo de inventario calculado por la API (LE-078).
-          const color = stock === undefined || !nivel ? '#0F172A' : COLOR_NIVEL[nivel];
+          const color = stock === undefined || !nivel ? '#64748B' : COLOR_NIVEL[nivel];
+          const central = almacen.id === 'CENTRAL';
           return (
             <g key={almacen.id} transform={`translate(${x}, ${y})`} className="cursor-pointer" data-objeto={`almacen:${almacen.id}`}>
-              {stock === undefined ? (
-                <>
-                  <rect x="-15" y="-14" width="30" height="28" rx="4" fill="#0F172A" stroke="#FFFFFF" strokeWidth="2" filter="drop-shadow(0px 1px 3px rgba(0,0,0,0.3))" />
-                  <rect x="-4" y="3" width="8" height="9" fill="#FFFFFF" rx="1" />
-                </>
-              ) : (
-                <>
-                  <rect x="-13" y="-12" width="26" height="24" rx="3" fill="#FFFFFF" stroke={color} strokeWidth="2" filter="drop-shadow(0px 1px 2px rgba(0,0,0,0.16))" />
-                  <rect x="-11" y="-2" width="22" height="12" rx="1" fill="#E2E8F0" />
-                  <rect x="-11" y={10 - 12 * (stock / 100)} width="22" height={12 * (stock / 100)} rx="1" fill={color} />
-                </>
+              {seleccion?.tipo === 'almacen' && seleccion.codigo === almacen.id && (
+                <circle r="21" fill="none" stroke="#1E40AF" strokeWidth="2" />
               )}
-              <text x="24" y="5" fill="#64748B" fontSize="13" fontFamily="Fira Code" fontWeight="500" {...halo}>
+              {central ? <AlmacenCentral /> : <AlmacenIntermedio color={color} fraccionStock={stock === undefined ? undefined : stock / 100} />}
+              <text x="24" y="5" fill="#64748B" fontSize="13" fontWeight="500" {...halo}>
                 {etiqueta}
               </text>
             </g>
@@ -682,17 +758,8 @@ const CapasMapa: React.FC<CapasMapaProps> = ({ vista, lienzo, capas, unidades, d
           const seleccionado = seleccion?.tipo === 'pedido' && seleccion.codigo === d.pedido;
           return (
             <g key={d.pedido} transform={`translate(${x}, ${y})`} className="cursor-pointer" data-objeto={`pedido:${d.pedido}`}>
-              <title>{`Pedido ${d.pedido} · (${d.destino.x},${d.destino.y})`}</title>
-              {seleccionado && <circle cx="0" cy="-18" r="16" fill="none" stroke="#1E40AF" strokeWidth="2" />}
-              <path d={PIN_PATH} fill={COLOR_NIVEL[d.nivel]} stroke="#FFFFFF" strokeWidth="1.5" filter="drop-shadow(0px 1px 3px rgba(0,0,0,0.25))" />
-              {d.nivel === 'ROJO' ? (
-                <>
-                  <rect x="-1" y="-25" width="2" height="6" rx="1" fill="#FFFFFF" />
-                  <circle cx="0" cy="-16" r="1.3" fill="#FFFFFF" />
-                </>
-              ) : (
-                <circle cx="0" cy="-22" r="3" fill="#FFFFFF" />
-              )}
+              {seleccionado && <circle cx="0" cy={CENTRO_CABEZA_PIN} r="13" fill="none" stroke="#1E40AF" strokeWidth="2" />}
+              <PinDestino color={COLOR_NIVEL[d.nivel]} critico={d.nivel === 'ROJO'} />
             </g>
           );
         })}
@@ -700,27 +767,26 @@ const CapasMapa: React.FC<CapasMapaProps> = ({ vista, lienzo, capas, unidades, d
       {/* --- UNIDADES en ruta (color por ocupación, CF-02) y averiadas --- */}
       {capas.unidades &&
         unidades
-          .filter((u) => u.estado !== 'DISPONIBLE')
+          .filter(fueraDelAlmacen)
           .map((u) => {
             const { x, y } = proyectar(vista, u.posicion);
-            const capacidad = UNIDADES[u.tipo].capacidad;
+            const capacidad = u.capacidad;
             const averiada = u.estado === 'AVERIADA';
-            const color = averiada ? '#B91C1C' : COLOR_NIVEL[nivelDeOcupacion(u.carga, capacidad)];
+            const color = colorDeUnidad(u);
             const seleccionada = seleccion?.tipo === 'vehiculo' && seleccion.codigo === u.codigo;
             const icono = iconoVehiculo(u.tipo, color);
             const rotuloX = icono.medioAnchoVisible + (seleccionada ? 6 : 4);
             return (
               <g key={u.codigo} transform={`translate(${x}, ${y})`} className="cursor-pointer" data-objeto={`vehiculo:${u.codigo}`}>
-                <title>{`${u.codigo} · ${u.carga}/${capacidad}${averiada ? ' · averiada' : ''}`}</title>
                 {seleccionada && <image href={haloSeleccion} x={-13} y={-13} width={26} height={26} />}
                 <image href={icono.href} x={-icono.centroX} y={-icono.centroY} width={icono.ancho} height={icono.alto} />
                 {averiada ? (
-                  <text x={rotuloX} y="4" fill="#B91C1C" fontSize="12" fontFamily="Fira Code" fontWeight="600" {...halo}>
+                  <text x={rotuloX} y="4" fill="#B91C1C" fontSize="12" fontWeight="600" {...halo}>
                     ✕ {u.codigo}
                   </text>
                 ) : (
                   <>
-                    <text x={rotuloX} y="-1" fill="#64748B" fontSize="12" fontFamily="Fira Code" fontWeight="500" {...halo}>
+                    <text x={rotuloX} y="-1" fill="#64748B" fontSize="12" fontWeight="500" {...halo}>
                       {u.carga}/{capacidad}
                     </text>
                     <rect x={rotuloX} y="4" width="24" height="3" rx="1.5" fill="#CBD5E1" />

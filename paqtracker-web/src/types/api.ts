@@ -122,6 +122,9 @@ export type TipoEventoApi =
   | 'BLOQUEO_INICIADO'
   | 'BLOQUEO_LEVANTADO'
   | 'ALERTA_COLAPSO'
+  | 'UNIDAD_AVERIADA'
+  | 'TRASBORDO'
+  | 'UNIDAD_REINCORPORADA'
   | 'EJECUCION_FINALIZADA';
 
 /** Evento de /topic/ejecuciones/{id}/eventos. */

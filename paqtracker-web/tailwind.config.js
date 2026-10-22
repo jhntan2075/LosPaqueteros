@@ -6,9 +6,10 @@ export default {
   ],
   theme: {
     extend: {
+      // Tipografía única: Fira Sans. Cifras, horas, códigos y coordenadas usan `tabular-nums`
+      // (dígitos de ancho fijo) en lugar de una fuente monoespaciada. Ver README, "Tipografía".
       fontFamily: {
         sans: ['"Fira Sans"', 'system-ui', 'sans-serif'],
-        mono: ['"Fira Code"', 'monospace'],
       },
       colors: {
         brand: {

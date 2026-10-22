@@ -4,9 +4,9 @@ import {
   CheckCircle2,
   AlertTriangle,
   XCircle,
-  Sparkles,
 } from 'lucide-react';
-import { ALMACENES, MALLA_ALTO_KM, MALLA_ANCHO_KM, PLAZOS_HORAS, esPlazoRegular, type PlazoHoras } from '../../config/dominio';
+import { ALMACENES, MALLA_ALTO_KM, MALLA_ANCHO_KM, PLAZOS_HORAS, UNIDADES, esPlazoRegular, type PlazoHoras } from '../../config/dominio';
+import { tipoDeEntrega } from '../../config/glosario';
 import { coordenadaValida, evaluarFactibilidad, type EvaluacionFactibilidad, type NivelFactibilidad } from '../../lib/factibilidad';
 import { diasDeDiferencia, formatearDiaMes, formatearDuracion, formatearHora, sumarMinutos } from '../../lib/formato';
 import { proyectar, tramoOrtogonal, trazado } from '../../lib/malla';
@@ -22,6 +22,12 @@ import { MarcadorAlmacen, PinDestino, RotuloMapa } from './iconos';
 const SIN_SPINNER = '[appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none';
 const CANTIDAD_MAXIMA = 999;
 
+/** "bicicleta 4, moto 8 y auto 24", desde la configuración del dominio. */
+const CAPACIDADES = [UNIDADES.BICICLETA, UNIDADES.MOTO, UNIDADES.AUTO]
+  .map((u) => `${u.nombre} ${u.capacidad}`)
+  .join(', ')
+  .replace(/, ([^,]*)$/, ' y $1');
+
 const ESTILO_FACTIBILIDAD: Record<
   NivelFactibilidad,
   { titulo: string; caja: string; texto: string; icono: React.ReactNode }
@@ -33,7 +39,7 @@ const ESTILO_FACTIBILIDAD: Record<
     icono: <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />,
   },
   AJUSTADA: {
-    titulo: 'Factibilidad ajustada (margen crítico)',
+    titulo: 'Factible con poco margen',
     caja: 'bg-amber-50/70 border-amber-200',
     texto: 'text-amber-800',
     icono: <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />,
@@ -68,7 +74,7 @@ const InputCoordenada: React.FC<{ eje: 'X' | 'Y'; valor: string; maximo: number;
   onCambiar,
 }) => (
   <label className="bg-white border border-slate-200 rounded-lg h-10 w-28 px-3 flex items-center gap-2 focus-within:border-blue-600 focus-within:ring-1 focus-within:ring-blue-600/30 transition">
-    <span className="font-sans font-semibold text-xs text-slate-400">{eje}:</span>
+    <span className="font-sans font-semibold text-xs text-slate-500">{eje}:</span>
     <input
       type="number"
       inputMode="numeric"
@@ -77,7 +83,7 @@ const InputCoordenada: React.FC<{ eje: 'X' | 'Y'; valor: string; maximo: number;
       value={valor}
       onChange={(e) => onCambiar(e.target.value)}
       aria-label={`Coordenada ${eje} del nodo de destino (0 a ${maximo})`}
-      className={`w-full min-w-0 bg-transparent outline-none font-mono font-medium text-sm text-slate-800 ${SIN_SPINNER}`}
+      className={`w-full min-w-0 bg-transparent outline-none tabular-nums font-medium text-sm text-slate-800 ${SIN_SPINNER}`}
     />
   </label>
 );
@@ -123,7 +129,7 @@ const MiniMapaDestino: React.FC<{ evaluacion: EvaluacionFactibilidad; destino: C
               {stock !== undefined && ` · ${stock}%`}
             </RotuloMapa>
             <PinDestino variante="riesgo" x={pDestino.x} y={pDestino.y} />
-            <RotuloMapa x={pDestino.x} y={pDestino.y + 4} anchoMapa={ancho} className="font-mono font-medium text-slate-900">
+            <RotuloMapa x={pDestino.x} y={pDestino.y + 4} anchoMapa={ancho} className="tabular-nums font-medium text-slate-900">
               ({destino.x},{destino.y})
             </RotuloMapa>
           </>
@@ -149,29 +155,41 @@ export const RegistrarPedido: React.FC<RegistrarPedidoProps> = ({ onCancelar, on
   const datos = useDatosOperacion();
   const { reloj } = datos;
   const { clientes } = useColaPedidos();
+  // Sin valores de ejemplo en destino ni plazo: un pedido no debe registrarse con datos que nadie escribió.
   const [cliente, setCliente] = useState('');
-  const [x, setX] = useState('43');
-  const [y, setY] = useState('18');
-  const [cantidad, setCantidad] = useState(10);
-  const [plazoHoras, setPlazoHoras] = useState<PlazoHoras>(4);
+  const [x, setX] = useState('');
+  const [y, setY] = useState('');
+  // Texto del campo: se puede vaciar mientras se escribe; el número válido se deriva de él.
+  const [cantidadTexto, setCantidadTexto] = useState('1');
+  const [plazoHoras, setPlazoHoras] = useState<PlazoHoras | null>(null);
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const cantidad = Number(cantidadTexto);
+  const cantidadValida = cantidadTexto !== '' && Number.isInteger(cantidad) && cantidad >= 1 && cantidad <= CANTIDAD_MAXIMA;
   const destino = { x: Number(x), y: Number(y) };
-  const destinoValido = x !== '' && y !== '' && coordenadaValida(destino);
-  const evaluacion = destinoValido ? evaluarFactibilidad(destino, cantidad, plazoHoras) : null;
+  const destinoCompleto = x !== '' && y !== '';
+  const destinoValido = destinoCompleto && coordenadaValida(destino);
+  const evaluacion = destinoValido && cantidadValida && plazoHoras !== null ? evaluarFactibilidad(destino, cantidad, plazoHoras) : null;
 
-  const horaLimite = sumarMinutos(reloj, plazoHoras * 60);
-  const diasLimite = diasDeDiferencia(reloj, horaLimite);
+  const horaLimite = plazoHoras === null ? null : sumarMinutos(reloj, plazoHoras * 60);
+  const diasLimite = horaLimite === null ? null : diasDeDiferencia(reloj, horaLimite);
   const prefijoDia = diasLimite === 0 ? 'hoy ' : diasLimite === 1 ? 'mañana ' : '';
-  const formularioValido = cliente.trim() !== '' && destinoValido && cantidad >= 1;
+  const formularioValido = cliente.trim() !== '' && destinoValido && cantidadValida && plazoHoras !== null;
+  const faltantes = [
+    cliente.trim() === '' && 'el cliente',
+    !destinoValido && 'un destino dentro de la malla',
+    !cantidadValida && `una cantidad de 1 a ${CANTIDAD_MAXIMA}`,
+    plazoHoras === null && 'el plazo de entrega',
+  ].filter(Boolean) as string[];
 
   const cambiarCantidad = (valor: number) =>
-    setCantidad(Math.min(CANTIDAD_MAXIMA, Math.max(1, Math.round(valor) || 1)));
+    setCantidadTexto(String(Math.min(CANTIDAD_MAXIMA, Math.max(1, Math.round(valor) || 1))));
+  const base = cantidadValida ? cantidad : 1;
 
   const enviar = async (evento: React.FormEvent) => {
     evento.preventDefault();
-    if (!formularioValido || enviando) return;
+    if (!formularioValido || plazoHoras === null || enviando) return;
     setEnviando(true);
     setError(null);
     try {
@@ -190,10 +208,10 @@ export const RegistrarPedido: React.FC<RegistrarPedidoProps> = ({ onCancelar, on
         {/* Formulario de registro (Columna 7/12) */}
         <form
           onSubmit={enviar}
-          className="lg:col-span-7 bg-white border border-slate-200 rounded-xl p-6 shadow-xs flex flex-col gap-6"
+          className="lg:col-span-7 bg-white border border-slate-200 rounded-[10px] p-6 shadow-xs flex flex-col gap-6"
         >
           <div>
-            <h2 className="font-sans font-bold text-base text-slate-800">Datos de la Entrega</h2>
+            <h2 className="font-sans font-bold text-base text-slate-800">Datos del pedido</h2>
             <p className="text-xs text-slate-500 mt-0.5">
               Completa los detalles del pedido para que el planificador asigne la mejor unidad disponible.
             </p>
@@ -201,12 +219,12 @@ export const RegistrarPedido: React.FC<RegistrarPedidoProps> = ({ onCancelar, on
 
           {/* Cliente */}
           <Campo
-            etiqueta="Cliente / Razón Social *"
+            etiqueta="Cliente *"
             htmlFor="pedido-cliente"
             ayuda="Escribe el nombre del cliente o selecciona uno de los clientes frecuentes registrados."
           >
             <div className="relative">
-              <User className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <User className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 id="pedido-cliente"
                 list="pedido-clientes"
@@ -228,9 +246,11 @@ export const RegistrarPedido: React.FC<RegistrarPedidoProps> = ({ onCancelar, on
           <Campo
             etiqueta="Nodo de destino en la ciudad (X, Y) *"
             ayuda={
-              !destinoValido ? (
+              !destinoCompleto ? (
+                `Ingresa X de 0 a ${MALLA_ANCHO_KM} e Y de 0 a ${MALLA_ALTO_KM} (km desde la esquina de la malla).`
+              ) : !destinoValido ? (
                 <span className="text-rose-600 font-medium">
-                  Coordenadas fuera de la malla permitida: X (0 a {MALLA_ANCHO_KM} km), Y (0 a {MALLA_ALTO_KM} km).
+                  El destino está fuera de la malla: X debe ir de 0 a {MALLA_ANCHO_KM} e Y de 0 a {MALLA_ALTO_KM}.
                 </span>
               ) : (
                 evaluacion &&
@@ -242,22 +262,19 @@ export const RegistrarPedido: React.FC<RegistrarPedidoProps> = ({ onCancelar, on
             <div className="flex items-center gap-3">
               <InputCoordenada eje="X" valor={x} maximo={MALLA_ANCHO_KM} onCambiar={setX} />
               <InputCoordenada eje="Y" valor={y} maximo={MALLA_ALTO_KM} onCambiar={setY} />
-              <span className="text-xs text-slate-400 font-sans hidden sm:inline">
-                Rango: [0..{MALLA_ANCHO_KM}] km x [0..{MALLA_ALTO_KM}] km
-              </span>
             </div>
           </Campo>
 
           {/* Cantidad de unidades */}
           <Campo
             etiqueta="Cantidad a transportar (unidades de P) *"
-            ayuda="Capacidades de referencia: Bicicleta (4 u.), Moto (8 u.), Auto (24 u.). Cantidades mayores se fraccionan en múltiples viajes."
+            ayuda={`Capacidad por unidad: ${CAPACIDADES}. Si no cabe en una, se reparte en varios viajes.`}
           >
             <div className="bg-white border border-slate-200 rounded-lg h-10 w-44 flex items-center focus-within:border-blue-600 focus-within:ring-1 focus-within:ring-blue-600/30 transition">
               <button
                 type="button"
-                onClick={() => cambiarCantidad(cantidad - 1)}
-                disabled={cantidad <= 1}
+                onClick={() => cambiarCantidad(base - 1)}
+                disabled={base <= 1}
                 aria-label="Disminuir cantidad"
                 className="w-11 h-full font-sans font-medium text-base text-slate-500 hover:bg-slate-50 disabled:opacity-30 transition rounded-l-lg"
               >
@@ -267,15 +284,16 @@ export const RegistrarPedido: React.FC<RegistrarPedidoProps> = ({ onCancelar, on
                 type="number"
                 min={1}
                 max={CANTIDAD_MAXIMA}
-                value={cantidad}
-                onChange={(e) => cambiarCantidad(Number(e.target.value))}
+                value={cantidadTexto}
+                onChange={(e) => setCantidadTexto(e.target.value)}
+                onBlur={() => cantidadTexto !== '' && !cantidadValida && cambiarCantidad(cantidad)}
                 aria-label="Cantidad de unidades de P"
-                className={`flex-1 min-w-0 h-full bg-transparent text-center outline-none font-mono font-bold text-sm text-slate-900 ${SIN_SPINNER}`}
+                className={`flex-1 min-w-0 h-full bg-transparent text-center outline-none tabular-nums font-bold text-sm text-slate-900 ${SIN_SPINNER}`}
               />
               <button
                 type="button"
-                onClick={() => cambiarCantidad(cantidad + 1)}
-                disabled={cantidad >= CANTIDAD_MAXIMA}
+                onClick={() => cambiarCantidad(base + 1)}
+                disabled={base >= CANTIDAD_MAXIMA}
                 aria-label="Aumentar cantidad"
                 className="w-11 h-full font-sans font-medium text-base text-slate-500 hover:bg-slate-50 disabled:opacity-30 transition rounded-r-lg"
               >
@@ -289,34 +307,38 @@ export const RegistrarPedido: React.FC<RegistrarPedidoProps> = ({ onCancelar, on
             <legend className="font-sans font-medium text-xs text-slate-700 mb-1">
               Plazo de entrega acordado *
             </legend>
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5" role="radiogroup" aria-label="Tipo de entrega">
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
               {PLAZOS_HORAS.map((plazo) => {
                 const seleccionado = plazo === plazoHoras;
                 const regular = esPlazoRegular(plazo);
                 return (
-                  <button
+                  <label
                     key={plazo}
-                    type="button"
-                    role="radio"
-                    aria-checked={seleccionado}
-                    onClick={() => setPlazoHoras(plazo)}
-                    className={`rounded-xl p-3 flex flex-col items-start gap-1 text-left transition cursor-pointer ${
+                    className={`rounded-[10px] p-3 flex flex-col items-start gap-1 text-left transition cursor-pointer has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-blue-600/40 ${
                       seleccionado
                         ? 'bg-blue-50/80 border-2 border-blue-600 shadow-xs'
                         : 'bg-white border border-slate-200 hover:border-slate-300 hover:bg-slate-50'
                     }`}
                   >
+                    <input
+                      type="radio"
+                      name="plazo-entrega"
+                      value={plazo}
+                      checked={seleccionado}
+                      onChange={() => setPlazoHoras(plazo)}
+                      className="sr-only"
+                    />
                     <span
-                      className={`text-[10px] font-sans font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded ${
+                      className={`text-[11px] font-sans font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded ${
                         regular
                           ? 'bg-slate-100 text-slate-600'
                           : 'bg-amber-100/80 text-amber-800'
                       }`}
                     >
-                      {regular ? 'Regular' : 'Express'}
+                      {tipoDeEntrega(plazo)}
                     </span>
                     <span
-                      className={`font-mono font-bold text-base mt-1 ${
+                      className={`tabular-nums font-bold text-base mt-1 ${
                         seleccionado ? 'text-blue-900' : 'text-slate-800'
                       }`}
                     >
@@ -325,7 +347,7 @@ export const RegistrarPedido: React.FC<RegistrarPedidoProps> = ({ onCancelar, on
                     <span className="text-[11px] font-sans text-slate-500">
                       Límite {formatearHora(sumarMinutos(reloj, plazo * 60))}
                     </span>
-                  </button>
+                  </label>
                 );
               })}
             </div>
@@ -336,25 +358,28 @@ export const RegistrarPedido: React.FC<RegistrarPedidoProps> = ({ onCancelar, on
             <button
               type="submit"
               disabled={!formularioValido || enviando}
-              className="h-11 px-6 rounded-xl bg-blue-700 hover:bg-blue-800 text-white font-sans font-medium text-xs flex items-center justify-center gap-2 shadow-xs disabled:opacity-40 disabled:cursor-not-allowed transition"
+              className="h-11 px-6 rounded-[6px] bg-[#1E40AF] hover:bg-[#1E3A8A] text-white font-sans font-medium text-xs flex items-center justify-center gap-2 shadow-xs disabled:opacity-40 disabled:cursor-not-allowed transition"
             >
               {enviando ? (
-                <span>Planificando pedido…</span>
+                <span>Registrando y planificando…</span>
               ) : (
-                <>
-                  <Sparkles className="w-4 h-4" />
-                  <span>Registrar y planificar pedido</span>
-                </>
+                <span>Registrar y planificar pedido</span>
               )}
             </button>
             <button
               type="button"
               onClick={onCancelar}
-              className="h-11 px-5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 font-sans font-medium text-xs transition text-center"
+              className="h-11 px-5 rounded-[6px] border border-slate-200 hover:bg-slate-50 text-slate-600 font-sans font-medium text-xs transition text-center"
             >
-              Cancelar y volver
+              Cancelar
             </button>
           </div>
+
+          {!formularioValido && !enviando && faltantes.length > 0 && (
+            <p className="text-xs text-slate-500 font-sans">
+              Completa {faltantes.join(', ').replace(/, ([^,]*)$/, ' y $1')} para registrar el pedido.
+            </p>
+          )}
 
           {error && (
             <div className="p-3 bg-rose-50 border border-rose-200 rounded-lg text-rose-700 text-xs flex items-center gap-2">
@@ -367,16 +392,15 @@ export const RegistrarPedido: React.FC<RegistrarPedidoProps> = ({ onCancelar, on
         {/* Panel de factibilidad en vivo (Columna 5/12) */}
         <aside
           aria-live="polite"
-          className="lg:col-span-5 bg-white border border-slate-200 rounded-xl p-6 shadow-xs flex flex-col gap-4 sticky top-6"
+          className="lg:col-span-5 bg-white border border-slate-200 rounded-[10px] p-6 shadow-xs flex flex-col gap-4 sticky top-6"
         >
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
             <div className="flex items-center gap-2">
               <h3 className="font-sans font-bold text-xs text-slate-700 tracking-wider uppercase">
-                Factibilidad en Vivo
+                Factibilidad
               </h3>
-              <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
             </div>
-            <span className="text-[11px] font-mono text-slate-400">Estimación inmediata</span>
+            <span className="text-[11px] font-sans text-slate-500">Estimación antes de registrar</span>
           </div>
 
           {evaluacion ? (
@@ -387,27 +411,31 @@ export const RegistrarPedido: React.FC<RegistrarPedidoProps> = ({ onCancelar, on
               </p>
             </>
           ) : (
-            <div className="bg-slate-50 border border-slate-200 rounded-lg h-44 flex items-center justify-center px-6 text-center text-xs text-slate-400">
-              Ingresa un nodo de destino válido para calcular la factibilidad de entrega.
+            <div className="bg-slate-50 border border-slate-200 rounded-lg h-44 flex items-center justify-center px-6 text-center text-xs text-slate-500">
+              Ingresa un destino válido y elige un plazo para calcular la factibilidad de entrega.
             </div>
           )}
 
           {/* Hora límite resultante */}
-          <div className="p-3.5 bg-slate-50/80 rounded-xl border border-slate-200 flex flex-col gap-1">
+          <div className="p-3.5 bg-slate-50/80 rounded-[10px] border border-slate-200 flex flex-col gap-1">
             <span className="text-[11px] font-sans text-slate-500">Hora límite estimada de entrega:</span>
-            <div className="flex items-baseline gap-2">
-              <span className="font-mono font-bold text-2xl text-slate-900">{formatearHora(horaLimite)}</span>
-              <span className="text-xs text-slate-600 font-sans">
-                ({prefijoDia}
-                {formatearDiaMes(horaLimite)} · en {formatearDuracion(plazoHoras * 60)})
-              </span>
-            </div>
+            {horaLimite && plazoHoras !== null ? (
+              <div className="flex items-baseline gap-2">
+                <span className="tabular-nums font-bold text-2xl text-slate-900">{formatearHora(horaLimite)}</span>
+                <span className="text-xs text-slate-600 font-sans">
+                  ({prefijoDia}
+                  {formatearDiaMes(horaLimite)} · en {formatearDuracion(plazoHoras * 60)})
+                </span>
+              </div>
+            ) : (
+              <span className="text-xs text-slate-500 font-sans">Elige un plazo de entrega para calcularla.</span>
+            )}
           </div>
 
           {evaluacion && (
             <>
               {/* Diagnóstico de factibilidad */}
-              <div className={`border rounded-xl p-3.5 flex items-start gap-3 ${ESTILO_FACTIBILIDAD[evaluacion.nivel].caja}`}>
+              <div className={`border rounded-[10px] p-3.5 flex items-start gap-3 ${ESTILO_FACTIBILIDAD[evaluacion.nivel].caja}`}>
                 {ESTILO_FACTIBILIDAD[evaluacion.nivel].icono}
                 <div className="space-y-1">
                   <p className={`font-sans font-bold text-xs ${ESTILO_FACTIBILIDAD[evaluacion.nivel].texto}`}>
@@ -432,13 +460,13 @@ export const RegistrarPedido: React.FC<RegistrarPedidoProps> = ({ onCancelar, on
                 {evaluacion.unidadesNecesarias <= 1 ? (
                   <>
                     <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                    <span>Sin fraccionamiento: las {cantidad} u. caben en una sola unidad de transporte.</span>
+                    <span>Las {cantidad} u. caben en una sola unidad: un solo viaje.</span>
                   </>
                 ) : (
                   <>
                     <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
                     <span>
-                      Fraccionamiento requerido: las {cantidad} u. superan la capacidad de una sola unidad y se dividirán en {evaluacion.unidadesNecesarias} viajes.
+                      Las {cantidad} u. no caben en una sola unidad: se repartirán en {evaluacion.unidadesNecesarias} viajes.
                     </span>
                   </>
                 )}

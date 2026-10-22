@@ -11,12 +11,13 @@ import { RegistrarPedido } from './RegistrarPedido';
 interface ModuloPedidosProps {
   vista: VistaPedidos;
   onCambiarVista: (vista: VistaPedidos) => void;
-  onVerEnLienzo: () => void;
+  /** Abre Operación con el pedido seleccionado y centrado en el lienzo. */
+  onVerEnLienzo: (codigo: string) => void;
 }
 
 export const ModuloPedidos: React.FC<ModuloPedidosProps> = ({ vista, onCambiarVista, onVerEnLienzo }) => {
   const [registrado, setRegistrado] = useState<Pedido | null>(null);
-  const { reloj } = useDatosOperacion();
+  const { reloj, pedidos } = useDatosOperacion();
   const volverACola = () => onCambiarVista('cola');
 
   if (vista === 'registrar' || (vista === 'registrado' && !registrado)) {
@@ -24,7 +25,7 @@ export const ModuloPedidos: React.FC<ModuloPedidosProps> = ({ vista, onCambiarVi
       <div className="flex-1 flex flex-col min-h-0 bg-[#F8FAFC]">
         <EncabezadoPedidos
           titulo="Registrar nuevo pedido"
-          subtitulo="Ingresa cliente, destino (X, Y) y plazo para estimar factibilidad y planificar la ruta"
+          subtitulo="Con el cliente, el destino y el plazo se estima si llega a tiempo antes de registrarlo"
           onVolver={volverACola}
         />
         <RegistrarPedido
@@ -42,14 +43,14 @@ export const ModuloPedidos: React.FC<ModuloPedidosProps> = ({ vista, onCambiarVi
     return (
       <div className="flex-1 flex flex-col min-h-0 bg-[#F8FAFC]">
         <EncabezadoPedidos
-          titulo="Pedido registrado con éxito"
-          subtitulo={`El pedido ${registrado.codigo} ha sido integrado y planificado en la flota`}
+          titulo="Pedido registrado"
           onVolver={volverACola}
         />
         <PedidoRegistrado
           pedido={registrado}
           reloj={reloj}
-          onVerEnLienzo={onVerEnLienzo}
+          // Solo se ofrece cuando el pedido ya figura en el estado en vivo: antes no hay nada que ubicar.
+          onVerEnLienzo={pedidos[registrado.codigo] ? () => onVerEnLienzo(registrado.codigo) : undefined}
           onRegistrarOtro={() => onCambiarVista('registrar')}
           onVerCola={volverACola}
         />

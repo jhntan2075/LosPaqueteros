@@ -59,12 +59,15 @@ export { mensajeDe as mensajeDeError };
 /** Acciones sobre el reloj de una ejecución. Solo se exponen las del alcance: no hay control de velocidad. */
 export function useControlEjecucion(ejecucionId: string) {
   const [error, setError] = useState<string | null>(null);
+  /** Devuelve si el servidor aceptó detenerla; si no, deja el motivo en `error`. */
   const detener = useCallback(async () => {
     setError(null);
     try {
       await clienteApi.detener(ejecucionId);
+      return true;
     } catch (e) {
-      setError(mensajeDe(e, 'No se pudo detener la ejecución'));
+      setError(mensajeDe(e, 'No se pudo detener la simulación. Inténtalo de nuevo.'));
+      return false;
     }
   }, [ejecucionId]);
   return { detener, error };
