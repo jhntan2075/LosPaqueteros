@@ -1,4 +1,4 @@
-# CI del front web: lint + build. No se dispara por cambios en los modulos Java.
+# CI del front web: lint + pruebas + build. No se dispara por cambios en los modulos Java.
 name: web
 
 on:
@@ -28,4 +28,5 @@ jobs:
           cache-dependency-path: paqtracker-web/package-lock.json
       - run: npm ci
       - run: npm run lint
+      - run: npm test
       - run: npm run build
