@@ -32,6 +32,33 @@ class GestorEventosTest {
     }
 
     @Test
+    void cancelar_unidadConAveriaEncolada_laRetiraSinTocarLasDeOtras() {
+        GestorEventos agenda = new GestorEventos();
+        agenda.encolar(new GestorEventos.EventoAveria(1, TipoAveria.TIPO_2, 10));
+        agenda.encolar(new GestorEventos.EventoAveria(2, TipoAveria.TIPO_1, 10));
+
+        assertTrue(agenda.cancelar(1));
+
+        assertFalse(agenda.tieneAveriaPendiente(1));
+        assertTrue(agenda.tieneAveriaPendiente(2));
+        assertEquals(1, agenda.entregarHasta(10).size());
+    }
+
+    @Test
+    void cancelar_sinAveriaEncolada_devuelveFalso() {
+        assertFalse(new GestorEventos().cancelar(1));
+    }
+
+    @Test
+    void cancelar_averiaYaEntregadaAlMotor_devuelveFalso() {
+        GestorEventos agenda = new GestorEventos();
+        agenda.encolar(new GestorEventos.EventoAveria(1, TipoAveria.TIPO_3, 5));
+        agenda.entregarHasta(5);
+
+        assertFalse(agenda.cancelar(1));
+    }
+
+    @Test
     void encolar_eventoNulo_lanzaIllegalArgumentException() {
         GestorEventos agenda = new GestorEventos();
 
