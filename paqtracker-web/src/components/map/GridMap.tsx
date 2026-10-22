@@ -19,6 +19,7 @@ import {
   type Vista,
 } from '../../lib/malla';
 import { fueraDelAlmacen } from '../../lib/operacion';
+import { BLANCO, COLOR_NIVEL, CRITICO, NEUTRO, PRIMARIO } from '../../config/colores';
 import { colorDeUnidad, iconoVehiculo } from './iconosVehiculo';
 import { LeyendaMapa } from './LeyendaMapa';
 import { AlmacenCentral, AlmacenIntermedio, CENTRO_CABEZA_PIN, MarcaBloqueo, PinDestino } from './simbolos';
@@ -120,7 +121,6 @@ const guardarLeyendaAbierta = (abierta: boolean) => {
   }
 };
 
-const COLOR_NIVEL: Record<NivelHolgura, string> = { ROJO: '#B91C1C', AMBAR: '#B45309', VERDE: '#15803D', CERRADO: '#94A3B8' };
 
 type Capa = 'rutas' | 'unidades' | 'destinos' | 'bloqueos' | 'almacenes';
 const CAPAS: { clave: Capa; etiqueta: string }[] = [
@@ -131,7 +131,7 @@ const CAPAS: { clave: Capa; etiqueta: string }[] = [
   { clave: 'almacenes', etiqueta: 'Almacenes' },
 ];
 
-const ESTILO_PILDORA = 'h-[32px] bg-white shadow-[0px_1px_4px_rgba(0,0,0,0.13)] rounded-full border border-[#E2E8F0] flex items-center';
+const ESTILO_PILDORA = 'h-[32px] bg-white shadow-[0px_1px_4px_rgba(0,0,0,0.13)] rounded-full border border-neutral-200 flex items-center';
 
 export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
   {
@@ -306,7 +306,7 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
       {/* 1. Barra flotante: búsqueda, riesgo, bloqueos y averías, capas */}
       <div className="absolute left-3 top-3 z-10 flex items-center gap-2">
         <form onSubmit={buscar} className={`${ESTILO_PILDORA} relative w-[206px] px-3 gap-2`} role="search">
-          <Search className="w-3.5 h-3.5 text-[#64748B] shrink-0" />
+          <Search className="w-3.5 h-3.5 text-neutral-500 shrink-0" />
           <input
             type="search"
             placeholder="Pedido o unidad (#1088, A-04)"
@@ -318,12 +318,12 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
               setSinResultados(false);
             }}
             className={`w-full text-[12px] font-sans bg-transparent focus:outline-none [&::-webkit-calendar-picker-indicator]:!hidden ${
-              sinResultados ? 'text-[#B91C1C]' : 'text-[#0F172A]'
-            } placeholder-[#94A3B8]`}
+              sinResultados ? 'text-critical-600' : 'text-neutral-900'
+            } placeholder-neutral-400`}
           />
           <span role="status" className="absolute left-0 top-[36px] whitespace-nowrap">
             {sinResultados && (
-              <span className="block bg-white border border-[#FECACA] rounded-[6px] px-2 py-1 font-sans text-[12px] text-[#B91C1C] shadow-xs">
+              <span className="block bg-white border border-critical-600/30 rounded-[6px] px-2 py-1 font-sans text-[12px] text-critical-600 shadow-xs">
                 No hay pedidos ni unidades en el mapa con «{terminoBusqueda.trim()}»
               </span>
             )}
@@ -342,24 +342,24 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
           type="button"
           onClick={onAbrirIncidencias}
           aria-label={`${riesgo.rojo} pedidos críticos y ${riesgo.ambar} ajustados. Ver incidencias`}
-          className={`${ESTILO_PILDORA} px-3 gap-1.5 hover:bg-slate-50`}
+          className={`${ESTILO_PILDORA} px-3 gap-1.5 hover:bg-neutral-50`}
         >
-          <span className="w-2 h-2 bg-[#B91C1C] rounded-full"></span>
-          <span className="text-[#B91C1C] tabular-nums font-medium text-[12px]">{riesgo.rojo}</span>
-          <span className="text-[#B45309] text-[11px] leading-none" aria-hidden="true">▲</span>
-          <span className="text-[#B45309] tabular-nums font-medium text-[12px]">{riesgo.ambar}</span>
-          <span className="text-[#64748B] font-sans text-[12px]">en riesgo</span>
+          <span className="w-2 h-2 bg-critical-600 rounded-full"></span>
+          <span className="text-critical-600 tabular-nums font-medium text-[12px]">{riesgo.rojo}</span>
+          <span className="text-warn-700 text-[11px] leading-none" aria-hidden="true">▲</span>
+          <span className="text-warn-700 tabular-nums font-medium text-[12px]">{riesgo.ambar}</span>
+          <span className="text-neutral-500 font-sans text-[12px]">en riesgo</span>
         </button>
 
         {!enSimulacion && (
-        <button type="button" onClick={onAbrirIncidencias} className={`${ESTILO_PILDORA} px-3.5 gap-1.5 hover:bg-slate-50`}>
-          <span className="w-2 h-2 bg-[#B45309] rounded-full"></span>
-          <span className="text-[#B45309] tabular-nums font-medium text-[12px]">{bloqueos.length}</span>
-          <span className="text-[#64748B] font-sans text-[12px]">bloqueos</span>
+        <button type="button" onClick={onAbrirIncidencias} className={`${ESTILO_PILDORA} px-3.5 gap-1.5 hover:bg-neutral-50`}>
+          <span className="w-2 h-2 bg-warn-500 rounded-full"></span>
+          <span className="text-warn-700 tabular-nums font-medium text-[12px]">{bloqueos.length}</span>
+          <span className="text-neutral-500 font-sans text-[12px]">bloqueos</span>
           <span className="w-1.5"></span>
-          <span className="w-2 h-2 bg-[#B91C1C] rounded-full"></span>
-          <span className="text-[#B91C1C] tabular-nums font-medium text-[12px]">{averiadas}</span>
-          <span className="text-[#64748B] font-sans text-[12px]">averías</span>
+          <span className="w-2 h-2 bg-critical-600 rounded-full"></span>
+          <span className="text-critical-600 tabular-nums font-medium text-[12px]">{averiadas}</span>
+          <span className="text-neutral-500 font-sans text-[12px]">averías</span>
         </button>
         )}
 
@@ -369,24 +369,24 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
             type="button"
             aria-expanded={capasAbiertas}
             onClick={() => setCapasAbiertas(!capasAbiertas)}
-            className={`${ESTILO_PILDORA} px-3.5 gap-1.5 hover:bg-slate-50 ${capasAbiertas ? 'border-[#1E40AF]' : ''}`}
+            className={`${ESTILO_PILDORA} px-3.5 gap-1.5 hover:bg-neutral-50 ${capasAbiertas ? 'border-primary-600' : ''}`}
           >
-            <Layers className="w-3.5 h-3.5 text-[#64748B]" />
-            <span className="text-[#64748B] font-sans text-[12px]">Capas</span>
+            <Layers className="w-3.5 h-3.5 text-neutral-500" />
+            <span className="text-neutral-500 font-sans text-[12px]">Capas</span>
           </button>
           {capasAbiertas && (
             <fieldset
               data-sin-zoom
-              className="absolute left-0 top-[38px] w-[170px] bg-white border border-[#E2E8F0] rounded-[8px] shadow-[0px_2px_12px_0px_rgba(0,0,0,0.16)] p-[8px] flex flex-col gap-[2px]"
+              className="absolute left-0 top-[38px] w-[170px] bg-white border border-neutral-200 rounded-[8px] shadow-[0px_2px_12px_0px_rgba(0,0,0,0.16)] p-[8px] flex flex-col gap-[2px]"
             >
               <legend className="sr-only">Capas visibles</legend>
               {CAPAS.map(({ clave, etiqueta }) => (
-                <label key={clave} className="flex items-center gap-[8px] px-[6px] py-[4px] rounded hover:bg-[#F8FAFC] text-[12px] font-sans text-[#0F172A] cursor-pointer">
+                <label key={clave} className="flex items-center gap-[8px] px-[6px] py-[4px] rounded hover:bg-neutral-50 text-[12px] font-sans text-neutral-900 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={capas[clave]}
                     onChange={() => setCapas({ ...capas, [clave]: !capas[clave] })}
-                    className="accent-[#1E40AF]"
+                    className="accent-primary-600"
                   />
                   {etiqueta}
                 </label>
@@ -404,14 +404,14 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
       {onAbrirPanel && anchoPanelDerecho === 0 && (
         <nav
           aria-label="Paneles del mapa"
-          className="absolute right-4 top-3 z-10 h-[32px] bg-white shadow-[0px_1px_4px_rgba(0,0,0,0.13)] rounded-full border border-[#E2E8F0] flex items-center px-1 gap-0.5"
+          className="absolute right-4 top-3 z-10 h-[32px] bg-white shadow-[0px_1px_4px_rgba(0,0,0,0.13)] rounded-full border border-neutral-200 flex items-center px-1 gap-0.5"
         >
           {ACCESOS_PANEL.map(({ pestana, etiqueta }) => (
             <button
               key={pestana}
               type="button"
               onClick={() => onAbrirPanel(pestana)}
-              className="h-[26px] px-3 rounded-full font-sans text-[12px] text-[#0F172A] hover:bg-slate-100"
+              className="h-[26px] px-3 rounded-full font-sans text-[12px] text-neutral-900 hover:bg-neutral-100"
             >
               {etiqueta}
             </button>
@@ -421,12 +421,12 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
 
       {/* 2. Controles de zoom (a la izquierda del panel derecho si está abierto) */}
       <div
-        className="absolute bottom-12 z-10 flex flex-col gap-1.5 bg-white p-1.5 rounded-xl shadow-[0px_2px_8px_rgba(0,0,0,0.15)] border border-[#E2E8F0]"
+        className="absolute bottom-12 z-10 flex flex-col gap-1.5 bg-white p-1.5 rounded-xl shadow-[0px_2px_8px_rgba(0,0,0,0.15)] border border-neutral-200"
         style={{ right: derechaControles }}
       >
         <button
           onClick={() => acercarAlCentro(1.25)}
-          className="w-8 h-8 flex items-center justify-center hover:bg-slate-100 rounded-lg text-[#64748B] hover:text-[#0F172A] transition cursor-pointer"
+          className="w-8 h-8 flex items-center justify-center hover:bg-neutral-100 rounded-lg text-neutral-500 hover:text-neutral-900 transition cursor-pointer"
           title="Acercar"
           aria-label="Acercar"
         >
@@ -435,22 +435,22 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
         <button
           onClick={() => acercarAlCentro(0.8)}
           disabled={enEscalaMinima}
-          className="w-8 h-8 flex items-center justify-center hover:bg-slate-100 rounded-lg text-[#64748B] hover:text-[#0F172A] transition cursor-pointer disabled:opacity-40 disabled:cursor-default disabled:hover:bg-transparent"
+          className="w-8 h-8 flex items-center justify-center hover:bg-neutral-100 rounded-lg text-neutral-500 hover:text-neutral-900 transition cursor-pointer disabled:opacity-40 disabled:cursor-default disabled:hover:bg-transparent"
           title="Alejar"
           aria-label="Alejar"
         >
           <ZoomOut className="w-4 h-4" />
         </button>
-        <div className="w-full h-[1px] bg-[#E2E8F0] my-0.5"></div>
+        <div className="w-full h-[1px] bg-neutral-200 my-0.5"></div>
         <button
           onClick={() => setVistaUsuario(null)}
-          className="w-8 h-8 flex items-center justify-center hover:bg-slate-100 rounded-lg text-[#64748B] hover:text-[#0F172A] transition cursor-pointer"
+          className="w-8 h-8 flex items-center justify-center hover:bg-neutral-100 rounded-lg text-neutral-500 hover:text-neutral-900 transition cursor-pointer"
           title="Ver la malla completa"
           aria-label="Ver la malla completa"
         >
           <Maximize2 className="w-3.5 h-3.5" />
         </button>
-        <span className="text-[11px] tabular-nums text-center text-[#64748B] font-bold block">
+        <span className="text-[11px] tabular-nums text-center text-neutral-500 font-bold block">
           {vista ? Math.round((vista.escala / escalaBase) * 100) : 100}%
         </span>
       </div>
@@ -463,15 +463,15 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
             type="button"
             onClick={() => alternarLeyenda(!leyendaAbierta)}
             aria-expanded={leyendaAbierta}
-            className={`${ESTILO_PILDORA} px-3 gap-1.5 hover:bg-slate-50 ${leyendaAbierta ? 'border-[#1E40AF]' : ''}`}
+            className={`${ESTILO_PILDORA} px-3 gap-1.5 hover:bg-neutral-50 ${leyendaAbierta ? 'border-primary-600' : ''}`}
           >
-            <MapIcon className="w-3.5 h-3.5 text-[#64748B]" />
-            <span className="text-[#0F172A] font-sans text-[12px]">Leyenda</span>
+            <MapIcon className="w-3.5 h-3.5 text-neutral-500" />
+            <span className="text-neutral-900 font-sans text-[12px]">Leyenda</span>
           </button>
           {vista && (
-            <div className="bg-white/95 backdrop-blur-xs px-2.5 py-1 rounded-md border border-[#E2E8F0] shadow-xs pointer-events-none flex flex-col gap-[3px]">
-              <span className="tabular-nums text-[11px] text-[#475569]">{barraEscala(vista.escala).km} km</span>
-              <span className="block h-[5px] border-x-2 border-b-2 border-[#475569]" style={{ width: barraEscala(vista.escala).px }} />
+            <div className="bg-white/95 backdrop-blur-xs px-2.5 py-1 rounded-md border border-neutral-200 shadow-xs pointer-events-none flex flex-col gap-[3px]">
+              <span className="tabular-nums text-[11px] text-neutral-600">{barraEscala(vista.escala).km} km</span>
+              <span className="block h-[5px] border-x-2 border-b-2 border-neutral-600" style={{ width: barraEscala(vista.escala).px }} />
             </div>
           )}
         </div>
@@ -579,11 +579,11 @@ const TooltipObjeto: React.FC<
   return (
     <div
       role="tooltip"
-      className="absolute z-20 pointer-events-none -translate-x-1/2 -translate-y-full bg-[#0F172A] text-white rounded-[6px] px-[10px] py-[6px] shadow-lg leading-[normal] whitespace-nowrap"
+      className="absolute z-20 pointer-events-none -translate-x-1/2 -translate-y-full bg-neutral-900 text-white rounded-[6px] px-[10px] py-[6px] shadow-lg leading-[normal] whitespace-nowrap"
       style={{ left, top: p.y - contenido.alzaPx }}
     >
       <p className="font-semibold text-[12px] tabular-nums">{contenido.titulo}</p>
-      <p className="flex items-center gap-[6px] text-[12px] text-[#CBD5E1] tabular-nums">
+      <p className="flex items-center gap-[6px] text-[12px] text-neutral-300 tabular-nums">
         {contenido.color && <span className="size-[7px] rounded-full shrink-0" style={{ background: contenido.color }} />}
         {contenido.detalle}
       </p>
@@ -633,7 +633,7 @@ const CapasMapa: React.FC<CapasMapaProps> = ({ vista, lienzo, capas, unidades, d
   const totalRotulosX = Math.max(Math.floor(MALLA_ANCHO_KM / 10) + 1, k10MaxX + 1);
   const totalRotulosY = Math.max(Math.floor(MALLA_ALTO_KM / 10) + 1, k10MaxY + 1);
 
-  const halo = { stroke: '#FFFFFF', strokeWidth: 3, paintOrder: 'stroke' } as const;
+  const halo = { stroke: BLANCO, strokeWidth: 3, paintOrder: 'stroke' } as const;
 
   // Unidad destacada: la seleccionada o la que lleva el pedido seleccionado.
   const unidadDestacada =
@@ -657,7 +657,7 @@ const CapasMapa: React.FC<CapasMapaProps> = ({ vista, lienzo, capas, unidades, d
             y1={0}
             x2={x}
             y2={lienzo.alto}
-            stroke="#E2E8F0"
+            stroke={NEUTRO[200]}
             strokeWidth="1"
           />
         );
@@ -672,7 +672,7 @@ const CapasMapa: React.FC<CapasMapaProps> = ({ vista, lienzo, capas, unidades, d
             y1={y}
             x2={lienzo.ancho}
             y2={y}
-            stroke="#E2E8F0"
+            stroke={NEUTRO[200]}
             strokeWidth="1"
           />
         );
@@ -683,7 +683,7 @@ const CapasMapa: React.FC<CapasMapaProps> = ({ vista, lienzo, capas, unidades, d
         const x = origen.x + i * 10 * vista.escala;
         if (x < 14 || x > lienzo.ancho - 16) return null;
         return (
-          <text key={`rx${i}`} x={x} y={yRotulosX} fill="#94A3B8" fontSize="11" textAnchor="middle" {...halo}>
+          <text key={`rx${i}`} x={x} y={yRotulosX} fill={NEUTRO[500]} fontSize="11" textAnchor="middle" {...halo}>
             {i * 10}k
           </text>
         );
@@ -693,7 +693,7 @@ const CapasMapa: React.FC<CapasMapaProps> = ({ vista, lienzo, capas, unidades, d
         const topeSuperior = hayEspacioSuperior ? 14 : yRotulosX + 16;
         if (y < topeSuperior || y > lienzo.alto - 6) return null;
         return (
-          <text key={`ry${i}`} x={xRotulosY} y={y} fill="#94A3B8" fontSize="11" textAnchor={anchorY} {...halo}>
+          <text key={`ry${i}`} x={xRotulosY} y={y} fill={NEUTRO[500]} fontSize="11" textAnchor={anchorY} {...halo}>
             {i * 10}k
           </text>
         );
@@ -706,11 +706,11 @@ const CapasMapa: React.FC<CapasMapaProps> = ({ vista, lienzo, capas, unidades, d
           const destacada = unidad.codigo === unidadDestacada;
           return (
             <g key={`ruta-${unidad.codigo}`}>
-              {recorrido.length > 1 && <path d={trazado(vista, recorrido)} fill="none" stroke="#9EABBA" strokeWidth="2" />}
+              {recorrido.length > 1 && <path d={trazado(vista, recorrido)} fill="none" stroke={NEUTRO[300]} strokeWidth="2" />}
               <path
                 d={trazado(vista, pendiente)}
                 fill="none"
-                stroke={destacada ? '#1E40AF' : '#94A3B8'}
+                stroke={destacada ? PRIMARIO : NEUTRO[400]}
                 strokeWidth={destacada ? 3 : 2.5}
                 strokeDasharray={destacada ? '7 5' : '6 4'}
               />
@@ -726,7 +726,7 @@ const CapasMapa: React.FC<CapasMapaProps> = ({ vista, lienzo, capas, unidades, d
           const m = { x: (a.x + z.x) / 2, y: (a.y + z.y) / 2 };
           return (
             <g key={b.id}>
-              <line x1={a.x} y1={a.y} x2={z.x} y2={z.y} stroke="#B91C1C" strokeWidth="4" strokeLinecap="round" opacity="0.55" />
+              <line x1={a.x} y1={a.y} x2={z.x} y2={z.y} stroke={CRITICO} strokeWidth="4" strokeLinecap="round" opacity="0.55" />
               <g transform={`translate(${m.x}, ${m.y})`} data-objeto={`bloqueo:${b.id}`}>
                 <MarcaBloqueo />
               </g>
@@ -742,15 +742,15 @@ const CapasMapa: React.FC<CapasMapaProps> = ({ vista, lienzo, capas, unidades, d
           const nivel = almacenes.find((a) => a.id === almacen.id)?.nivel;
           const etiqueta = stock === undefined ? almacen.nombre : `${almacen.nombreCorto.replace('Int.', 'Interm.')} / ${stock} %`;
           // Semáforo de inventario calculado por la API (LE-078).
-          const color = stock === undefined || !nivel ? '#64748B' : COLOR_NIVEL[nivel];
+          const color = stock === undefined || !nivel ? NEUTRO[500] : COLOR_NIVEL[nivel];
           const central = almacen.id === 'CENTRAL';
           return (
             <g key={almacen.id} transform={`translate(${x}, ${y})`} className="cursor-pointer" data-objeto={`almacen:${almacen.id}`}>
               {seleccion?.tipo === 'almacen' && seleccion.codigo === almacen.id && (
-                <circle r="21" fill="none" stroke="#1E40AF" strokeWidth="2" />
+                <circle r="21" fill="none" stroke={PRIMARIO} strokeWidth="2" />
               )}
               {central ? <AlmacenCentral /> : <AlmacenIntermedio color={color} fraccionStock={stock === undefined ? undefined : stock / 100} />}
-              <text x="24" y="5" fill="#64748B" fontSize="13" fontWeight="500" {...halo}>
+              <text x="24" y="5" fill={NEUTRO[500]} fontSize="13" fontWeight="500" {...halo}>
                 {etiqueta}
               </text>
             </g>
@@ -764,7 +764,7 @@ const CapasMapa: React.FC<CapasMapaProps> = ({ vista, lienzo, capas, unidades, d
           const seleccionado = seleccion?.tipo === 'pedido' && seleccion.codigo === d.pedido;
           return (
             <g key={d.pedido} transform={`translate(${x}, ${y})`} className="cursor-pointer" data-objeto={`pedido:${d.pedido}`}>
-              {seleccionado && <circle cx="0" cy={CENTRO_CABEZA_PIN} r="13" fill="none" stroke="#1E40AF" strokeWidth="2" />}
+              {seleccionado && <circle cx="0" cy={CENTRO_CABEZA_PIN} r="13" fill="none" stroke={PRIMARIO} strokeWidth="2" />}
               <PinDestino color={COLOR_NIVEL[d.nivel]} critico={d.nivel === 'ROJO'} />
             </g>
           );
@@ -787,15 +787,15 @@ const CapasMapa: React.FC<CapasMapaProps> = ({ vista, lienzo, capas, unidades, d
                 {seleccionada && <image href={haloSeleccion} x={-13} y={-13} width={26} height={26} />}
                 <image href={icono.href} x={-icono.centroX} y={-icono.centroY} width={icono.ancho} height={icono.alto} />
                 {averiada ? (
-                  <text x={rotuloX} y="4" fill="#B91C1C" fontSize="12" fontWeight="600" {...halo}>
+                  <text x={rotuloX} y="4" fill={CRITICO} fontSize="12" fontWeight="600" {...halo}>
                     ✕ {u.codigo}
                   </text>
                 ) : (
                   <>
-                    <text x={rotuloX} y="-1" fill="#64748B" fontSize="12" fontWeight="500" {...halo}>
+                    <text x={rotuloX} y="-1" fill={NEUTRO[500]} fontSize="12" fontWeight="500" {...halo}>
                       {u.carga}/{capacidad}
                     </text>
-                    <rect x={rotuloX} y="4" width="24" height="3" rx="1.5" fill="#CBD5E1" />
+                    <rect x={rotuloX} y="4" width="24" height="3" rx="1.5" fill={NEUTRO[300]} />
                     <rect x={rotuloX} y="4" width={24 * (u.carga / capacidad)} height="3" rx="1.5" fill={color} />
                   </>
                 )}
@@ -805,8 +805,8 @@ const CapasMapa: React.FC<CapasMapaProps> = ({ vista, lienzo, capas, unidades, d
 
       {/* Retícula del nodo bajo el cursor */}
       <g transform={`translate(${activo.x}, ${activo.y})`} pointerEvents="none">
-        <circle r="6" fill="none" stroke="#1E40AF" strokeWidth="1.5" strokeDasharray="2 2" />
-        <circle r="2.5" fill="#1E40AF" />
+        <circle r="6" fill="none" stroke={PRIMARIO} strokeWidth="1.5" strokeDasharray="2 2" />
+        <circle r="2.5" fill={PRIMARIO} />
       </g>
     </svg>
   );

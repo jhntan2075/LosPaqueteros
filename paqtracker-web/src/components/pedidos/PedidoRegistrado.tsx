@@ -16,6 +16,7 @@ import { capitalizar, formatearHolgura, formatearHoraRelativa } from '../../lib/
 import { proyectar, tramoOrtogonal, trazado } from '../../lib/malla';
 import type { Coordenada } from '../../types/domain';
 import type { PedidoRegistrado as Pedido, VehiculoAsignado } from '../../types/pedidos';
+import { NEUTRO, PRIMARIO } from '../../config/colores';
 import { MiniMapaMalla } from '../map/MiniMapaMalla';
 import { COLOR_SIN_DATO, colorDeUnidad } from '../map/iconosVehiculo';
 import { useDatosOperacion } from '../../hooks/useDatosOperacion';
@@ -26,8 +27,8 @@ import holguraAmbarTriangulo from '../../assets/figma/pedidos/holgura-ambar-tria
 
 const FilaResumen: React.FC<{ etiqueta: string; valor: React.ReactNode }> = ({ etiqueta, valor }) => (
   <div className="flex items-center justify-between w-full text-xs py-1">
-    <span className="font-sans text-slate-500">{etiqueta}</span>
-    <span className="font-sans font-medium text-slate-800 text-right">{valor}</span>
+    <span className="font-sans text-neutral-500">{etiqueta}</span>
+    <span className="font-sans font-medium text-neutral-800 text-right">{valor}</span>
   </div>
 );
 
@@ -36,8 +37,8 @@ const CeldaKpi: React.FC<{ etiqueta: string; icono?: React.ReactNode; children: 
   icono,
   children,
 }) => (
-  <div className="flex-1 min-w-0 bg-slate-50 rounded-[10px] p-3.5 border border-slate-200/80 flex flex-col gap-1">
-    <span className="font-sans text-[11px] text-slate-500 flex items-center gap-1.5">
+  <div className="flex-1 min-w-0 bg-neutral-50 rounded-[10px] p-3.5 border border-neutral-200/80 flex flex-col gap-1">
+    <span className="font-sans text-[11px] text-neutral-500 flex items-center gap-1.5">
       {icono}
       {etiqueta}
     </span>
@@ -69,25 +70,25 @@ const MiniMapaRuta: React.FC<{ pedido: Pedido; vehiculo: VehiculoAsignado; unida
         return (
           <>
             <svg className="absolute inset-0 w-full h-full" aria-hidden="true">
-              <path d={trazado(vista, tramoOrtogonal(almacen.ubicacion, unidad))} fill="none" stroke="#9EABBA" strokeWidth="2" />
+              <path d={trazado(vista, tramoOrtogonal(almacen.ubicacion, unidad))} fill="none" stroke={NEUTRO[300]} strokeWidth="2" />
               <path
                 d={trazado(vista, tramoOrtogonal(unidad, destino))}
                 fill="none"
-                stroke="#1E40AF"
+                stroke={PRIMARIO}
                 strokeWidth="2"
                 strokeDasharray="5 4"
               />
             </svg>
             <MarcadorAlmacen almacen={almacen.id} enRuta cx={pOrigen.x} cy={pOrigen.y} />
-            <RotuloMapa x={pOrigen.x} y={pOrigen.y + 18} anchoMapa={ancho} className="font-sans font-medium text-slate-500">
+            <RotuloMapa x={pOrigen.x} y={pOrigen.y + 18} anchoMapa={ancho} className="font-sans font-medium text-neutral-500">
               {almacen.nombreCorto}
             </RotuloMapa>
             <UnidadEnMapa tipo={vehiculo.tipo} color={color} cx={pUnidad.x} cy={pUnidad.y} />
-            <RotuloMapa x={pUnidad.x} y={pUnidad.y + 14} anchoMapa={ancho} className="tabular-nums font-medium text-blue-700">
+            <RotuloMapa x={pUnidad.x} y={pUnidad.y + 14} anchoMapa={ancho} className="tabular-nums font-medium text-primary-600">
               {vehiculo.codigo}
             </RotuloMapa>
             <PinDestino variante="ambar" x={pDestino.x} y={pDestino.y} />
-            <RotuloMapa x={pDestino.x} y={pDestino.y + 2} anchoMapa={ancho} className="tabular-nums font-medium text-slate-900">
+            <RotuloMapa x={pDestino.x} y={pDestino.y + 2} anchoMapa={ancho} className="tabular-nums font-medium text-neutral-900">
               ({destino.x},{destino.y})
             </RotuloMapa>
           </>
@@ -121,23 +122,23 @@ export const PedidoRegistrado: React.FC<PedidoRegistradoProps> = ({
     <div className="flex-1 min-h-0 overflow-y-auto">
       <div className="max-w-4xl mx-auto w-full p-4 lg:p-6 flex flex-col gap-6">
         {/* Banner de confirmación */}
-        <div className="bg-white border border-emerald-200 rounded-[10px] p-6 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="bg-white border border-ok-600/30 rounded-[10px] p-6 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
-            <div className="size-12 rounded-[10px] bg-emerald-100 flex items-center justify-center text-emerald-700 shrink-0">
+            <div className="size-12 rounded-[10px] bg-ok-50 flex items-center justify-center text-ok-700 shrink-0">
               <CheckCircle2 className="w-6 h-6" />
             </div>
             <div>
               <div className="flex items-center gap-2.5">
-                <h2 className="font-sans font-bold text-lg text-slate-900">Pedido {pedido.codigo} registrado</h2>
+                <h2 className="font-sans font-bold text-lg text-neutral-900">Pedido {pedido.codigo} registrado</h2>
                 <span
                   className={`px-2.5 py-0.5 rounded-full text-xs font-sans font-medium border ${
-                    vehiculo ? 'bg-emerald-50 text-emerald-800 border-emerald-200' : 'bg-amber-50 text-amber-800 border-amber-200'
+                    vehiculo ? 'bg-ok-50 text-ok-700 border-ok-600/30' : 'bg-warn-50 text-warn-700 border-warn-500/40'
                   }`}
                 >
                   {vehiculo ? 'Planificado' : ESTADO_EN_ESPERA}
                 </span>
               </div>
-              <p className="text-xs text-slate-500 font-sans mt-0.5">
+              <p className="text-xs text-neutral-500 font-sans mt-0.5">
                 {vehiculo
                   ? `Asignado automáticamente a ${nombreVehiculo} e incorporado a la ruta vigente.`
                   : 'No había una unidad libre al registrarlo: queda en espera y entra en la próxima planificación.'}
@@ -149,7 +150,7 @@ export const PedidoRegistrado: React.FC<PedidoRegistradoProps> = ({
             <button
               type="button"
               onClick={onVerEnLienzo}
-              className="h-10 px-5 rounded-[6px] bg-[#1E40AF] hover:bg-[#1E3A8A] text-white font-sans font-medium text-xs flex items-center gap-2 shadow-xs transition shrink-0"
+              className="h-10 px-5 rounded-[6px] bg-primary-600 hover:bg-primary-700 text-white font-sans font-medium text-xs flex items-center gap-2 shadow-xs transition shrink-0"
             >
               <MapPin className="w-4 h-4" />
               <span>Ubicar en el mapa en vivo</span>
@@ -160,20 +161,20 @@ export const PedidoRegistrado: React.FC<PedidoRegistradoProps> = ({
         {/* Doble columna: Resumen del Pedido vs Planificación */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
           {/* Tarjeta 1: Resumen del Pedido */}
-          <div className="bg-white border border-slate-200 rounded-[10px] p-6 shadow-xs flex flex-col gap-4">
-            <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
-              <h3 className="font-sans font-bold text-xs text-slate-700 tracking-wider uppercase">
+          <div className="bg-white border border-neutral-200 rounded-[10px] p-6 shadow-xs flex flex-col gap-4">
+            <div className="border-b border-neutral-100 pb-3 flex items-center justify-between">
+              <h3 className="font-sans font-bold text-xs text-neutral-700 tracking-wider uppercase">
                 Resumen del pedido
               </h3>
-              <User className="w-4 h-4 text-slate-500" />
+              <User className="w-4 h-4 text-neutral-500" />
             </div>
 
-            <div className="space-y-1 divide-y divide-slate-50">
+            <div className="space-y-1 divide-y divide-neutral-50">
               <FilaResumen etiqueta="Cliente" valor={borrador.cliente} />
               <FilaResumen
                 etiqueta="Nodo de destino"
                 valor={
-                  <span className="tabular-nums font-medium text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+                  <span className="tabular-nums font-medium text-primary-600 bg-primary-50 px-2 py-0.5 rounded border border-primary-100">
                     X: {borrador.destino.x} · Y: {borrador.destino.y}
                   </span>
                 }
@@ -185,27 +186,27 @@ export const PedidoRegistrado: React.FC<PedidoRegistradoProps> = ({
               />
               <FilaResumen
                 etiqueta="Hora límite"
-                valor={<span className="tabular-nums font-bold text-slate-900">{formatearHoraRelativa(pedido.horaLimite, reloj)}</span>}
+                valor={<span className="tabular-nums font-bold text-neutral-900">{formatearHoraRelativa(pedido.horaLimite, reloj)}</span>}
               />
               <FilaResumen etiqueta="Almacén de despacho" valor={almacen?.nombre ?? '—'} />
             </div>
           </div>
 
           {/* Tarjeta 2: Resultado de la Planificación */}
-          <div className="bg-white border border-slate-200 rounded-[10px] p-6 shadow-xs flex flex-col gap-4">
-            <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
-              <h3 className="font-sans font-bold text-xs text-slate-700 tracking-wider uppercase">
+          <div className="bg-white border border-neutral-200 rounded-[10px] p-6 shadow-xs flex flex-col gap-4">
+            <div className="border-b border-neutral-100 pb-3 flex items-center justify-between">
+              <h3 className="font-sans font-bold text-xs text-neutral-700 tracking-wider uppercase">
                 Resultado de la planificación
               </h3>
-              <ShieldCheck className="w-4 h-4 text-slate-500" />
+              <ShieldCheck className="w-4 h-4 text-neutral-500" />
             </div>
 
             <div className="grid grid-cols-3 gap-2.5">
-              <CeldaKpi etiqueta="Vehículo" icono={<Truck className="w-3 h-3 text-blue-600" />}>
-                <span className="tabular-nums font-bold text-sm text-slate-900 truncate">{nombreVehiculo}</span>
+              <CeldaKpi etiqueta="Vehículo" icono={<Truck className="w-3 h-3 text-primary-600" />}>
+                <span className="tabular-nums font-bold text-sm text-neutral-900 truncate">{nombreVehiculo}</span>
               </CeldaKpi>
-              <CeldaKpi etiqueta="ETA" icono={<Clock className="w-3 h-3 text-slate-500" />}>
-                <span className="tabular-nums font-bold text-sm text-slate-900">
+              <CeldaKpi etiqueta="ETA" icono={<Clock className="w-3 h-3 text-neutral-500" />}>
+                <span className="tabular-nums font-bold text-sm text-neutral-900">
                   {pedido.eta ? formatearHoraRelativa(pedido.eta, reloj) : '—'}
                 </span>
               </CeldaKpi>
@@ -227,15 +228,15 @@ export const PedidoRegistrado: React.FC<PedidoRegistradoProps> = ({
             {vehiculo && pedido.posicionVehiculo && (
               <figure className="flex flex-col gap-1.5 mt-1">
                 <MiniMapaRuta pedido={pedido} vehiculo={vehiculo} unidad={pedido.posicionVehiculo} />
-                <figcaption className="font-sans text-[11px] text-slate-500 text-center">
+                <figcaption className="font-sans text-[11px] text-neutral-500 text-center">
                   El destino se agregó a la ruta de {vehiculo.codigo}.
                 </figcaption>
               </figure>
             )}
 
             {/* Replanificación en vivo */}
-            <div className="p-3 bg-blue-50/70 rounded-[10px] border border-blue-200/80 flex items-center gap-2.5 text-xs text-blue-900">
-              <RefreshCw className="w-4 h-4 text-blue-700 shrink-0" />
+            <div className="p-3 bg-primary-50/70 rounded-[10px] border border-primary-100/80 flex items-center gap-2.5 text-xs text-primary-900">
+              <RefreshCw className="w-4 h-4 text-primary-600 shrink-0" />
               <p className="leading-relaxed">
                 {replanificacion.replanifico
                   ? `Planificado en ${replanificacion.milisegundos} ms · ${replanificacion.unidadesDespachadas} ${
@@ -248,12 +249,12 @@ export const PedidoRegistrado: React.FC<PedidoRegistradoProps> = ({
         </div>
 
         {/* Acciones Finales */}
-        <div className="bg-white border border-slate-200 rounded-[10px] p-4 flex flex-wrap items-center justify-between gap-3 shadow-xs">
+        <div className="bg-white border border-neutral-200 rounded-[10px] p-4 flex flex-wrap items-center justify-between gap-3 shadow-xs">
           <div className="flex items-center gap-3">
             <button
               type="button"
               onClick={onRegistrarOtro}
-              className="h-10 px-4 rounded-[6px] border border-slate-200 hover:bg-slate-50 text-slate-700 font-sans font-medium text-xs flex items-center gap-1.5 transition"
+              className="h-10 px-4 rounded-[6px] border border-neutral-200 hover:bg-neutral-50 text-neutral-700 font-sans font-medium text-xs flex items-center gap-1.5 transition"
             >
               <Plus className="w-4 h-4" />
               <span>Registrar otro pedido</span>
@@ -263,7 +264,7 @@ export const PedidoRegistrado: React.FC<PedidoRegistradoProps> = ({
           <button
             type="button"
             onClick={onVerCola}
-            className="h-10 px-4 rounded-[6px] text-blue-700 hover:text-blue-800 hover:bg-blue-50 font-sans font-medium text-xs flex items-center gap-1.5 transition"
+            className="h-10 px-4 rounded-[6px] text-primary-600 hover:text-primary-700 hover:bg-primary-50 font-sans font-medium text-xs flex items-center gap-1.5 transition"
           >
             <ArrowLeft className="w-4 h-4" />
             <span>Volver a la cola de pedidos</span>

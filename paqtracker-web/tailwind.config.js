@@ -40,27 +40,7 @@ export default {
       fontFamily: {
         sans: ['"Fira Sans"', 'system-ui', 'sans-serif'],
       },
-      colors: {
-        ...paleta,
-        // Alias heredados: los componentes existentes los usan. Migrar a los tokens de arriba.
-        brand: {
-          blue: paleta.primary[600],
-          'blue-soft': paleta.primary[100],
-          sidebar: paleta.neutral[100],
-          border: paleta.neutral[200],
-          'border-dark': paleta.neutral[300],
-          slate: {
-            900: paleta.neutral[900],
-            500: paleta.neutral[500],
-            400: paleta.neutral[400],
-          },
-          status: {
-            green: paleta.ok[600],
-            amber: paleta.warn[700],
-            red: paleta.critical[600],
-          },
-        },
-      },
+      colors: paleta,
     },
   },
   plugins: [],

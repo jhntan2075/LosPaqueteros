@@ -42,8 +42,11 @@ Formato basado en Keep a Changelog; versionado semántico (MAJOR.MINOR.PATCH).
 
 ### Design system
 - Logo y favicon; paleta derivada del logo con `tailwind.config.js` como fuente única y
-  contrastes WCAG verificados (`docs/design-system.md`). Los componentes aún usan colores fijos:
-  su migración a los tokens queda pendiente.
+  contrastes WCAG verificados (`docs/design-system.md`).
+- Los componentes usan solo clases de token y `config/colores.ts` (SVG y estilos en línea); los
+  assets de Figma pasan a la paleta y una prueba impide volver a usar hex fijos o la paleta por
+  defecto de Tailwind. Se corrigen dos combinaciones que no llegaban a AA (verde sobre verde suave
+  y gris secundario sobre `neutral-100`) y los rótulos de ejes del mapa.
 
 ### Averías: trasvase a unidades en ruta y respaldo desde almacén
 - El mismo procedimiento para los tres tipos de avería en ruta:

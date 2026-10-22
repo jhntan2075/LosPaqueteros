@@ -82,8 +82,16 @@ juntos como único diferenciador (por ejemplo dos tipos de ruta). Es una validac
 falta revisarla en pantalla (Chrome DevTools → Rendering → Emulate vision deficiencies) y con
 personas con daltonismo.
 
-## Estado de la migración
+## Uso en el código
 
-Los tokens y alias `brand.*` ya existen, pero la mayoría de los componentes siguen usando hex
-literales del diseño anterior (`#1E40AF`, `#64748B`, etc.). Migrarlos a las clases de token
-(`bg-primary-600`, `text-neutral-500`…) es el siguiente paso; este cambio no los toca.
+- **Clases**: los componentes usan solo clases de token (`bg-primary-600`, `text-neutral-500`,
+  `border-critical-600/30`…). Texto en el tono que pasa AA sobre su fondo (por ejemplo `warn-700`,
+  `ok-700` sobre `ok-50`, `neutral-600` sobre `neutral-100`); relleno, borde e ícono en el tono base.
+- **SVG y estilos en línea** (mapa, símbolos, íconos recoloreados): constantes de
+  `src/config/colores.ts` (`PRIMARIO`, `CRITICO`, `ATENCION`, `OK`, `NEUTRO[…]`, `COLOR_NIVEL`),
+  que salen de la misma `paleta`.
+- **Assets de Figma** (`src/assets/figma/pedidos/*.svg`): ya usan los valores de la paleta.
+- **Guarda**: `src/config/sinColoresFijos.test.ts` falla si un componente vuelve a usar un hex
+  literal o la paleta por defecto de Tailwind (`slate`, `blue`, `rose`…).
+
+Los alias heredados `brand.*` se retiraron: ningún componente los usa.

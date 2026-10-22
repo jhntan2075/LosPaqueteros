@@ -23,12 +23,12 @@ const Indicador: React.FC<{ etiqueta: string; valor: string; detalle?: string; c
   etiqueta,
   valor,
   detalle,
-  color = 'text-slate-800',
+  color = 'text-neutral-800',
 }) => (
-  <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg flex flex-col gap-0.5">
-    <span className="text-slate-600 text-xs">{etiqueta}</span>
+  <div className="p-3 bg-neutral-50 border border-neutral-200 rounded-lg flex flex-col gap-0.5">
+    <span className="text-neutral-600 text-xs">{etiqueta}</span>
     <span className={`text-base font-bold tabular-nums ${color}`}>{valor}</span>
-    {detalle && <span className="text-slate-600 text-xs">{detalle}</span>}
+    {detalle && <span className="text-neutral-600 text-xs">{detalle}</span>}
   </div>
 );
 
@@ -38,29 +38,29 @@ const PanelMetricas: React.FC<{ datos: DatosOperacion }> = ({ datos }) => {
   const enRuta = flota.filter((u) => u.estado === 'EN_RUTA').length;
   return (
     <div className="flex-1 p-6 overflow-y-auto max-w-4xl mx-auto w-full space-y-4">
-      <section className="bg-white p-6 rounded-xl border border-[#CBD5E1] shadow-xs">
-        <h1 className="text-base font-bold text-slate-800 mb-1">Métricas de la operación</h1>
-        <p className="text-xs text-slate-600 mb-4">Indicadores en vivo de la operación día a día.</p>
-        <h2 className="text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2">Entregas y flota</h2>
+      <section className="bg-white p-6 rounded-xl border border-neutral-300 shadow-xs">
+        <h1 className="text-base font-bold text-neutral-800 mb-1">Métricas de la operación</h1>
+        <p className="text-xs text-neutral-600 mb-4">Indicadores en vivo de la operación día a día.</p>
+        <h2 className="text-xs font-semibold text-neutral-600 uppercase tracking-wider mb-2">Entregas y flota</h2>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
           <Indicador
             etiqueta="Entregas en plazo"
             valor={formatoPorcentaje(indicadores.porcentajeCumplimiento)}
             detalle={`${resumen.enPlazo} de ${resumen.entregados} entregados`}
-            color="text-green-700"
+            color="text-ok-700"
           />
           <Indicador
             etiqueta="Unidades en ruta"
             valor={`${enRuta} / ${flota.length}`}
             detalle={formatoPorcentaje(flota.length === 0 ? 0 : (enRuta / flota.length) * 100)}
-            color="text-[#1E40AF]"
+            color="text-primary-600"
           />
           <Indicador etiqueta="Tiempo promedio de entrega" valor={`${Math.round(indicadores.tiempoPromedioEntregaMinutos)} min`} />
         </div>
-        <h2 className="text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2">Planificador</h2>
+        <h2 className="text-xs font-semibold text-neutral-600 uppercase tracking-wider mb-2">Planificador</h2>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <Indicador etiqueta="Planificaciones ejecutadas" valor={formatearMiles(indicadores.replanificaciones)} />
-          <Indicador etiqueta="Tiempo de la última planificación" valor={`${indicadores.tiempoComputoUltimoTaMs} ms`} color="text-[#1E40AF]" />
+          <Indicador etiqueta="Tiempo de la última planificación" valor={`${indicadores.tiempoComputoUltimoTaMs} ms`} color="text-primary-600" />
           <Indicador etiqueta="Distancia recorrida" valor={`${formatearMiles(Math.round(indicadores.distanciaTotalKm))} km`} />
         </div>
       </section>
@@ -113,7 +113,7 @@ export default function App() {
   return (
     <ProveedorAvisos>
       <ProveedorAverias>
-        <div className="flex flex-col h-screen w-screen overflow-hidden bg-[#F8FAFC]">
+        <div className="flex flex-col h-screen w-screen overflow-hidden bg-neutral-50">
           <TopNavbar
             tabActiva={tabActiva}
             onCambiarTab={(tab) => (tab === 'pedidos' ? abrirPedidos('cola') : setTabActiva(tab))}
@@ -124,7 +124,7 @@ export default function App() {
 
           <ContextoDatosOperacion.Provider value={datos}>
             <div className="flex-1 flex flex-col min-h-0 min-w-0 overflow-hidden">
-              <main className="flex-1 relative flex overflow-hidden bg-[#F8FAFC]">
+              <main className="flex-1 relative flex overflow-hidden bg-neutral-50">
                 {tabActiva === 'operacion' &&
                   (datos ? (
                     <ModuloOperacion
