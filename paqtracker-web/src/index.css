@@ -3,6 +3,15 @@
 @tailwind utilities;
 
 :root {
+  /* Paleta derivada del logo. Fuente única: tailwind.config.js (ver docs/design-system.md). */
+  --color-fondo: #f4f6fa;
+  --color-texto: #0d152e;
+  --color-primario: #1b4dd9;
+  --color-info: #1586d7;
+  --color-atencion: #fb8229;
+  --color-ok: #12805c;
+  --color-critico: #c81e3a;
+
   font-family: 'Fira Sans', system-ui, sans-serif;
   line-height: 1.5;
   font-weight: 400;
@@ -16,7 +25,7 @@ svg text {
 
 /* Foco visible para teclado en todo lo interactivo (el mouse no lo muestra). */
 :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
-  outline: 2px solid #1e40af;
+  outline: 2px solid var(--color-primario);
   outline-offset: 2px;
 }
 
@@ -24,6 +33,6 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
-  background-color: #f8fafc;
-  color: #0f172a;
+  background-color: var(--color-fondo);
+  color: var(--color-texto);
 }

@@ -1,4 +1,5 @@
 import React from 'react';
+import logo from '../../assets/marca/logo.svg';
 import { LayoutGrid, Package, PlayCircle, BarChart3, Clock, Radio } from 'lucide-react';
 
 export type TabModulo = 'operacion' | 'pedidos' | 'simulacion' | 'metricas';
@@ -31,9 +32,7 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
       <div className="flex items-center gap-2 sm:gap-3 overflow-x-auto no-scrollbar">
         {/* Isotipo y Nombre */}
         <div className="flex items-center gap-2 shrink-0">
-          <div className="w-[30px] h-[30px] bg-[#1E40AF] rounded-[6px] flex items-center justify-center shadow-xs">
-            <span className="text-white tabular-nums font-bold text-sm">P</span>
-          </div>
+          <img src={logo} alt="" aria-hidden="true" className="h-[30px] w-auto" />
           <span className="font-sans font-bold text-[14px] text-slate-900 tracking-tight hidden sm:inline">
             PaqTracker
           </span>
