@@ -1,7 +1,7 @@
 """Genera el CPA (Catalogo de Pruebas de Aceptacion) de PaqTracker en HTML.
 
 Uso:  py docs/cpa/generar_cpa.py
-Salida: docs/cpa/41.acs.catalog.pruebas.acept.v01.html (se imprime a PDF con Chrome headless).
+Salida: docs/cpa/41.acs.catalog.pruebas.acept.vNN.html (se imprime a PDF con Chrome headless).
 
 Los casos se derivan de la LE v4.0 por particion en clases de equivalencia y valores limite.
 Para agregar o corregir un caso basta con editar CLASES o CASOS; la matriz de trazabilidad y
@@ -11,9 +11,31 @@ el resumen de cobertura se recalculan solos.
 import html
 from pathlib import Path
 
-VERSION = "1.0"
-FECHA = "20/10/2026"
-SALIDA = Path(__file__).with_name("41.acs.catalog.pruebas.acept.v01.html")
+VERSION = "2.0"
+SALIDA = Path(__file__).with_name("41.acs.catalog.pruebas.acept.v02.html")
+
+# Historial de revisiones: (fecha, version, descripcion)
+HISTORIAL = [
+    ("20/10/2026", "1.0", "Alta inicial del catálogo: 79 casos de prueba de aceptación derivados de la LE v4.0 por "
+                          "partición en clases de equivalencia y análisis de valores límite."),
+    ("22/10/2026", "2.0", "Alineamiento con la solución integrada: ubicación de los almacenes (27, 14), (12, 38) y "
+                          "(57, 27) y archivos de entrada .txt según los acuerdos del equipo (sección 3.1); mensajes "
+                          "del formulario de registro de pedidos actualizados; registro de averías por la API de "
+                          "incidencias con sus respuestas de error."),
+]
+
+# Acuerdos del equipo que precisan o corrigen la LE v4.0: (exigencias, decision)
+DECISIONES = [
+    ("LE-015, LE-016",
+     "El almacén central se ubica en el nodo (27, 14) y los almacenes intermedios en (12, 38) y (57, 27). "
+     "Reemplazan a (25, 15) y (55, 27) del texto de la LE v4.0."),
+    ("LE-006",
+     "La carga masiva de pedidos usa archivos de texto plano .txt (ventas.AAAAMM.txt), con el formato de los "
+     "archivos de datos del curso, en lugar de .csv."),
+    ("Resumen de la LE",
+     "La LE v4.0 numera de LE-001 a LE-101 (101 exigencias: 77 exigibles y 24 deseables); su resumen indica 100 "
+     "porque no contabiliza LE-101. Este catálogo cubre las 101."),
+]
 
 # ---------------------------------------------------------------------------------------------
 # Lista de Exigencias v4.0: id -> (nombre, E/D, agrupador)
@@ -262,6 +284,7 @@ CASOS = [
          datos="Cliente: «   » (solo espacios); destino (43, 18); cantidad 10; plazo 8 h.",
          pasos=["Ingresar los datos.", "Intentar registrar el pedido."],
          esperado=["El botón «Registrar y planificar pedido» permanece deshabilitado.",
+                   "Se muestra «Completa el cliente para registrar el pedido.».",
                    "No se crea ningún pedido."]),
     dict(id="CPA-004", ag="AG-01", nombre="Registro con nombre de cliente de más de 80 caracteres",
          le=["LE-001", "LE-012"], clases="PM-I2 (límite 81; el valor 80 se cubre como PM-V1)",
@@ -275,22 +298,23 @@ CASOS = [
          pre="Formulario «Registrar pedido» abierto con datos válidos en los demás campos.",
          datos="Intento 1: x = 71, y = 18. Intento 2: x = −1, y = 18. Intento 3: x vacío, y = 18.",
          pasos=["Ingresar cada valor de x por separado.", "Intentar registrar."],
-         esperado=["Se muestra «Coordenadas fuera de la malla permitida: X (0 a 70 km), Y (0 a 50 km)».",
+         esperado=["Intentos 1 y 2: se muestra «El destino está fuera de la malla: X debe ir de 0 a 70 e Y de 0 a 50.».",
+                   "Intento 3: se muestra «Completa un destino dentro de la malla para registrar el pedido.».",
                    "El botón de registro queda deshabilitado y no se crea ningún pedido."]),
     dict(id="CPA-006", ag="AG-01", nombre="Coordenada Y fuera de la retícula",
          le=["LE-001", "LE-049"], clases="PM-I6, PM-I7",
          pre="Formulario «Registrar pedido» abierto con datos válidos en los demás campos.",
          datos="Intento 1: x = 43, y = 51. Intento 2: x = 43, y = −1.",
          pasos=["Ingresar cada valor de y por separado.", "Intentar registrar."],
-         esperado=["Se muestra el mensaje de coordenadas fuera de la malla.",
-                   "No se crea ningún pedido."]),
+         esperado=["Se muestra «El destino está fuera de la malla: X debe ir de 0 a 70 e Y de 0 a 50.».",
+                   "El botón de registro queda deshabilitado y no se crea ningún pedido."]),
     dict(id="CPA-007", ag="AG-01", nombre="Cantidad no positiva",
          le=["LE-001", "LE-010"], clases="PM-I8 (límite 0; el valor 1 se cubre en CPA-002)",
          pre="Formulario «Registrar pedido» abierto.",
          datos="Cantidad 0 y cantidad −5; demás campos válidos.",
          pasos=["Escribir la cantidad en el campo.", "Intentar registrar."],
-         esperado=["El sistema no acepta cantidades menores que 1: el campo vuelve al mínimo 1 o el registro se rechaza con un mensaje.",
-                   "No se crea ningún pedido con cantidad 0 o negativa."]),
+         esperado=["El campo de cantidad se marca como inválido y se muestra «Completa una cantidad de 1 a 999 para registrar el pedido.».",
+                   "El botón de registro queda deshabilitado y no se crea ningún pedido con cantidad 0 o negativa."]),
     dict(id="CPA-008", ag="AG-01", nombre="Plazo fuera del catálogo",
          le=["LE-001", "LE-002"], clases="PM-I9, PM-I10",
          pre="Acceso al registro de pedidos (formulario o servicio de registro).",
@@ -409,7 +433,8 @@ CASOS = [
          pre="Inicio de una simulación (00:00 del primer día).",
          datos="Configuración de almacenes del sistema.",
          pasos=["Ubicar los almacenes en el mapa.", "Abrir el detalle de cada almacén."],
-         esperado=["Se muestran el almacén central y los dos intermedios en sus nodos fijos.",
+         esperado=["El almacén central se muestra en el nodo (27, 14), el Intermedio 1 en (12, 38) y el Intermedio 2 en (57, 27).",
+                   "Las ubicaciones son fijas: no hay ninguna opción para cambiarlas.",
                    "El central figura con inventario ilimitado y siempre disponible.",
                    "Cada intermedio figura con 1 000 unidades de capacidad y 1 000 unidades de stock al inicio."]),
     dict(id="CPA-023", ag="AG-02", nombre="Descuento de inventario al despachar desde un intermedio",
@@ -581,25 +606,27 @@ CASOS = [
     dict(id="CPA-045", ag="AG-02", nombre="Registro de una avería válida",
          le=["LE-039", "LE-068"], clases="AV-V1, AV-V4, AV-V5, AV-V7",
          pre="Operación día a día en curso con la unidad M-03 en ruta y con carga.",
-         datos="Unidad M-03, avería tipo 1.",
-         pasos=["Seleccionar la unidad M-03 y elegir «Registrar avería».", "Indicar el tipo 1 y confirmar."],
-         esperado=["La avería queda registrada con la unidad, el tipo, el momento (el del reloj de la operación) "
-                   "y la ubicación (la posición actual de la unidad).",
-                   "La unidad pasa al estado «Averiada»."]),
+         datos="Ejecución «dia-a-dia»; cuerpo {\"unidad\": \"M-03\", \"tipo\": 1}.",
+         pasos=["En Swagger UI, ejecutar POST /api/ejecuciones/dia-a-dia/averias con los datos.",
+                "Revisar la respuesta y el panel «Averías activas» del visualizador."],
+         esperado=["La API responde 202 con la unidad, el tipo, el instante de la avería (el del reloj de la operación) "
+                   "y la reincorporación estimada (instante + 2 h).",
+                   "La avería se ubica en la posición actual de la unidad.",
+                   "M-03 pasa al estado «Averiada» y aparece en «Averías activas»."]),
     dict(id="CPA-046", ag="AG-02", nombre="Avería con tipo inválido",
          le=["LE-039"], clases="AV-I1",
-         pre="Operación en curso.",
+         pre="Operación día a día en curso.",
          datos="Unidad A-01, tipo 4 (y tipo 0).",
-         pasos=["Intentar registrar la avería con cada tipo."],
-         esperado=["El sistema rechaza el registro e indica que el tipo debe ser 1, 2 o 3.",
+         pasos=["Ejecutar POST /api/ejecuciones/dia-a-dia/averias con cada tipo."],
+         esperado=["La API responde 400 con «Tipo de averia invalido: 4 (use 1, 2 o 3)» (o 0, según el intento).",
                    "La unidad no cambia de estado."]),
     dict(id="CPA-047", ag="AG-02", nombre="Avería de una unidad inexistente o ya averiada",
          le=["LE-039"], clases="AV-I2, AV-I3",
          pre="Operación en curso con la flota por defecto (10 autos) y M-03 averiada (CPA-045).",
          datos="Intento 1: unidad A-11, tipo 1. Intento 2: unidad M-03, tipo 2.",
-         pasos=["Intentar registrar cada avería."],
-         esperado=["A-11 se rechaza porque la unidad no existe en la flota.",
-                   "M-03 se rechaza porque ya está averiada.",
+         pasos=["Ejecutar POST /api/ejecuciones/dia-a-dia/averias con cada intento."],
+         esperado=["A-11: la API responde 404 porque la unidad no pertenece a la flota de la ejecución.",
+                   "M-03: la API responde 409 con «La unidad M-03 ya esta averiada».",
                    "No se registra ninguna avería nueva."]),
     dict(id="CPA-048", ag="AG-02", nombre="Avería de tipo 1 y redistribución de pedidos",
          le=["LE-052", "LE-040", "LE-093", "LE-094"], clases="AV-V1, AV-V5 (límites: avería + 1 h 59 min y + 2 h)",
@@ -902,13 +929,13 @@ def portada():
 
 def historial():
     equipo = "Diego Alvarez<br>Jhonatan Davila<br>Jose Gutierrez<br>Ronaldo Segura"
+    filas = "".join(f"<tr><td>{fecha}</td><td>{version}</td><td>{e(descripcion)}</td><td>{equipo}</td></tr>"
+                    for fecha, version, descripcion in HISTORIAL)
     return f"""
 <h2>Historial de revisiones</h2>
 <table class="tabla">
   <thead><tr><th style="width:14%">Fecha</th><th style="width:10%">Versión</th><th>Descripción</th><th style="width:22%">Equipo</th></tr></thead>
-  <tbody><tr><td>{FECHA}</td><td>{VERSION}</td>
-  <td>Alta inicial del catálogo: {len(CASOS)} casos de prueba de aceptación derivados de la LE v4.0 por
-  partición en clases de equivalencia y análisis de valores límite.</td><td>{equipo}</td></tr></tbody>
+  <tbody>{filas}</tbody>
 </table>"""
 
 
@@ -958,12 +985,23 @@ escenarios observables: se fija una situación de partida y se comprueba el resu
 del sistema.</p>
 
 <h2>3. Entorno y datos de prueba</h2>
+<h3>3.1. Acuerdos del equipo que precisan la LE v4.0</h3>
+<p>Los resultados esperados de este catálogo aplican los siguientes acuerdos, que prevalecen sobre el texto de la
+LE v4.0 en los puntos indicados.</p>
+<table class="tabla">
+  <thead><tr><th style="width:20%">Exigencias</th><th>Acuerdo</th></tr></thead>
+  <tbody>{''.join(f"<tr><td>{e(exig)}</td><td>{e(decision)}</td></tr>" for exig, decision in DECISIONES)}</tbody>
+</table>
+<h3>3.2. Entorno</h3>
 <table class="tabla kv">
   <tbody>
   <tr><th>Sistema bajo prueba</th><td>Solución integrada de PaqTracker (API de operación, planificador y visualizador web) desplegada en el entorno del curso.</td></tr>
   <tr><th>Navegador</th><td>Google Chrome o Microsoft Edge actualizados; un segundo dispositivo para CPA-064.</td></tr>
   <tr><th>Datos base</th><td>Ventas <code>ventas.v20260909</code> (2026-01 a 2028-12) y bloqueos <code>bloqueos.v20260909</code>.</td></tr>
   <tr><th>Datos de los casos</th><td>Carpeta <code>docs/cpa/datos/CPA-###/</code> del repositorio. Usan los meses 2029-01 a 2029-03 para no sobrescribir los datos base.</td></tr>
+  <tr><th>Almacenes</th><td>Central en (27, 14), inventario ilimitado. Intermedio 1 en (12, 38) e Intermedio 2 en (57, 27), 1 000 unidades cada uno.</td></tr>
+  <tr><th>Servicios de la API</th><td>Las operaciones sin pantalla propia (por ejemplo, el registro de averías) se ejecutan desde Swagger UI
+  (<code>/swagger-ui.html</code>) sobre la misma API que usa el visualizador.</td></tr>
   <tr><th>Parámetros por defecto</th><td>Flota de 10 autos, 15 motos y 12 bicicletas; Sa = 30 min simulados; Sc = 1 s real; factor de aceleración k = 180;
   semáforo de holgura rojo 0,15 y ámbar 0,40; semáforo de inventario rojo 0,20 y ámbar 0,50; ocupación ámbar 0,70 y rojo 0,90.</td></tr>
   <tr><th>Criterio de aceptación</th><td>Un caso es <b>Conforme</b> si todos sus resultados esperados se cumplen; de lo contrario es <b>No conforme</b>
