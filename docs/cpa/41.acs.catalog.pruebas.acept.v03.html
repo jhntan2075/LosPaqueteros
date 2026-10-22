@@ -1,0 +1,1375 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><title>CPA PaqTracker</title><style>
+@page { size: A4; margin: 14mm 16mm 16mm 16mm; }
+* { box-sizing: border-box; }
+body { font-family: 'Times New Roman', Times, serif; font-size: 10.5pt; color: #000; margin: 0; line-height: 1.32; }
+.portada { height: 263mm; display: flex; flex-direction: column; align-items: center; page-break-after: always; padding-top: 18mm; }
+.portada .inst { font-weight: bold; font-size: 13pt; text-align: center; margin: 0 0 40mm; }
+.portada h1 { font-size: 17pt; margin: 0 0 22mm; text-align: center; }
+.datos-portada { align-self: stretch; padding: 0 6mm; }
+.datos-portada p { margin: 0 0 3.5mm; font-size: 11pt; }
+.integrantes { text-align: center; }
+.integrantes p { margin: 0 0 2mm; }
+.portada .lugar { margin-top: auto; font-size: 11pt; }
+table.marco { width: 100%; border-collapse: collapse; }
+table.marco > thead > tr > td { padding: 0 0 5mm; }
+.cabecera { width: 100%; border-collapse: collapse; font-size: 10pt; }
+.cabecera td { border: 1px solid #000; padding: 4px 8px; }
+h2 { font-size: 13pt; margin: 7mm 0 3mm; page-break-after: avoid; }
+h3 { font-size: 11pt; margin: 5mm 0 2mm; page-break-after: avoid; }
+h3.ag { font-size: 12pt; margin-top: 7mm; }
+p { margin: 0 0 2.2mm; text-align: justify; }
+ul, ol { margin: 0 0 2mm; padding-left: 6mm; }
+code { font-family: Consolas, monospace; font-size: 9pt; }
+pre { font-family: Consolas, monospace; font-size: 8.5pt; margin: 0 0 1.5mm 3mm; white-space: pre; line-height: 1.25; }
+pre .com { font-family: 'Times New Roman', Times, serif; font-style: italic; font-size: 9pt; }
+p.dato { margin: 0 0 1.2mm; text-align: left; }
+p.arch { font-style: italic; }
+.exig { font-weight: normal; font-size: 9.5pt; }
+.tabla { width: 100%; border-collapse: collapse; margin: 0 0 3mm; font-size: 9.5pt; }
+.tabla th, .tabla td { border: 1px solid #000; padding: 3px 5px; vertical-align: top; text-align: left; }
+.tabla thead th { background: #e8e8e8; text-align: center; }
+.tabla td.c { text-align: center; }
+.tabla tr.total td { font-weight: bold; }
+.kv th { width: 22%; background: #f2f2f2; }
+.traza { font-size: 9pt; }
+.traza tr { page-break-inside: avoid; }
+.bloque { page-break-inside: avoid; }
+.limites { font-size: 9.5pt; }
+table.caso { width: 100%; border-collapse: collapse; margin: 0 0 5mm; font-size: 9.5pt; page-break-inside: avoid; }
+table.caso th, table.caso td { border: 1px solid #000; padding: 3px 6px; vertical-align: top; text-align: left; }
+table.caso thead th { background: #dcdcdc; font-size: 10pt; }
+table.caso thead th.cid { width: 21%; }
+table.caso tbody th { width: 21%; background: #f2f2f2; font-weight: bold; }
+table.caso th.corto { width: 12%; }
+table.caso td.corto { width: 12%; }
+table.caso ul, table.caso ol { margin: 0; padding-left: 5mm; }
+table.caso tr.ejec td { height: 7mm; }
+</style></head>
+<body>
+
+<section class="portada">
+  <p class="inst">PONTIFICIA UNIVERSIDAD CATÓLICA DEL PERÚ<br>FACULTAD DE CIENCIAS E INGENIERÍA</p>
+  <h1>CPA – Catálogo de Pruebas de Aceptación</h1>
+  <div class="datos-portada">
+    <p><b>Curso:</b> Proyecto de Diseño y Desarrollo de Software</p>
+    <p><b>Horario:</b> H-0983</p>
+    <p><b>Profesor:</b> Fernández Sánchez, Juan Carlos</p>
+    <p><b>Equipo:</b> 2B</p>
+    <p><b>Proyecto:</b> PaqTracker</p>
+    <p><b>Integrantes:</b></p>
+    <div class="integrantes"><p>Alvarez Castillo, Diego Stefano (20220461)</p><p>Davila Mosquera, Jhonatan Cesar (20203840)</p><p>Gutierrez Lopez, Jose Francisco (20222353)</p><p>Segura Mamani, Ronaldo Tito (20222051)</p></div>
+  </div>
+  <p class="lugar">Lima, Octubre 2026</p>
+</section>
+<table class="marco">
+  <thead><tr><td>
+    <table class="cabecera"><tr><td>PaqTracker</td><td style="width:30%">Versión : 3.0</td></tr>
+    <tr><td colspan="2">Catálogo de Pruebas de Aceptación</td></tr></table>
+  </td></tr></thead>
+  <tbody><tr><td>
+<h2>Historial de revisiones</h2>
+<table class="tabla">
+  <thead><tr><th style="width:14%">Fecha</th><th style="width:10%">Versión</th><th>Descripción</th><th style="width:22%">Equipo</th></tr></thead>
+  <tbody><tr><td>20/10/2026</td><td>1.0</td><td>Alta inicial del catálogo: 79 casos de prueba de aceptación derivados de la LE v4.0 por partición en clases de equivalencia y análisis de valores límite.</td><td>Diego Alvarez<br>Jhonatan Davila<br>Jose Gutierrez<br>Ronaldo Segura</td></tr><tr><td>22/10/2026</td><td>2.0</td><td>Alineamiento con la solución integrada: ubicación de los almacenes (27, 14), (12, 38) y (57, 27) y archivos de entrada .txt según los acuerdos del equipo (sección 3.1); mensajes del formulario de registro de pedidos actualizados; registro de averías por la API de incidencias con sus respuestas de error.</td><td>Diego Alvarez<br>Jhonatan Davila<br>Jose Gutierrez<br>Ronaldo Segura</td></tr><tr><td>22/10/2026</td><td>3.0</td><td>Alineamiento con el enunciado y el Q&amp;A del curso: costos por km de S/ 8,00, 6,00 y 3,00; hora de entrega fuera del plazo; cambio de conductor en ruta; traslado al almacén central en las averías de tipo 2 y 3. Datos de prueba dedicados por caso, con un mes propio y su fecha de inicio; clases no admitidas (N) y clases nuevas; casos CPA-080 y CPA-081. El detalle está en la sección 8.</td><td>Diego Alvarez<br>Jhonatan Davila<br>Jose Gutierrez<br>Ronaldo Segura</td></tr></tbody>
+</table>
+<h2>1. Introducción</h2>
+<h3>1.1. Propósito</h3>
+<p>Este catálogo define las pruebas de aceptación con las que se verifica que PaqTracker cumple la Lista de
+Exigencias (LE v4.0). Cada caso indica las exigencias que verifica, las clases de equivalencia que cubre, los datos
+de entrada, los pasos y el resultado esperado. Las columnas «Resultado obtenido» y «Estado» se completan al ejecutar
+las pruebas sobre la solución integrada y desplegada.</p>
+<h3>1.2. Alcance</h3>
+<p>El catálogo cubre las 101 exigencias de la LE (77 exigibles y 24 deseables) en sus tres agrupadores:
+Registro de Pedidos (AG-01), Planificador de Rutas (AG-02) y Visualizador (AG-03). Contiene 81 casos de
+prueba construidos sobre 116 clases de equivalencia. La sección 6 muestra la trazabilidad de cada exigencia a
+sus casos.</p>
+<h3>1.3. Referencias</h3>
+<ul>
+  <li>LE – Lista de Exigencias, versión 4.0 (16/09/2026).</li>
+  <li>DP – Definición de Producto (requisitos de alto nivel RAN-01 a RAN-08).</li>
+  <li>Enunciado de la situación auténtica, semestre 2026-2 (flota, costos por km, turnos y plazos).</li>
+  <li>Preguntas y respuestas publicadas del curso 1INF54 2026-2 (precisiones de la sección 3.1).</li>
+  <li>ISA – Informe de selección del algoritmo (experimentación numérica).</li>
+  <li>IEN – Informe de diseño de experimento, 22.dis.experim.v02 (semana con tensión verificada).</li>
+</ul>
+
+<h2>2. Técnica de derivación de los casos</h2>
+<h3>2.1. Partición en clases de equivalencia</h3>
+<p>Para cada exigencia con datos de entrada se identificaron las variables que recibe el sistema y se dividió su
+dominio en clases de equivalencia: conjuntos de valores que el sistema debe tratar de la misma forma. Se espera que
+un valor cualquiera de una clase revele los mismos defectos que el resto. Cada clase es de uno de tres tipos:</p>
+<ul>
+  <li><b>Válida</b> (V): el sistema debe aceptar sus valores.</li>
+  <li><b>Inválida</b> (I): el sistema debe rechazar sus valores con un mensaje, sin alterar su estado.</li>
+  <li><b>No admitida</b> (N): no es una entrada, sino un resultado que el planificador no debe producir (por ejemplo,
+  cargar una unidad por encima de su capacidad). Se verifica observando el plan o la ejecución.</li>
+</ul>
+<p>Los casos se construyeron con tres reglas:</p>
+<ol>
+  <li>Un caso válido cubre la mayor cantidad posible de clases válidas aún no cubiertas.</li>
+  <li>Un caso inválido cubre una sola clase inválida, con valores válidos en las demás variables, para que un rechazo
+  se atribuya sin ambigüedad a la clase probada. En los archivos de carga masiva cada línea se valida por separado,
+  así que un mismo archivo puede reunir varias líneas inválidas, cada una con una sola clase inválida. Si un caso
+  tiene varios intentos, cada intento es independiente y prueba una sola clase inválida.</li>
+  <li>Un caso que verifica una clase no admitida usa datos válidos que podrían llevar a producir esa salida y
+  comprueba que no se produce.</li>
+</ol>
+<h3>2.2. Análisis de valores límite</h3>
+<p>Cuando una clase es un rango, la prueba usa valores en su frontera (el límite y el valor contiguo de la clase
+vecina): bordes de la retícula, capacidad de las unidades, plazo máximo, horarios de turno, inicio y fin de la vigencia
+de un bloqueo, duración de una avería, recarga de los intermedios y cortes de los semáforos.</p>
+<h3>2.3. Exigencias sin datos de entrada</h3>
+<p>Las exigencias de visualización y las que describen un comportamiento interno del planificador se verifican con
+escenarios observables: se fija una situación de partida y se comprueba el resultado en la interfaz o en los registros
+del sistema. En esos casos el campo «Clases cubiertas» indica «escenario observable».</p>
+<h3>2.4. Reproducibilidad de los casos</h3>
+<p>Cuando el resultado depende de decisiones del planificador (qué unidad atiende un pedido o desde qué almacén sale),
+el caso usa un archivo de datos dedicado y una flota reducida que fuerzan la situación, y los resultados esperados se
+calculan a mano (distancias, horas y costos). Cada caso de simulación usa un mes propio, de modo que sus archivos no
+se mezclan con los de otro caso. Si una precondición que se comprueba durante la ejecución no se cumple, el caso indica
+que no aplica a esa ejecución, en lugar de registrarse como conforme o no conforme.</p>
+
+<h2>3. Entorno y datos de prueba</h2>
+<h3>3.1. Precisiones que aplican los resultados esperados</h3>
+<p>Los resultados esperados aplican las siguientes precisiones del curso y acuerdos del equipo, que prevalecen sobre
+el texto de la LE v4.0 en los puntos indicados.</p>
+<table class="tabla">
+  <thead><tr><th style="width:17%">Exigencias</th><th>Precisión</th><th style="width:24%">Fuente</th></tr></thead>
+  <tbody><tr><td>LE-015, LE-016</td><td>El almacén central está en el nodo (27, 14) y los intermedios en (12, 38) y (57, 27). Reemplazan a (25, 15) y (55, 27) del texto de la LE v4.0.</td><td>Q&amp;A del curso, pregunta 5 (cambio del 08/09/2026)</td></tr><tr><td>LE-025, LE-032, LE-086</td><td>La hora de entrega al destinatario no forma parte del plazo: un pedido se cumple a tiempo si la unidad llega a su destino a más tardar en la hora límite. Cada entrega, total o parcial, toma 1 h.</td><td>Q&amp;A del curso, preguntas 11 y 14</td></tr><tr><td>LE-023</td><td>Si la ruta de una unidad cruza un cambio de turno, el conductor del turno siguiente la alcanza donde esté y el relevo no agrega tiempo: la unidad sigue su ruta sin volver al almacén.</td><td>Q&amp;A del curso, pregunta 12</td></tr><tr><td>LE-053, LE-054</td><td>En las averías de tipo 2 y 3 la unidad permanece 4 h en el lugar de la avería y luego se traslada de forma instantánea al almacén central, junto con la carga que no se haya trasbordado.</td><td>Q&amp;A del curso, pregunta 3</td></tr><tr><td>LE-034</td><td>Costo por km: S/ 8,00 el auto, S/ 6,00 la moto y S/ 3,00 la bicicleta.</td><td>Enunciado de la situación auténtica; Q&amp;A del curso, hoja «Flota»</td></tr><tr><td>LE-066</td><td>Un bloqueo está vigente en el intervalo cerrado [inicio, fin]: incluye el minuto de inicio y el de fin.</td><td>Acuerdo del equipo</td></tr><tr><td>LE-006</td><td>La carga masiva de pedidos usa archivos de texto .txt con campos separados por comas (ventas.AAAAMM.txt), con el formato de los archivos de datos del curso, en lugar de .csv.</td><td>Acuerdo del equipo</td></tr><tr><td>LE-060</td><td>Las unidades se identifican como A-01, M-01 y B-01 (tipo y correlativo). El Q&amp;A del curso usa la forma TA01, TM01 y TB01; ambas codifican el tipo y el correlativo.</td><td>Acuerdo del equipo; Q&amp;A del curso, pregunta 18</td></tr><tr><td>Resumen de la LE</td><td>La LE v4.0 numera de LE-001 a LE-101 (101 exigencias: 77 exigibles y 24 deseables); su resumen indica 100 porque no contabiliza LE-101. Este catálogo cubre las 101.</td><td>LE v4.0</td></tr></tbody>
+</table>
+<h3>3.2. Entorno</h3>
+<table class="tabla kv">
+  <tbody>
+  <tr><th>Sistema bajo prueba</th><td>Solución integrada de PaqTracker (API de operación, planificador y visualizador web) desplegada en el entorno del curso.</td></tr>
+  <tr><th>Navegador</th><td>Google Chrome o Microsoft Edge actualizados; un segundo dispositivo para CPA-064.</td></tr>
+  <tr><th>Datos base</th><td>Ventas <code>ventas.v20260909</code> (2026-01 a 2028-12) y bloqueos <code>bloqueos.v20260909</code>.</td></tr>
+  <tr><th>Datos de los casos</th><td>Carpeta <code>docs/cpa/datos/CPA-###/</code> del repositorio, generada por <code>docs/cpa/generar_cpa.py</code>.
+  Usan los meses 2029-01 a 2030-11 para no mezclarse con los datos base. Pedidos: <code>ventas.AAAAMM.txt</code>, una línea por
+  pedido con el formato <code>##d##h##m:x,y,cNNNN,cantidad,plazo</code>. Bloqueos: <code>bloqueo.AAAAMM.txt</code>, una línea por
+  bloqueo con el formato <code>##d##h##m-##d##h##m:x1,y1,…,xn,yn</code>.</td></tr>
+  <tr><th>Fecha de inicio</th><td>Cada caso de simulación indica su fecha de inicio; la simulación arranca a las 00:00 de ese día y
+  los pedidos llegan según la marca de tiempo de su archivo.</td></tr>
+  <tr><th>Almacenes</th><td>Central en (27, 14), inventario ilimitado. Intermedio 1 en (12, 38) e Intermedio 2 en (57, 27), 1 000 unidades cada uno.</td></tr>
+  <tr><th>Servicios de la API</th><td>Las operaciones sin pantalla propia (por ejemplo, el registro de averías) se ejecutan desde Swagger UI
+  (<code>/swagger-ui.html</code>) sobre la misma API que usa el visualizador.</td></tr>
+  <tr><th>Parámetros por defecto</th><td>Flota de 10 autos, 15 motos y 12 bicicletas. Auto: 24 u., 40 km/h y S/ 8,00 por km. Moto: 8 u.,
+  25 km/h y S/ 6,00 por km. Bicicleta: 4 u., 12 km/h y S/ 3,00 por km. Sa = 30 min simulados; Sc = 3 min simulados (1 s real con
+  k = 180). Semáforo de holgura: rojo 0,15 y ámbar 0,40. Semáforo de inventario: rojo 0,20 y ámbar 0,50. Ocupación: ámbar 0,70 y rojo 0,90.</td></tr>
+  <tr><th>Criterio de aceptación</th><td>Un caso es <b>Conforme</b> si todos sus resultados esperados se cumplen; de lo contrario es <b>No conforme</b>
+  y se anota la diferencia en «Resultado obtenido».</td></tr>
+  </tbody>
+</table>
+<h3>3.3. Convenciones</h3>
+<ul>
+  <li>Hora límite = instante de registro (o marca de llegada del archivo) + plazo comprometido.</li>
+  <li>Las distancias se miden en kilómetros por la red de calles (1 km por tramo) y el tiempo de recorrido es la distancia
+  dividida entre la velocidad de la unidad.</li>
+  <li>Los tiempos esperados no incluyen el refrigerio: si la unidad toma su refrigerio durante el recorrido, el tiempo se
+  desplaza 1 h (LE-024).</li>
+  <li>Holgura de un pedido no entregado = hora límite − instante actual; para el semáforo, f = holgura / plazo.</li>
+  <li>Ocupación de una unidad = carga a bordo / capacidad. Ocupación global = carga a bordo de la flota / capacidad total de la flota.</li>
+  <li>Los montos están en soles (S/). Las marcas ##d##h##m indican día del mes, hora y minuto.</li>
+</ul><h2>4. Clases de equivalencia</h2><p>Identificadores: <b>XX-Vn</b> para las clases válidas, <b>XX-In</b> para las inválidas y <b>XX-Nn</b> para las no admitidas, donde XX es el grupo. Los identificadores de la versión 2.0 se conservan; las clases nuevas se numeran a continuación de las existentes.</p>
+<div class="bloque">
+<h3>4.1. PM · Registro manual de pedido <span class="exig">(LE-001, LE-002, LE-012)</span></h3>
+<table class="tabla clases">
+  <thead><tr><th style="width:22%">Variable</th><th style="width:42%">Clases válidas</th><th>Clases inválidas</th></tr></thead>
+  <tbody><tr><td>Cliente</td><td><b>PM-V1</b> Texto de 1 a 80 caracteres</td><td><b>PM-I1</b> Vacío o solo espacios<br><b>PM-I2</b> Más de 80 caracteres</td></tr><tr><td>Coordenada X del destino</td><td><b>PM-V2</b> Entero 0 ≤ x ≤ 70</td><td><b>PM-I3</b> x &lt; 0<br><b>PM-I4</b> x &gt; 70<br><b>PM-I5</b> Vacío o no numérico</td></tr><tr><td>Coordenada Y del destino</td><td><b>PM-V3</b> Entero 0 ≤ y ≤ 50</td><td><b>PM-I6</b> y &lt; 0<br><b>PM-I7</b> y &gt; 50<br><b>PM-I11</b> Vacío o no numérico</td></tr><tr><td>Cantidad de producto P</td><td><b>PM-V4</b> 1 ≤ c ≤ 24 (cabe en una sola unidad)<br><b>PM-V5</b> c &gt; 24 (se atiende en entregas parciales, LE-009)</td><td><b>PM-I8</b> c ≤ 0</td></tr><tr><td>Plazo comprometido</td><td><b>PM-V6</b> Plazo del catálogo: 4, 8, 12, 18 o 36 h</td><td><b>PM-I9</b> Plazo &gt; 36 h<br><b>PM-I10</b> Plazo ≤ 0<br><b>PM-I12</b> Plazo entre 1 y 35 h que no pertenece al catálogo (p. ej. 5 h)</td></tr></tbody>
+</table>
+<p class="limites"><b>Valores límite:</b> x ∈ {−1, 0, 70, 71}; y ∈ {−1, 0, 50, 51}; c ∈ {0, 1, 24, 25}; plazo ∈ {0, 4, 5, 36, 37}; cliente de 80 y de 81 caracteres.</p>
+</div>
+<div class="bloque">
+<h3>4.2. AP · Archivo de pedidos <span class="exig">(LE-006, LE-007)</span></h3>
+<table class="tabla clases">
+  <thead><tr><th style="width:22%">Variable</th><th style="width:42%">Clases válidas</th><th>Clases inválidas</th></tr></thead>
+  <tbody><tr><td>Nombre del archivo</td><td><b>AP-V1</b> ventas.AAAAMM.txt (el mes se toma del nombre)<br><b>AP-V2</b> Nombre sin mes, con fecha de inicio elegida (se usa el mes de esa fecha)</td><td><b>AP-I1</b> Nombre sin mes y sin fecha de inicio elegida</td></tr><tr><td>Contenido</td><td><b>AP-V3</b> Todas las líneas con formato ##d##h##m:x,y,cCLIENTE,cantidad,plazo<br><b>AP-V4</b> Líneas vacías o comentarios que empiezan con # (se ignoran)</td><td><b>AP-I2</b> Archivo vacío<br><b>AP-I3</b> Línea con menos de 5 campos<br><b>AP-I4</b> Marca de tiempo mal formada<br><b>AP-I5</b> Destino fuera de la retícula<br><b>AP-I6</b> Cantidad ≤ 0<br><b>AP-I7</b> Plazo ≤ 0<br><b>AP-I8</b> Plazo fuera del catálogo: mayor que 36 h o no perteneciente a {4, 8, 12, 18, 36}</td></tr></tbody>
+</table>
+<p class="limites"><b>Valores límite:</b> destino (70, 50) válido y (71, 50) inválido; cantidad 1 válida y 0 inválida; plazo 36 válido, 37 y 5 inválidos.</p>
+</div>
+<div class="bloque">
+<h3>4.3. AB · Archivo de bloqueos <span class="exig">(LE-036, LE-038, LE-066)</span></h3>
+<table class="tabla clases">
+  <thead><tr><th style="width:22%">Variable</th><th style="width:42%">Clases válidas</th><th>Clases inválidas</th></tr></thead>
+  <tbody><tr><td>Línea de bloqueo</td><td><b>AB-V1</b> ##d##h##m-##d##h##m:x1,y1,…,xn,yn con inicio ≤ fin, al menos dos puntos, puntos dentro de la retícula y segmentos horizontales o verticales</td><td><b>AB-I1</b> Fin anterior al inicio<br><b>AB-I2</b> Un solo punto<br><b>AB-I3</b> Punto fuera de la retícula<br><b>AB-I4</b> Segmento diagonal<br><b>AB-I5</b> Marca de tiempo mal formada</td></tr><tr><td>Instante evaluado</td><td><b>AB-V2</b> Dentro de la vigencia [inicio, fin]: el nodo no es transitable<br><b>AB-V3</b> Fuera de la vigencia (antes del inicio o después del fin): el nodo es transitable</td><td>—</td></tr></tbody>
+</table>
+<p class="limites"><b>Valores límite:</b> inicio = fin (válido: rige solo ese minuto); punto (70, 50) válido y (71, 50) inválido; instante igual al fin (aún vigente) y fin + 1 min (ya no vigente).</p>
+</div>
+<div class="bloque">
+<h3>4.4. EJ · Configuración de la ejecución <span class="exig">(LE-019, LE-043, LE-051, LE-056)</span></h3>
+<table class="tabla clases">
+  <thead><tr><th style="width:22%">Variable</th><th style="width:42%">Clases válidas</th><th>Clases inválidas</th></tr></thead>
+  <tbody><tr><td>Escenario</td><td><b>EJ-V1</b> Simulación de 5 días<br><b>EJ-V2</b> Hasta el colapso<br><b>EJ-V3</b> Día a día (en curso desde el arranque del sistema)</td><td><b>EJ-I1</b> Tipo de escenario no reconocido</td></tr><tr><td>Fecha y hora de inicio</td><td><b>EJ-V4</b> Fecha y hora (hh:mm) válidas, con datos cargados para ese periodo</td><td><b>EJ-I2</b> Sin fecha de inicio<br><b>EJ-I7</b> Fecha sin datos de pedidos para el periodo</td></tr><tr><td>Unidades por tipo (n)</td><td><b>EJ-V5</b> 0 ≤ n ≤ 50 por tipo y al menos 1 unidad en total</td><td><b>EJ-I3</b> Total de la flota = 0<br><b>EJ-I4</b> n &gt; 50<br><b>EJ-I5</b> n &lt; 0</td></tr><tr><td>Momento del cambio de flota</td><td><b>EJ-V6</b> Al configurar, antes de iniciar la ejecución</td><td><b>EJ-I6</b> Con la ejecución en curso</td></tr></tbody>
+</table>
+<p class="limites"><b>Valores límite:</b> n ∈ {−1, 0, 1, 50, 51}; total de la flota ∈ {0, 1}.</p>
+</div>
+<div class="bloque">
+<h3>4.5. AV · Avería de una unidad <span class="exig">(LE-039, LE-052 a LE-054, LE-065, LE-068)</span></h3>
+<table class="tabla clases">
+  <thead><tr><th style="width:22%">Variable</th><th style="width:42%">Clases válidas</th><th>Clases inválidas</th></tr></thead>
+  <tbody><tr><td>Tipo de avería</td><td><b>AV-V1</b> Tipo 1<br><b>AV-V2</b> Tipo 2<br><b>AV-V3</b> Tipo 3</td><td><b>AV-I1</b> Otro valor (0, 4, letra)</td></tr><tr><td>Unidad afectada</td><td><b>AV-V4</b> Código existente en la flota y operativo</td><td><b>AV-I2</b> Código inexistente<br><b>AV-I3</b> Unidad ya averiada</td></tr><tr><td>Situación de la unidad</td><td><b>AV-V5</b> En ruta con carga a bordo<br><b>AV-V6</b> Disponible en almacén</td><td>—</td></tr><tr><td>Instante</td><td><b>AV-V7</b> Dentro del horizonte de la ejecución</td><td><b>AV-I4</b> Marca de tiempo mal formada</td></tr></tbody>
+</table>
+<p class="limites"><b>Valores límite:</b> tipo 1: avería + 1 h 59 min (no disponible) y avería + 2 h (disponible); tipos 2 y 3: avería + 3 h 59 min (en el lugar) y avería + 4 h (trasladada al almacén central).</p>
+</div>
+<div class="bloque">
+<h3>4.6. TU · Turnos y refrigerio <span class="exig">(LE-023, LE-024)</span></h3>
+<table class="tabla clases">
+  <thead><tr><th style="width:22%">Variable</th><th style="width:42%">Clases válidas</th><th>Clases no admitidas</th></tr></thead>
+  <tbody><tr><td>Instante de operación</td><td><b>TU-V1</b> Turno 1: [07:00, 15:00)<br><b>TU-V2</b> Turno 2: [15:00, 23:00)<br><b>TU-V3</b> Turno 3: [23:00, 07:00)<br><b>TU-V5</b> Ruta que cruza un cambio de turno: la unidad continúa con el conductor del turno siguiente</td><td>—</td></tr><tr><td>Ubicación del refrigerio</td><td><b>TU-V4</b> Empieza ≥ 1 h después del inicio y termina ≥ 1 h antes del fin del turno</td><td><b>TU-N1</b> A menos de 1 h de un cambio de turno (no debe planificarse)</td></tr></tbody>
+</table>
+<p class="limites"><b>Valores límite:</b> 06:59 y 07:00; 14:59 y 15:00; 22:59 y 23:00.</p>
+</div>
+<div class="bloque">
+<h3>4.7. CP · Capacidad, consolidación y entregas parciales <span class="exig">(LE-009, LE-010, LE-028, LE-029)</span></h3>
+<table class="tabla clases">
+  <thead><tr><th style="width:22%">Variable</th><th style="width:42%">Clases válidas</th><th>Clases no admitidas</th></tr></thead>
+  <tbody><tr><td>Carga asignada a una unidad</td><td><b>CP-V1</b> Suma de cantidades &lt; capacidad<br><b>CP-V2</b> Suma de cantidades = capacidad</td><td><b>CP-N1</b> Suma de cantidades &gt; capacidad (no debe planificarse)</td></tr><tr><td>Cantidad de un pedido</td><td><b>CP-V3</b> ≤ 24 (una sola entrega posible)<br><b>CP-V4</b> &gt; 24 (entregas parciales con el mismo identificador)</td><td>—</td></tr><tr><td>Avance de la entrega</td><td><b>CP-V5</b> Entrega parcial: cantidad pendiente &gt; 0<br><b>CP-V6</b> Entrega total: cantidad pendiente = 0</td><td>—</td></tr></tbody>
+</table>
+<p class="limites"><b>Valores límite:</b> moto con 8 de 8 unidades; pedido de 24 y de 25 unidades.</p>
+</div>
+<div class="bloque">
+<h3>4.8. PZ · Cumplimiento del plazo <span class="exig">(LE-011, LE-032, LE-067, LE-086)</span></h3>
+<table class="tabla clases">
+  <thead><tr><th style="width:22%">Variable</th><th style="width:42%">Clases válidas</th><th>Clases no admitidas</th></tr></thead>
+  <tbody><tr><td>Llegada al destino</td><td><b>PZ-V1</b> Antes de la hora límite<br><b>PZ-V2</b> Exactamente en la hora límite</td><td><b>PZ-N1</b> Después de la hora límite, o pedido sin planificación factible</td></tr></tbody>
+</table>
+<p class="limites"><b>Valores límite:</b> llegada en la hora límite y un minuto después.</p>
+</div>
+<div class="bloque">
+<h3>4.9. SH · Semáforo de holgura del pedido <span class="exig">(LE-079)</span></h3>
+<table class="tabla clases">
+  <thead><tr><th style="width:22%">Variable</th><th style="width:42%">Clases válidas</th><th>Clases inválidas</th></tr></thead>
+  <tbody><tr><td>f = holgura / plazo; holgura = hora límite − instante actual</td><td><b>SH-V1</b> f ≥ corte ámbar (0,40 por defecto): verde<br><b>SH-V2</b> corte rojo ≤ f &lt; corte ámbar: ámbar<br><b>SH-V3</b> f &lt; corte rojo (0,15 por defecto): rojo<br><b>SH-V4</b> Pedido entregado: cerrado</td><td>—</td></tr></tbody>
+</table>
+<p class="limites"><b>Valores límite:</b> para un plazo de 36 h: holgura de 14 h 24 min (40 %) y de 5 h 24 min (15 %), y un minuto a cada lado.</p>
+</div>
+<div class="bloque">
+<h3>4.10. SI · Semáforo de inventario de almacén intermedio <span class="exig">(LE-080, LE-091)</span></h3>
+<table class="tabla clases">
+  <thead><tr><th style="width:22%">Variable</th><th style="width:42%">Clases válidas</th><th>Clases inválidas</th></tr></thead>
+  <tbody><tr><td>f = stock / 1 000</td><td><b>SI-V1</b> f ≥ corte ámbar (0,50 por defecto): verde<br><b>SI-V2</b> corte rojo ≤ f &lt; corte ámbar: ámbar<br><b>SI-V3</b> f &lt; corte rojo (0,20 por defecto): rojo</td><td>—</td></tr></tbody>
+</table>
+<p class="limites"><b>Valores límite:</b> f igual al corte ámbar (verde) y justo por debajo (ámbar); f igual al corte rojo (ámbar) y justo por debajo (rojo). Se prueban fijando los cortes sobre un stock conocido (CPA-069).</p>
+</div>
+<div class="bloque">
+<h3>4.11. OC · Ocupación de la unidad y de la flota <span class="exig">(LE-090, LE-095, LE-098)</span></h3>
+<table class="tabla clases">
+  <thead><tr><th style="width:22%">Variable</th><th style="width:42%">Clases válidas</th><th>Clases inválidas</th></tr></thead>
+  <tbody><tr><td>f = carga / capacidad</td><td><b>OC-V1</b> f &lt; 0,70: verde<br><b>OC-V2</b> 0,70 ≤ f &lt; 0,90: ámbar<br><b>OC-V3</b> f ≥ 0,90: rojo</td><td>—</td></tr></tbody>
+</table>
+<p class="limites"><b>Valores límite:</b> auto con 16 (66,7 %), 17 (70,8 %), 21 (87,5 %) y 22 (91,7 %) unidades a bordo. Con capacidad 24 no existen cargas enteras de exactamente 70 % o 90 %.</p>
+</div>
+<div class="bloque">
+<h3>4.12. RS · Rangos del semáforo <span class="exig">(LE-078)</span></h3>
+<table class="tabla clases">
+  <thead><tr><th style="width:22%">Variable</th><th style="width:42%">Clases válidas</th><th>Clases inválidas</th></tr></thead>
+  <tbody><tr><td>Cortes configurados</td><td><b>RS-V1</b> 0 &lt; corte rojo &lt; corte ámbar &lt; 1</td><td><b>RS-I1</b> Corte rojo ≥ corte ámbar<br><b>RS-I2</b> Corte fuera del intervalo (0, 1)</td></tr></tbody>
+</table>
+<p class="limites"><b>Valores límite:</b> cortes iguales (rojo = ámbar); corte 0 y corte 1,20.</p>
+</div>
+<div class="bloque">
+<h3>4.13. PR · Parámetros de operación <span class="exig">(LE-020 a LE-022, LE-057, LE-058, LE-100)</span></h3>
+<table class="tabla clases">
+  <thead><tr><th style="width:22%">Variable</th><th style="width:42%">Clases válidas</th><th>Clases inválidas</th></tr></thead>
+  <tbody><tr><td>Capacidad por tipo de unidad</td><td><b>PR-V1</b> Entero ≥ 1</td><td><b>PR-I1</b> ≤ 0</td></tr><tr><td>Velocidad por tipo de unidad</td><td><b>PR-V2</b> &gt; 0 km/h</td><td><b>PR-I2</b> ≤ 0 km/h</td></tr><tr><td>Costo por km por tipo de unidad</td><td><b>PR-V3</b> ≥ 0 soles</td><td><b>PR-I3</b> &lt; 0 soles</td></tr><tr><td>Frecuencia de replanificación (Sa)</td><td><b>PR-V4</b> Entero &gt; 0 minutos simulados</td><td><b>PR-I4</b> ≤ 0</td></tr><tr><td>Bloque de consumo (Sc)</td><td><b>PR-V5</b> &gt; 0 minutos simulados</td><td><b>PR-I5</b> ≤ 0</td></tr><tr><td>Ventana de entregas recientes</td><td><b>PR-V6</b> &gt; 0 horas</td><td><b>PR-I6</b> ≤ 0 horas</td></tr></tbody>
+</table>
+<p class="limites"><b>Valores límite:</b> capacidad 0 y 1; velocidad 0; costo −0,01 y 0; Sa 0 y 1; Sc 0; ventana 0.</p>
+</div>
+<div class="bloque">
+<h3>4.14. CF · Consulta y filtrado de pedidos <span class="exig">(LE-003, LE-004, LE-097)</span></h3>
+<table class="tabla clases">
+  <thead><tr><th style="width:22%">Variable</th><th style="width:42%">Clases válidas</th><th>Clases inválidas</th></tr></thead>
+  <tbody><tr><td>Código buscado</td><td><b>CF-V1</b> Código P-##### existente<br><b>CF-V2</b> Código P-##### con formato válido e inexistente (resultado vacío)</td><td><b>CF-I1</b> Código con formato inválido (p. ej. «12AB»)</td></tr><tr><td>Criterio de filtro</td><td><b>CF-V3</b> Criterio con coincidencias<br><b>CF-V4</b> Criterio sin coincidencias (lista vacía)</td><td>—</td></tr></tbody>
+</table>
+<p class="limites"><b>Valores límite:</b> —</p>
+</div>
+<div class="bloque">
+<h3>4.15. AL · Almacenes e inventario <span class="exig">(LE-017, LE-018, LE-030, LE-063)</span></h3>
+<table class="tabla clases">
+  <thead><tr><th style="width:22%">Variable</th><th style="width:42%">Clases válidas</th><th>Clases inválidas</th></tr></thead>
+  <tbody><tr><td>Almacén de origen</td><td><b>AL-V1</b> Intermedio disponible: con stock y accesible<br><b>AL-V2</b> Intermedio no disponible: sin stock o inaccesible por bloqueos</td><td>—</td></tr><tr><td>Instante respecto de la recarga</td><td><b>AL-V3</b> Antes de las 23:59:59<br><b>AL-V4</b> Desde las 23:59:59 (stock repuesto a 1 000)</td><td>—</td></tr><tr><td>Almacén de retorno</td><td><b>AL-V5</b> Intermedio con stock, accesible y alcanzable dentro del turno<br><b>AL-V6</b> Ningún intermedio cumple: retorna al almacén central</td><td>—</td></tr></tbody>
+</table>
+<p class="limites"><b>Valores límite:</b> 23:59 del día D y 00:00 del día D + 1.</p>
+</div>
+<div class="bloque">
+<h3>4.16. LL · Llegada del pedido en la simulación <span class="exig">(LE-008, LE-069)</span></h3>
+<table class="tabla clases">
+  <thead><tr><th style="width:22%">Variable</th><th style="width:42%">Clases válidas</th><th>Clases inválidas</th></tr></thead>
+  <tbody><tr><td>Reloj simulado respecto de la marca del pedido</td><td><b>LL-V1</b> Reloj anterior a la marca: el pedido aún no existe<br><b>LL-V2</b> Reloj igual o posterior a la marca: el pedido está en la cola</td><td>—</td></tr></tbody>
+</table>
+<p class="limites"><b>Valores límite:</b> marca − 1 min y marca.</p>
+</div><h2>5. Catálogo de casos de prueba</h2><p>Prioridad <b>Alta</b>: el caso verifica al menos una exigencia exigible (E). Prioridad <b>Media</b>: verifica solo exigencias deseables (D). Los casos CPA-080 y CPA-081 se añadieron en la versión 3.0 y se ubican junto a los casos con los que se relacionan, sin alterar la numeración de los anteriores.</p><h3 class='ag'>5.1. AG-01 · Registro de Pedidos (CPA-001 a CPA-020)</h3>
+<table class="caso">
+  <thead><tr><th class="cid">CPA-001</th><th colspan="3">Registro manual de un pedido con datos válidos</th></tr></thead>
+  <tbody>
+  <tr><th>Exigencias</th><td>LE-001, LE-002, LE-012</td><th class="corto">Prioridad</th><td class="corto">Alta</td></tr>
+  <tr><th>Clases cubiertas</th><td colspan="3">PM-V1, PM-V2, PM-V3, PM-V4, PM-V6</td></tr>
+  <tr><th>Precondiciones</th><td colspan="3">Operación día a día en curso. Reloj de la operación visible.</td></tr>
+  <tr><th>Datos de entrada</th><td colspan="3"><p class='dato'>Cliente: «Distribuidora Santa Anita S.A.C.»; destino (43, 18); cantidad 10; plazo 8 h.</p></td></tr>
+  <tr><th>Pasos</th><td colspan="3"><ol><li>Abrir el módulo Pedidos y elegir «Registrar pedido».</li><li>Ingresar los datos y anotar la hora del reloj de la operación.</li><li>Pulsar «Registrar y planificar pedido».</li></ol></td></tr>
+  <tr><th>Resultado esperado</th><td colspan="3"><ul><li>El pedido queda registrado con un código único (P-#####) que no se repite.</li><li>El instante de registro es el del reloj de la operación (día, hora y minuto), no uno ingresado por el operario.</li><li>Se almacenan el destino (43, 18), la cantidad 10 y el plazo de 8 h.</li><li>La hora límite es igual al instante de registro más 8 h.</li><li>El pedido aparece en la cola de pedidos.</li></ul></td></tr>
+  <tr class="ejec"><th>Resultado obtenido</th><td colspan="3"></td></tr>
+  <tr class="ejec"><th>Estado</th><td colspan="3">☐ Conforme &nbsp;&nbsp; ☐ No conforme &nbsp;&nbsp; ☐ No aplica &nbsp;&nbsp; Fecha: ___/___/_____ &nbsp;&nbsp; Responsable: __________</td></tr>
+  </tbody>
+</table>
+<table class="caso">
+  <thead><tr><th class="cid">CPA-002</th><th colspan="3">Destino en los vértices de la retícula y cantidad mínima</th></tr></thead>
+  <tbody>
+  <tr><th>Exigencias</th><td>LE-001, LE-050</td><th class="corto">Prioridad</th><td class="corto">Alta</td></tr>
+  <tr><th>Clases cubiertas</th><td colspan="3">PM-V2, PM-V3, PM-V4 (valores límite x = 0 y 70, y = 0 y 50, cantidad 1)</td></tr>
+  <tr><th>Precondiciones</th><td colspan="3">Operación día a día en curso.</td></tr>
+  <tr><th>Datos de entrada</th><td colspan="3"><p class='dato'>Pedido A: destino (0, 0). Pedido B: destino (70, 50). Ambos: cliente «Cliente límite», cantidad 1, plazo 36 h.</p></td></tr>
+  <tr><th>Pasos</th><td colspan="3"><ol><li>Registrar el pedido A.</li><li>Registrar el pedido B.</li></ol></td></tr>
+  <tr><th>Resultado esperado</th><td colspan="3"><ul><li>Ambos pedidos se registran sin error con cantidad 1.</li><li>En el mapa, (0, 0) aparece en el extremo inferior izquierdo y (70, 50) en el superior derecho.</li></ul></td></tr>
+  <tr class="ejec"><th>Resultado obtenido</th><td colspan="3"></td></tr>
+  <tr class="ejec"><th>Estado</th><td colspan="3">☐ Conforme &nbsp;&nbsp; ☐ No conforme &nbsp;&nbsp; ☐ No aplica &nbsp;&nbsp; Fecha: ___/___/_____ &nbsp;&nbsp; Responsable: __________</td></tr>
+  </tbody>
+</table>
+<table class="caso">
+  <thead><tr><th class="cid">CPA-003</th><th colspan="3">Registro con cliente vacío</th></tr></thead>
+  <tbody>
+  <tr><th>Exigencias</th><td>LE-001, LE-012</td><th class="corto">Prioridad</th><td class="corto">Alta</td></tr>
+  <tr><th>Clases cubiertas</th><td colspan="3">PM-I1</td></tr>
+  <tr><th>Precondiciones</th><td colspan="3">Formulario «Registrar pedido» abierto.</td></tr>
+  <tr><th>Datos de entrada</th><td colspan="3"><p class='dato'>Cliente: « » (solo espacios); destino (43, 18); cantidad 10; plazo 8 h.</p></td></tr>
+  <tr><th>Pasos</th><td colspan="3"><ol><li>Ingresar los datos.</li><li>Intentar registrar el pedido.</li></ol></td></tr>
+  <tr><th>Resultado esperado</th><td colspan="3"><ul><li>El botón «Registrar y planificar pedido» permanece deshabilitado.</li><li>Se muestra «Completa el cliente para registrar el pedido.».</li><li>No se crea ningún pedido.</li></ul></td></tr>
+  <tr class="ejec"><th>Resultado obtenido</th><td colspan="3"></td></tr>
+  <tr class="ejec"><th>Estado</th><td colspan="3">☐ Conforme &nbsp;&nbsp; ☐ No conforme &nbsp;&nbsp; ☐ No aplica &nbsp;&nbsp; Fecha: ___/___/_____ &nbsp;&nbsp; Responsable: __________</td></tr>
+  </tbody>
+</table>
+<table class="caso">
+  <thead><tr><th class="cid">CPA-004</th><th colspan="3">Registro con nombre de cliente de más de 80 caracteres</th></tr></thead>
+  <tbody>
+  <tr><th>Exigencias</th><td>LE-001, LE-012</td><th class="corto">Prioridad</th><td class="corto">Alta</td></tr>
+  <tr><th>Clases cubiertas</th><td colspan="3">PM-I2 (límite 81) y PM-V1 (límite 80)</td></tr>
+  <tr><th>Precondiciones</th><td colspan="3">Formulario «Registrar pedido» abierto.</td></tr>
+  <tr><th>Datos de entrada</th><td colspan="3"><p class='dato'>Intento 1: cliente de 81 caracteres. Intento 2: cliente de 80 caracteres. Demás campos: destino (43, 18), cantidad 10, plazo 8 h.</p></td></tr>
+  <tr><th>Pasos</th><td colspan="3"><ol><li>Registrar el pedido con el cliente de 81 caracteres.</li><li>Registrar el pedido con el cliente de 80 caracteres.</li></ol></td></tr>
+  <tr><th>Resultado esperado</th><td colspan="3"><ul><li>Con 81 caracteres el sistema rechaza el registro e informa que el cliente excede la longitud permitida.</li><li>Con 80 caracteres el pedido se registra correctamente.</li></ul></td></tr>
+  <tr class="ejec"><th>Resultado obtenido</th><td colspan="3"></td></tr>
+  <tr class="ejec"><th>Estado</th><td colspan="3">☐ Conforme &nbsp;&nbsp; ☐ No conforme &nbsp;&nbsp; ☐ No aplica &nbsp;&nbsp; Fecha: ___/___/_____ &nbsp;&nbsp; Responsable: __________</td></tr>
+  </tbody>
+</table>
+<table class="caso">
+  <thead><tr><th class="cid">CPA-005</th><th colspan="3">Coordenada X no válida</th></tr></thead>
+  <tbody>
+  <tr><th>Exigencias</th><td>LE-001, LE-049</td><th class="corto">Prioridad</th><td class="corto">Alta</td></tr>
+  <tr><th>Clases cubiertas</th><td colspan="3">PM-I3, PM-I4, PM-I5 (una clase inválida por intento)</td></tr>
+  <tr><th>Precondiciones</th><td colspan="3">Formulario «Registrar pedido» abierto con datos válidos en los demás campos (y = 18).</td></tr>
+  <tr><th>Datos de entrada</th><td colspan="3"><p class='dato'>Intento 1: x = 71. Intento 2: x = −1. Intento 3: x vacío.</p></td></tr>
+  <tr><th>Pasos</th><td colspan="3"><ol><li>Ingresar cada valor de x por separado.</li><li>Intentar registrar.</li></ol></td></tr>
+  <tr><th>Resultado esperado</th><td colspan="3"><ul><li>Intentos 1 y 2: se muestra «El destino está fuera de la malla: X debe ir de 0 a 70 e Y de 0 a 50.».</li><li>Intento 3: se muestra «Completa un destino dentro de la malla para registrar el pedido.».</li><li>En los tres intentos el botón de registro queda deshabilitado y no se crea ningún pedido.</li></ul></td></tr>
+  <tr class="ejec"><th>Resultado obtenido</th><td colspan="3"></td></tr>
+  <tr class="ejec"><th>Estado</th><td colspan="3">☐ Conforme &nbsp;&nbsp; ☐ No conforme &nbsp;&nbsp; ☐ No aplica &nbsp;&nbsp; Fecha: ___/___/_____ &nbsp;&nbsp; Responsable: __________</td></tr>
+  </tbody>
+</table>
+<table class="caso">
+  <thead><tr><th class="cid">CPA-006</th><th colspan="3">Coordenada Y no válida</th></tr></thead>
+  <tbody>
+  <tr><th>Exigencias</th><td>LE-001, LE-049</td><th class="corto">Prioridad</th><td class="corto">Alta</td></tr>
+  <tr><th>Clases cubiertas</th><td colspan="3">PM-I6, PM-I7, PM-I11 (una clase inválida por intento)</td></tr>
+  <tr><th>Precondiciones</th><td colspan="3">Formulario «Registrar pedido» abierto con datos válidos en los demás campos (x = 43).</td></tr>
+  <tr><th>Datos de entrada</th><td colspan="3"><p class='dato'>Intento 1: y = 51. Intento 2: y = −1. Intento 3: y vacío.</p></td></tr>
+  <tr><th>Pasos</th><td colspan="3"><ol><li>Ingresar cada valor de y por separado.</li><li>Intentar registrar.</li></ol></td></tr>
+  <tr><th>Resultado esperado</th><td colspan="3"><ul><li>Intentos 1 y 2: se muestra «El destino está fuera de la malla: X debe ir de 0 a 70 e Y de 0 a 50.».</li><li>Intento 3: se muestra «Completa un destino dentro de la malla para registrar el pedido.».</li><li>En los tres intentos el botón de registro queda deshabilitado y no se crea ningún pedido.</li></ul></td></tr>
+  <tr class="ejec"><th>Resultado obtenido</th><td colspan="3"></td></tr>
+  <tr class="ejec"><th>Estado</th><td colspan="3">☐ Conforme &nbsp;&nbsp; ☐ No conforme &nbsp;&nbsp; ☐ No aplica &nbsp;&nbsp; Fecha: ___/___/_____ &nbsp;&nbsp; Responsable: __________</td></tr>
+  </tbody>
+</table>
+<table class="caso">
+  <thead><tr><th class="cid">CPA-007</th><th colspan="3">Cantidad no positiva</th></tr></thead>
+  <tbody>
+  <tr><th>Exigencias</th><td>LE-001</td><th class="corto">Prioridad</th><td class="corto">Alta</td></tr>
+  <tr><th>Clases cubiertas</th><td colspan="3">PM-I8 (límite 0; el valor 1 se cubre en CPA-002)</td></tr>
+  <tr><th>Precondiciones</th><td colspan="3">Formulario «Registrar pedido» abierto.</td></tr>
+  <tr><th>Datos de entrada</th><td colspan="3"><p class='dato'>Intento 1: cantidad 0. Intento 2: cantidad −5. Demás campos válidos.</p></td></tr>
+  <tr><th>Pasos</th><td colspan="3"><ol><li>Escribir la cantidad en el campo.</li><li>Intentar registrar.</li></ol></td></tr>
+  <tr><th>Resultado esperado</th><td colspan="3"><ul><li>El campo de cantidad se marca como inválido y se muestra «Completa una cantidad de 1 a 999 para registrar el pedido.».</li><li>El botón de registro queda deshabilitado y no se crea ningún pedido con cantidad 0 o negativa.</li></ul></td></tr>
+  <tr class="ejec"><th>Resultado obtenido</th><td colspan="3"></td></tr>
+  <tr class="ejec"><th>Estado</th><td colspan="3">☐ Conforme &nbsp;&nbsp; ☐ No conforme &nbsp;&nbsp; ☐ No aplica &nbsp;&nbsp; Fecha: ___/___/_____ &nbsp;&nbsp; Responsable: __________</td></tr>
+  </tbody>
+</table>
+<table class="caso">
+  <thead><tr><th class="cid">CPA-008</th><th colspan="3">Plazo fuera del catálogo</th></tr></thead>
+  <tbody>
+  <tr><th>Exigencias</th><td>LE-001, LE-002</td><th class="corto">Prioridad</th><td class="corto">Alta</td></tr>
+  <tr><th>Clases cubiertas</th><td colspan="3">PM-I9, PM-I10, PM-I12 (una clase inválida por intento)</td></tr>
+  <tr><th>Precondiciones</th><td colspan="3">Acceso al formulario de registro y al servicio de registro de pedidos en Swagger UI (para enviar plazos que el formulario no ofrece).</td></tr>
+  <tr><th>Datos de entrada</th><td colspan="3"><p class='dato'>Intento 1: plazo 37 h. Intento 2: plazo 0 h. Intento 3: plazo 5 h. Demás campos válidos.</p></td></tr>
+  <tr><th>Pasos</th><td colspan="3"><ol><li>Revisar los plazos que ofrece el formulario.</li><li>Enviar cada intento al servicio de registro de pedidos.</li></ol></td></tr>
+  <tr><th>Resultado esperado</th><td colspan="3"><ul><li>El formulario solo ofrece los plazos 4, 8, 12, 18 y 36 h.</li><li>El plazo de 37 h se rechaza con el mensaje «El plazo maximo es de 36 h».</li><li>Los plazos de 0 h y de 5 h se rechazan indicando los plazos permitidos.</li><li>En ningún intento se crea el pedido.</li></ul></td></tr>
+  <tr class="ejec"><th>Resultado obtenido</th><td colspan="3"></td></tr>
+  <tr class="ejec"><th>Estado</th><td colspan="3">☐ Conforme &nbsp;&nbsp; ☐ No conforme &nbsp;&nbsp; ☐ No aplica &nbsp;&nbsp; Fecha: ___/___/_____ &nbsp;&nbsp; Responsable: __________</td></tr>
+  </tbody>
+</table>
+<table class="caso">
+  <thead><tr><th class="cid">CPA-009</th><th colspan="3">Hora límite que cruza el cambio de día</th></tr></thead>
+  <tbody>
+  <tr><th>Exigencias</th><td>LE-002, LE-008</td><th class="corto">Prioridad</th><td class="corto">Alta</td></tr>
+  <tr><th>Clases cubiertas</th><td colspan="3">PM-V6 (plazos 4 h y 36 h), AP-V1, AP-V3</td></tr>
+  <tr><th>Precondiciones</th><td colspan="3">Pantalla «Configuración de escenario». Simulación de 5 días con fecha de inicio 01/04/2029 y flota por defecto.</td></tr>
+  <tr><th>Datos de entrada</th><td colspan="3"><p class='dato arch'>Archivo <code>datos/CPA-009/ventas.202904.txt</code>:</p><pre>01d22h30m:43,18,c0091,05,4<br>01d22h30m:43,18,c0092,05,36</pre></td></tr>
+  <tr><th>Pasos</th><td colspan="3"><ol><li>Subir el archivo y ejecutar la simulación.</li><li>Pausar después de las 22:30 del 01/04/2029.</li><li>Abrir el detalle de cada pedido.</li></ol></td></tr>
+  <tr><th>Resultado esperado</th><td colspan="3"><ul><li>Pedido c0091 (4 h): hora límite 02/04/2029 02:30.</li><li>Pedido c0092 (36 h): hora límite 03/04/2029 10:30.</li><li>La hora límite se muestra con fecha, hora y minuto.</li></ul></td></tr>
+  <tr class="ejec"><th>Resultado obtenido</th><td colspan="3"></td></tr>
+  <tr class="ejec"><th>Estado</th><td colspan="3">☐ Conforme &nbsp;&nbsp; ☐ No conforme &nbsp;&nbsp; ☐ No aplica &nbsp;&nbsp; Fecha: ___/___/_____ &nbsp;&nbsp; Responsable: __________</td></tr>
+  </tbody>
+</table>
+<table class="caso">
+  <thead><tr><th class="cid">CPA-010</th><th colspan="3">Consulta de pedido por identificador</th></tr></thead>
+  <tbody>
+  <tr><th>Exigencias</th><td>LE-003</td><th class="corto">Prioridad</th><td class="corto">Alta</td></tr>
+  <tr><th>Clases cubiertas</th><td colspan="3">CF-V1, CF-V2, CF-I1</td></tr>
+  <tr><th>Precondiciones</th><td colspan="3">Al menos un pedido registrado (por ejemplo, el de CPA-001).</td></tr>
+  <tr><th>Datos de entrada</th><td colspan="3"><p class='dato'>Búsqueda 1: código existente (P-#####). Búsqueda 2: P-99999. Búsqueda 3: «12AB».</p></td></tr>
+  <tr><th>Pasos</th><td colspan="3"><ol><li>Buscar el pedido por cada código.</li></ol></td></tr>
+  <tr><th>Resultado esperado</th><td colspan="3"><ul><li>Con el código existente se muestran destino, cantidad, plazo, hora límite y estado del pedido.</li><li>Con P-99999 el sistema informa que el pedido no existe, sin mostrar datos de otro pedido.</li><li>Con «12AB» el sistema informa que el código no tiene el formato P-#####, sin mostrar datos.</li></ul></td></tr>
+  <tr class="ejec"><th>Resultado obtenido</th><td colspan="3"></td></tr>
+  <tr class="ejec"><th>Estado</th><td colspan="3">☐ Conforme &nbsp;&nbsp; ☐ No conforme &nbsp;&nbsp; ☐ No aplica &nbsp;&nbsp; Fecha: ___/___/_____ &nbsp;&nbsp; Responsable: __________</td></tr>
+  </tbody>
+</table>
+<table class="caso">
+  <thead><tr><th class="cid">CPA-011</th><th colspan="3">Filtrado de pedidos por cliente o estado</th></tr></thead>
+  <tbody>
+  <tr><th>Exigencias</th><td>LE-004</td><th class="corto">Prioridad</th><td class="corto">Media</td></tr>
+  <tr><th>Clases cubiertas</th><td colspan="3">CF-V3, CF-V4</td></tr>
+  <tr><th>Precondiciones</th><td colspan="3">Simulación de 5 días con fecha de inicio 01/01/2027 y flota por defecto, pausada al final del día 1 (cola con pedidos de varios clientes y en distintos estados).</td></tr>
+  <tr><th>Datos de entrada</th><td colspan="3"><p class='dato'>Filtro 1: un cliente presente en la cola. Filtro 2: estado Entregado. Filtro 3: cliente «c9999» (sin pedidos).</p></td></tr>
+  <tr><th>Pasos</th><td colspan="3"><ol><li>Aplicar cada filtro en la cola de pedidos.</li><li>Quitar el filtro.</li></ol></td></tr>
+  <tr><th>Resultado esperado</th><td colspan="3"><ul><li>Los filtros 1 y 2 muestran solo los pedidos que cumplen el criterio.</li><li>El filtro 3 muestra la lista vacía con un mensaje informativo.</li><li>Al quitar el filtro vuelve la lista completa.</li></ul></td></tr>
+  <tr class="ejec"><th>Resultado obtenido</th><td colspan="3"></td></tr>
+  <tr class="ejec"><th>Estado</th><td colspan="3">☐ Conforme &nbsp;&nbsp; ☐ No conforme &nbsp;&nbsp; ☐ No aplica &nbsp;&nbsp; Fecha: ___/___/_____ &nbsp;&nbsp; Responsable: __________</td></tr>
+  </tbody>
+</table>
+<table class="caso">
+  <thead><tr><th class="cid">CPA-012</th><th colspan="3">Ciclo de vida del pedido</th></tr></thead>
+  <tbody>
+  <tr><th>Exigencias</th><td>LE-005, LE-082</td><th class="corto">Prioridad</th><td class="corto">Alta</td></tr>
+  <tr><th>Clases cubiertas</th><td colspan="3">— (escenario observable, sección 2.3)</td></tr>
+  <tr><th>Precondiciones</th><td colspan="3">Simulación de 5 días con fecha de inicio 01/05/2029 y flota por defecto.</td></tr>
+  <tr><th>Datos de entrada</th><td colspan="3"><p class='dato arch'>Archivo <code>datos/CPA-012/ventas.202905.txt</code>:</p><pre>01d08h00m:30,18,c0121,05,8</pre></td></tr>
+  <tr><th>Pasos</th><td colspan="3"><ol><li>Subir el archivo y ejecutar la simulación.</li><li>Observar el estado del pedido al llegar (08:00).</li><li>Observar el estado cuando una unidad sale con el pedido.</li><li>Observar el estado cuando la unidad termina la entrega.</li></ol></td></tr>
+  <tr><th>Resultado esperado</th><td colspan="3"><ul><li>El estado pasa de Registrado a En ruta y luego a Entregado, sin saltos ni retrocesos.</li><li>El estado se ve tanto en la cola de pedidos como en el detalle del pedido.</li></ul></td></tr>
+  <tr class="ejec"><th>Resultado obtenido</th><td colspan="3"></td></tr>
+  <tr class="ejec"><th>Estado</th><td colspan="3">☐ Conforme &nbsp;&nbsp; ☐ No conforme &nbsp;&nbsp; ☐ No aplica &nbsp;&nbsp; Fecha: ___/___/_____ &nbsp;&nbsp; Responsable: __________</td></tr>
+  </tbody>
+</table>
+<table class="caso">
+  <thead><tr><th class="cid">CPA-013</th><th colspan="3">Carga masiva de un archivo de pedidos válido</th></tr></thead>
+  <tbody>
+  <tr><th>Exigencias</th><td>LE-006, LE-007</td><th class="corto">Prioridad</th><td class="corto">Alta</td></tr>
+  <tr><th>Clases cubiertas</th><td colspan="3">AP-V1, AP-V3, AP-V4 (límites: destinos (0, 0) y (70, 50), cantidades 1, 24 y 25, plazos 4 h y 36 h)</td></tr>
+  <tr><th>Precondiciones</th><td colspan="3">Módulo Simulación, pantalla «Configuración de escenario».</td></tr>
+  <tr><th>Datos de entrada</th><td colspan="3"><p class='dato arch'>Archivo <code>datos/CPA-013/ventas.202901.txt</code>:</p><pre># CPA-013: archivo valido. Las lineas vacias y los comentarios se ignoran.<br>01d00h00m:00,00,c0001,01,4<br>01d06h30m:70,50,c0002,24,36<br>&nbsp;<br>01d08h15m:43,18,c0003,25,12<br>02d23h59m:12,38,c0004,10,8</pre></td></tr>
+  <tr><th>Pasos</th><td colspan="3"><ol><li>En «Datos de la simulación», pulsar «Subir archivo» en Pedidos.</li><li>Elegir el archivo.</li></ol></td></tr>
+  <tr><th>Resultado esperado</th><td colspan="3"><ul><li>El sistema informa 4 pedidos válidos del mes 202901.</li><li>El comentario y la línea vacía se ignoran y no se reportan como error.</li><li>Se muestra «Guardado para el mes 202901».</li></ul></td></tr>
+  <tr class="ejec"><th>Resultado obtenido</th><td colspan="3"></td></tr>
+  <tr class="ejec"><th>Estado</th><td colspan="3">☐ Conforme &nbsp;&nbsp; ☐ No conforme &nbsp;&nbsp; ☐ No aplica &nbsp;&nbsp; Fecha: ___/___/_____ &nbsp;&nbsp; Responsable: __________</td></tr>
+  </tbody>
+</table>
+<table class="caso">
+  <thead><tr><th class="cid">CPA-014</th><th colspan="3">Archivo de pedidos con registros inválidos</th></tr></thead>
+  <tbody>
+  <tr><th>Exigencias</th><td>LE-007</td><th class="corto">Prioridad</th><td class="corto">Alta</td></tr>
+  <tr><th>Clases cubiertas</th><td colspan="3">AP-I3, AP-I4, AP-I5, AP-I6, AP-I7, AP-I8 (una clase inválida por línea)</td></tr>
+  <tr><th>Precondiciones</th><td colspan="3">Pantalla «Configuración de escenario».</td></tr>
+  <tr><th>Datos de entrada</th><td colspan="3"><p class='dato arch'>Archivo <code>datos/CPA-014/ventas.202902.txt</code>:</p><pre>01d08h00m:43,18,c0101,10,8    <span class='com'>(1: válida)</span><br>01d09h00m:71,50,c0102,05,12   <span class='com'>(2: destino fuera)</span><br>01d10h00m:20,20,c0103,00,12   <span class='com'>(3: cantidad 0)</span><br>01d11h00m:20,20,c0104,05,00   <span class='com'>(4: plazo 0)</span><br>01d12h00m:20,20,c0105,05      <span class='com'>(5: cuatro campos)</span><br>01dXXh00m:20,20,c0106,05,12   <span class='com'>(6: marca mal formada)</span><br>01d13h00m:20,20,c0107,05,37   <span class='com'>(7: plazo 37 h)</span><br>01d14h00m:20,20,c0108,05,5    <span class='com'>(8: plazo 5 h)</span></pre><p class='dato'>Los comentarios a la derecha no forman parte del archivo.</p></td></tr>
+  <tr><th>Pasos</th><td colspan="3"><ol><li>Subir el archivo como archivo de pedidos.</li></ol></td></tr>
+  <tr><th>Resultado esperado</th><td colspan="3"><ul><li>El sistema reporta 7 líneas con error e indica sus números (2 a 8).</li><li>El archivo no se guarda y se pide corregirlo y volver a subirlo.</li><li>El botón «Ejecutar simulación» queda deshabilitado mientras haya un archivo con errores.</li></ul></td></tr>
+  <tr class="ejec"><th>Resultado obtenido</th><td colspan="3"></td></tr>
+  <tr class="ejec"><th>Estado</th><td colspan="3">☐ Conforme &nbsp;&nbsp; ☐ No conforme &nbsp;&nbsp; ☐ No aplica &nbsp;&nbsp; Fecha: ___/___/_____ &nbsp;&nbsp; Responsable: __________</td></tr>
+  </tbody>
+</table>
+<table class="caso">
+  <thead><tr><th class="cid">CPA-015</th><th colspan="3">Archivo de pedidos vacío</th></tr></thead>
+  <tbody>
+  <tr><th>Exigencias</th><td>LE-007</td><th class="corto">Prioridad</th><td class="corto">Alta</td></tr>
+  <tr><th>Clases cubiertas</th><td colspan="3">AP-I2</td></tr>
+  <tr><th>Precondiciones</th><td colspan="3">Pantalla «Configuración de escenario».</td></tr>
+  <tr><th>Datos de entrada</th><td colspan="3"><p class='dato'>Archivo datos/CPA-015/ventas.202903.txt de 0 bytes.</p></td></tr>
+  <tr><th>Pasos</th><td colspan="3"><ol><li>Subir el archivo como archivo de pedidos.</li></ol></td></tr>
+  <tr><th>Resultado esperado</th><td colspan="3"><ul><li>El sistema informa que el archivo de ventas está vacío.</li><li>No se guarda ningún archivo.</li></ul></td></tr>
+  <tr class="ejec"><th>Resultado obtenido</th><td colspan="3"></td></tr>
+  <tr class="ejec"><th>Estado</th><td colspan="3">☐ Conforme &nbsp;&nbsp; ☐ No conforme &nbsp;&nbsp; ☐ No aplica &nbsp;&nbsp; Fecha: ___/___/_____ &nbsp;&nbsp; Responsable: __________</td></tr>
+  </tbody>
+</table>
+<table class="caso">
+  <thead><tr><th class="cid">CPA-016</th><th colspan="3">Archivo de pedidos sin mes identificable</th></tr></thead>
+  <tbody>
+  <tr><th>Exigencias</th><td>LE-006</td><th class="corto">Prioridad</th><td class="corto">Alta</td></tr>
+  <tr><th>Clases cubiertas</th><td colspan="3">AP-I1, AP-V2</td></tr>
+  <tr><th>Precondiciones</th><td colspan="3">Pantalla «Configuración de escenario» sin fecha de inicio elegida.</td></tr>
+  <tr><th>Datos de entrada</th><td colspan="3"><p class='dato arch'>Archivo <code>datos/CPA-016/pedidos_sin_mes.txt</code>:</p><pre>01d08h00m:43,18,c0201,10,8</pre></td></tr>
+  <tr><th>Pasos</th><td colspan="3"><ol><li>Subir el archivo sin haber elegido la fecha de inicio.</li><li>Elegir como fecha de inicio el 01/01/2029 y volver a subirlo.</li></ol></td></tr>
+  <tr><th>Resultado esperado</th><td colspan="3"><ul><li>Primer intento: se muestra «Elige primero la fecha de inicio…» y no se sube nada.</li><li>Segundo intento: el archivo se valida y se guarda para el mes 202901.</li></ul></td></tr>
+  <tr class="ejec"><th>Resultado obtenido</th><td colspan="3"></td></tr>
+  <tr class="ejec"><th>Estado</th><td colspan="3">☐ Conforme &nbsp;&nbsp; ☐ No conforme &nbsp;&nbsp; ☐ No aplica &nbsp;&nbsp; Fecha: ___/___/_____ &nbsp;&nbsp; Responsable: __________</td></tr>
+  </tbody>
+</table>
+<table class="caso">
+  <thead><tr><th class="cid">CPA-017</th><th colspan="3">Instante de llegada en la línea de tiempo de la simulación</th></tr></thead>
+  <tbody>
+  <tr><th>Exigencias</th><td>LE-008, LE-069</td><th class="corto">Prioridad</th><td class="corto">Alta</td></tr>
+  <tr><th>Clases cubiertas</th><td colspan="3">LL-V1, LL-V2 (límites: marca − 1 min y marca)</td></tr>
+  <tr><th>Precondiciones</th><td colspan="3">Archivo de CPA-013 cargado. Simulación de 5 días con fecha de inicio 01/01/2029 y flota por defecto.</td></tr>
+  <tr><th>Datos de entrada</th><td colspan="3"><p class='dato'>Pedido c0003 del archivo de CPA-013, con marca 01d08h15m (destino (43, 18), 25 unidades, plazo 12 h).</p></td></tr>
+  <tr><th>Pasos</th><td colspan="3"><ol><li>Iniciar la simulación y pausarla a las 08:14 del 01/01/2029.</li><li>Reanudar y pausar a las 08:15.</li></ol></td></tr>
+  <tr><th>Resultado esperado</th><td colspan="3"><ul><li>A las 08:14 el pedido c0003 aún no aparece en la cola.</li><li>A las 08:15 el pedido aparece con instante de llegada 01/01/2029 08:15 y hora límite 01/01/2029 20:15.</li></ul></td></tr>
+  <tr class="ejec"><th>Resultado obtenido</th><td colspan="3"></td></tr>
+  <tr class="ejec"><th>Estado</th><td colspan="3">☐ Conforme &nbsp;&nbsp; ☐ No conforme &nbsp;&nbsp; ☐ No aplica &nbsp;&nbsp; Fecha: ___/___/_____ &nbsp;&nbsp; Responsable: __________</td></tr>
+  </tbody>
+</table>
+<table class="caso">
+  <thead><tr><th class="cid">CPA-018</th><th colspan="3">División de un pedido que supera la capacidad de una unidad</th></tr></thead>
+  <tbody>
+  <tr><th>Exigencias</th><td>LE-009, LE-028</td><th class="corto">Prioridad</th><td class="corto">Alta</td></tr>
+  <tr><th>Clases cubiertas</th><td colspan="3">PM-V4, PM-V5, CP-V3, CP-V4 (límites 24 y 25)</td></tr>
+  <tr><th>Precondiciones</th><td colspan="3">Operación día a día en curso con la flota por defecto.</td></tr>
+  <tr><th>Datos de entrada</th><td colspan="3"><p class='dato'>Pedido A: 24 unidades. Pedido B: 25 unidades. Ambos: cliente «Ferretería Los Olivos», destino (43, 18), plazo 12 h.</p></td></tr>
+  <tr><th>Pasos</th><td colspan="3"><ol><li>Registrar ambos pedidos.</li><li>Revisar el plan generado para cada uno.</li></ol></td></tr>
+  <tr><th>Resultado esperado</th><td colspan="3"><ul><li>Ambos pedidos se aceptan: una cantidad mayor que 24 no es motivo de rechazo.</li><li>El pedido A puede atenderse en una sola entrega (por ejemplo, con un auto de capacidad 24).</li><li>El pedido B se atiende en dos o más entregas parciales que suman 25 unidades, todas con el mismo código de pedido.</li><li>Ninguna entrega supera la capacidad de la unidad que la transporta.</li></ul></td></tr>
+  <tr class="ejec"><th>Resultado obtenido</th><td colspan="3"></td></tr>
+  <tr class="ejec"><th>Estado</th><td colspan="3">☐ Conforme &nbsp;&nbsp; ☐ No conforme &nbsp;&nbsp; ☐ No aplica &nbsp;&nbsp; Fecha: ___/___/_____ &nbsp;&nbsp; Responsable: __________</td></tr>
+  </tbody>
+</table>
+<table class="caso">
+  <thead><tr><th class="cid">CPA-019</th><th colspan="3">Seguimiento de la cantidad entregada</th></tr></thead>
+  <tbody>
+  <tr><th>Exigencias</th><td>LE-010</td><th class="corto">Prioridad</th><td class="corto">Alta</td></tr>
+  <tr><th>Clases cubiertas</th><td colspan="3">CP-V5, CP-V6</td></tr>
+  <tr><th>Precondiciones</th><td colspan="3">Pedido B de CPA-018 en curso.</td></tr>
+  <tr><th>Datos de entrada</th><td colspan="3"><p class='dato'>Pedido de 25 unidades dividido en entregas parciales.</p></td></tr>
+  <tr><th>Pasos</th><td colspan="3"><ol><li>Abrir el detalle del pedido tras la primera entrega parcial.</li><li>Abrirlo tras la última entrega.</li></ol></td></tr>
+  <tr><th>Resultado esperado</th><td colspan="3"><ul><li>Tras la primera entrega se ven la cantidad entregada y la pendiente (suman 25) y el pedido sigue En ruta.</li><li>Solo cuando se entregan las 25 unidades el pendiente es 0 y el pedido pasa a Entregado.</li></ul></td></tr>
+  <tr class="ejec"><th>Resultado obtenido</th><td colspan="3"></td></tr>
+  <tr class="ejec"><th>Estado</th><td colspan="3">☐ Conforme &nbsp;&nbsp; ☐ No conforme &nbsp;&nbsp; ☐ No aplica &nbsp;&nbsp; Fecha: ___/___/_____ &nbsp;&nbsp; Responsable: __________</td></tr>
+  </tbody>
+</table>
+<table class="caso">
+  <thead><tr><th class="cid">CPA-020</th><th colspan="3">Registro de la entrega efectiva</th></tr></thead>
+  <tbody>
+  <tr><th>Exigencias</th><td>LE-011</td><th class="corto">Prioridad</th><td class="corto">Media</td></tr>
+  <tr><th>Clases cubiertas</th><td colspan="3">PZ-V1, PZ-N1</td></tr>
+  <tr><th>Precondiciones</th><td colspan="3">Simulación de CPA-073 ejecutada hasta que se entreguen sus 10 pedidos.</td></tr>
+  <tr><th>Datos de entrada</th><td colspan="3"><p class='dato'>Un pedido entregado a tiempo (c0731) y el pedido entregado tarde (c0730).</p></td></tr>
+  <tr><th>Pasos</th><td colspan="3"><ol><li>Abrir el detalle de cada pedido entregado.</li></ol></td></tr>
+  <tr><th>Resultado esperado</th><td colspan="3"><ul><li>Se muestran la fecha y hora real de entrega (llegada al destino) con día, hora y minuto.</li><li>Para c0731 se muestra la holgura (hora límite − hora real), positiva.</li><li>Para c0730 se muestra el retraso (hora real − hora límite), no una holgura.</li></ul></td></tr>
+  <tr class="ejec"><th>Resultado obtenido</th><td colspan="3"></td></tr>
+  <tr class="ejec"><th>Estado</th><td colspan="3">☐ Conforme &nbsp;&nbsp; ☐ No conforme &nbsp;&nbsp; ☐ No aplica &nbsp;&nbsp; Fecha: ___/___/_____ &nbsp;&nbsp; Responsable: __________</td></tr>
+  </tbody>
+</table><h3 class='ag'>5.2. AG-02 · Planificador de Rutas (CPA-021 a CPA-062, CPA-080 y CPA-081)</h3>
+<table class="caso">
+  <thead><tr><th class="cid">CPA-021</th><th colspan="3">Retícula de la ciudad, coordenadas y red de calles</th></tr></thead>
+  <tbody>
+  <tr><th>Exigencias</th><td>LE-013, LE-014, LE-049, LE-050, LE-071</td><th class="corto">Prioridad</th><td class="corto">Alta</td></tr>
+  <tr><th>Clases cubiertas</th><td colspan="3">PM-V2, PM-V3</td></tr>
+  <tr><th>Precondiciones</th><td colspan="3">Simulación de 5 días con fecha de inicio 01/06/2029 y flota de 1 auto, 0 motos y 0 bicicletas, sin bloqueos.</td></tr>
+  <tr><th>Datos de entrada</th><td colspan="3"><p class='dato arch'>Archivo <code>datos/CPA-021/ventas.202906.txt</code>:</p><pre>01d08h00m:27,24,c0211,05,8</pre></td></tr>
+  <tr><th>Pasos</th><td colspan="3"><ol><li>Revisar el mapa: dimensiones, origen y calles.</li><li>Buscar alguna opción para editar las calles.</li><li>Subir el archivo, ejecutar la simulación y revisar la distancia de la ruta del pedido c0211.</li></ol></td></tr>
+  <tr><th>Resultado esperado</th><td colspan="3"><ul><li>El mapa representa una retícula de 70 × 50 km con el origen (0, 0) en el extremo inferior izquierdo.</li><li>Las rutas solo usan tramos horizontales y verticales, sin diagonales ni curvas.</li><li>No hay ninguna opción para que el usuario modifique la red de calles.</li><li>La distancia del almacén central (27, 14) al destino (27, 24) es de 10 km: cada tramo entre nodos contiguos mide 1 km.</li></ul></td></tr>
+  <tr class="ejec"><th>Resultado obtenido</th><td colspan="3"></td></tr>
+  <tr class="ejec"><th>Estado</th><td colspan="3">☐ Conforme &nbsp;&nbsp; ☐ No conforme &nbsp;&nbsp; ☐ No aplica &nbsp;&nbsp; Fecha: ___/___/_____ &nbsp;&nbsp; Responsable: __________</td></tr>
+  </tbody>
+</table>
+<table class="caso">
+  <thead><tr><th class="cid">CPA-022</th><th colspan="3">Ubicación e inventario inicial de los almacenes</th></tr></thead>
+  <tbody>
+  <tr><th>Exigencias</th><td>LE-015, LE-016, LE-072</td><th class="corto">Prioridad</th><td class="corto">Alta</td></tr>
+  <tr><th>Clases cubiertas</th><td colspan="3">SI-V1</td></tr>
+  <tr><th>Precondiciones</th><td colspan="3">Inicio de una simulación (00:00 del primer día).</td></tr>
+  <tr><th>Datos de entrada</th><td colspan="3"><p class='dato'>Configuración de almacenes del sistema.</p></td></tr>
+  <tr><th>Pasos</th><td colspan="3"><ol><li>Ubicar los almacenes en el mapa.</li><li>Abrir el detalle de cada almacén.</li></ol></td></tr>
+  <tr><th>Resultado esperado</th><td colspan="3"><ul><li>El almacén central se muestra en el nodo (27, 14), el Intermedio 1 en (12, 38) y el Intermedio 2 en (57, 27).</li><li>Las ubicaciones son fijas: no hay ninguna opción para cambiarlas.</li><li>El central figura con inventario ilimitado y siempre disponible.</li><li>Cada intermedio figura con 1 000 unidades de capacidad y 1 000 unidades de stock al inicio.</li></ul></td></tr>
+  <tr class="ejec"><th>Resultado obtenido</th><td colspan="3"></td></tr>
+  <tr class="ejec"><th>Estado</th><td colspan="3">☐ Conforme &nbsp;&nbsp; ☐ No conforme &nbsp;&nbsp; ☐ No aplica &nbsp;&nbsp; Fecha: ___/___/_____ &nbsp;&nbsp; Responsable: __________</td></tr>
+  </tbody>
+</table>
+<table class="caso">
+  <thead><tr><th class="cid">CPA-023</th><th colspan="3">Descuento de inventario al despachar desde un intermedio</th></tr></thead>
+  <tbody>
+  <tr><th>Exigencias</th><td>LE-018, LE-096</td><th class="corto">Prioridad</th><td class="corto">Alta</td></tr>
+  <tr><th>Clases cubiertas</th><td colspan="3">AL-V1, SI-V1</td></tr>
+  <tr><th>Precondiciones</th><td colspan="3">Simulación de 5 días con fecha de inicio 01/07/2029 y flota de 1 auto, 0 motos y 0 bicicletas, sin bloqueos.</td></tr>
+  <tr><th>Datos de entrada</th><td colspan="3"><p class='dato arch'>Archivo <code>datos/CPA-023/ventas.202907.txt</code>:</p><pre>01d08h00m:14,36,c0231,04,8   <span class='com'>(A: sale del central)</span><br>01d12h00m:14,36,c0232,20,8   <span class='com'>(B: sale del Intermedio 1)</span><br>01d13h30m:14,36,c0233,10,8   <span class='com'>(C: sale del Intermedio 1)</span></pre><p class='dato'>El destino (14, 36) está a 4 km del Intermedio 1 y a 35 km del central. Tras entregar A, el auto queda sin carga y retorna al Intermedio 1 (LE-063), desde donde atiende B y C. Los comentarios a la derecha no forman parte del archivo.</p></td></tr>
+  <tr><th>Pasos</th><td colspan="3"><ol><li>Subir el archivo y ejecutar la simulación.</li><li>Abrir el detalle del Intermedio 1 después del despacho de B y después del despacho de C.</li></ol></td></tr>
+  <tr><th>Resultado esperado</th><td colspan="3"><ul><li>B y C salen del Intermedio 1.</li><li>El stock del Intermedio 1 baja de 1 000 a 980 con B y a 970 con C.</li><li>El almacén muestra salidas planificadas por despacho de 20 y 10 unidades.</li></ul></td></tr>
+  <tr class="ejec"><th>Resultado obtenido</th><td colspan="3"></td></tr>
+  <tr class="ejec"><th>Estado</th><td colspan="3">☐ Conforme &nbsp;&nbsp; ☐ No conforme &nbsp;&nbsp; ☐ No aplica &nbsp;&nbsp; Fecha: ___/___/_____ &nbsp;&nbsp; Responsable: __________</td></tr>
+  </tbody>
+</table>
+<table class="caso">
+  <thead><tr><th class="cid">CPA-024</th><th colspan="3">Recarga diaria de los intermedios a las 23:59:59</th></tr></thead>
+  <tbody>
+  <tr><th>Exigencias</th><td>LE-017, LE-096</td><th class="corto">Prioridad</th><td class="corto">Alta</td></tr>
+  <tr><th>Clases cubiertas</th><td colspan="3">AL-V3, AL-V4 (límites 23:59 y 00:00)</td></tr>
+  <tr><th>Precondiciones</th><td colspan="3">Simulación de CPA-023 en curso, con el Intermedio 1 en 970 unidades.</td></tr>
+  <tr><th>Datos de entrada</th><td colspan="3"><p class='dato'>Stock del Intermedio 1 después de los despachos de CPA-023.</p></td></tr>
+  <tr><th>Pasos</th><td colspan="3"><ol><li>Pausar a las 23:59 del 01/07/2029 y anotar el stock.</li><li>Reanudar y pausar a las 00:00 del 02/07/2029.</li></ol></td></tr>
+  <tr><th>Resultado esperado</th><td colspan="3"><ul><li>A las 23:59 el stock sigue en 970.</li><li>A las 00:00 el stock es 1 000 (recarga instantánea).</li><li>El almacén muestra un ingreso por recarga de 30 unidades.</li></ul></td></tr>
+  <tr class="ejec"><th>Resultado obtenido</th><td colspan="3"></td></tr>
+  <tr class="ejec"><th>Estado</th><td colspan="3">☐ Conforme &nbsp;&nbsp; ☐ No conforme &nbsp;&nbsp; ☐ No aplica &nbsp;&nbsp; Fecha: ___/___/_____ &nbsp;&nbsp; Responsable: __________</td></tr>
+  </tbody>
+</table>
+<table class="caso">
+  <thead><tr><th class="cid">CPA-025</th><th colspan="3">Configuración de la flota e identificación de unidades</th></tr></thead>
+  <tbody>
+  <tr><th>Exigencias</th><td>LE-019, LE-051, LE-060, LE-061</td><th class="corto">Prioridad</th><td class="corto">Alta</td></tr>
+  <tr><th>Clases cubiertas</th><td colspan="3">EJ-V1, EJ-V5, EJ-V6</td></tr>
+  <tr><th>Precondiciones</th><td colspan="3">Pantalla «Configuración de escenario».</td></tr>
+  <tr><th>Datos de entrada</th><td colspan="3"><p class='dato'>Flota: 5 autos, 3 motos y 2 bicicletas.</p></td></tr>
+  <tr><th>Pasos</th><td colspan="3"><ol><li>Configurar la flota e iniciar una simulación de 5 días.</li><li>Abrir el panel de unidades.</li></ol></td></tr>
+  <tr><th>Resultado esperado</th><td colspan="3"><ul><li>El panel lista 10 unidades: A-01 a A-05, M-01 a M-03 y B-01 a B-02.</li><li>El prefijo del código identifica el tipo (A auto, M moto, B bicicleta) y ningún código se repite.</li><li>Al inicio todas las unidades están en el almacén central (27, 14).</li></ul></td></tr>
+  <tr class="ejec"><th>Resultado obtenido</th><td colspan="3"></td></tr>
+  <tr class="ejec"><th>Estado</th><td colspan="3">☐ Conforme &nbsp;&nbsp; ☐ No conforme &nbsp;&nbsp; ☐ No aplica &nbsp;&nbsp; Fecha: ___/___/_____ &nbsp;&nbsp; Responsable: __________</td></tr>
+  </tbody>
+</table>
+<table class="caso">
+  <thead><tr><th class="cid">CPA-026</th><th colspan="3">Flota en los valores límite válidos</th></tr></thead>
+  <tbody>
+  <tr><th>Exigencias</th><td>LE-019</td><th class="corto">Prioridad</th><td class="corto">Alta</td></tr>
+  <tr><th>Clases cubiertas</th><td colspan="3">EJ-V5 (n = 0, n = 1, n = 50; total = 1)</td></tr>
+  <tr><th>Precondiciones</th><td colspan="3">Pantalla «Configuración de escenario».</td></tr>
+  <tr><th>Datos de entrada</th><td colspan="3"><p class='dato'>Configuración 1: 0 autos, 0 motos, 1 bicicleta. Configuración 2: 50 autos, 50 motos, 50 bicicletas.</p></td></tr>
+  <tr><th>Pasos</th><td colspan="3"><ol><li>Crear una simulación con cada configuración.</li></ol></td></tr>
+  <tr><th>Resultado esperado</th><td colspan="3"><ul><li>Ambas configuraciones se aceptan.</li><li>La configuración 1 muestra solo B-01; la 2 muestra 150 unidades.</li></ul></td></tr>
+  <tr class="ejec"><th>Resultado obtenido</th><td colspan="3"></td></tr>
+  <tr class="ejec"><th>Estado</th><td colspan="3">☐ Conforme &nbsp;&nbsp; ☐ No conforme &nbsp;&nbsp; ☐ No aplica &nbsp;&nbsp; Fecha: ___/___/_____ &nbsp;&nbsp; Responsable: __________</td></tr>
+  </tbody>
+</table>
+<table class="caso">
+  <thead><tr><th class="cid">CPA-027</th><th colspan="3">Flota sin unidades</th></tr></thead>
+  <tbody>
+  <tr><th>Exigencias</th><td>LE-019</td><th class="corto">Prioridad</th><td class="corto">Alta</td></tr>
+  <tr><th>Clases cubiertas</th><td colspan="3">EJ-I3</td></tr>
+  <tr><th>Precondiciones</th><td colspan="3">Pantalla «Configuración de escenario».</td></tr>
+  <tr><th>Datos de entrada</th><td colspan="3"><p class='dato'>0 autos, 0 motos, 0 bicicletas.</p></td></tr>
+  <tr><th>Pasos</th><td colspan="3"><ol><li>Configurar la flota e intentar ejecutar.</li></ol></td></tr>
+  <tr><th>Resultado esperado</th><td colspan="3"><ul><li>El botón «Ejecutar simulación» queda deshabilitado.</li><li>Se indica que la flota debe tener al menos 1 unidad en total, con 0 a 50 unidades por tipo.</li></ul></td></tr>
+  <tr class="ejec"><th>Resultado obtenido</th><td colspan="3"></td></tr>
+  <tr class="ejec"><th>Estado</th><td colspan="3">☐ Conforme &nbsp;&nbsp; ☐ No conforme &nbsp;&nbsp; ☐ No aplica &nbsp;&nbsp; Fecha: ___/___/_____ &nbsp;&nbsp; Responsable: __________</td></tr>
+  </tbody>
+</table>
+<table class="caso">
+  <thead><tr><th class="cid">CPA-028</th><th colspan="3">Flota con valores fuera de rango</th></tr></thead>
+  <tbody>
+  <tr><th>Exigencias</th><td>LE-019</td><th class="corto">Prioridad</th><td class="corto">Alta</td></tr>
+  <tr><th>Clases cubiertas</th><td colspan="3">EJ-I4 (n = 51), EJ-I5 (n = −1)</td></tr>
+  <tr><th>Precondiciones</th><td colspan="3">Pantalla «Configuración de escenario».</td></tr>
+  <tr><th>Datos de entrada</th><td colspan="3"><p class='dato'>Intento 1: 51 autos, 15 motos, 12 bicicletas. Intento 2: −1 autos, 15 motos, 12 bicicletas.</p></td></tr>
+  <tr><th>Pasos</th><td colspan="3"><ol><li>Ingresar cada configuración e intentar ejecutar.</li></ol></td></tr>
+  <tr><th>Resultado esperado</th><td colspan="3"><ul><li>Con 51 autos no se permite crear la simulación y se informa el máximo de 50 por tipo.</li><li>Un valor negativo no se acepta: el campo vuelve a 0 o se rechaza con un mensaje.</li></ul></td></tr>
+  <tr class="ejec"><th>Resultado obtenido</th><td colspan="3"></td></tr>
+  <tr class="ejec"><th>Estado</th><td colspan="3">☐ Conforme &nbsp;&nbsp; ☐ No conforme &nbsp;&nbsp; ☐ No aplica &nbsp;&nbsp; Fecha: ___/___/_____ &nbsp;&nbsp; Responsable: __________</td></tr>
+  </tbody>
+</table>
+<table class="caso">
+  <thead><tr><th class="cid">CPA-029</th><th colspan="3">Cambio de flota con la ejecución en curso</th></tr></thead>
+  <tbody>
+  <tr><th>Exigencias</th><td>LE-051</td><th class="corto">Prioridad</th><td class="corto">Alta</td></tr>
+  <tr><th>Clases cubiertas</th><td colspan="3">EJ-I6</td></tr>
+  <tr><th>Precondiciones</th><td colspan="3">Simulación en curso creada en CPA-025.</td></tr>
+  <tr><th>Datos de entrada</th><td colspan="3"><p class='dato'>Intento de pasar a 6 autos.</p></td></tr>
+  <tr><th>Pasos</th><td colspan="3"><ol><li>Buscar en la corrida alguna opción para cambiar la flota.</li><li>Revisar el panel de unidades.</li></ol></td></tr>
+  <tr><th>Resultado esperado</th><td colspan="3"><ul><li>No hay ninguna opción para cambiar la flota con la ejecución en curso.</li><li>La flota se mantiene en 10 unidades hasta terminar la ejecución.</li></ul></td></tr>
+  <tr class="ejec"><th>Resultado obtenido</th><td colspan="3"></td></tr>
+  <tr class="ejec"><th>Estado</th><td colspan="3">☐ Conforme &nbsp;&nbsp; ☐ No conforme &nbsp;&nbsp; ☐ No aplica &nbsp;&nbsp; Fecha: ___/___/_____ &nbsp;&nbsp; Responsable: __________</td></tr>
+  </tbody>
+</table>
+<table class="caso">
+  <thead><tr><th class="cid">CPA-030</th><th colspan="3">Parámetros de capacidad, velocidad y costo por tipo de unidad</th></tr></thead>
+  <tbody>
+  <tr><th>Exigencias</th><td>LE-020, LE-021, LE-022</td><th class="corto">Prioridad</th><td class="corto">Media</td></tr>
+  <tr><th>Clases cubiertas</th><td colspan="3">PR-V1, PR-V2, PR-V3 (valores por defecto y valor modificado)</td></tr>
+  <tr><th>Precondiciones</th><td colspan="3">Acceso a la configuración de parámetros de la operación.</td></tr>
+  <tr><th>Datos de entrada</th><td colspan="3"><p class='dato'>Valores por defecto: auto 24 u., 40 km/h y S/ 8,00 por km; moto 8 u., 25 km/h y S/ 6,00 por km; bicicleta 4 u., 12 km/h y S/ 3,00 por km.</p><p class='dato'>Cambio: velocidad de la moto a 30 km/h.</p></td></tr>
+  <tr><th>Pasos</th><td colspan="3"><ol><li>Revisar los parámetros por defecto.</li><li>Cambiar la velocidad de la moto e iniciar una ejecución.</li><li>Revisar el tiempo estimado de un tramo de 10 km recorrido por una moto.</li></ol></td></tr>
+  <tr><th>Resultado esperado</th><td colspan="3"><ul><li>Los parámetros por defecto coinciden con los de la situación auténtica indicados en los datos.</li><li>El cambio de velocidad se aplica desde la siguiente planificación.</li><li>Con 30 km/h, el tramo de 10 km se estima en 20 min (con 25 km/h serían 24 min).</li></ul></td></tr>
+  <tr class="ejec"><th>Resultado obtenido</th><td colspan="3"></td></tr>
+  <tr class="ejec"><th>Estado</th><td colspan="3">☐ Conforme &nbsp;&nbsp; ☐ No conforme &nbsp;&nbsp; ☐ No aplica &nbsp;&nbsp; Fecha: ___/___/_____ &nbsp;&nbsp; Responsable: __________</td></tr>
+  </tbody>
+</table>
+<table class="caso">
+  <thead><tr><th class="cid">CPA-080</th><th colspan="3">Parámetros de unidad no válidos</th></tr></thead>
+  <tbody>
+  <tr><th>Exigencias</th><td>LE-020, LE-021, LE-022</td><th class="corto">Prioridad</th><td class="corto">Media</td></tr>
+  <tr><th>Clases cubiertas</th><td colspan="3">PR-I1, PR-I2, PR-I3; PR-V1 y PR-V3 en sus límites (capacidad 1, costo 0)</td></tr>
+  <tr><th>Precondiciones</th><td colspan="3">Acceso a la configuración de parámetros de la operación.</td></tr>
+  <tr><th>Datos de entrada</th><td colspan="3"><p class='dato'>Intento 1: capacidad de la moto 0. Intento 2: velocidad de la moto 0 km/h. Intento 3: costo de la moto −0,01 por km. Intento 4: capacidad de la moto 1. Intento 5: costo de la moto 0,00 por km.</p></td></tr>
+  <tr><th>Pasos</th><td colspan="3"><ol><li>Ingresar cada valor por separado e intentar guardar.</li></ol></td></tr>
+  <tr><th>Resultado esperado</th><td colspan="3"><ul><li>Los intentos 1, 2 y 3 se rechazan con un mensaje que indica el rango permitido y se conservan los valores vigentes.</li><li>Los intentos 4 y 5 se aceptan.</li></ul></td></tr>
+  <tr class="ejec"><th>Resultado obtenido</th><td colspan="3"></td></tr>
+  <tr class="ejec"><th>Estado</th><td colspan="3">☐ Conforme &nbsp;&nbsp; ☐ No conforme &nbsp;&nbsp; ☐ No aplica &nbsp;&nbsp; Fecha: ___/___/_____ &nbsp;&nbsp; Responsable: __________</td></tr>
+  </tbody>
+</table>
+<table class="caso">
+  <thead><tr><th class="cid">CPA-031</th><th colspan="3">Cambio de turno con la unidad en ruta</th></tr></thead>
+  <tbody>
+  <tr><th>Exigencias</th><td>LE-023, LE-062</td><th class="corto">Prioridad</th><td class="corto">Alta</td></tr>
+  <tr><th>Clases cubiertas</th><td colspan="3">TU-V1, TU-V2, TU-V5 (límites 14:59 y 15:00)</td></tr>
+  <tr><th>Precondiciones</th><td colspan="3">Simulación de 5 días con fecha de inicio 01/09/2029 y flota de 0 autos, 1 moto y 0 bicicletas.</td></tr>
+  <tr><th>Datos de entrada</th><td colspan="3"><p class='dato arch'>Archivo <code>datos/CPA-031/ventas.202909.txt</code>:</p><pre>01d14h00m:47,14,c0311,02,4</pre><p class='dato'>El destino está a 20 km del central: la moto llega a las 14:48 y su entrega de 1 h termina a las 15:48, después del cambio de turno de las 15:00.</p></td></tr>
+  <tr><th>Pasos</th><td colspan="3"><ol><li>Subir el archivo y ejecutar la simulación.</li><li>Pausar a las 14:01, a las 14:59 y a las 15:00 y revisar el estado y la ruta de M-01.</li><li>Revisar la hora de fin de la entrega.</li></ol></td></tr>
+  <tr><th>Resultado esperado</th><td colspan="3"><ul><li>M-01 sale con el pedido a las 14:00, sin esperar al cambio de turno.</li><li>A las 14:59 y a las 15:00 M-01 está «En entrega» en el destino: el relevo del conductor no la detiene ni la hace volver al almacén.</li><li>La entrega termina a las 15:48; el cambio de turno no agrega tiempo.</li><li>Los cambios de turno ocurren a las 07:00, 15:00 y 23:00.</li></ul></td></tr>
+  <tr class="ejec"><th>Resultado obtenido</th><td colspan="3"></td></tr>
+  <tr class="ejec"><th>Estado</th><td colspan="3">☐ Conforme &nbsp;&nbsp; ☐ No conforme &nbsp;&nbsp; ☐ No aplica &nbsp;&nbsp; Fecha: ___/___/_____ &nbsp;&nbsp; Responsable: __________</td></tr>
+  </tbody>
+</table>
+<table class="caso">
+  <thead><tr><th class="cid">CPA-032</th><th colspan="3">Reserva de refrigerio</th></tr></thead>
+  <tbody>
+  <tr><th>Exigencias</th><td>LE-024, LE-062</td><th class="corto">Prioridad</th><td class="corto">Alta</td></tr>
+  <tr><th>Clases cubiertas</th><td colspan="3">TU-V3, TU-V4, TU-N1 (límites 06:59/07:00 y 22:59/23:00)</td></tr>
+  <tr><th>Precondiciones</th><td colspan="3">Simulación de 5 días con fecha de inicio 01/01/2027 y flota por defecto.</td></tr>
+  <tr><th>Datos de entrada</th><td colspan="3"><p class='dato'>Flota por defecto.</p></td></tr>
+  <tr><th>Pasos</th><td colspan="3"><ol><li>Revisar el panel de unidades en cada turno del día 1 y anotar el inicio y el fin del refrigerio de cada unidad.</li><li>Pausar a las 06:59, 07:00, 22:59 y 23:00 y anotar el turno vigente.</li></ol></td></tr>
+  <tr><th>Resultado esperado</th><td colspan="3"><ul><li>Cada unidad tiene exactamente 1 h de refrigerio por turno, con estado «En refrigerio».</li><li>Ningún refrigerio empieza antes de 1 h después del inicio del turno ni termina después de 1 h antes de su fin: en el turno de 07:00 a 15:00, entre las 08:00 y las 14:00; en el de 15:00 a 23:00, entre las 16:00 y las 22:00; en el de 23:00 a 07:00, entre las 00:00 y las 06:00.</li><li>A las 06:59 rige el turno de 23:00 a 07:00 y a las 07:00 el de 07:00 a 15:00; a las 22:59 rige el de 15:00 a 23:00 y a las 23:00 el de 23:00 a 07:00.</li><li>Durante el refrigerio no se asignan pedidos a la unidad.</li></ul></td></tr>
+  <tr class="ejec"><th>Resultado obtenido</th><td colspan="3"></td></tr>
+  <tr class="ejec"><th>Estado</th><td colspan="3">☐ Conforme &nbsp;&nbsp; ☐ No conforme &nbsp;&nbsp; ☐ No aplica &nbsp;&nbsp; Fecha: ___/___/_____ &nbsp;&nbsp; Responsable: __________</td></tr>
+  </tbody>
+</table>
+<table class="caso">
+  <thead><tr><th class="cid">CPA-033</th><th colspan="3">Tiempo de recorrido, tiempo de entrega y tramo en curso</th></tr></thead>
+  <tbody>
+  <tr><th>Exigencias</th><td>LE-025, LE-031, LE-064</td><th class="corto">Prioridad</th><td class="corto">Alta</td></tr>
+  <tr><th>Clases cubiertas</th><td colspan="3">CP-V1</td></tr>
+  <tr><th>Precondiciones</th><td colspan="3">Simulación de 5 días con fecha de inicio 01/10/2029 y flota de 0 autos, 1 moto y 0 bicicletas, sin bloqueos.</td></tr>
+  <tr><th>Datos de entrada</th><td colspan="3"><p class='dato arch'>Archivo <code>datos/CPA-033/ventas.202910.txt</code>:</p><pre>01d08h00m:37,14,c0331,05,8</pre><p class='dato'>El destino está a 10 km del almacén central.</p></td></tr>
+  <tr><th>Pasos</th><td colspan="3"><ol><li>Subir el archivo y ejecutar la simulación.</li><li>Abrir el detalle de M-01 mientras está en ruta.</li><li>Observarla al llegar al destino.</li></ol></td></tr>
+  <tr><th>Resultado esperado</th><td colspan="3"><ul><li>El tramo en curso muestra el nodo de origen, el nodo de destino, la hora de salida y la hora estimada de llegada.</li><li>La llegada estimada es la hora de salida + 24 min (10 km a 25 km/h).</li><li>Tras llegar, la unidad permanece 1 h en entrega antes de seguir; la carga en el almacén no suma tiempo.</li></ul></td></tr>
+  <tr class="ejec"><th>Resultado obtenido</th><td colspan="3"></td></tr>
+  <tr class="ejec"><th>Estado</th><td colspan="3">☐ Conforme &nbsp;&nbsp; ☐ No conforme &nbsp;&nbsp; ☐ No aplica &nbsp;&nbsp; Fecha: ___/___/_____ &nbsp;&nbsp; Responsable: __________</td></tr>
+  </tbody>
+</table>
+<table class="caso">
+  <thead><tr><th class="cid">CPA-034</th><th colspan="3">Planificación con el algoritmo metaheurístico y tiempo de cómputo</th></tr></thead>
+  <tbody>
+  <tr><th>Exigencias</th><td>LE-026, LE-027, LE-059</td><th class="corto">Prioridad</th><td class="corto">Alta</td></tr>
+  <tr><th>Clases cubiertas</th><td colspan="3">— (escenario observable, sección 2.3)</td></tr>
+  <tr><th>Precondiciones</th><td colspan="3">Simulación de 5 días con fecha de inicio 01/01/2027 y flota por defecto.</td></tr>
+  <tr><th>Datos de entrada</th><td colspan="3"><p class='dato'>Datos base del periodo.</p></td></tr>
+  <tr><th>Pasos</th><td colspan="3"><ol><li>Revisar la bitácora o el panel de planificación tras varias replanificaciones.</li></ol></td></tr>
+  <tr><th>Resultado esperado</th><td colspan="3"><ul><li>Cada planificación indica el algoritmo metaheurístico que la generó (el seleccionado en el ISA, implementado en Java).</li><li>La asignación de pedidos a unidades y las rutas provienen de ese algoritmo.</li><li>Cada planificación registra su tiempo de cómputo (Ta) en milisegundos.</li></ul></td></tr>
+  <tr class="ejec"><th>Resultado obtenido</th><td colspan="3"></td></tr>
+  <tr class="ejec"><th>Estado</th><td colspan="3">☐ Conforme &nbsp;&nbsp; ☐ No conforme &nbsp;&nbsp; ☐ No aplica &nbsp;&nbsp; Fecha: ___/___/_____ &nbsp;&nbsp; Responsable: __________</td></tr>
+  </tbody>
+</table>
+<table class="caso">
+  <thead><tr><th class="cid">CPA-035</th><th colspan="3">Consolidación de pedidos sin exceder la capacidad</th></tr></thead>
+  <tbody>
+  <tr><th>Exigencias</th><td>LE-028, LE-029, LE-033</td><th class="corto">Prioridad</th><td class="corto">Alta</td></tr>
+  <tr><th>Clases cubiertas</th><td colspan="3">CP-V1, CP-V2, CP-N1</td></tr>
+  <tr><th>Precondiciones</th><td colspan="3">Simulación de 5 días con fecha de inicio 01/11/2029 y flota de 0 autos, 1 moto (capacidad 8) y 0 bicicletas.</td></tr>
+  <tr><th>Datos de entrada</th><td colspan="3"><p class='dato arch'>Archivo <code>datos/CPA-035/ventas.202911.txt</code>:</p><pre>01d08h00m:47,14,c0351,03,8<br>01d08h00m:47,13,c0352,03,8<br>01d08h00m:47,12,c0353,02,8<br>01d08h00m:47,11,c0354,01,36</pre><p class='dato'>Los tres primeros suman 8 unidades (= capacidad) y están en nodos contiguos.</p></td></tr>
+  <tr><th>Pasos</th><td colspan="3"><ol><li>Subir el archivo y ejecutar la simulación.</li><li>Revisar la ruta de la moto a las 08:00.</li><li>Seguir la ejecución hasta la entrega del cuarto pedido.</li></ol></td></tr>
+  <tr><th>Resultado esperado</th><td colspan="3"><ul><li>Los pedidos c0351, c0352 y c0353 van en la misma salida (8 de 8 unidades) y la ruta muestra su orden de visita.</li><li>El pedido c0354 no se agrega a esa salida porque superaría la capacidad: se atiende en una salida posterior (1 de 8 unidades).</li><li>Ninguna salida lleva más de 8 unidades.</li></ul></td></tr>
+  <tr class="ejec"><th>Resultado obtenido</th><td colspan="3"></td></tr>
+  <tr class="ejec"><th>Estado</th><td colspan="3">☐ Conforme &nbsp;&nbsp; ☐ No conforme &nbsp;&nbsp; ☐ No aplica &nbsp;&nbsp; Fecha: ___/___/_____ &nbsp;&nbsp; Responsable: __________</td></tr>
+  </tbody>
+</table>
+<table class="caso">
+  <thead><tr><th class="cid">CPA-036</th><th colspan="3">Selección del almacén de origen</th></tr></thead>
+  <tbody>
+  <tr><th>Exigencias</th><td>LE-030</td><th class="corto">Prioridad</th><td class="corto">Alta</td></tr>
+  <tr><th>Clases cubiertas</th><td colspan="3">AL-V1, AL-V2</td></tr>
+  <tr><th>Precondiciones</th><td colspan="3">Parte 1: ejecución de CPA-023. Parte 2: simulación de 5 días con fecha de inicio 01/08/2029 y flota de 1 auto, 0 motos y 0 bicicletas.</td></tr>
+  <tr><th>Datos de entrada</th><td colspan="3"><p class='dato'>Parte 2: los mismos pedidos de CPA-023 y un bloqueo que rodea al Intermedio 1 durante todo el día 1 y lo deja inaccesible.</p><p class='dato arch'>Archivo <code>datos/CPA-036/ventas.202908.txt</code>:</p><pre>01d08h00m:14,36,c0361,04,8<br>01d12h00m:14,36,c0362,20,8<br>01d13h30m:14,36,c0363,10,8</pre><p class='dato arch'>Archivo <code>datos/CPA-036/bloqueo.202908.txt</code>:</p><pre>01d00h00m-01d23h59m:11,37,13,37,13,39,11,39,11,38</pre></td></tr>
+  <tr><th>Pasos</th><td colspan="3"><ol><li>Parte 1: en la ejecución de CPA-023, revisar el almacén de origen de B y C.</li><li>Parte 2: subir ambos archivos, ejecutar la simulación y revisar el almacén de origen de c0362 y c0363 y el stock del Intermedio 1.</li></ol></td></tr>
+  <tr><th>Resultado esperado</th><td colspan="3"><ul><li>Parte 1: B y C salen del Intermedio 1, el almacén con stock más cercano al destino (4 km).</li><li>Parte 2: c0362 y c0363 salen del almacén central, el siguiente almacén con stock más cercano (35 km); ningún despacho sale del Intermedio 1 y su stock sigue en 1 000.</li></ul></td></tr>
+  <tr class="ejec"><th>Resultado obtenido</th><td colspan="3"></td></tr>
+  <tr class="ejec"><th>Estado</th><td colspan="3">☐ Conforme &nbsp;&nbsp; ☐ No conforme &nbsp;&nbsp; ☐ No aplica &nbsp;&nbsp; Fecha: ___/___/_____ &nbsp;&nbsp; Responsable: __________</td></tr>
+  </tbody>
+</table>
+<table class="caso">
+  <thead><tr><th class="cid">CPA-037</th><th colspan="3">Rutas dentro del plazo con planificación factible</th></tr></thead>
+  <tbody>
+  <tr><th>Exigencias</th><td>LE-032, LE-086</td><th class="corto">Prioridad</th><td class="corto">Alta</td></tr>
+  <tr><th>Clases cubiertas</th><td colspan="3">PZ-V1, PZ-V2</td></tr>
+  <tr><th>Precondiciones</th><td colspan="3">Simulación de 5 días con fecha de inicio 01/01/2027 y flota por defecto.</td></tr>
+  <tr><th>Datos de entrada</th><td colspan="3"><p class='dato'>Datos base del periodo.</p></td></tr>
+  <tr><th>Pasos</th><td colspan="3"><ol><li>Ejecutar la simulación hasta el final.</li><li>Exportar o revisar el listado completo de pedidos entregados.</li></ol></td></tr>
+  <tr><th>Resultado esperado</th><td colspan="3"><ul><li>Todos los pedidos llegan a su destino a más tardar en su hora límite, salvo los que el sistema registró como sin planificación factible, con su causa (LE-032).</li><li>El indicador de cumplimiento coincide con el porcentaje calculado sobre el listado.</li></ul></td></tr>
+  <tr class="ejec"><th>Resultado obtenido</th><td colspan="3"></td></tr>
+  <tr class="ejec"><th>Estado</th><td colspan="3">☐ Conforme &nbsp;&nbsp; ☐ No conforme &nbsp;&nbsp; ☐ No aplica &nbsp;&nbsp; Fecha: ___/___/_____ &nbsp;&nbsp; Responsable: __________</td></tr>
+  </tbody>
+</table>
+<table class="caso">
+  <thead><tr><th class="cid">CPA-038</th><th colspan="3">Pedido sin planificación factible</th></tr></thead>
+  <tbody>
+  <tr><th>Exigencias</th><td>LE-032, LE-067</td><th class="corto">Prioridad</th><td class="corto">Alta</td></tr>
+  <tr><th>Clases cubiertas</th><td colspan="3">PZ-N1</td></tr>
+  <tr><th>Precondiciones</th><td colspan="3">Simulación hasta el colapso con fecha de inicio 01/12/2029 y flota de 0 autos, 0 motos y 1 bicicleta (capacidad 4, 12 km/h).</td></tr>
+  <tr><th>Datos de entrada</th><td colspan="3"><p class='dato arch'>Archivo <code>datos/CPA-038/ventas.202912.txt</code>:</p><pre>01d11h00m:47,14,c0381,08,4</pre><p class='dato'>El pedido necesita dos viajes de la bicicleta. El destino está a 20 km del central (1 h 40 min): la segunda carga no puede llegar antes de las 17:00 (ida, entrega de 1 h, regreso e ida), después de la hora límite de las 15:00.</p></td></tr>
+  <tr><th>Pasos</th><td colspan="3"><ol><li>Subir el archivo y ejecutar la simulación.</li><li>Esperar a que la ejecución se detenga.</li></ol></td></tr>
+  <tr><th>Resultado esperado</th><td colspan="3"><ul><li>El sistema registra el pedido c0381 y la causa de que no haya planificación factible.</li><li>Se declara el colapso logístico con el pedido c0381, su causa y el instante del incumplimiento (01/12/2029 15:00, hora límite del pedido).</li><li>La ejecución queda en estado Colapsada.</li></ul></td></tr>
+  <tr class="ejec"><th>Resultado obtenido</th><td colspan="3"></td></tr>
+  <tr class="ejec"><th>Estado</th><td colspan="3">☐ Conforme &nbsp;&nbsp; ☐ No conforme &nbsp;&nbsp; ☐ No aplica &nbsp;&nbsp; Fecha: ___/___/_____ &nbsp;&nbsp; Responsable: __________</td></tr>
+  </tbody>
+</table>
+<table class="caso">
+  <thead><tr><th class="cid">CPA-039</th><th colspan="3">Costo de la operación por ruta y total</th></tr></thead>
+  <tbody>
+  <tr><th>Exigencias</th><td>LE-034, LE-035, LE-087</td><th class="corto">Prioridad</th><td class="corto">Alta</td></tr>
+  <tr><th>Clases cubiertas</th><td colspan="3">PR-V3</td></tr>
+  <tr><th>Precondiciones</th><td colspan="3">Ejecución de CPA-033 (1 moto), con los costos por defecto.</td></tr>
+  <tr><th>Datos de entrada</th><td colspan="3"><p class='dato arch'>Archivo <code>datos/CPA-033/ventas.202910.txt</code> (definido en otro caso):</p><pre>01d08h00m:37,14,c0331,05,8</pre></td></tr>
+  <tr><th>Pasos</th><td colspan="3"><ol><li>Ejecutar hasta que la moto vuelva al almacén central.</li><li>Abrir el reporte de costos del plan.</li><li>Revisar los indicadores de la operación.</li></ol></td></tr>
+  <tr><th>Resultado esperado</th><td colspan="3"><ul><li>La moto recorre 20 km: 10 km al destino y 10 km de retorno al almacén central.</li><li>El costo de la ruta de la moto es S/ 120,00 (20 km × S/ 6,00).</li><li>El costo total es la suma de km × costo por km de cada tipo de unidad: S/ 120,00.</li><li>Se muestran el costo total y los kilómetros recorridos de la operación (20 km).</li></ul></td></tr>
+  <tr class="ejec"><th>Resultado obtenido</th><td colspan="3"></td></tr>
+  <tr class="ejec"><th>Estado</th><td colspan="3">☐ Conforme &nbsp;&nbsp; ☐ No conforme &nbsp;&nbsp; ☐ No aplica &nbsp;&nbsp; Fecha: ___/___/_____ &nbsp;&nbsp; Responsable: __________</td></tr>
+  </tbody>
+</table>
+<table class="caso">
+  <thead><tr><th class="cid">CPA-040</th><th colspan="3">Exclusión de nodos bloqueados y fin de la vigencia</th></tr></thead>
+  <tbody>
+  <tr><th>Exigencias</th><td>LE-036, LE-066, LE-083</td><th class="corto">Prioridad</th><td class="corto">Alta</td></tr>
+  <tr><th>Clases cubiertas</th><td colspan="3">AB-V2, AB-V3 (límites: fin de la vigencia y fin + 1 min)</td></tr>
+  <tr><th>Precondiciones</th><td colspan="3">Simulación de 5 días con fecha de inicio 01/01/2030 y flota de 1 auto, 0 motos y 0 bicicletas.</td></tr>
+  <tr><th>Datos de entrada</th><td colspan="3"><p class='dato arch'>Archivo <code>datos/CPA-040/ventas.203001.txt</code>:</p><pre>01d08h00m:47,14,c0401,02,8<br>01d18h30m:47,14,c0402,02,8</pre><p class='dato arch'>Archivo <code>datos/CPA-040/bloqueo.203001.txt</code>:</p><pre>01d06h00m-01d18h00m:37,4,37,24</pre></td></tr>
+  <tr><th>Pasos</th><td colspan="3"><ol><li>Subir ambos archivos y ejecutar la simulación.</li><li>A las 08:00, revisar el mapa y la ruta del pedido c0401.</li><li>Pausar a las 18:00 y a las 18:01 y revisar el mapa.</li><li>Revisar la ruta del pedido c0402.</li></ol></td></tr>
+  <tr><th>Resultado esperado</th><td colspan="3"><ul><li>A las 08:00 el bloqueo se ve en el mapa y la ruta de c0401 no pasa por ningún nodo con x = 37 y 4 ≤ y ≤ 24: rodea el bloqueo y mide 42 km en lugar de 20 km.</li><li>A las 18:00 el bloqueo todavía se muestra (la vigencia incluye el minuto de fin).</li><li>A las 18:01 el bloqueo ya no se muestra.</li><li>La ruta de c0402 va en línea recta por y = 14 y mide 20 km.</li></ul></td></tr>
+  <tr class="ejec"><th>Resultado obtenido</th><td colspan="3"></td></tr>
+  <tr class="ejec"><th>Estado</th><td colspan="3">☐ Conforme &nbsp;&nbsp; ☐ No conforme &nbsp;&nbsp; ☐ No aplica &nbsp;&nbsp; Fecha: ___/___/_____ &nbsp;&nbsp; Responsable: __________</td></tr>
+  </tbody>
+</table>
+<table class="caso">
+  <thead><tr><th class="cid">CPA-041</th><th colspan="3">Replanificación ante un bloqueo</th></tr></thead>
+  <tbody>
+  <tr><th>Exigencias</th><td>LE-037</td><th class="corto">Prioridad</th><td class="corto">Alta</td></tr>
+  <tr><th>Clases cubiertas</th><td colspan="3">AB-V2</td></tr>
+  <tr><th>Precondiciones</th><td colspan="3">Simulación de 5 días con fecha de inicio 01/02/2030, flota de 1 auto, 0 motos y 0 bicicletas y Sa = 30 min.</td></tr>
+  <tr><th>Datos de entrada</th><td colspan="3"><p class='dato arch'>Archivo <code>datos/CPA-041/ventas.203002.txt</code>:</p><pre>01d08h00m:7,14,c0411,02,4</pre><p class='dato arch'>Archivo <code>datos/CPA-041/bloqueo.203002.txt</code>:</p><pre>01d08h10m-01d20h00m:17,4,17,24</pre><p class='dato'>Por y = 14, el auto llegaría a (17, 14) hacia las 08:15, con el bloqueo ya vigente.</p></td></tr>
+  <tr><th>Pasos</th><td colspan="3"><ol><li>Subir ambos archivos y ejecutar la simulación.</li><li>Revisar la ruta del auto a las 08:00 y después de la replanificación de las 08:30.</li><li>Seguir al auto hasta la entrega.</li></ol></td></tr>
+  <tr><th>Resultado esperado</th><td colspan="3"><ul><li>El auto no pasa por ningún nodo con x = 17 y 4 ≤ y ≤ 24 mientras el bloqueo está vigente, ya sea porque el plan de las 08:00 lo anticipa o porque la replanificación cambia la ruta.</li><li>El auto llega al destino del pedido c0411 antes de su hora límite (12:00).</li></ul></td></tr>
+  <tr class="ejec"><th>Resultado obtenido</th><td colspan="3"></td></tr>
+  <tr class="ejec"><th>Estado</th><td colspan="3">☐ Conforme &nbsp;&nbsp; ☐ No conforme &nbsp;&nbsp; ☐ No aplica &nbsp;&nbsp; Fecha: ___/___/_____ &nbsp;&nbsp; Responsable: __________</td></tr>
+  </tbody>
+</table>
+<table class="caso">
+  <thead><tr><th class="cid">CPA-042</th><th colspan="3">Media vuelta ante un nodo bloqueado</th></tr></thead>
+  <tbody>
+  <tr><th>Exigencias</th><td>LE-055</td><th class="corto">Prioridad</th><td class="corto">Alta</td></tr>
+  <tr><th>Clases cubiertas</th><td colspan="3">AB-V2</td></tr>
+  <tr><th>Precondiciones</th><td colspan="3">Simulación de 5 días con fecha de inicio 01/03/2030 y flota de 1 auto, 0 motos y 0 bicicletas.</td></tr>
+  <tr><th>Datos de entrada</th><td colspan="3"><p class='dato arch'>Archivo <code>datos/CPA-042/ventas.203003.txt</code>:</p><pre>01d08h00m:47,14,c0421,02,8</pre><p class='dato arch'>Archivo <code>datos/CPA-042/bloqueo.203003.txt</code>:</p><pre>01d08h08m-01d20h00m:33,4,33,24</pre><p class='dato'>El auto sale a las 08:00 por y = 14 y alcanza (32, 14) a las 08:07; el bloqueo de (33, 14) empieza mientras recorre el tramo (32, 14)–(33, 14).</p></td></tr>
+  <tr><th>Pasos</th><td colspan="3"><ol><li>Subir ambos archivos y ejecutar la simulación.</li><li>Comprobar en el detalle de la ruta que el plan de las 08:00 pasa por (33, 14). Si el plan ya evita el bloqueo, el caso no aplica a esta ejecución.</li><li>Observar al auto entre las 08:07 y las 08:12.</li></ol></td></tr>
+  <tr><th>Resultado esperado</th><td colspan="3"><ul><li>El auto no atraviesa el nodo (33, 14) ni gira hacia los lados.</li><li>Retorna por el mismo tramo hasta (32, 14) y sigue una ruta que rodea el bloqueo.</li><li>Los kilómetros recorridos incluyen el tramo de ida y vuelta.</li></ul></td></tr>
+  <tr class="ejec"><th>Resultado obtenido</th><td colspan="3"></td></tr>
+  <tr class="ejec"><th>Estado</th><td colspan="3">☐ Conforme &nbsp;&nbsp; ☐ No conforme &nbsp;&nbsp; ☐ No aplica &nbsp;&nbsp; Fecha: ___/___/_____ &nbsp;&nbsp; Responsable: __________</td></tr>
+  </tbody>
+</table>
+<table class="caso">
+  <thead><tr><th class="cid">CPA-043</th><th colspan="3">Carga masiva de un archivo de bloqueos válido</th></tr></thead>
+  <tbody>
+  <tr><th>Exigencias</th><td>LE-038</td><th class="corto">Prioridad</th><td class="corto">Alta</td></tr>
+  <tr><th>Clases cubiertas</th><td colspan="3">AB-V1 (límites: inicio = fin; puntos en el borde de la retícula)</td></tr>
+  <tr><th>Precondiciones</th><td colspan="3">Pantalla «Configuración de escenario».</td></tr>
+  <tr><th>Datos de entrada</th><td colspan="3"><p class='dato arch'>Archivo <code>datos/CPA-043/bloqueo.202901.txt</code>:</p><pre>01d06h00m-01d18h00m:10,10,10,20         <span class='com'>(dos puntos)</span><br>01d08h00m-01d08h00m:30,05,40,05,40,15   <span class='com'>(inicio = fin, tres puntos)</span><br>02d00h00m-03d00h00m:00,00,00,50         <span class='com'>(borde x = 0)</span><br>02d10h00m-02d12h00m:60,50,70,50         <span class='com'>(termina en (70, 50))</span></pre><p class='dato'>Los comentarios a la derecha no forman parte del archivo.</p></td></tr>
+  <tr><th>Pasos</th><td colspan="3"><ol><li>En Bloqueos, pulsar «Subir archivo» y elegir el archivo.</li></ol></td></tr>
+  <tr><th>Resultado esperado</th><td colspan="3"><ul><li>El sistema informa 4 bloqueos válidos del mes 202901.</li><li>Se muestra «Guardado para el mes 202901».</li></ul></td></tr>
+  <tr class="ejec"><th>Resultado obtenido</th><td colspan="3"></td></tr>
+  <tr class="ejec"><th>Estado</th><td colspan="3">☐ Conforme &nbsp;&nbsp; ☐ No conforme &nbsp;&nbsp; ☐ No aplica &nbsp;&nbsp; Fecha: ___/___/_____ &nbsp;&nbsp; Responsable: __________</td></tr>
+  </tbody>
+</table>
+<table class="caso">
+  <thead><tr><th class="cid">CPA-044</th><th colspan="3">Archivo de bloqueos con registros inválidos</th></tr></thead>
+  <tbody>
+  <tr><th>Exigencias</th><td>LE-038</td><th class="corto">Prioridad</th><td class="corto">Alta</td></tr>
+  <tr><th>Clases cubiertas</th><td colspan="3">AB-I1, AB-I2, AB-I3, AB-I4, AB-I5 (una clase inválida por línea)</td></tr>
+  <tr><th>Precondiciones</th><td colspan="3">Pantalla «Configuración de escenario».</td></tr>
+  <tr><th>Datos de entrada</th><td colspan="3"><p class='dato arch'>Archivo <code>datos/CPA-044/bloqueo.202902.txt</code>:</p><pre>01d06h00m-01d18h00m:10,10,10,20   <span class='com'>(1: válida)</span><br>01d18h00m-01d06h00m:10,10,10,20   <span class='com'>(2: fin anterior al inicio)</span><br>01d06h00m-01d18h00m:10,10         <span class='com'>(3: un solo punto)</span><br>01d06h00m-01d18h00m:65,50,71,50   <span class='com'>(4: punto fuera)</span><br>01d06h00m-01d18h00m:10,10,20,20   <span class='com'>(5: diagonal)</span><br>01d06h00m-01dXXh00m:10,10,10,20   <span class='com'>(6: marca mal formada)</span></pre><p class='dato'>Los comentarios a la derecha no forman parte del archivo.</p></td></tr>
+  <tr><th>Pasos</th><td colspan="3"><ol><li>Subir el archivo como archivo de bloqueos.</li></ol></td></tr>
+  <tr><th>Resultado esperado</th><td colspan="3"><ul><li>Se reportan 5 líneas con error (2, 3, 4, 5 y 6).</li><li>El archivo no se guarda y no se puede ejecutar la simulación hasta corregirlo.</li></ul></td></tr>
+  <tr class="ejec"><th>Resultado obtenido</th><td colspan="3"></td></tr>
+  <tr class="ejec"><th>Estado</th><td colspan="3">☐ Conforme &nbsp;&nbsp; ☐ No conforme &nbsp;&nbsp; ☐ No aplica &nbsp;&nbsp; Fecha: ___/___/_____ &nbsp;&nbsp; Responsable: __________</td></tr>
+  </tbody>
+</table>
+<table class="caso">
+  <thead><tr><th class="cid">CPA-045</th><th colspan="3">Registro de una avería válida en el día a día</th></tr></thead>
+  <tbody>
+  <tr><th>Exigencias</th><td>LE-039, LE-068, LE-045</td><th class="corto">Prioridad</th><td class="corto">Alta</td></tr>
+  <tr><th>Clases cubiertas</th><td colspan="3">AV-V1, AV-V4, AV-V5, AV-V7</td></tr>
+  <tr><th>Precondiciones</th><td colspan="3">Operación día a día en curso con la unidad M-03 en ruta y con carga.</td></tr>
+  <tr><th>Datos de entrada</th><td colspan="3"><p class='dato'>Ejecución «dia-a-dia»; cuerpo {"unidad": "M-03", "tipo": 1}.</p></td></tr>
+  <tr><th>Pasos</th><td colspan="3"><ol><li>En Swagger UI, ejecutar POST /api/ejecuciones/dia-a-dia/averias con los datos.</li><li>Revisar la respuesta y el panel «Averías activas» del visualizador.</li></ol></td></tr>
+  <tr><th>Resultado esperado</th><td colspan="3"><ul><li>La API responde 202 con la unidad, el tipo, el instante de la avería (el del reloj de la operación) y la reincorporación estimada (instante + 2 h).</li><li>La avería se ubica en la posición actual de la unidad.</li><li>M-03 pasa al estado «Averiada» y aparece en «Averías activas».</li><li>El registro dispara una replanificación de los pedidos de M-03 sin esperar al siguiente Sa.</li></ul></td></tr>
+  <tr class="ejec"><th>Resultado obtenido</th><td colspan="3"></td></tr>
+  <tr class="ejec"><th>Estado</th><td colspan="3">☐ Conforme &nbsp;&nbsp; ☐ No conforme &nbsp;&nbsp; ☐ No aplica &nbsp;&nbsp; Fecha: ___/___/_____ &nbsp;&nbsp; Responsable: __________</td></tr>
+  </tbody>
+</table>
+<table class="caso">
+  <thead><tr><th class="cid">CPA-046</th><th colspan="3">Avería con tipo inválido</th></tr></thead>
+  <tbody>
+  <tr><th>Exigencias</th><td>LE-039</td><th class="corto">Prioridad</th><td class="corto">Alta</td></tr>
+  <tr><th>Clases cubiertas</th><td colspan="3">AV-I1</td></tr>
+  <tr><th>Precondiciones</th><td colspan="3">Operación día a día en curso.</td></tr>
+  <tr><th>Datos de entrada</th><td colspan="3"><p class='dato'>Unidad A-01. Intento 1: tipo 4. Intento 2: tipo 0.</p></td></tr>
+  <tr><th>Pasos</th><td colspan="3"><ol><li>Ejecutar POST /api/ejecuciones/dia-a-dia/averias con cada tipo.</li></ol></td></tr>
+  <tr><th>Resultado esperado</th><td colspan="3"><ul><li>La API responde 400 con «Tipo de averia invalido: 4 (use 1, 2 o 3)» o con 0, según el intento.</li><li>La unidad no cambia de estado.</li></ul></td></tr>
+  <tr class="ejec"><th>Resultado obtenido</th><td colspan="3"></td></tr>
+  <tr class="ejec"><th>Estado</th><td colspan="3">☐ Conforme &nbsp;&nbsp; ☐ No conforme &nbsp;&nbsp; ☐ No aplica &nbsp;&nbsp; Fecha: ___/___/_____ &nbsp;&nbsp; Responsable: __________</td></tr>
+  </tbody>
+</table>
+<table class="caso">
+  <thead><tr><th class="cid">CPA-047</th><th colspan="3">Avería de una unidad inexistente o ya averiada</th></tr></thead>
+  <tbody>
+  <tr><th>Exigencias</th><td>LE-039</td><th class="corto">Prioridad</th><td class="corto">Alta</td></tr>
+  <tr><th>Clases cubiertas</th><td colspan="3">AV-I2, AV-I3</td></tr>
+  <tr><th>Precondiciones</th><td colspan="3">Operación día a día en curso con la flota por defecto (10 autos) y M-03 averiada (CPA-045).</td></tr>
+  <tr><th>Datos de entrada</th><td colspan="3"><p class='dato'>Intento 1: unidad A-11, tipo 1. Intento 2: unidad M-03, tipo 2.</p></td></tr>
+  <tr><th>Pasos</th><td colspan="3"><ol><li>Ejecutar POST /api/ejecuciones/dia-a-dia/averias con cada intento.</li></ol></td></tr>
+  <tr><th>Resultado esperado</th><td colspan="3"><ul><li>A-11: la API responde 404 porque la unidad no pertenece a la flota de la ejecución.</li><li>M-03: la API responde 409 con «La unidad M-03 ya esta averiada».</li><li>No se registra ninguna avería nueva.</li></ul></td></tr>
+  <tr class="ejec"><th>Resultado obtenido</th><td colspan="3"></td></tr>
+  <tr class="ejec"><th>Estado</th><td colspan="3">☐ Conforme &nbsp;&nbsp; ☐ No conforme &nbsp;&nbsp; ☐ No aplica &nbsp;&nbsp; Fecha: ___/___/_____ &nbsp;&nbsp; Responsable: __________</td></tr>
+  </tbody>
+</table>
+<table class="caso">
+  <thead><tr><th class="cid">CPA-048</th><th colspan="3">Avería de tipo 1 y redistribución de pedidos</th></tr></thead>
+  <tbody>
+  <tr><th>Exigencias</th><td>LE-052, LE-040, LE-093, LE-094</td><th class="corto">Prioridad</th><td class="corto">Alta</td></tr>
+  <tr><th>Clases cubiertas</th><td colspan="3">AV-V1, AV-V5, AV-V7 (límites: avería + 1 h 59 min y + 2 h)</td></tr>
+  <tr><th>Precondiciones</th><td colspan="3">Simulación de 5 días con fecha de inicio 01/04/2030 y flota de 2 autos, 0 motos y 0 bicicletas.</td></tr>
+  <tr><th>Datos de entrada</th><td colspan="3"><p class='dato arch'>Archivo <code>datos/CPA-048/ventas.203004.txt</code>:</p><pre>01d08h00m:47,14,c0481,05,8<br>01d08h00m:47,16,c0482,05,8</pre><p class='dato'>Avería de tipo 1 registrada con POST /api/ejecuciones/{id}/averias a las 08:15 sobre el auto que lleva los pedidos (U).</p></td></tr>
+  <tr><th>Pasos</th><td colspan="3"><ol><li>Subir el archivo, ejecutar la simulación y pausarla a las 08:15.</li><li>Anotar el código del auto en ruta con los pedidos (U) y registrar la avería.</li><li>Revisar a qué unidad pasan los pedidos de U.</li><li>Pausar a las 10:14 y a las 10:15 y revisar el estado de U.</li></ol></td></tr>
+  <tr><th>Resultado esperado</th><td colspan="3"><ul><li>Los pedidos de U se asignan al otro auto y llegan a su destino antes de su hora límite (16:00).</li><li>Las demás unidades pueden pasar por el punto de la avería: la vía no queda bloqueada.</li><li>A las 10:14 U sigue «Averiada» en el lugar de la avería y el mapa muestra el distintivo de la avería de tipo 1.</li><li>A las 10:15 U vuelve a operar desde ese lugar y el distintivo deja de mostrarse.</li></ul></td></tr>
+  <tr class="ejec"><th>Resultado obtenido</th><td colspan="3"></td></tr>
+  <tr class="ejec"><th>Estado</th><td colspan="3">☐ Conforme &nbsp;&nbsp; ☐ No conforme &nbsp;&nbsp; ☐ No aplica &nbsp;&nbsp; Fecha: ___/___/_____ &nbsp;&nbsp; Responsable: __________</td></tr>
+  </tbody>
+</table>
+<table class="caso">
+  <thead><tr><th class="cid">CPA-049</th><th colspan="3">Avería de tipo 2 y traslado al almacén central</th></tr></thead>
+  <tbody>
+  <tr><th>Exigencias</th><td>LE-053, LE-040, LE-093, LE-094</td><th class="corto">Prioridad</th><td class="corto">Alta</td></tr>
+  <tr><th>Clases cubiertas</th><td colspan="3">AV-V2, AV-V5, TU-V1</td></tr>
+  <tr><th>Precondiciones</th><td colspan="3">Ejecución de CPA-048 repetida desde el inicio, con una avería de tipo 2 en lugar de la de tipo 1.</td></tr>
+  <tr><th>Datos de entrada</th><td colspan="3"><p class='dato arch'>Archivo <code>datos/CPA-048/ventas.203004.txt</code> (definido en otro caso):</p><pre>01d08h00m:47,14,c0481,05,8<br>01d08h00m:47,16,c0482,05,8</pre><p class='dato'>Avería de tipo 2 sobre U a las 08:15 (turno de 07:00 a 15:00).</p></td></tr>
+  <tr><th>Pasos</th><td colspan="3"><ol><li>Registrar la avería.</li><li>Pausar a las 12:14 y a las 12:15.</li><li>Seguir el estado de U hasta que vuelva a estar disponible.</li></ol></td></tr>
+  <tr><th>Resultado esperado</th><td colspan="3"><ul><li>Hasta las 12:14 U permanece en el lugar de la avería con el distintivo de la avería de tipo 2.</li><li>A las 12:15 U aparece en el almacén central, junto con la carga que no se trasbordó.</li><li>U no vuelve a estar disponible antes de las 23:00 del 01/04/2030 (fin del turno siguiente) y está disponible a partir de esa hora.</li><li>Los pedidos de U se redistribuyen.</li></ul></td></tr>
+  <tr class="ejec"><th>Resultado obtenido</th><td colspan="3"></td></tr>
+  <tr class="ejec"><th>Estado</th><td colspan="3">☐ Conforme &nbsp;&nbsp; ☐ No conforme &nbsp;&nbsp; ☐ No aplica &nbsp;&nbsp; Fecha: ___/___/_____ &nbsp;&nbsp; Responsable: __________</td></tr>
+  </tbody>
+</table>
+<table class="caso">
+  <thead><tr><th class="cid">CPA-050</th><th colspan="3">Avería de tipo 3 y traslado al almacén central</th></tr></thead>
+  <tbody>
+  <tr><th>Exigencias</th><td>LE-054, LE-040, LE-093, LE-094</td><th class="corto">Prioridad</th><td class="corto">Alta</td></tr>
+  <tr><th>Clases cubiertas</th><td colspan="3">AV-V3, AV-V5, TU-V2</td></tr>
+  <tr><th>Precondiciones</th><td colspan="3">Ejecución de CPA-048 repetida desde el inicio, con una avería de tipo 3 en lugar de la de tipo 1.</td></tr>
+  <tr><th>Datos de entrada</th><td colspan="3"><p class='dato arch'>Archivo <code>datos/CPA-048/ventas.203004.txt</code> (definido en otro caso):</p><pre>01d08h00m:47,14,c0481,05,8<br>01d08h00m:47,16,c0482,05,8</pre><p class='dato'>Avería de tipo 3 sobre U a las 08:15 del 01/04/2030.</p></td></tr>
+  <tr><th>Pasos</th><td colspan="3"><ol><li>Registrar la avería.</li><li>Pausar a las 12:15.</li><li>Seguir el estado de U en los días siguientes.</li></ol></td></tr>
+  <tr><th>Resultado esperado</th><td colspan="3"><ul><li>U se muestra con el distintivo de la avería de tipo 3, distinto de los de tipo 1 y 2.</li><li>A las 12:15 U se traslada al almacén central, junto con la carga que no se trasbordó.</li><li>U no está disponible durante al menos 2 días (hasta las 08:15 del 03/04/2030).</li><li>U se reincorpora a las 15:00 del 03/04/2030, al inicio del turno de 15:00 a 23:00.</li></ul></td></tr>
+  <tr class="ejec"><th>Resultado obtenido</th><td colspan="3"></td></tr>
+  <tr class="ejec"><th>Estado</th><td colspan="3">☐ Conforme &nbsp;&nbsp; ☐ No conforme &nbsp;&nbsp; ☐ No aplica &nbsp;&nbsp; Fecha: ___/___/_____ &nbsp;&nbsp; Responsable: __________</td></tr>
+  </tbody>
+</table>
+<table class="caso">
+  <thead><tr><th class="cid">CPA-051</th><th colspan="3">Carga masiva de averías</th></tr></thead>
+  <tbody>
+  <tr><th>Exigencias</th><td>LE-065</td><th class="corto">Prioridad</th><td class="corto">Alta</td></tr>
+  <tr><th>Clases cubiertas</th><td colspan="3">AV-V1, AV-V2, AV-V3, AV-V4, AV-V7, AV-I1, AV-I2, AV-I4</td></tr>
+  <tr><th>Precondiciones</th><td colspan="3">Pantalla «Configuración de escenario» con la flota por defecto.</td></tr>
+  <tr><th>Datos de entrada</th><td colspan="3"><p class='dato'>Archivo de averías con 6 líneas, en el formato de averías del sistema:</p><p class='dato'>Válidas: A-01 tipo 1 a las 01d10h00m; M-02 tipo 2 a las 01d11h00m; B-03 tipo 3 a las 01d12h00m.</p><p class='dato'>Inválidas: A-02 tipo 4 (AV-I1); A-99 tipo 1 (AV-I2); M-04 tipo 1 con marca «01dXXh00m» (AV-I4).</p></td></tr>
+  <tr><th>Pasos</th><td colspan="3"><ol><li>Subir el archivo de averías.</li><li>Quitar las líneas inválidas, volver a subirlo y ejecutar la simulación.</li></ol></td></tr>
+  <tr><th>Resultado esperado</th><td colspan="3"><ul><li>El primer intento reporta las 3 líneas inválidas con su número y no guarda el archivo.</li><li>El archivo corregido se acepta con la unidad, el tipo y el instante de cada avería.</li><li>Durante la simulación, cada avería ocurre en su instante sobre la unidad indicada.</li></ul></td></tr>
+  <tr class="ejec"><th>Resultado obtenido</th><td colspan="3"></td></tr>
+  <tr class="ejec"><th>Estado</th><td colspan="3">☐ Conforme &nbsp;&nbsp; ☐ No conforme &nbsp;&nbsp; ☐ No aplica &nbsp;&nbsp; Fecha: ___/___/_____ &nbsp;&nbsp; Responsable: __________</td></tr>
+  </tbody>
+</table>
+<table class="caso">
+  <thead><tr><th class="cid">CPA-052</th><th colspan="3">Reasignación de carga en camino hacia el pedido más crítico</th></tr></thead>
+  <tbody>
+  <tr><th>Exigencias</th><td>LE-041, LE-042, LE-101</td><th class="corto">Prioridad</th><td class="corto">Alta</td></tr>
+  <tr><th>Clases cubiertas</th><td colspan="3">Condiciones (a), (b) y (c) de LE-041 satisfechas; AV-V2, AV-V5</td></tr>
+  <tr><th>Precondiciones</th><td colspan="3">Simulación de 5 días con fecha de inicio 01/05/2030 y flota de 0 autos, 2 motos y 0 bicicletas.</td></tr>
+  <tr><th>Datos de entrada</th><td colspan="3"><p class='dato arch'>Archivo <code>datos/CPA-052/ventas.203005.txt</code>:</p><pre>01d08h00m:47,10,c0521,05,4<br>01d08h00m:5,14,c0522,08,36</pre><p class='dato'>P1 = c0521 (5 u., hora límite 12:00), al este. P2 = c0522 (8 u., plazo 36 h), al oeste. Como 5 + 8 &gt; 8, van en motos distintas: U1 con P1 y U2 con P2.</p></td></tr>
+  <tr><th>Pasos</th><td colspan="3"><ol><li>Subir el archivo, ejecutar la simulación y pausarla a las 08:15.</li><li>Comprobar que U1 lleva solo P1 y U2 solo P2, ambas en ruta. Si no es así, el caso no aplica a esta ejecución.</li><li>Registrar una avería de tipo 2 en U1.</li><li>Revisar el pedido más crítico, la carga y la ruta de U2 y la cola de pedidos.</li></ol></td></tr>
+  <tr><th>Resultado esperado</th><td colspan="3"><ul><li>El sistema identifica a P1 como el pedido más crítico (menor holgura).</li><li>Se transfieren a P1 5 de las 8 unidades que lleva U2 (no más que la carga a bordo).</li><li>U2 llega a P1 antes de las 12:00 y luego entrega 3 unidades a P2, con holgura no negativa.</li><li>Las 5 unidades de P2 que U2 ya no puede cubrir vuelven a la cola de pedidos por atender.</li><li>Al quedar sin carga, U2 retorna a un almacén según LE-063.</li></ul></td></tr>
+  <tr class="ejec"><th>Resultado obtenido</th><td colspan="3"></td></tr>
+  <tr class="ejec"><th>Estado</th><td colspan="3">☐ Conforme &nbsp;&nbsp; ☐ No conforme &nbsp;&nbsp; ☐ No aplica &nbsp;&nbsp; Fecha: ___/___/_____ &nbsp;&nbsp; Responsable: __________</td></tr>
+  </tbody>
+</table>
+<table class="caso">
+  <thead><tr><th class="cid">CPA-053</th><th colspan="3">Reasignación descartada por holgura negativa</th></tr></thead>
+  <tbody>
+  <tr><th>Exigencias</th><td>LE-041</td><th class="corto">Prioridad</th><td class="corto">Alta</td></tr>
+  <tr><th>Clases cubiertas</th><td colspan="3">Condición (c) de LE-041 no satisfecha; AV-V2, AV-V5</td></tr>
+  <tr><th>Precondiciones</th><td colspan="3">Simulación de 5 días con fecha de inicio 01/06/2030 y flota de 0 autos, 2 motos y 0 bicicletas.</td></tr>
+  <tr><th>Datos de entrada</th><td colspan="3"><p class='dato arch'>Archivo <code>datos/CPA-053/ventas.203006.txt</code>:</p><pre>01d08h00m:47,10,c0531,05,4<br>01d08h00m:5,14,c0532,08,4</pre><p class='dato'>P1 = c0531 y P2 = c0532, ambos con hora límite 12:00 y en direcciones opuestas. Si U2 se desviara hacia P1, llegaría a P2 después de las 12:00.</p></td></tr>
+  <tr><th>Pasos</th><td colspan="3"><ol><li>Subir el archivo, ejecutar la simulación y pausarla a las 08:15.</li><li>Comprobar que U1 lleva solo P1 y U2 solo P2, ambas en ruta.</li><li>Registrar una avería de tipo 2 en U1.</li></ol></td></tr>
+  <tr><th>Resultado esperado</th><td colspan="3"><ul><li>No se transfiere carga desde U2.</li><li>La ruta y la carga de U2 no cambian, y U2 llega a P2 antes de las 12:00.</li><li>El sistema registra P1 como pedido sin planificación factible, con su causa (LE-032).</li></ul></td></tr>
+  <tr class="ejec"><th>Resultado obtenido</th><td colspan="3"></td></tr>
+  <tr class="ejec"><th>Estado</th><td colspan="3">☐ Conforme &nbsp;&nbsp; ☐ No conforme &nbsp;&nbsp; ☐ No aplica &nbsp;&nbsp; Fecha: ___/___/_____ &nbsp;&nbsp; Responsable: __________</td></tr>
+  </tbody>
+</table>
+<table class="caso">
+  <thead><tr><th class="cid">CPA-054</th><th colspan="3">Selección del escenario por parámetros</th></tr></thead>
+  <tbody>
+  <tr><th>Exigencias</th><td>LE-043</td><th class="corto">Prioridad</th><td class="corto">Alta</td></tr>
+  <tr><th>Clases cubiertas</th><td colspan="3">EJ-V1, EJ-V2, EJ-V3, EJ-I1</td></tr>
+  <tr><th>Precondiciones</th><td colspan="3">Sistema desplegado.</td></tr>
+  <tr><th>Datos de entrada</th><td colspan="3"><p class='dato'>Escenarios: Simulación de 5 días, Hasta el colapso, Día a día y un tipo «SEMANAL».</p></td></tr>
+  <tr><th>Pasos</th><td colspan="3"><ol><li>Crear una ejecución de cada escenario válido.</li><li>Pedir al servicio de ejecuciones crear el tipo «SEMANAL».</li></ol></td></tr>
+  <tr><th>Resultado esperado</th><td colspan="3"><ul><li>Cada escenario válido usa el mismo planificador y difiere solo en sus parámetros.</li><li>El día a día ya está en curso desde el arranque y no se crea dos veces.</li><li>El tipo «SEMANAL» se rechaza con «Tipo de escenario desconocido».</li></ul></td></tr>
+  <tr class="ejec"><th>Resultado obtenido</th><td colspan="3"></td></tr>
+  <tr class="ejec"><th>Estado</th><td colspan="3">☐ Conforme &nbsp;&nbsp; ☐ No conforme &nbsp;&nbsp; ☐ No aplica &nbsp;&nbsp; Fecha: ___/___/_____ &nbsp;&nbsp; Responsable: __________</td></tr>
+  </tbody>
+</table>
+<table class="caso">
+  <thead><tr><th class="cid">CPA-055</th><th colspan="3">Escenario día a día con ingreso manual y replanificación</th></tr></thead>
+  <tbody>
+  <tr><th>Exigencias</th><td>LE-044, LE-045, LE-012</td><th class="corto">Prioridad</th><td class="corto">Alta</td></tr>
+  <tr><th>Clases cubiertas</th><td colspan="3">EJ-V3, PM-V1, PM-V2, PM-V3, PM-V4, PM-V6</td></tr>
+  <tr><th>Precondiciones</th><td colspan="3">Operación día a día en curso con los datos de entrada cargados.</td></tr>
+  <tr><th>Datos de entrada</th><td colspan="3"><p class='dato'>Pedido manual: cliente «Bodega San Isidro», destino (50, 40), 6 unidades, plazo 4 h.</p></td></tr>
+  <tr><th>Pasos</th><td colspan="3"><ol><li>Registrar el pedido manual.</li><li>Revisar la respuesta del registro y el mapa.</li></ol></td></tr>
+  <tr><th>Resultado esperado</th><td colspan="3"><ul><li>El día a día procesa a la vez los pedidos y bloqueos cargados y los pedidos manuales.</li><li>El ingreso del pedido dispara una replanificación inmediata: se informan el tiempo de cómputo y las unidades despachadas.</li><li>El pedido aparece asignado a una unidad en el mapa.</li></ul></td></tr>
+  <tr class="ejec"><th>Resultado obtenido</th><td colspan="3"></td></tr>
+  <tr class="ejec"><th>Estado</th><td colspan="3">☐ Conforme &nbsp;&nbsp; ☐ No conforme &nbsp;&nbsp; ☐ No aplica &nbsp;&nbsp; Fecha: ___/___/_____ &nbsp;&nbsp; Responsable: __________</td></tr>
+  </tbody>
+</table>
+<table class="caso">
+  <thead><tr><th class="cid">CPA-056</th><th colspan="3">Ejecución de la simulación de 5 días</th></tr></thead>
+  <tbody>
+  <tr><th>Exigencias</th><td>LE-046, LE-069, LE-085, LE-089</td><th class="corto">Prioridad</th><td class="corto">Alta</td></tr>
+  <tr><th>Clases cubiertas</th><td colspan="3">EJ-V1, EJ-V4, EJ-V5</td></tr>
+  <tr><th>Precondiciones</th><td colspan="3">Pantalla «Configuración de escenario». Datos de ventas y bloqueos disponibles para el periodo.</td></tr>
+  <tr><th>Datos de entrada</th><td colspan="3"><p class='dato'>Fecha de inicio: 01/01/2027. Flota por defecto (10 autos, 15 motos, 12 bicicletas).</p></td></tr>
+  <tr><th>Pasos</th><td colspan="3"><ol><li>Elegir «Simulación 5 días», la fecha de inicio y la flota.</li><li>Pulsar «Ejecutar simulación».</li><li>Dejar correr la simulación hasta el final.</li></ol></td></tr>
+  <tr><th>Resultado esperado</th><td colspan="3"><ul><li>La simulación consume los pedidos y bloqueos de los archivos de entrada del periodo.</li><li>Se muestran la fecha y hora simuladas (precisión de minuto) y el tiempo simulado transcurrido.</li><li>Se muestran la fecha y hora reales y el tiempo real transcurrido desde el inicio.</li><li>La simulación termina al cumplirse 5 días simulados (06/01/2027 00:00) en estado Finalizada.</li></ul></td></tr>
+  <tr class="ejec"><th>Resultado obtenido</th><td colspan="3"></td></tr>
+  <tr class="ejec"><th>Estado</th><td colspan="3">☐ Conforme &nbsp;&nbsp; ☐ No conforme &nbsp;&nbsp; ☐ No aplica &nbsp;&nbsp; Fecha: ___/___/_____ &nbsp;&nbsp; Responsable: __________</td></tr>
+  </tbody>
+</table>
+<table class="caso">
+  <thead><tr><th class="cid">CPA-057</th><th colspan="3">Simulación hasta el colapso logístico</th></tr></thead>
+  <tbody>
+  <tr><th>Exigencias</th><td>LE-047, LE-067, LE-069</td><th class="corto">Prioridad</th><td class="corto">Alta</td></tr>
+  <tr><th>Clases cubiertas</th><td colspan="3">EJ-V2, PZ-N1</td></tr>
+  <tr><th>Precondiciones</th><td colspan="3">Pantalla «Configuración de escenario».</td></tr>
+  <tr><th>Datos de entrada</th><td colspan="3"><p class='dato'>Fecha de inicio: 01/03/2027, semana con tensión verificada en el IEN (con pedidos sin rutear). Flota por defecto.</p></td></tr>
+  <tr><th>Pasos</th><td colspan="3"><ol><li>Elegir «Hasta el colapso» y ejecutar.</li><li>Esperar a que la ejecución se detenga.</li></ol></td></tr>
+  <tr><th>Resultado esperado</th><td colspan="3"><ul><li>La ejecución se detiene en el instante en que un pedido incumple su plazo.</li><li>Se registran el instante del colapso (fecha, hora y minuto), el pedido que falla y la causa.</li><li>La ejecución queda en estado Colapsada.</li></ul></td></tr>
+  <tr class="ejec"><th>Resultado obtenido</th><td colspan="3"></td></tr>
+  <tr class="ejec"><th>Estado</th><td colspan="3">☐ Conforme &nbsp;&nbsp; ☐ No conforme &nbsp;&nbsp; ☐ No aplica &nbsp;&nbsp; Fecha: ___/___/_____ &nbsp;&nbsp; Responsable: __________</td></tr>
+  </tbody>
+</table>
+<table class="caso">
+  <thead><tr><th class="cid">CPA-058</th><th colspan="3">Fecha y hora de inicio con precisión de minuto</th></tr></thead>
+  <tbody>
+  <tr><th>Exigencias</th><td>LE-056</td><th class="corto">Prioridad</th><td class="corto">Alta</td></tr>
+  <tr><th>Clases cubiertas</th><td colspan="3">EJ-V4 (hora distinta de 00:00)</td></tr>
+  <tr><th>Precondiciones</th><td colspan="3">Pantalla «Configuración de escenario».</td></tr>
+  <tr><th>Datos de entrada</th><td colspan="3"><p class='dato'>Inicio: 01/01/2027 a las 08:30.</p></td></tr>
+  <tr><th>Pasos</th><td colspan="3"><ol><li>Ingresar la fecha y la hora de inicio.</li><li>Ejecutar la simulación.</li></ol></td></tr>
+  <tr><th>Resultado esperado</th><td colspan="3"><ul><li>El sistema pide la fecha y la hora (hh:mm) de inicio.</li><li>El reloj simulado arranca en 01/01/2027 08:30 y los pedidos anteriores a esa hora no se consideran nuevos.</li></ul></td></tr>
+  <tr class="ejec"><th>Resultado obtenido</th><td colspan="3"></td></tr>
+  <tr class="ejec"><th>Estado</th><td colspan="3">☐ Conforme &nbsp;&nbsp; ☐ No conforme &nbsp;&nbsp; ☐ No aplica &nbsp;&nbsp; Fecha: ___/___/_____ &nbsp;&nbsp; Responsable: __________</td></tr>
+  </tbody>
+</table>
+<table class="caso">
+  <thead><tr><th class="cid">CPA-059</th><th colspan="3">Ejecución sin fecha de inicio o sin datos para el periodo</th></tr></thead>
+  <tbody>
+  <tr><th>Exigencias</th><td>LE-056</td><th class="corto">Prioridad</th><td class="corto">Alta</td></tr>
+  <tr><th>Clases cubiertas</th><td colspan="3">EJ-I2, EJ-I7</td></tr>
+  <tr><th>Precondiciones</th><td colspan="3">Pantalla «Configuración de escenario».</td></tr>
+  <tr><th>Datos de entrada</th><td colspan="3"><p class='dato'>Intento 1: fecha de inicio vacía. Intento 2: fecha de inicio 01/01/2035, mes sin archivo de pedidos. Flota por defecto en ambos.</p></td></tr>
+  <tr><th>Pasos</th><td colspan="3"><ol><li>Intentar ejecutar la simulación con cada configuración.</li></ol></td></tr>
+  <tr><th>Resultado esperado</th><td colspan="3"><ul><li>Intento 1: el botón «Ejecutar simulación» queda deshabilitado y se indica que falta definir la fecha de inicio.</li><li>Intento 2: la ejecución se rechaza indicando que no hay datos de pedidos para el periodo.</li></ul></td></tr>
+  <tr class="ejec"><th>Resultado obtenido</th><td colspan="3"></td></tr>
+  <tr class="ejec"><th>Estado</th><td colspan="3">☐ Conforme &nbsp;&nbsp; ☐ No conforme &nbsp;&nbsp; ☐ No aplica &nbsp;&nbsp; Fecha: ___/___/_____ &nbsp;&nbsp; Responsable: __________</td></tr>
+  </tbody>
+</table>
+<table class="caso">
+  <thead><tr><th class="cid">CPA-060</th><th colspan="3">Bloques de consumo (Sc) y frecuencia de replanificación (Sa)</th></tr></thead>
+  <tbody>
+  <tr><th>Exigencias</th><td>LE-057, LE-058</td><th class="corto">Prioridad</th><td class="corto">Alta</td></tr>
+  <tr><th>Clases cubiertas</th><td colspan="3">PR-V4, PR-V5 (valores por defecto y modificados)</td></tr>
+  <tr><th>Precondiciones</th><td colspan="3">Acceso a los parámetros de ejecución. Factor de aceleración k = 180.</td></tr>
+  <tr><th>Datos de entrada</th><td colspan="3"><p class='dato'>Ejecución 1: Sa = 30 min y Sc = 3 min simulados (por defecto; 1 s real con k = 180).</p><p class='dato'>Ejecución 2: Sa = 60 min y Sc = 6 min simulados.</p></td></tr>
+  <tr><th>Pasos</th><td colspan="3"><ol><li>Ejecutar una simulación con la configuración 1 y revisar en la bitácora los instantes de planificación y de difusión del estado.</li><li>Repetir con la configuración 2.</li></ol></td></tr>
+  <tr><th>Resultado esperado</th><td colspan="3"><ul><li>Con Sa = 30 hay una planificación cada 30 min simulados; con Sa = 60, cada 60 min.</li><li>El estado se difunde en bloques de Sc: dos difusiones consecutivas están separadas por 3 min simulados en la ejecución 1 y por 6 min en la ejecución 2.</li></ul></td></tr>
+  <tr class="ejec"><th>Resultado obtenido</th><td colspan="3"></td></tr>
+  <tr class="ejec"><th>Estado</th><td colspan="3">☐ Conforme &nbsp;&nbsp; ☐ No conforme &nbsp;&nbsp; ☐ No aplica &nbsp;&nbsp; Fecha: ___/___/_____ &nbsp;&nbsp; Responsable: __________</td></tr>
+  </tbody>
+</table>
+<table class="caso">
+  <thead><tr><th class="cid">CPA-081</th><th colspan="3">Parámetros de ejecución no válidos</th></tr></thead>
+  <tbody>
+  <tr><th>Exigencias</th><td>LE-057, LE-058</td><th class="corto">Prioridad</th><td class="corto">Alta</td></tr>
+  <tr><th>Clases cubiertas</th><td colspan="3">PR-I4, PR-I5; PR-V4 en su límite (Sa = 1)</td></tr>
+  <tr><th>Precondiciones</th><td colspan="3">Acceso a los parámetros de ejecución.</td></tr>
+  <tr><th>Datos de entrada</th><td colspan="3"><p class='dato'>Intento 1: Sa = 0. Intento 2: Sa = −30. Intento 3: Sc = 0. Intento 4: Sa = 1.</p></td></tr>
+  <tr><th>Pasos</th><td colspan="3"><ol><li>Ingresar cada valor por separado e intentar ejecutar.</li></ol></td></tr>
+  <tr><th>Resultado esperado</th><td colspan="3"><ul><li>Los intentos 1, 2 y 3 se rechazan con un mensaje que indica el rango permitido y no se crea la ejecución.</li><li>El intento 4 se acepta.</li></ul></td></tr>
+  <tr class="ejec"><th>Resultado obtenido</th><td colspan="3"></td></tr>
+  <tr class="ejec"><th>Estado</th><td colspan="3">☐ Conforme &nbsp;&nbsp; ☐ No conforme &nbsp;&nbsp; ☐ No aplica &nbsp;&nbsp; Fecha: ___/___/_____ &nbsp;&nbsp; Responsable: __________</td></tr>
+  </tbody>
+</table>
+<table class="caso">
+  <thead><tr><th class="cid">CPA-061</th><th colspan="3">Retorno al almacén para recarga</th></tr></thead>
+  <tbody>
+  <tr><th>Exigencias</th><td>LE-063</td><th class="corto">Prioridad</th><td class="corto">Alta</td></tr>
+  <tr><th>Clases cubiertas</th><td colspan="3">AL-V5, AL-V6</td></tr>
+  <tr><th>Precondiciones</th><td colspan="3">Caso 1: simulación de 5 días con fecha de inicio 01/07/2030. Caso 2: con fecha de inicio 01/08/2030. Ambos con flota de 0 autos, 1 moto y 0 bicicletas.</td></tr>
+  <tr><th>Datos de entrada</th><td colspan="3"><p class='dato'>Caso 1:</p><p class='dato arch'>Archivo <code>datos/CPA-061/caso1/ventas.203007.txt</code>:</p><pre>01d08h00m:55,24,c0611,08,8</pre><p class='dato'>Caso 2: el mismo pedido y un bloqueo que rodea al Intermedio 2 durante todo el día 1 y lo deja inaccesible.</p><p class='dato arch'>Archivo <code>datos/CPA-061/caso2/ventas.203008.txt</code>:</p><pre>01d08h00m:55,24,c0612,08,8</pre><p class='dato arch'>Archivo <code>datos/CPA-061/caso2/bloqueo.203008.txt</code>:</p><pre>01d00h00m-01d23h59m:56,26,58,26,58,28,56,28,56,27</pre><p class='dato'>El destino (55, 24) está a 5 km del Intermedio 2, a 38 km del central y a 57 km del Intermedio 1.</p></td></tr>
+  <tr><th>Pasos</th><td colspan="3"><ol><li>En cada caso, subir los archivos, ejecutar la simulación y observar a qué almacén retorna la moto tras entregar las 8 unidades.</li></ol></td></tr>
+  <tr><th>Resultado esperado</th><td colspan="3"><ul><li>Caso 1: la moto queda sin carga y retorna al Intermedio 2 (5 km), el almacén con stock más cercano por la red de calles, y no al central (38 km).</li><li>Caso 2: con el Intermedio 2 inaccesible, la moto retorna al almacén central, el más cercano de los que puede alcanzar (38 km frente a 57 km del Intermedio 1).</li></ul></td></tr>
+  <tr class="ejec"><th>Resultado obtenido</th><td colspan="3"></td></tr>
+  <tr class="ejec"><th>Estado</th><td colspan="3">☐ Conforme &nbsp;&nbsp; ☐ No conforme &nbsp;&nbsp; ☐ No aplica &nbsp;&nbsp; Fecha: ___/___/_____ &nbsp;&nbsp; Responsable: __________</td></tr>
+  </tbody>
+</table>
+<table class="caso">
+  <thead><tr><th class="cid">CPA-062</th><th colspan="3">Bitácora de la ejecución</th></tr></thead>
+  <tbody>
+  <tr><th>Exigencias</th><td>LE-048</td><th class="corto">Prioridad</th><td class="corto">Media</td></tr>
+  <tr><th>Clases cubiertas</th><td colspan="3">— (escenario observable, sección 2.3)</td></tr>
+  <tr><th>Precondiciones</th><td colspan="3">Ejecución de CPA-040 con una avería de tipo 1 registrada a las 09:30 sobre A-01.</td></tr>
+  <tr><th>Datos de entrada</th><td colspan="3"><p class='dato'>Bloqueo de las 06:00 y avería de las 09:30 de esa ejecución.</p></td></tr>
+  <tr><th>Pasos</th><td colspan="3"><ol><li>Abrir la bitácora de eventos al terminar.</li></ol></td></tr>
+  <tr><th>Resultado esperado</th><td colspan="3"><ul><li>La bitácora registra el inicio, el fin y cada incidencia procesada (el bloqueo de las 06:00 y la avería de las 09:30), con su instante.</li></ul></td></tr>
+  <tr class="ejec"><th>Resultado obtenido</th><td colspan="3"></td></tr>
+  <tr class="ejec"><th>Estado</th><td colspan="3">☐ Conforme &nbsp;&nbsp; ☐ No conforme &nbsp;&nbsp; ☐ No aplica &nbsp;&nbsp; Fecha: ___/___/_____ &nbsp;&nbsp; Responsable: __________</td></tr>
+  </tbody>
+</table><h3 class='ag'>5.3. AG-03 · Visualizador (CPA-063 a CPA-079)</h3>
+<table class="caso">
+  <thead><tr><th class="cid">CPA-063</th><th colspan="3">Mapa de operación y posición de las unidades en tiempo real</th></tr></thead>
+  <tbody>
+  <tr><th>Exigencias</th><td>LE-070, LE-071, LE-072, LE-073, LE-074</td><th class="corto">Prioridad</th><td class="corto">Alta</td></tr>
+  <tr><th>Clases cubiertas</th><td colspan="3">— (escenario observable, sección 2.3)</td></tr>
+  <tr><th>Precondiciones</th><td colspan="3">Simulación de 5 días en curso con la flota por defecto.</td></tr>
+  <tr><th>Datos de entrada</th><td colspan="3"><p class='dato'>Flota por defecto.</p></td></tr>
+  <tr><th>Pasos</th><td colspan="3"><ol><li>Abrir el visualizador.</li><li>Observar una unidad en ruta durante 1 minuto real.</li></ol></td></tr>
+  <tr><th>Resultado esperado</th><td colspan="3"><ul><li>El mapa muestra la red de calles, los tres almacenes y la posición de cada unidad.</li><li>La posición de la unidad se actualiza a medida que avanza, sin recargar la página.</li></ul></td></tr>
+  <tr class="ejec"><th>Resultado obtenido</th><td colspan="3"></td></tr>
+  <tr class="ejec"><th>Estado</th><td colspan="3">☐ Conforme &nbsp;&nbsp; ☐ No conforme &nbsp;&nbsp; ☐ No aplica &nbsp;&nbsp; Fecha: ___/___/_____ &nbsp;&nbsp; Responsable: __________</td></tr>
+  </tbody>
+</table>
+<table class="caso">
+  <thead><tr><th class="cid">CPA-064</th><th colspan="3">Dos visualizadores simultáneos e independientes</th></tr></thead>
+  <tbody>
+  <tr><th>Exigencias</th><td>LE-075, LE-076</td><th class="corto">Prioridad</th><td class="corto">Media</td></tr>
+  <tr><th>Clases cubiertas</th><td colspan="3">— (1 y 2 visualizadores conectados)</td></tr>
+  <tr><th>Precondiciones</th><td colspan="3">Una simulación en curso.</td></tr>
+  <tr><th>Datos de entrada</th><td colspan="3"><p class='dato'>Dispositivo 1: computadora. Dispositivo 2: otra computadora o celular.</p></td></tr>
+  <tr><th>Pasos</th><td colspan="3"><ol><li>Abrir la misma corrida en ambos dispositivos.</li><li>En el dispositivo 1, acercar la zona del Intermedio 1; en el 2, desplazarse a la zona del central.</li></ol></td></tr>
+  <tr><th>Resultado esperado</th><td colspan="3"><ul><li>Ambos dispositivos muestran la misma ejecución y el mismo instante simulado.</li><li>El zoom y el desplazamiento de un dispositivo no afectan al otro.</li></ul></td></tr>
+  <tr class="ejec"><th>Resultado obtenido</th><td colspan="3"></td></tr>
+  <tr class="ejec"><th>Estado</th><td colspan="3">☐ Conforme &nbsp;&nbsp; ☐ No conforme &nbsp;&nbsp; ☐ No aplica &nbsp;&nbsp; Fecha: ___/___/_____ &nbsp;&nbsp; Responsable: __________</td></tr>
+  </tbody>
+</table>
+<table class="caso">
+  <thead><tr><th class="cid">CPA-065</th><th colspan="3">Detalle de una unidad, un pedido y un almacén</th></tr></thead>
+  <tbody>
+  <tr><th>Exigencias</th><td>LE-077</td><th class="corto">Prioridad</th><td class="corto">Alta</td></tr>
+  <tr><th>Clases cubiertas</th><td colspan="3">— (elemento unidad, pedido y almacén)</td></tr>
+  <tr><th>Precondiciones</th><td colspan="3">Simulación en curso.</td></tr>
+  <tr><th>Datos de entrada</th><td colspan="3"><p class='dato'>Unidad A-01, un pedido en ruta y el Intermedio 1.</p></td></tr>
+  <tr><th>Pasos</th><td colspan="3"><ol><li>Seleccionar cada elemento en el mapa o en los paneles.</li></ol></td></tr>
+  <tr><th>Resultado esperado</th><td colspan="3"><ul><li>Unidad: código, tipo, estado, carga y ruta.</li><li>Pedido: código, destino, cantidad, hora límite, estado y unidad asignada.</li><li>Almacén: ubicación (12, 38), stock y capacidad (1 000 unidades).</li></ul></td></tr>
+  <tr class="ejec"><th>Resultado obtenido</th><td colspan="3"></td></tr>
+  <tr class="ejec"><th>Estado</th><td colspan="3">☐ Conforme &nbsp;&nbsp; ☐ No conforme &nbsp;&nbsp; ☐ No aplica &nbsp;&nbsp; Fecha: ___/___/_____ &nbsp;&nbsp; Responsable: __________</td></tr>
+  </tbody>
+</table>
+<table class="caso">
+  <thead><tr><th class="cid">CPA-066</th><th colspan="3">Configuración de los rangos del semáforo</th></tr></thead>
+  <tbody>
+  <tr><th>Exigencias</th><td>LE-078</td><th class="corto">Prioridad</th><td class="corto">Alta</td></tr>
+  <tr><th>Clases cubiertas</th><td colspan="3">RS-V1</td></tr>
+  <tr><th>Precondiciones</th><td colspan="3">Acceso a la configuración de la operación.</td></tr>
+  <tr><th>Datos de entrada</th><td colspan="3"><p class='dato'>Holgura: rojo 0,25 y ámbar 0,60 (por defecto 0,15 y 0,40). Inventario: rojo 0,30 y ámbar 0,60 (por defecto 0,20 y 0,50).</p></td></tr>
+  <tr><th>Pasos</th><td colspan="3"><ol><li>Cambiar los rangos y guardar.</li><li>Observar los colores de los pedidos y de los intermedios.</li></ol></td></tr>
+  <tr><th>Resultado esperado</th><td colspan="3"><ul><li>Los nuevos rangos se aceptan y quedan vigentes.</li><li>Los colores verde, ámbar y rojo se recalculan con los nuevos cortes (por ejemplo, un intermedio con 550 unidades pasa de verde a ámbar).</li></ul></td></tr>
+  <tr class="ejec"><th>Resultado obtenido</th><td colspan="3"></td></tr>
+  <tr class="ejec"><th>Estado</th><td colspan="3">☐ Conforme &nbsp;&nbsp; ☐ No conforme &nbsp;&nbsp; ☐ No aplica &nbsp;&nbsp; Fecha: ___/___/_____ &nbsp;&nbsp; Responsable: __________</td></tr>
+  </tbody>
+</table>
+<table class="caso">
+  <thead><tr><th class="cid">CPA-067</th><th colspan="3">Rangos del semáforo inconsistentes</th></tr></thead>
+  <tbody>
+  <tr><th>Exigencias</th><td>LE-078</td><th class="corto">Prioridad</th><td class="corto">Alta</td></tr>
+  <tr><th>Clases cubiertas</th><td colspan="3">RS-I1, RS-I2 (límites: rojo = ámbar; cortes 0 y 1,20)</td></tr>
+  <tr><th>Precondiciones</th><td colspan="3">Acceso a la configuración de la operación.</td></tr>
+  <tr><th>Datos de entrada</th><td colspan="3"><p class='dato'>Intento 1: rojo 0,50 y ámbar 0,40. Intento 2: rojo 0,40 y ámbar 0,40. Intento 3: rojo 0,15 y ámbar 1,20. Intento 4: rojo 0 y ámbar 0,40.</p></td></tr>
+  <tr><th>Pasos</th><td colspan="3"><ol><li>Intentar guardar cada configuración.</li></ol></td></tr>
+  <tr><th>Resultado esperado</th><td colspan="3"><ul><li>El sistema rechaza las cuatro configuraciones con un mensaje que explica la regla (0 &lt; rojo &lt; ámbar &lt; 1).</li><li>Se conservan los rangos vigentes.</li></ul></td></tr>
+  <tr class="ejec"><th>Resultado obtenido</th><td colspan="3"></td></tr>
+  <tr class="ejec"><th>Estado</th><td colspan="3">☐ Conforme &nbsp;&nbsp; ☐ No conforme &nbsp;&nbsp; ☐ No aplica &nbsp;&nbsp; Fecha: ___/___/_____ &nbsp;&nbsp; Responsable: __________</td></tr>
+  </tbody>
+</table>
+<table class="caso">
+  <thead><tr><th class="cid">CPA-068</th><th colspan="3">Semáforo de cumplimiento de plazo del pedido</th></tr></thead>
+  <tbody>
+  <tr><th>Exigencias</th><td>LE-079</td><th class="corto">Prioridad</th><td class="corto">Media</td></tr>
+  <tr><th>Clases cubiertas</th><td colspan="3">SH-V1, SH-V2, SH-V3, SH-V4 (límites al 40 % y al 15 %); AV-V3, AV-V6</td></tr>
+  <tr><th>Precondiciones</th><td colspan="3">Simulación de 5 días con fecha de inicio 01/09/2030, flota de 0 autos, 0 motos y 1 bicicleta y rangos por defecto (rojo 0,15; ámbar 0,40).</td></tr>
+  <tr><th>Datos de entrada</th><td colspan="3"><p class='dato arch'>Archivo <code>datos/CPA-068/ventas.203009.txt</code>:</p><pre>01d08h00m:30,18,c0681,02,36</pre><p class='dato'>Avería de tipo 3 de B-01 registrada a las 07:00 del 01/09/2030, con la bicicleta en el almacén. Así el pedido sigue pendiente durante el día 2 (B-01 se reincorpora el 03/09/2030 a las 15:00).</p><p class='dato'>Hora límite del pedido: 02/09/2030 20:00.</p></td></tr>
+  <tr><th>Pasos</th><td colspan="3"><ol><li>Subir el archivo, ejecutar la simulación, pausarla a las 07:00 y registrar la avería.</li><li>Pausar el 02/09/2030 a las 05:35, 05:36, 05:37, 14:35, 14:36 y 14:37 y anotar el color del pedido.</li><li>Observar el color cuando el pedido se entrega.</li></ol></td></tr>
+  <tr><th>Resultado esperado</th><td colspan="3"><ul><li>05:35 (holgura 14 h 25 min) y 05:36 (14 h 24 min, exactamente 40 %): verde.</li><li>05:37 (14 h 23 min), 14:35 (5 h 25 min) y 14:36 (5 h 24 min, exactamente 15 %): ámbar.</li><li>14:37 (5 h 23 min): rojo.</li><li>Al entregarse, el pedido se muestra como cerrado, sin color de alerta.</li></ul></td></tr>
+  <tr class="ejec"><th>Resultado obtenido</th><td colspan="3"></td></tr>
+  <tr class="ejec"><th>Estado</th><td colspan="3">☐ Conforme &nbsp;&nbsp; ☐ No conforme &nbsp;&nbsp; ☐ No aplica &nbsp;&nbsp; Fecha: ___/___/_____ &nbsp;&nbsp; Responsable: __________</td></tr>
+  </tbody>
+</table>
+<table class="caso">
+  <thead><tr><th class="cid">CPA-069</th><th colspan="3">Semáforo de inventario de los intermedios</th></tr></thead>
+  <tbody>
+  <tr><th>Exigencias</th><td>LE-080, LE-091</td><th class="corto">Prioridad</th><td class="corto">Alta</td></tr>
+  <tr><th>Clases cubiertas</th><td colspan="3">SI-V1, SI-V2, SI-V3 (límites: f igual a cada corte y justo por debajo)</td></tr>
+  <tr><th>Precondiciones</th><td colspan="3">Ejecución de CPA-023 pausada a las 15:00 del 01/07/2029, con el Intermedio 1 en 970 unidades (f = 0,97).</td></tr>
+  <tr><th>Datos de entrada</th><td colspan="3"><p class='dato'>Cortes de inventario (rojo; ámbar): 1) 0,20; 0,50 (por defecto). 2) 0,20; 0,97. 3) 0,20; 0,98. 4) 0,97; 0,98. 5) 0,98; 0,99.</p></td></tr>
+  <tr><th>Pasos</th><td colspan="3"><ol><li>Con cada par de cortes, guardar la configuración y anotar el color del Intermedio 1 en el mapa.</li></ol></td></tr>
+  <tr><th>Resultado esperado</th><td colspan="3"><ul><li>1) y 2): verde (f ≥ corte ámbar; en 2, f es igual al corte).</li><li>3) y 4): ámbar (corte rojo ≤ f &lt; corte ámbar; en 4, f es igual al corte rojo).</li><li>5): rojo (f &lt; corte rojo).</li><li>El mapa muestra el inventario en unidades o en porcentaje junto al color.</li><li>El almacén central no tiene semáforo de inventario (inventario ilimitado).</li></ul></td></tr>
+  <tr class="ejec"><th>Resultado obtenido</th><td colspan="3"></td></tr>
+  <tr class="ejec"><th>Estado</th><td colspan="3">☐ Conforme &nbsp;&nbsp; ☐ No conforme &nbsp;&nbsp; ☐ No aplica &nbsp;&nbsp; Fecha: ___/___/_____ &nbsp;&nbsp; Responsable: __________</td></tr>
+  </tbody>
+</table>
+<table class="caso">
+  <thead><tr><th class="cid">CPA-070</th><th colspan="3">Rutas planificadas y depuración del trazo recorrido</th></tr></thead>
+  <tbody>
+  <tr><th>Exigencias</th><td>LE-081, LE-092</td><th class="corto">Prioridad</th><td class="corto">Alta</td></tr>
+  <tr><th>Clases cubiertas</th><td colspan="3">— (escenario observable, sección 2.3)</td></tr>
+  <tr><th>Precondiciones</th><td colspan="3">Simulación en curso con unidades en ruta.</td></tr>
+  <tr><th>Datos de entrada</th><td colspan="3"><p class='dato'>Una moto con una ruta de varios tramos.</p></td></tr>
+  <tr><th>Pasos</th><td colspan="3"><ol><li>Activar la visualización de rutas.</li><li>Seguir a la moto mientras recorre su ruta.</li></ol></td></tr>
+  <tr><th>Resultado esperado</th><td colspan="3"><ul><li>Cada unidad muestra su ruta planificada sobre el mapa.</li><li>El tramo ya recorrido se elimina o se diferencia del pendiente.</li></ul></td></tr>
+  <tr class="ejec"><th>Resultado obtenido</th><td colspan="3"></td></tr>
+  <tr class="ejec"><th>Estado</th><td colspan="3">☐ Conforme &nbsp;&nbsp; ☐ No conforme &nbsp;&nbsp; ☐ No aplica &nbsp;&nbsp; Fecha: ___/___/_____ &nbsp;&nbsp; Responsable: __________</td></tr>
+  </tbody>
+</table>
+<table class="caso">
+  <thead><tr><th class="cid">CPA-071</th><th colspan="3">Visualización de averías por tipo y vigencia</th></tr></thead>
+  <tbody>
+  <tr><th>Exigencias</th><td>LE-084, LE-093, LE-094</td><th class="corto">Prioridad</th><td class="corto">Alta</td></tr>
+  <tr><th>Clases cubiertas</th><td colspan="3">AV-V1, AV-V2, AV-V3</td></tr>
+  <tr><th>Precondiciones</th><td colspan="3">Ejecuciones de CPA-048, CPA-049 y CPA-050.</td></tr>
+  <tr><th>Datos de entrada</th><td colspan="3"><p class='dato'>Averías de tipo 1, 2 y 3.</p></td></tr>
+  <tr><th>Pasos</th><td colspan="3"><ol><li>Observar el mapa mientras cada unidad está inmovilizada y al reincorporarse.</li></ol></td></tr>
+  <tr><th>Resultado esperado</th><td colspan="3"><ul><li>Cada avería se muestra en la ubicación de la unidad con un distintivo propio de su tipo, contrastado con el resto.</li><li>El distintivo permanece visible mientras la unidad está inmovilizada y desaparece al reincorporarse.</li></ul></td></tr>
+  <tr class="ejec"><th>Resultado obtenido</th><td colspan="3"></td></tr>
+  <tr class="ejec"><th>Estado</th><td colspan="3">☐ Conforme &nbsp;&nbsp; ☐ No conforme &nbsp;&nbsp; ☐ No aplica &nbsp;&nbsp; Fecha: ___/___/_____ &nbsp;&nbsp; Responsable: __________</td></tr>
+  </tbody>
+</table>
+<table class="caso">
+  <thead><tr><th class="cid">CPA-072</th><th colspan="3">Línea de tiempo simulada y reloj real</th></tr></thead>
+  <tbody>
+  <tr><th>Exigencias</th><td>LE-085, LE-089</td><th class="corto">Prioridad</th><td class="corto">Alta</td></tr>
+  <tr><th>Clases cubiertas</th><td colspan="3">EJ-V1, EJ-V2, EJ-V3</td></tr>
+  <tr><th>Precondiciones</th><td colspan="3">Una simulación de 5 días, una hasta el colapso y el día a día en curso.</td></tr>
+  <tr><th>Datos de entrada</th><td colspan="3"><p class='dato'>—</p></td></tr>
+  <tr><th>Pasos</th><td colspan="3"><ol><li>Revisar el encabezado de cada escenario.</li></ol></td></tr>
+  <tr><th>Resultado esperado</th><td colspan="3"><ul><li>En los dos escenarios de simulación se muestran la fecha y hora simuladas (hh:mm), el tiempo simulado transcurrido, la fecha y hora reales (hh:mm) y el tiempo real transcurrido.</li><li>En el día a día no se muestra la línea de tiempo simulada.</li></ul></td></tr>
+  <tr class="ejec"><th>Resultado obtenido</th><td colspan="3"></td></tr>
+  <tr class="ejec"><th>Estado</th><td colspan="3">☐ Conforme &nbsp;&nbsp; ☐ No conforme &nbsp;&nbsp; ☐ No aplica &nbsp;&nbsp; Fecha: ___/___/_____ &nbsp;&nbsp; Responsable: __________</td></tr>
+  </tbody>
+</table>
+<table class="caso">
+  <thead><tr><th class="cid">CPA-073</th><th colspan="3">Indicador de cumplimiento de plazos</th></tr></thead>
+  <tbody>
+  <tr><th>Exigencias</th><td>LE-086</td><th class="corto">Prioridad</th><td class="corto">Alta</td></tr>
+  <tr><th>Clases cubiertas</th><td colspan="3">PZ-V1, PZ-N1</td></tr>
+  <tr><th>Precondiciones</th><td colspan="3">Simulación de 5 días con fecha de inicio 01/10/2030 y flota de 0 autos, 0 motos y 1 bicicleta.</td></tr>
+  <tr><th>Datos de entrada</th><td colspan="3"><p class='dato arch'>Archivo <code>datos/CPA-073/ventas.203010.txt</code>:</p><pre>01d11h00m:47,14,c0730,08,4<br>02d08h00m:27,15,c0731,01,36<br>02d08h05m:27,16,c0732,01,36<br>02d08h10m:28,14,c0733,01,36<br>02d08h15m:29,14,c0734,01,36<br>02d08h20m:26,14,c0735,01,36<br>02d08h25m:25,14,c0736,01,36<br>02d08h30m:27,13,c0737,01,36<br>02d08h35m:27,12,c0738,01,36<br>02d08h40m:28,15,c0739,01,36</pre><p class='dato'>c0730 no puede llegar a tiempo (el mismo caso de CPA-038). Los otros 9 pedidos, de 1 unidad y plazo 36 h, están a menos de 3 km del central y llegan el día 2, cuando c0730 ya se entregó.</p></td></tr>
+  <tr><th>Pasos</th><td colspan="3"><ol><li>Subir el archivo y ejecutar la simulación hasta que se entreguen los 10 pedidos.</li><li>Revisar el indicador de cumplimiento.</li></ol></td></tr>
+  <tr><th>Resultado esperado</th><td colspan="3"><ul><li>c0730 llega a su destino después de su hora límite (15:00) y los otros 9 dentro de su plazo.</li><li>El indicador muestra 90 % (9 pedidos entregados a tiempo / 10 pedidos entregados).</li></ul></td></tr>
+  <tr class="ejec"><th>Resultado obtenido</th><td colspan="3"></td></tr>
+  <tr class="ejec"><th>Estado</th><td colspan="3">☐ Conforme &nbsp;&nbsp; ☐ No conforme &nbsp;&nbsp; ☐ No aplica &nbsp;&nbsp; Fecha: ___/___/_____ &nbsp;&nbsp; Responsable: __________</td></tr>
+  </tbody>
+</table>
+<table class="caso">
+  <thead><tr><th class="cid">CPA-074</th><th colspan="3">Exportación de los reportes de desempeño</th></tr></thead>
+  <tbody>
+  <tr><th>Exigencias</th><td>LE-088</td><th class="corto">Prioridad</th><td class="corto">Media</td></tr>
+  <tr><th>Clases cubiertas</th><td colspan="3">— (escenario observable, sección 2.3)</td></tr>
+  <tr><th>Precondiciones</th><td colspan="3">Simulación finalizada.</td></tr>
+  <tr><th>Datos de entrada</th><td colspan="3"><p class='dato'>Reporte de la simulación de CPA-056.</p></td></tr>
+  <tr><th>Pasos</th><td colspan="3"><ol><li>Elegir «Exportar» en el reporte de desempeño.</li></ol></td></tr>
+  <tr><th>Resultado esperado</th><td colspan="3"><ul><li>Se descarga un archivo con los gráficos de desempeño y sus indicadores.</li></ul></td></tr>
+  <tr class="ejec"><th>Resultado obtenido</th><td colspan="3"></td></tr>
+  <tr class="ejec"><th>Estado</th><td colspan="3">☐ Conforme &nbsp;&nbsp; ☐ No conforme &nbsp;&nbsp; ☐ No aplica &nbsp;&nbsp; Fecha: ___/___/_____ &nbsp;&nbsp; Responsable: __________</td></tr>
+  </tbody>
+</table>
+<table class="caso">
+  <thead><tr><th class="cid">CPA-075</th><th colspan="3">Panel de unidades y ocupación de cada unidad</th></tr></thead>
+  <tbody>
+  <tr><th>Exigencias</th><td>LE-095, LE-090, LE-062</td><th class="corto">Prioridad</th><td class="corto">Alta</td></tr>
+  <tr><th>Clases cubiertas</th><td colspan="3">OC-V1, OC-V2, OC-V3 (límites 70 % y 90 %)</td></tr>
+  <tr><th>Precondiciones</th><td colspan="3">Simulación de 5 días con fecha de inicio 01/11/2030 y flota de 4 autos, 0 motos y 0 bicicletas.</td></tr>
+  <tr><th>Datos de entrada</th><td colspan="3"><p class='dato arch'>Archivo <code>datos/CPA-075/ventas.203011.txt</code>:</p><pre>01d08h00m:47,14,c0751,16,4<br>01d08h00m:7,14,c0752,17,4<br>01d08h00m:27,0,c0753,21,4<br>01d08h00m:37,4,c0754,22,4</pre><p class='dato'>Dos pedidos cualesquiera suman más de 24 unidades, así que cada auto lleva uno.</p></td></tr>
+  <tr><th>Pasos</th><td colspan="3"><ol><li>Subir el archivo y ejecutar la simulación.</li><li>Pausar cuando los cuatro autos estén en ruta.</li><li>Abrir el panel de unidades y observar la ocupación en el panel y en el mapa.</li></ol></td></tr>
+  <tr><th>Resultado esperado</th><td colspan="3"><ul><li>El panel lista cada unidad con código, tipo, estado y ocupación (número o porcentaje).</li><li>16 u. (66,7 %): verde. 17 u. (70,8 %) y 21 u. (87,5 %): ámbar. 22 u. (91,7 %): rojo.</li><li>El mapa muestra la misma ocupación de cada unidad.</li></ul></td></tr>
+  <tr class="ejec"><th>Resultado obtenido</th><td colspan="3"></td></tr>
+  <tr class="ejec"><th>Estado</th><td colspan="3">☐ Conforme &nbsp;&nbsp; ☐ No conforme &nbsp;&nbsp; ☐ No aplica &nbsp;&nbsp; Fecha: ___/___/_____ &nbsp;&nbsp; Responsable: __________</td></tr>
+  </tbody>
+</table>
+<table class="caso">
+  <thead><tr><th class="cid">CPA-076</th><th colspan="3">Ocupación global de la flota</th></tr></thead>
+  <tbody>
+  <tr><th>Exigencias</th><td>LE-098</td><th class="corto">Prioridad</th><td class="corto">Media</td></tr>
+  <tr><th>Clases cubiertas</th><td colspan="3">OC-V2</td></tr>
+  <tr><th>Precondiciones</th><td colspan="3">Simulación de CPA-075 pausada con los cuatro autos en ruta.</td></tr>
+  <tr><th>Datos de entrada</th><td colspan="3"><p class='dato'>Carga a bordo: 16 + 17 + 21 + 22 = 76 unidades. Capacidad de la flota: 4 × 24 = 96 unidades.</p></td></tr>
+  <tr><th>Pasos</th><td colspan="3"><ol><li>Revisar el indicador global de ocupación.</li></ol></td></tr>
+  <tr><th>Resultado esperado</th><td colspan="3"><ul><li>El indicador muestra una ocupación de 79,2 % (76 / 96), en color ámbar.</li></ul></td></tr>
+  <tr class="ejec"><th>Resultado obtenido</th><td colspan="3"></td></tr>
+  <tr class="ejec"><th>Estado</th><td colspan="3">☐ Conforme &nbsp;&nbsp; ☐ No conforme &nbsp;&nbsp; ☐ No aplica &nbsp;&nbsp; Fecha: ___/___/_____ &nbsp;&nbsp; Responsable: __________</td></tr>
+  </tbody>
+</table>
+<table class="caso">
+  <thead><tr><th class="cid">CPA-077</th><th colspan="3">Filtrado de pedidos en el panel</th></tr></thead>
+  <tbody>
+  <tr><th>Exigencias</th><td>LE-097</td><th class="corto">Prioridad</th><td class="corto">Media</td></tr>
+  <tr><th>Clases cubiertas</th><td colspan="3">CF-V3, CF-V4</td></tr>
+  <tr><th>Precondiciones</th><td colspan="3">Simulación de 5 días con fecha de inicio 01/01/2027 y flota por defecto, con pedidos despachados desde distintos almacenes.</td></tr>
+  <tr><th>Datos de entrada</th><td colspan="3"><p class='dato'>Filtro 1: almacén Intermedio 1. Filtro 2: un nodo de destino presente en la cola. Filtro 3: estado En ruta. Filtro 4: destino (0, 50), sin pedidos.</p></td></tr>
+  <tr><th>Pasos</th><td colspan="3"><ol><li>Aplicar cada filtro en el panel de pedidos.</li></ol></td></tr>
+  <tr><th>Resultado esperado</th><td colspan="3"><ul><li>Los filtros 1, 2 y 3 muestran solo los pedidos que cumplen el criterio.</li><li>El filtro 4 muestra la lista vacía con un mensaje informativo.</li></ul></td></tr>
+  <tr class="ejec"><th>Resultado obtenido</th><td colspan="3"></td></tr>
+  <tr class="ejec"><th>Estado</th><td colspan="3">☐ Conforme &nbsp;&nbsp; ☐ No conforme &nbsp;&nbsp; ☐ No aplica &nbsp;&nbsp; Fecha: ___/___/_____ &nbsp;&nbsp; Responsable: __________</td></tr>
+  </tbody>
+</table>
+<table class="caso">
+  <thead><tr><th class="cid">CPA-078</th><th colspan="3">Reporte de cierre por escenario</th></tr></thead>
+  <tbody>
+  <tr><th>Exigencias</th><td>LE-099</td><th class="corto">Prioridad</th><td class="corto">Media</td></tr>
+  <tr><th>Clases cubiertas</th><td colspan="3">— (fin de 5 días, colapso y cierre del día a día)</td></tr>
+  <tr><th>Precondiciones</th><td colspan="3">Ejecuciones de CPA-056 y CPA-057 terminadas. Operación día a día en curso.</td></tr>
+  <tr><th>Datos de entrada</th><td colspan="3"><p class='dato'>—</p></td></tr>
+  <tr><th>Pasos</th><td colspan="3"><ol><li>Abrir el reporte de cierre de la simulación de 5 días y del colapso.</li><li>Cerrar la operación del día a día y abrir su reporte de cierre.</li></ol></td></tr>
+  <tr><th>Resultado esperado</th><td colspan="3"><ul><li>Cada uno de los tres reportes presenta la última planificación estable antes del cierre.</li><li>En el colapso, el reporte incluye el instante, el pedido que falla y la causa.</li></ul></td></tr>
+  <tr class="ejec"><th>Resultado obtenido</th><td colspan="3"></td></tr>
+  <tr class="ejec"><th>Estado</th><td colspan="3">☐ Conforme &nbsp;&nbsp; ☐ No conforme &nbsp;&nbsp; ☐ No aplica &nbsp;&nbsp; Fecha: ___/___/_____ &nbsp;&nbsp; Responsable: __________</td></tr>
+  </tbody>
+</table>
+<table class="caso">
+  <thead><tr><th class="cid">CPA-079</th><th colspan="3">Pedidos entregados recientemente</th></tr></thead>
+  <tbody>
+  <tr><th>Exigencias</th><td>LE-100</td><th class="corto">Prioridad</th><td class="corto">Media</td></tr>
+  <tr><th>Clases cubiertas</th><td colspan="3">PR-V6, PR-I6</td></tr>
+  <tr><th>Precondiciones</th><td colspan="3">Ejecución con pedidos entregados en las últimas 6 horas.</td></tr>
+  <tr><th>Datos de entrada</th><td colspan="3"><p class='dato'>Ventana de 2 h, luego de 6 h y luego de 0 h.</p></td></tr>
+  <tr><th>Pasos</th><td colspan="3"><ol><li>Revisar el listado con la ventana de 2 h.</li><li>Cambiar la ventana a 6 h.</li><li>Intentar cambiar la ventana a 0 h.</li></ol></td></tr>
+  <tr><th>Resultado esperado</th><td colspan="3"><ul><li>El listado contiene solo los pedidos entregados dentro de la ventana configurada.</li><li>Al ampliar la ventana se agregan los entregados entre 2 y 6 h atrás.</li><li>La ventana de 0 h se rechaza y se conserva la de 6 h.</li></ul></td></tr>
+  <tr class="ejec"><th>Resultado obtenido</th><td colspan="3"></td></tr>
+  <tr class="ejec"><th>Estado</th><td colspan="3">☐ Conforme &nbsp;&nbsp; ☐ No conforme &nbsp;&nbsp; ☐ No aplica &nbsp;&nbsp; Fecha: ___/___/_____ &nbsp;&nbsp; Responsable: __________</td></tr>
+  </tbody>
+</table>
+<h2>6. Matriz de trazabilidad</h2>
+<p>Cada exigencia de la LE v4.0 tiene al menos un caso de prueba de aceptación.</p>
+<table class="tabla traza">
+  <thead><tr><th style="width:9%">Id.LE</th><th>Nombre del requisito</th><th style="width:6%">E/D</th><th style="width:11%">Agrupador</th><th style="width:34%">Casos de prueba</th></tr></thead>
+  <tbody><tr><td>LE-001</td><td>Registro de pedido</td><td class='c'>E</td><td class='c'>AG-01</td><td>CPA-001, CPA-002, CPA-003, CPA-004, CPA-005, CPA-006, CPA-007, CPA-008</td></tr><tr><td>LE-002</td><td>Cálculo de la hora límite</td><td class='c'>E</td><td class='c'>AG-01</td><td>CPA-001, CPA-008, CPA-009</td></tr><tr><td>LE-003</td><td>Consulta de pedidos</td><td class='c'>E</td><td class='c'>AG-01</td><td>CPA-010</td></tr><tr><td>LE-004</td><td>Filtrado de pedidos</td><td class='c'>D</td><td class='c'>AG-01</td><td>CPA-011</td></tr><tr><td>LE-005</td><td>Estado del pedido</td><td class='c'>D</td><td class='c'>AG-01</td><td>CPA-012</td></tr><tr><td>LE-006</td><td>Carga masiva de pedidos</td><td class='c'>E</td><td class='c'>AG-01</td><td>CPA-013, CPA-016</td></tr><tr><td>LE-007</td><td>Validación del archivo de pedidos</td><td class='c'>E</td><td class='c'>AG-01</td><td>CPA-013, CPA-014, CPA-015</td></tr><tr><td>LE-008</td><td>Instante de llegada en simulación</td><td class='c'>E</td><td class='c'>AG-01</td><td>CPA-009, CPA-017</td></tr><tr><td>LE-009</td><td>División de un pedido por capacidad de la unidad</td><td class='c'>E</td><td class='c'>AG-01</td><td>CPA-018</td></tr><tr><td>LE-010</td><td>Seguimiento de la cantidad entregada</td><td class='c'>E</td><td class='c'>AG-01</td><td>CPA-019</td></tr><tr><td>LE-011</td><td>Registro de la entrega efectiva</td><td class='c'>D</td><td class='c'>AG-01</td><td>CPA-020</td></tr><tr><td>LE-012</td><td>Registro manual de pedido</td><td class='c'>E</td><td class='c'>AG-01</td><td>CPA-001, CPA-003, CPA-004, CPA-055</td></tr><tr><td>LE-013</td><td>Carga de la red de calles</td><td class='c'>E</td><td class='c'>AG-02</td><td>CPA-021</td></tr><tr><td>LE-014</td><td>Distancia entre nodos</td><td class='c'>E</td><td class='c'>AG-02</td><td>CPA-021</td></tr><tr><td>LE-015</td><td>Almacén central</td><td class='c'>E</td><td class='c'>AG-02</td><td>CPA-022</td></tr><tr><td>LE-016</td><td>Almacenes intermedios</td><td class='c'>E</td><td class='c'>AG-02</td><td>CPA-022</td></tr><tr><td>LE-017</td><td>Recarga de almacenes intermedios</td><td class='c'>E</td><td class='c'>AG-02</td><td>CPA-024</td></tr><tr><td>LE-018</td><td>Descuento de inventario en almacenes intermedios</td><td class='c'>E</td><td class='c'>AG-02</td><td>CPA-023</td></tr><tr><td>LE-019</td><td>Configuración de la flota</td><td class='c'>E</td><td class='c'>AG-02</td><td>CPA-025, CPA-026, CPA-027, CPA-028</td></tr><tr><td>LE-020</td><td>Capacidad de las unidades</td><td class='c'>D</td><td class='c'>AG-02</td><td>CPA-030, CPA-080</td></tr><tr><td>LE-021</td><td>Velocidad de las unidades</td><td class='c'>D</td><td class='c'>AG-02</td><td>CPA-030, CPA-080</td></tr><tr><td>LE-022</td><td>Costo por kilómetro de las unidades</td><td class='c'>D</td><td class='c'>AG-02</td><td>CPA-030, CPA-080</td></tr><tr><td>LE-023</td><td>Respeto de los cambios de turno</td><td class='c'>E</td><td class='c'>AG-02</td><td>CPA-031</td></tr><tr><td>LE-024</td><td>Reserva de refrigerio</td><td class='c'>E</td><td class='c'>AG-02</td><td>CPA-032</td></tr><tr><td>LE-025</td><td>Tiempo de entrega al destinatario</td><td class='c'>E</td><td class='c'>AG-02</td><td>CPA-033</td></tr><tr><td>LE-026</td><td>Algoritmo metaheurístico</td><td class='c'>E</td><td class='c'>AG-02</td><td>CPA-034</td></tr><tr><td>LE-027</td><td>Planificación con el algoritmo</td><td class='c'>E</td><td class='c'>AG-02</td><td>CPA-034</td></tr><tr><td>LE-028</td><td>Asignación según capacidad</td><td class='c'>E</td><td class='c'>AG-02</td><td>CPA-018, CPA-035</td></tr><tr><td>LE-029</td><td>Consolidación de pedidos en una unidad</td><td class='c'>E</td><td class='c'>AG-02</td><td>CPA-035</td></tr><tr><td>LE-030</td><td>Selección del almacén de origen</td><td class='c'>E</td><td class='c'>AG-02</td><td>CPA-036</td></tr><tr><td>LE-031</td><td>Cálculo del tiempo de recorrido</td><td class='c'>E</td><td class='c'>AG-02</td><td>CPA-033</td></tr><tr><td>LE-032</td><td>Rutas dentro del plazo</td><td class='c'>E</td><td class='c'>AG-02</td><td>CPA-037, CPA-038</td></tr><tr><td>LE-033</td><td>Orden de visita de la ruta</td><td class='c'>D</td><td class='c'>AG-02</td><td>CPA-035</td></tr><tr><td>LE-034</td><td>Cálculo del costo de operación</td><td class='c'>E</td><td class='c'>AG-02</td><td>CPA-039</td></tr><tr><td>LE-035</td><td>Reporte de costos del plan</td><td class='c'>D</td><td class='c'>AG-02</td><td>CPA-039</td></tr><tr><td>LE-036</td><td>Exclusión de tramos bloqueados</td><td class='c'>E</td><td class='c'>AG-02</td><td>CPA-040</td></tr><tr><td>LE-037</td><td>Replanificación por bloqueo</td><td class='c'>E</td><td class='c'>AG-02</td><td>CPA-041</td></tr><tr><td>LE-038</td><td>Carga masiva de bloqueos</td><td class='c'>E</td><td class='c'>AG-02</td><td>CPA-043, CPA-044</td></tr><tr><td>LE-039</td><td>Registro de avería de unidad</td><td class='c'>E</td><td class='c'>AG-02</td><td>CPA-045, CPA-046, CPA-047</td></tr><tr><td>LE-040</td><td>Replanificación por avería</td><td class='c'>E</td><td class='c'>AG-02</td><td>CPA-048, CPA-049, CPA-050</td></tr><tr><td>LE-041</td><td>Reasignación de carga en camino hacia el pedido más crítico</td><td class='c'>E</td><td class='c'>AG-02</td><td>CPA-052, CPA-053</td></tr><tr><td>LE-042</td><td>Identificación del pedido más crítico</td><td class='c'>E</td><td class='c'>AG-02</td><td>CPA-052</td></tr><tr><td>LE-043</td><td>Parametrización del escenario</td><td class='c'>E</td><td class='c'>AG-02</td><td>CPA-054</td></tr><tr><td>LE-044</td><td>Ejecución del escenario día a día</td><td class='c'>E</td><td class='c'>AG-02</td><td>CPA-055</td></tr><tr><td>LE-045</td><td>Replanificación en tiempo real</td><td class='c'>E</td><td class='c'>AG-02</td><td>CPA-045, CPA-055</td></tr><tr><td>LE-046</td><td>Ejecución de la simulación de 5 días</td><td class='c'>E</td><td class='c'>AG-02</td><td>CPA-056</td></tr><tr><td>LE-047</td><td>Simulación hasta el colapso</td><td class='c'>E</td><td class='c'>AG-02</td><td>CPA-057</td></tr><tr><td>LE-048</td><td>Bitácora de ejecuciones</td><td class='c'>D</td><td class='c'>AG-02</td><td>CPA-062</td></tr><tr><td>LE-049</td><td>Representación reticular de la ciudad</td><td class='c'>E</td><td class='c'>AG-02</td><td>CPA-005, CPA-006, CPA-021</td></tr><tr><td>LE-050</td><td>Sistema de coordenadas</td><td class='c'>E</td><td class='c'>AG-02</td><td>CPA-002, CPA-021</td></tr><tr><td>LE-051</td><td>Modificación del tamaño de la flota</td><td class='c'>E</td><td class='c'>AG-02</td><td>CPA-025, CPA-029</td></tr><tr><td>LE-052</td><td>Avería de tipo 1</td><td class='c'>E</td><td class='c'>AG-02</td><td>CPA-048</td></tr><tr><td>LE-053</td><td>Avería de tipo 2</td><td class='c'>E</td><td class='c'>AG-02</td><td>CPA-049</td></tr><tr><td>LE-054</td><td>Avería de tipo 3</td><td class='c'>E</td><td class='c'>AG-02</td><td>CPA-050</td></tr><tr><td>LE-055</td><td>Media vuelta ante nodo bloqueado</td><td class='c'>E</td><td class='c'>AG-02</td><td>CPA-042</td></tr><tr><td>LE-056</td><td>Fecha y hora de inicio de la ejecución</td><td class='c'>E</td><td class='c'>AG-02</td><td>CPA-058, CPA-059</td></tr><tr><td>LE-057</td><td>Consumo de datos por bloques de tiempo</td><td class='c'>D</td><td class='c'>AG-02</td><td>CPA-060, CPA-081</td></tr><tr><td>LE-058</td><td>Frecuencia de replanificación</td><td class='c'>E</td><td class='c'>AG-02</td><td>CPA-060, CPA-081</td></tr><tr><td>LE-059</td><td>Registro del tiempo de cómputo del planificador</td><td class='c'>E</td><td class='c'>AG-02</td><td>CPA-034</td></tr><tr><td>LE-060</td><td>Identificación de la unidad de transporte</td><td class='c'>E</td><td class='c'>AG-02</td><td>CPA-025</td></tr><tr><td>LE-061</td><td>Ubicación inicial de las unidades</td><td class='c'>E</td><td class='c'>AG-02</td><td>CPA-025</td></tr><tr><td>LE-062</td><td>Estado de la unidad de transporte</td><td class='c'>E</td><td class='c'>AG-02</td><td>CPA-031, CPA-032, CPA-075</td></tr><tr><td>LE-063</td><td>Retorno al almacén para recarga</td><td class='c'>E</td><td class='c'>AG-02</td><td>CPA-061</td></tr><tr><td>LE-064</td><td>Tramo en curso de cada unidad</td><td class='c'>E</td><td class='c'>AG-02</td><td>CPA-033</td></tr><tr><td>LE-065</td><td>Carga masiva de averías</td><td class='c'>E</td><td class='c'>AG-02</td><td>CPA-051</td></tr><tr><td>LE-066</td><td>Bloqueo de nodo</td><td class='c'>E</td><td class='c'>AG-02</td><td>CPA-040</td></tr><tr><td>LE-067</td><td>Criterio de colapso logístico</td><td class='c'>E</td><td class='c'>AG-02</td><td>CPA-038, CPA-057</td></tr><tr><td>LE-068</td><td>Registro de avería en tiempo real</td><td class='c'>D</td><td class='c'>AG-02</td><td>CPA-045</td></tr><tr><td>LE-069</td><td>Fuente de datos por escenario</td><td class='c'>E</td><td class='c'>AG-02</td><td>CPA-017, CPA-056, CPA-057</td></tr><tr><td>LE-101</td><td>Ruta de la unidad de origen tras la reasignación</td><td class='c'>E</td><td class='c'>AG-02</td><td>CPA-052</td></tr><tr><td>LE-070</td><td>Mapa de operación en tiempo real</td><td class='c'>E</td><td class='c'>AG-03</td><td>CPA-063</td></tr><tr><td>LE-071</td><td>Representación de la red de calles</td><td class='c'>D</td><td class='c'>AG-03</td><td>CPA-021, CPA-063</td></tr><tr><td>LE-072</td><td>Representación de los almacenes</td><td class='c'>E</td><td class='c'>AG-03</td><td>CPA-022, CPA-063</td></tr><tr><td>LE-073</td><td>Posición de las unidades</td><td class='c'>E</td><td class='c'>AG-03</td><td>CPA-063</td></tr><tr><td>LE-074</td><td>Actualización de posición en tiempo real</td><td class='c'>E</td><td class='c'>AG-03</td><td>CPA-063</td></tr><tr><td>LE-075</td><td>Conexiones simultáneas</td><td class='c'>D</td><td class='c'>AG-03</td><td>CPA-064</td></tr><tr><td>LE-076</td><td>Interacción por zonas del mapa</td><td class='c'>D</td><td class='c'>AG-03</td><td>CPA-064</td></tr><tr><td>LE-077</td><td>Consulta de detalle de un elemento</td><td class='c'>E</td><td class='c'>AG-03</td><td>CPA-065</td></tr><tr><td>LE-078</td><td>Configuración de rangos del semáforo</td><td class='c'>E</td><td class='c'>AG-03</td><td>CPA-066, CPA-067</td></tr><tr><td>LE-079</td><td>Semáforo de cumplimiento de plazo</td><td class='c'>D</td><td class='c'>AG-03</td><td>CPA-068</td></tr><tr><td>LE-080</td><td>Semáforo de inventario</td><td class='c'>E</td><td class='c'>AG-03</td><td>CPA-069</td></tr><tr><td>LE-081</td><td>Visualización de rutas</td><td class='c'>E</td><td class='c'>AG-03</td><td>CPA-070</td></tr><tr><td>LE-082</td><td>Visualización del estado de pedidos</td><td class='c'>E</td><td class='c'>AG-03</td><td>CPA-012</td></tr><tr><td>LE-083</td><td>Visualización de bloqueos</td><td class='c'>E</td><td class='c'>AG-03</td><td>CPA-040</td></tr><tr><td>LE-084</td><td>Visualización de averías</td><td class='c'>E</td><td class='c'>AG-03</td><td>CPA-071</td></tr><tr><td>LE-085</td><td>Línea de tiempo de la simulación</td><td class='c'>E</td><td class='c'>AG-03</td><td>CPA-056, CPA-072</td></tr><tr><td>LE-086</td><td>Indicador de cumplimiento de plazos</td><td class='c'>E</td><td class='c'>AG-03</td><td>CPA-037, CPA-073</td></tr><tr><td>LE-087</td><td>Indicadores de costo y distancia</td><td class='c'>D</td><td class='c'>AG-03</td><td>CPA-039</td></tr><tr><td>LE-088</td><td>Exportación de reportes de desempeño</td><td class='c'>D</td><td class='c'>AG-03</td><td>CPA-074</td></tr><tr><td>LE-089</td><td>Reloj del momento real</td><td class='c'>E</td><td class='c'>AG-03</td><td>CPA-056, CPA-072</td></tr><tr><td>LE-090</td><td>Ocupación de la unidad sobre el mapa</td><td class='c'>D</td><td class='c'>AG-03</td><td>CPA-075</td></tr><tr><td>LE-091</td><td>Inventario del almacén sobre el mapa</td><td class='c'>D</td><td class='c'>AG-03</td><td>CPA-069</td></tr><tr><td>LE-092</td><td>Depuración de los trazos recorridos</td><td class='c'>E</td><td class='c'>AG-03</td><td>CPA-070</td></tr><tr><td>LE-093</td><td>Representación diferenciada de las averías</td><td class='c'>E</td><td class='c'>AG-03</td><td>CPA-048, CPA-049, CPA-050, CPA-071</td></tr><tr><td>LE-094</td><td>Vigencia visual de la avería</td><td class='c'>E</td><td class='c'>AG-03</td><td>CPA-048, CPA-049, CPA-050, CPA-071</td></tr><tr><td>LE-095</td><td>Panel de unidades de transporte</td><td class='c'>E</td><td class='c'>AG-03</td><td>CPA-075</td></tr><tr><td>LE-096</td><td>Movimientos planificados por almacén</td><td class='c'>D</td><td class='c'>AG-03</td><td>CPA-023, CPA-024</td></tr><tr><td>LE-097</td><td>Filtrado de pedidos en el panel</td><td class='c'>D</td><td class='c'>AG-03</td><td>CPA-077</td></tr><tr><td>LE-098</td><td>Indicador global de ocupación de la flota</td><td class='c'>D</td><td class='c'>AG-03</td><td>CPA-076</td></tr><tr><td>LE-099</td><td>Reporte de cierre por escenario</td><td class='c'>D</td><td class='c'>AG-03</td><td>CPA-078</td></tr><tr><td>LE-100</td><td>Listado de pedidos entregados recientemente</td><td class='c'>D</td><td class='c'>AG-03</td><td>CPA-079</td></tr></tbody>
+</table>
+<div class="bloque">
+<h2>7. Resumen de cobertura</h2>
+<table class="tabla">
+  <thead><tr><th>Id.Ag</th><th>Agrupador</th><th>Exigencias</th><th>E</th><th>D</th><th>Casos</th>
+  <th>Prioridad alta</th><th>Cobertura de la LE</th></tr></thead>
+  <tbody><tr><td>AG-01</td><td>Registro de Pedidos</td><td class='c'>12</td><td class='c'>9</td><td class='c'>3</td><td class='c'>20</td><td class='c'>18</td><td class='c'>100 %</td></tr><tr><td>AG-02</td><td>Planificador de Rutas</td><td class='c'>58</td><td class='c'>50</td><td class='c'>8</td><td class='c'>44</td><td class='c'>41</td><td class='c'>100 %</td></tr><tr><td>AG-03</td><td>Visualizador</td><td class='c'>31</td><td class='c'>18</td><td class='c'>13</td><td class='c'>17</td><td class='c'>10</td><td class='c'>100 %</td></tr><tr class='total'><td></td><td>Total</td><td class='c'>101</td><td class='c'>77</td><td class='c'>24</td><td class='c'>81</td><td class='c'>69</td><td class='c'>100 %</td></tr></tbody>
+</table>
+<p>Un caso puede verificar exigencias de otro agrupador (por ejemplo, CPA-056 verifica la línea de tiempo del Visualizador);
+en la tabla se cuenta en el agrupador donde está ubicado. Las 116 clases de equivalencia están cubiertas por al
+menos un caso.</p>
+</div>
+<h2>8. Cambios respecto de la versión 2.0</h2>
+<ul><li>Costos por km: S/ 8,00 (auto), S/ 6,00 (moto) y S/ 3,00 (bicicleta), según el enunciado y la hoja «Flota» del Q&amp;A. CPA-030 y CPA-039 se recalculan: la ruta de 20 km de una moto cuesta S/ 120,00.</li><li>Hora de entrega fuera del plazo (Q&amp;A, pregunta 11): el cumplimiento se mide por la llegada al destino. CPA-038 y CPA-073 se rediseñan: con los almacenes vigentes, una bicicleta llega a (0, 0) en 3 h 25 min y el caso anterior no producía colapso.</li><li>Cambio de turno (Q&amp;A, pregunta 12): CPA-031 verifica que la unidad sigue su ruta con el relevo del conductor, en lugar de exigir que ninguna ruta cruce el fin del turno. Se agrega la clase TU-V5.</li><li>Averías de tipo 2 y 3 (Q&amp;A, pregunta 3): CPA-049 y CPA-050 verifican las 4 h en el lugar y el traslado al almacén central.</li><li>Vigencia de los bloqueos: intervalo cerrado [inicio, fin]. CPA-040 corrige su resultado esperado (a las 18:00 el bloqueo sigue vigente y a las 18:01 ya no) y se rediseña para que la ruta deba rodear el bloqueo.</li><li>Datos dedicados: cada caso de simulación usa su propio mes (2029-04 a 2030-11) y su archivo en docs/cpa/datos, con el contenido incluido en el caso, para que los casos no interfieran entre sí. Las simulaciones arrancan a las 00:00 de la fecha de inicio. Casos rediseñados: CPA-009, 012, 021, 023, 024, 031, 033, 035, 036, 038, 040, 041, 042, 048 a 050, 052, 053, 061, 068, 069, 073 y 075.</li><li>Almacén de origen y retorno (CPA-023, CPA-036, CPA-061): el despacho desde un intermedio se fuerza con una unidad que termina una entrega cerca de él, y su falta de disponibilidad se fuerza con un bloqueo que lo rodea.</li><li>Semáforo de inventario (CPA-069): los límites se prueban fijando los cortes sobre un stock conocido (970 unidades), porque no es posible llevar un intermedio a 500, 499, 200 y 199 unidades exactas con datos de entrada.</li><li>Clases no admitidas (N): TU-I1, CP-I1 y PZ-I1 pasan a ser TU-N1, CP-N1 y PZ-N1, porque describen salidas del planificador y no entradas que se rechazan.</li><li>Clases nuevas: PM-I11 (Y vacía), PM-I12 (plazo fuera del catálogo), AP-I8, EJ-I7, TU-V5, CP-V5, CP-V6 y los grupos PR, CF, AL y LL. Todas las clases que usan los casos están definidas en la sección 4 y todas las definidas se usan.</li><li>Casos nuevos: CPA-080 y CPA-081 (parámetros no válidos). Casos ampliados: CPA-006, CPA-008, CPA-010, CPA-014, CPA-059, CPA-067 y CPA-079.</li><li>Resultados concretos: transferencia de 5 unidades (CPA-052), límites exactos del semáforo a las 05:36 y 14:36 (CPA-068), ocupación global de 79,2 % (CPA-076) y distancias de las rutas (CPA-021, CPA-040, CPA-061).</li><li>Otros ajustes: CPA-007 deja de trazarse a LE-010; CPA-027 corrige el mensaje esperado (0 a 50 unidades por tipo y al menos 1 en total); CPA-078 incluye el cierre del día a día; los archivos de bloqueos usan el nombre bloqueo.AAAAMM.txt.</li></ul></td></tr></tbody>
+</table>
+</body></html>
