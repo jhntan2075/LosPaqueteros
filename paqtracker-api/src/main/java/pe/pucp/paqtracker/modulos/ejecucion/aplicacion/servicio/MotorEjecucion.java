@@ -218,7 +218,7 @@ public final class MotorEjecucion {
     /**
      * Registra una averia en el instante actual del reloj (CU-13). Valida la averia contra el estado de
      * la ejecucion y la encola en la agenda, sin tocar la simulacion: el motor la aplica al inicio de su
-     * siguiente salto Sc y en ese momento replanifica, sin esperar al siguiente Sa.
+     * siguiente salto Sc y en ese momento repara su carga (trasvase o respaldo), sin replanificar la cola.
      *
      * @param solicitud unidad y tipo de la averia
      * @return averia programada, con su instante y su reincorporacion estimada
@@ -298,8 +298,9 @@ public final class MotorEjecucion {
 
     /**
      * Entrega a la simulacion las averias encoladas cuyo instante ya llego y ejecuta de inmediato un paso
-     * que las aplica y replanifica (disparo por evento). Si el ultimo paso ya cayo en el instante de la
-     * averia, se aplica un minuto despues: un paso no puede repetir su instante.
+     * que las aplica (disparo por evento). Ese paso repara solo lo que la averia afecta; la cola se planifica
+     * en el siguiente Sa. Si el ultimo paso ya cayo en el instante de la averia, se aplica un minuto
+     * despues: un paso no puede repetir su instante.
      *
      * @param minuto minuto simulado actual
      */
@@ -314,7 +315,7 @@ public final class MotorEjecucion {
             simulacion.agregarAveria(new Averia(instante, evento.idVehiculo(), evento.tipo()));
             instantePaso = Math.max(instantePaso, instante);
         }
-        ejecutarPaso(instantePaso);
+        ejecutarPaso(instantePaso, false);
         while (siguientePaso <= instantePaso) {
             siguientePaso += configuracion.saMinutos();
         }
@@ -379,7 +380,11 @@ public final class MotorEjecucion {
     }
 
     private ResultadoPaso ejecutarPaso(int instante) {
-        ResultadoPaso paso = simulacion.avanzar(instante);
+        return ejecutarPaso(instante, true);
+    }
+
+    private ResultadoPaso ejecutarPaso(int instante, boolean planificar) {
+        ResultadoPaso paso = simulacion.avanzar(instante, planificar);
         List<Tramo> completados = seguimiento.aplicar(paso);
         difundirEventos(paso, completados);
         return paso;
@@ -435,6 +440,10 @@ public final class MotorEjecucion {
         detalle.put("pedidosLiberados", pedidos);
         detalle.put("unidadesReceptoras", aplicada.trasbordos().stream()
                 .map(trasbordo -> codigosFlota.codigo(trasbordo.receptora().getVehiculo())).toList());
+        detalle.put("pedidosRespaldados", aplicada.entregasRespaldadas().stream()
+                .map(entrega -> NomenclaturaOperacion.codigoPedido(entrega.getIdPedido())).distinct().toList());
+        detalle.put("unidadesRespaldo", aplicada.respaldos().stream()
+                .map(respaldo -> codigosFlota.codigo(respaldo.getVehiculo())).toList());
         detalle.put("reincorporacionMs", lineaTiempo.aMilisegundos(aplicada.disponibleEn()));
         if (aplicada.trasladoEn() != AveriaAplicada.SIN_TRASLADO) {
             detalle.put("trasladoCentralMs", lineaTiempo.aMilisegundos(aplicada.trasladoEn()));
@@ -446,8 +455,8 @@ public final class MotorEjecucion {
     }
 
     /**
-     * Difunde un trasbordo decidido ante una averia tipo 1: que unidad recoge que pedidos, donde, a que
-     * hora llega al punto y cuando entrega el ultimo.
+     * Difunde un trasvase decidido ante una averia: que unidad en ruta recoge que pedidos, donde y a que
+     * hora llega al punto.
      */
     private void difundirTrasbordo(String codigoAveriada, Averia averia, Trasbordo trasbordo) {
         String receptora = codigosFlota.codigo(trasbordo.receptora().getVehiculo());
@@ -459,7 +468,7 @@ public final class MotorEjecucion {
         detalle.put("pedidos", pedidos);
         detalle.put("ubicacion", RecorridoCamino.coordenada(trasbordo.punto()));
         detalle.put("recojoMs", lineaTiempo.aMilisegundos(trasbordo.getRecojo()));
-        evento("TRASBORDO", "Unidad " + receptora + " recoge " + pedidos.size() + " pedidos urgentes de "
+        evento("TRASBORDO", "Unidad " + receptora + " se desvia y recoge " + pedidos.size() + " pedidos de "
                 + codigoAveriada, lineaTiempo.aMilisegundos(averia.getInstante()), detalle);
     }
 

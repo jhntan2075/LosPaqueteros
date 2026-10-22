@@ -20,7 +20,7 @@ no al núcleo del planificador).
 | LE-025 | Tiempo de acondicionamiento por entrega (60 min) | Hecho | `ConfiguracionDominio.TIEMPO_SERVICIO_MINUTOS` | `EvaluadorFitnessTest` (indirecta) |
 | LE-026 | Dos algoritmos metaheurísticos en Java | Hecho | `PlanificadorGA`, `PlanificadorIACO` sobre `AlgoritmoMetaheuristico` | — (falta `PlanificadorGATest`) |
 | LE-032 | Rutas dentro del plazo; colapso si no hay plan factible | Parcial | `EvaluadorFitness` (penalización), `Orquestador` (registro) | `EvaluadorFitnessTest` |
-| LE-041 / LE-042 | Reasignación de carga en camino al pedido más crítico | Pendiente / Motor | — | — |
+| LE-041 / LE-042 | Reasignación de carga en camino al pedido más crítico | Parcial (solo ante avería) | `GestorTrasbordo`: trasvase de la averiada a unidades en ruta (prefiltro Manhattan, 5 candidatas, A*), por hora límite, sin dejar tarde lo que la receptora llevaba a tiempo; respaldo desde almacén en `Orquestador.despacharRespaldos` | `OrquestadorTest`, `SeguimientoPedidosTest` |
 | LE-055 | Media vuelta ante nodo bloqueado | Motor | `util.Malla` rodea al planificar los bloqueos que la unidad encontraría en el viaje (incluso los que empiezan en tránsito); la media vuelta solo haría falta con bloqueos registrados en vivo | `MallaTest` |
 | LE-057 | Sc: salto del eje de consumo | Hecho | `MotorEjecucion` (tick cada `APP_SC_SEGUNDOS`) | `MotorEjecucionTest` |
 | LE-058 | Sa: salto del algoritmo | Hecho | `Orquestador` (`saMinutos`), `PLANIFICADOR_SA_MINUTOS` | — |
@@ -38,11 +38,11 @@ no al núcleo del planificador).
 | LE-092 | Ruta planificada depurada de lo recorrido | Hecho (backend) | `ConstructorInstantanea.rutaRestante`, `RecorridoCamino` | `ConstructorInstantaneaTest`, `RecorridoCaminoTest` |
 | LE-063 | Retorno al almacén con stock alcanzable, si no el central | Parcial | `Reparador.almacenValido` (más cercano con stock; no valida el turno) | — |
 | LE-067 | Criterio de colapso logístico | Hecho | `ResultadoSimulacion.registrarColapso` | — |
-| LE-101 | Ruta de la unidad de origen tras una reasignación | Pendiente / Motor | — | — |
+| LE-101 | Ruta de la unidad de origen tras una reasignación | Parcial (solo ante avería) | `GestorTrasbordo.reanudar` (tipo 1: sigue con lo que le queda o vuelve a su almacén); la receptora se retraza con su carga y la trasvasada | `OrquestadorTest` |
 | CU-11 | Recarga diaria de intermedios a las 23:59:59 | Hecho | `Almacen.descontar` / `recargar`, `Orquestador.recargarAlmacenes` | `AlmacenTest` |
 | CU-11 | Stock de intermedios como restricción dura | Hecho | `Reparador` (fase 2), `InventarioProyectado` | `InventarioProyectadoTest` |
 | CU-12 | Bloqueos programados (nodo no transitable) | Hecho | `modelo.Bloqueo`, `util.Malla` | — |
-| CU-13 | Averías tipo 1, 2 y 3 (registro en vivo, disparo por evento) | Parcial (backend) | `Orquestador` (aplicar, liberar, detener, recuperar), `SimulacionEnCurso.agregarAveria`, `UnidadEnTransito.cortarEn`/`detenerEn`, `MotorEjecucion.programarAveria` + `GestorEventos`, `CasoUsoRegistrarAveria`, `ControladorIncidencias`, `GestorTrasbordo` (tipo 1: seguir, trasbordar lo urgente o volver al almacén) | `OrquestadorTest`, `SimulacionEnCursoTest`, `UnidadEnTransitoTest`, `TramoTest`, `AveriaTest`, `MotorEjecucionTest`, `SeguimientoPedidosTest`, `GestorEventosTest`, `IntegracionIncidenciasTest` |
+| CU-13 | Averías tipo 1, 2 y 3 (registro en vivo, disparo por evento) | Parcial (backend) | `Orquestador` (aplicar, liberar, detener, recuperar), `SimulacionEnCurso.agregarAveria`, `UnidadEnTransito.cortarEn`/`detenerEn`, `MotorEjecucion.programarAveria` + `GestorEventos`, `CasoUsoRegistrarAveria`, `ControladorIncidencias`, `GestorTrasbordo` (seguir a bordo en tipo 1, trasvasar a unidades en ruta, respaldo desde almacén o cola) | `OrquestadorTest`, `SimulacionEnCursoTest`, `UnidadEnTransitoTest`, `TramoTest`, `AveriaTest`, `MotorEjecucionTest`, `SeguimientoPedidosTest`, `GestorEventosTest`, `IntegracionIncidenciasTest` |
 
 ## Pruebas que faltan
 

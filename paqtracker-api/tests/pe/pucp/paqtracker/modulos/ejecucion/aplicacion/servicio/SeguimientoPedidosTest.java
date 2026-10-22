@@ -75,7 +75,7 @@ class SeguimientoPedidosTest {
     }
 
     @Test
-    void aplicar_averiaTipo2ConElPedidoABordo_loLiberaYQuedaEnTransitoEnOtraUnidad() {
+    void aplicar_averiaTipo2ConElPedidoABordo_saleEnUnRespaldoYQuedaEnTransitoEnOtraUnidad() {
         SimulacionEnCurso simulacion = simulacion(List.of(new Pedido(1, new Nodo(30, 18), 3, 0, 2160)));
         SeguimientoPedidos seguimiento = new SeguimientoPedidos(LINEA, SEMAFORO,
                 CodigosFlota.de(simulacion.getFlota()), 10);
@@ -88,9 +88,36 @@ class SeguimientoPedidosTest {
 
         DetallePedido detalle = seguimiento.detalle(1, 5).orElseThrow();
         assertEquals("EN_TRANSITO", detalle.pedido().estado());
-        assertEquals(List.of("Registrado", "Despachado", "Liberado por averia", "Despachado"),
+        assertEquals(List.of("Registrado", "Despachado", "Respaldo por averia", "Despachado"),
                 detalle.hitos().stream().map(HitoPedido::titulo).toList());
         assertEquals(1, seguimiento.indicadores(simulacion, 5).unidadesAveriadas());
+    }
+
+    @Test
+    void aplicar_averiaConTrasvase_elPedidoPasaALaReceptoraYElDeLaReceptoraSoloSeRetrasa() {
+        Pedido urgente = new Pedido(1, new Nodo(30, 18), 3, 0, 60);
+        Pedido vecino = new Pedido(2, new Nodo(32, 18), 3, 1, 2160);
+        // Solo dos motos: el pedido vecino sale en la otra, que tiene espacio para recibir el urgente.
+        SimulacionEnCurso simulacion = simulacion(List.of(urgente, vecino), new ComposicionFlota(0, 2, 0));
+        CodigosFlota codigos = CodigosFlota.de(simulacion.getFlota());
+        SeguimientoPedidos seguimiento = new SeguimientoPedidos(LINEA, SEMAFORO, codigos, 10);
+        ResultadoPaso salida = simulacion.avanzar(0);
+        seguimiento.aplicar(salida);
+        seguimiento.aplicar(simulacion.avanzar(1));
+        int idVehiculo = salida.getUnidadesDespachadas().get(0).getVehiculo().getId();
+        simulacion.agregarAveria(new Averia(5, idVehiculo, TipoAveria.TIPO_1));
+
+        ResultadoPaso paso = simulacion.avanzar(5);
+        seguimiento.aplicar(paso);
+
+        String receptora = codigos.codigo(paso.getAveriasAplicadas().get(0).trasbordos().get(0).receptora()
+                .getVehiculo());
+        DetallePedido trasvasado = seguimiento.detalle(1, 5).orElseThrow();
+        assertEquals(receptora, trasvasado.pedido().unidad());
+        assertEquals("Trasvasado", trasvasado.hitos().get(trasvasado.hitos().size() - 1).titulo());
+        DetallePedido propio = seguimiento.detalle(2, 5).orElseThrow();
+        assertEquals(receptora, propio.pedido().unidad());
+        assertEquals("Desvio por trasvase", propio.hitos().get(propio.hitos().size() - 1).titulo());
     }
 
     @Test
@@ -114,8 +141,12 @@ class SeguimientoPedidosTest {
     }
 
     private static SimulacionEnCurso simulacion(List<Pedido> pedidos) {
+        return simulacion(pedidos, ComposicionFlota.porDefecto());
+    }
+
+    private static SimulacionEnCurso simulacion(List<Pedido> pedidos, ComposicionFlota flota) {
         return new ServicioPlanificacion(new FabricaAlgoritmo()).prepararSimulacion(
                 new SolicitudPreparacionSimulacion(pedidos, List.of(), AlgoritmoPlanificacion.GA, 1L, SA, false,
-                        ComposicionFlota.porDefecto()));
+                        flota));
     }
 }

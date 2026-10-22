@@ -3,7 +3,6 @@ package pe.pucp.paqtracker.simulacion;
 import pe.pucp.paqtracker.modelo.Almacen;
 import pe.pucp.paqtracker.modelo.Averia;
 import pe.pucp.paqtracker.modelo.Bloqueo;
-import pe.pucp.paqtracker.modelo.ConfiguracionDominio;
 import pe.pucp.paqtracker.modelo.Entrega;
 import pe.pucp.paqtracker.modelo.EscenarioOperativo;
 import pe.pucp.paqtracker.modelo.EstadoVehiculo;
@@ -24,6 +23,7 @@ import pe.pucp.paqtracker.util.CalculadoraTiempos;
 import pe.pucp.paqtracker.util.CalendarioTurnos;
 import pe.pucp.paqtracker.util.Malla;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -421,91 +421,145 @@ public final class Orquestador {
     }
 
     /**
-     * Inmoviliza la unidad en el punto exacto de la averia. Si estaba en ruta, tipo 1 decide entre seguir
-     * con su carga y trasbordar lo urgente ({@link GestorTrasbordo}); tipo 2 y 3 liberan lo que aun no
-     * entregaba para que el planificador lo reasigne. Si ya habia terminado su ruta, queda en su almacen de
-     * destino.
+     * Inmoviliza la unidad en el punto exacto de la averia. Si estaba en ruta, resuelve su carga con
+     * {@link #resolverEnRuta}. Si ya habia terminado su ruta, queda en su almacen de destino.
      */
     private AveriaAplicada aplicarAveria(Averia averia, Vehiculo vehiculo, List<UnidadEnTransito> enRuta,
                                          int instante, ResultadoSimulacion resultado) {
         int instanteAveria = averia.getInstante();
         UnidadEnTransito transito = buscarEnTransito(enRuta, vehiculo);
-        GestorTrasbordo.Decision decision = new GestorTrasbordo.Decision(null, List.of());
-        List<Entrega> liberadasAhora = List.of();
-        Nodo ubicacion = vehiculo.getUbicacionActual();
+        Resolucion resolucion = Resolucion.vacia(vehiculo.getUbicacionActual());
         if (transito != null && transito.getLibreEn() <= instanteAveria) {
             enRuta.remove(transito);
             vehiculo.setPosicion(transito.getDestino());
-            ubicacion = transito.getDestino().getUbicacion();
-        } else if (transito != null && averia.getTipo() == TipoAveria.TIPO_1) {
-            decision = decidirTipo1(transito, instanteAveria, Math.max(instanteAveria, instante), enRuta, resultado);
-            ubicacion = transito.ubicacionEn(instanteAveria);
+            resolucion = Resolucion.vacia(transito.getDestino().getUbicacion());
         } else if (transito != null) {
-            UnidadEnTransito.Corte corte = transito.cortarEn(instanteAveria);
-            liberadasAhora = liberarCarga(transito, corte, resultado);
-            enRuta.remove(transito);
-            ubicacion = corte.ubicacion();
+            resolucion = resolverEnRuta(averia, transito, Math.max(instanteAveria, instante), enRuta, resultado);
         }
-        vehiculo.fijarUbicacionAveria(ubicacion);
+        vehiculo.fijarUbicacionAveria(resolucion.ubicacion());
         vehiculo.setEstado(EstadoVehiculo.AVERIADA);
         resultado.registrarAveria();
         int trasladoEn = averia.tieneTraslado() ? averia.getInstanteTraslado() : AveriaAplicada.SIN_TRASLADO;
-        return new AveriaAplicada(averia, vehiculo, ubicacion, liberadasAhora, transito, decision.averiada(),
-                decision.trasbordos(), averia.getInstanteReincorporacion(), trasladoEn);
+        return new AveriaAplicada(averia, vehiculo, resolucion.ubicacion(), resolucion.liberadas(),
+                resolucion.respaldadas(), transito, resolucion.reanudado(), resolucion.trasbordos(),
+                resolucion.respaldos(), averia.getInstanteReincorporacion(), trasladoEn);
     }
 
-    /**
-     * Tipo 1 en ruta: decide que sigue a bordo y que se trasborda, reemplaza el recorrido de la averiada,
-     * pone en transito a las receptoras y corrige las metricas con las nuevas llegadas.
-     */
-    private GestorTrasbordo.Decision decidirTipo1(UnidadEnTransito transito, int instanteAveria, int salida,
-                                                  List<UnidadEnTransito> enRuta, ResultadoSimulacion resultado) {
-        EscenarioOperativo escenario = escenarioDirecto(salida);
-        GestorTrasbordo.Decision decision = new GestorTrasbordo(escenario, flota,
-                destino -> almacenDestinoDirecto(destino, escenario)).decidir(transito, instanteAveria, salida);
-        enRuta.set(enRuta.indexOf(transito), decision.averiada());
-        sumarRecorrido(transito.getVehiculo(), kilometros(decision.averiada()) - kilometros(transito), resultado);
-        for (Trasbordo trasbordo : decision.trasbordos()) {
-            UnidadEnTransito receptora = trasbordo.receptora();
-            receptora.getVehiculo().setEstado(EstadoVehiculo.EN_RUTA);
-            enRuta.add(receptora);
-            resultado.registrarUso(receptora.getVehiculo().getTipo().name());
-            sumarRecorrido(receptora.getVehiculo(), kilometros(receptora), resultado);
+    /** Lo que se hizo con la carga de una unidad averiada en ruta. */
+    private record Resolucion(Nodo ubicacion, UnidadEnTransito reanudado, List<Trasbordo> trasbordos,
+                              List<Entrega> respaldadas, List<UnidadEnTransito> respaldos,
+                              List<Entrega> liberadas) {
+
+        static Resolucion vacia(Nodo ubicacion) {
+            return new Resolucion(ubicacion, null, List.of(), List.of(), List.of(), List.of());
         }
-        reprogramarLlegadas(transito, decision, instanteAveria, resultado);
-        return decision;
     }
 
     /**
-     * Reemplaza en las metricas la llegada prevista al despachar de cada entrega pendiente por la nueva
-     * (a bordo y desplazada, o en la receptora). Ajusta margenes e incumplimientos y, si alguna entrega
-     * que llegaba a tiempo pasa a llegar tarde, declara el colapso en el instante de la averia, que es
-     * cuando el incumplimiento se vuelve seguro.
+     * Resuelve la carga de una unidad averiada en ruta, para cualquier tipo de averia:
+     * <ol>
+     *   <li>tipo 1: lo que llega a tiempo esperando las 2 h sigue a bordo;</li>
+     *   <li>lo demas se trasvasa a unidades en ruta ({@link GestorTrasbordo});</li>
+     *   <li>lo que no se trasvasa sale, si llega a tiempo, en una unidad libre de un almacen con stock,
+     *       con producto nuevo;</li>
+     *   <li>lo que queda sigue a bordo en tipo 1 (llegara tarde) o, en tipo 2 y 3, vuelve a la cola del
+     *       siguiente ciclo; su carga fisica va al central con la unidad, que es ilimitado.</li>
+     * </ol>
+     * No replanifica la cola: solo repara lo que la averia afecto.
      */
-    private void reprogramarLlegadas(UnidadEnTransito transito, GestorTrasbordo.Decision decision,
-                                     int instanteAveria, ResultadoSimulacion resultado) {
-        Map<Entrega, Integer> nuevas = new IdentityHashMap<>(decision.averiada().llegadasPorEntrega());
+    private Resolucion resolverEnRuta(Averia averia, UnidadEnTransito transito, int salida,
+                                      List<UnidadEnTransito> enRuta, ResultadoSimulacion resultado) {
+        int instanteAveria = averia.getInstante();
+        GestorTrasbordo gestor = new GestorTrasbordo(escenarioDirecto(salida));
+        GestorTrasbordo.Decision decision = gestor.decidir(transito, averia.getTipo(), instanteAveria, salida,
+                enRuta);
+        Map<Entrega, Integer> previas = llegadasPendientes(transito, instanteAveria);
+        Map<Entrega, Integer> nuevas = new IdentityHashMap<>();
         Map<Entrega, Vehiculo> portadoras = new IdentityHashMap<>();
+        Set<Entrega> quitadas = Collections.newSetFromMap(new IdentityHashMap<>());
         for (Trasbordo trasbordo : decision.trasbordos()) {
-            Map<Entrega, Integer> llegadas = trasbordo.receptora().llegadasPorEntrega();
-            nuevas.putAll(llegadas);
-            llegadas.keySet().forEach(entrega -> portadoras.put(entrega, trasbordo.receptora().getVehiculo()));
+            UnidadEnTransito anterior = buscarEnTransito(enRuta, trasbordo.receptora().getVehiculo());
+            previas.putAll(llegadasPendientes(anterior, salida));
+            reemplazar(anterior, trasbordo.receptora(), enRuta, nuevas, portadoras, resultado);
+            quitadas.addAll(trasbordo.entregas());
         }
-        UnidadEnTransito.Corte antes = transito.cortarEn(instanteAveria);
-        for (int i = 0; i < antes.entregasPendientes().size(); i++) {
-            Entrega entrega = antes.entregasPendientes().get(i);
-            int anterior = antes.tramosPendientes().get(i).getLlegada();
-            int nueva = nuevas.get(entrega);
-            resultado.retirarMargenEntrega(entrega.getHoraLimite() - anterior, entrega.getCantidad());
-            resultado.registrarMargenEntrega(entrega.getHoraLimite() - nueva, entrega.getCantidad());
+        int antes = enRuta.size();
+        List<Entrega> sinRespaldo = despacharRespaldos(decision.sinRescate(), salida, enRuta, resultado);
+        List<UnidadEnTransito> respaldos = new ArrayList<>(enRuta.subList(antes, enRuta.size()));
+        Set<Entrega> quedan = Collections.newSetFromMap(new IdentityHashMap<>());
+        quedan.addAll(sinRespaldo);
+        List<Entrega> respaldadas = decision.sinRescate().stream().filter(entrega -> !quedan.contains(entrega))
+                .toList();
+        quitadas.addAll(respaldadas);
+        UnidadEnTransito reanudado = null;
+        List<Entrega> liberadasAhora = List.of();
+        if (averia.getTipo() == TipoAveria.TIPO_1) {
+            reanudado = gestor.reanudar(transito, instanteAveria, quitadas);
+            reemplazar(transito, reanudado, enRuta, nuevas, portadoras, resultado);
+        } else {
+            UnidadEnTransito.Corte corte = transito.cortarEn(instanteAveria);
+            enRuta.remove(transito);
+            sumarRecorrido(transito.getVehiculo(), corte.kilometrosRecorridos() - corte.kilometrosTotales(),
+                    resultado);
+            liberadasAhora = liberar(sinRespaldo);
+        }
+        reprogramarLlegadas(previas, nuevas, portadoras, instanteAveria, transito.getVehiculo(), resultado);
+        return new Resolucion(decision.ubicacion(), reanudado, decision.trasbordos(), respaldadas, respaldos,
+                liberadasAhora);
+    }
+
+    /** Llegada prevista de cada entrega que la unidad aun no completa en el instante dado. */
+    private static Map<Entrega, Integer> llegadasPendientes(UnidadEnTransito transito, int instante) {
+        UnidadEnTransito.Corte corte = transito.cortarEn(instante);
+        Map<Entrega, Integer> llegadas = new IdentityHashMap<>();
+        for (int i = 0; i < corte.entregasPendientes().size(); i++) {
+            llegadas.put(corte.entregasPendientes().get(i), corte.tramosPendientes().get(i).getLlegada());
+        }
+        return llegadas;
+    }
+
+    /**
+     * Reemplaza el recorrido de una unidad en transito, suma la diferencia de kilometros y anota la nueva
+     * llegada de cada entrega del recorrido nuevo y quien la lleva.
+     */
+    private static void reemplazar(UnidadEnTransito anterior, UnidadEnTransito nuevo, List<UnidadEnTransito> enRuta,
+                                   Map<Entrega, Integer> nuevas, Map<Entrega, Vehiculo> portadoras,
+                                   ResultadoSimulacion resultado) {
+        enRuta.set(enRuta.indexOf(anterior), nuevo);
+        sumarRecorrido(nuevo.getVehiculo(), kilometros(nuevo) - kilometros(anterior), resultado);
+        Map<Entrega, Integer> llegadas = nuevo.llegadasPorEntrega();
+        nuevas.putAll(llegadas);
+        llegadas.keySet().forEach(entrega -> portadoras.put(entrega, nuevo.getVehiculo()));
+    }
+
+    /**
+     * Reemplaza en las metricas la llegada prevista de cada entrega afectada por la nueva (a bordo y
+     * desplazada, en una receptora, o retrasada por el desvio de su receptora). Las que ya no lleva nadie
+     * (salieron en respaldo o vuelven a la cola) se retiran, porque se cuentan de nuevo al despacharse. Si
+     * alguna entrega que llegaba a tiempo pasa a llegar tarde, declara el colapso en el instante de la
+     * averia, que es cuando el incumplimiento se vuelve seguro.
+     */
+    private static void reprogramarLlegadas(Map<Entrega, Integer> previas, Map<Entrega, Integer> nuevas,
+                                            Map<Entrega, Vehiculo> portadoras, int instanteAveria,
+                                            Vehiculo averiada, ResultadoSimulacion resultado) {
+        for (Map.Entry<Entrega, Integer> previa : previas.entrySet()) {
+            Entrega entrega = previa.getKey();
+            int anterior = previa.getValue();
             boolean eraTarde = anterior > entrega.getHoraLimite();
+            resultado.retirarMargenEntrega(entrega.getHoraLimite() - anterior, entrega.getCantidad());
+            Integer nueva = nuevas.get(entrega);
+            if (nueva == null) {
+                resultado.sumarIncumplimientos(eraTarde ? -1 : 0);
+                resultado.sumarEntregas(-1);
+                continue;
+            }
+            resultado.registrarMargenEntrega(entrega.getHoraLimite() - nueva, entrega.getCantidad());
             boolean esTarde = nueva > entrega.getHoraLimite();
             if (eraTarde != esTarde) {
                 resultado.sumarIncumplimientos(esTarde ? 1 : -1);
             }
             if (esTarde && !eraTarde) {
-                declararTardia(entrega, nueva, instanteAveria,
-                        portadoras.getOrDefault(entrega, transito.getVehiculo()), resultado);
+                declararTardia(entrega, nueva, instanteAveria, portadoras.getOrDefault(entrega, averiada), resultado);
             }
         }
     }
@@ -515,7 +569,7 @@ public final class Orquestador {
         resultado.registrarColapso(ColapsoLogistico.porEntregaTardia(entrega.getIdPedido(), instanteAveria,
                 entrega.getHoraLimite(), llegada, vehiculo));
         resultado.getDetalleIncumplimientos().add(String.format(
-                "t=%d %s: averia tipo 1, hora limite %d, llega en %d, tarde por %d min", instanteAveria, vehiculo,
+                "t=%d %s: averia, hora limite %d, llega en %d, tarde por %d min", instanteAveria, vehiculo,
                 entrega.getHoraLimite(), llegada, llegada - entrega.getHoraLimite()));
     }
 
@@ -529,32 +583,35 @@ public final class Orquestador {
     }
 
     /**
-     * Tipo 2 y 3 en ruta: libera lo que la unidad aun no entregaba y deshace lo que se conto al
-     * despacharlo, para que al redespacharse no se cuente dos veces. Devuelve la carga al almacen de
-     * salida, descuenta los kilometros que ya no se recorreran con su costo, y retira las entregas, sus
-     * margenes y sus incumplimientos previstos. Las entregas liberadas reciben un identificador propio
-     * (negativo) para no chocar con las que el fragmentador numera en cada ciclo.
+     * Despacha, por hora limite, cada entrega sin rescate en una unidad libre de un almacen con stock que la
+     * lleve a tiempo, con producto nuevo: no pasa por la averiada. No despacha si llegaria tarde.
+     *
+     * @return entregas que ninguna unidad libre lleva a tiempo
      */
-    private List<Entrega> liberarCarga(UnidadEnTransito transito, UnidadEnTransito.Corte corte,
-                                       ResultadoSimulacion resultado) {
-        List<Entrega> liberadasAhora = new ArrayList<>();
-        int carga = 0;
-        for (int i = 0; i < corte.entregasPendientes().size(); i++) {
-            Entrega entrega = corte.entregasPendientes().get(i);
-            int llegadaPrevista = corte.tramosPendientes().get(i).getLlegada();
-            carga += entrega.getCantidad();
-            resultado.retirarMargenEntrega(entrega.getHoraLimite() - llegadaPrevista, entrega.getCantidad());
-            if (llegadaPrevista > entrega.getHoraLimite()) {
-                resultado.sumarIncumplimientos(-1);
+    private List<Entrega> despacharRespaldos(List<Entrega> entregas, int instante, List<UnidadEnTransito> enRuta,
+                                             ResultadoSimulacion resultado) {
+        List<Entrega> sinRespaldo = new ArrayList<>();
+        for (Entrega entrega : entregas) {
+            Pedido porcion = new Pedido(entrega.getIdPedido(), entrega.getDestino(), entrega.getCantidad(),
+                    entrega.getInstanteRegistro(), entrega.getPlazo());
+            if (despacharATiempo(porcion, instante, enRuta, resultado) == 0) {
+                sinRespaldo.add(entrega);
             }
+        }
+        return sinRespaldo;
+    }
+
+    /**
+     * Tipo 2 y 3: las entregas que no se trasvasaron ni salieron en respaldo vuelven a planificarse en el
+     * siguiente ciclo. Reciben un identificador propio (negativo) para no chocar con los que el
+     * fragmentador numera en cada ciclo. No se devuelve stock: la carga va con la unidad al central.
+     */
+    private List<Entrega> liberar(List<Entrega> entregas) {
+        List<Entrega> liberadasAhora = new ArrayList<>();
+        for (Entrega entrega : entregas) {
             liberadasAhora.add(new Entrega(siguienteIdLiberada--, entrega.getIdPedido(), entrega.getDestino(),
                     entrega.getCantidad(), entrega.getInstanteRegistro(), entrega.getPlazo()));
         }
-        transito.getOrigen().reintegrar(carga);
-        int noRecorridos = corte.kilometrosTotales() - corte.kilometrosRecorridos();
-        resultado.sumarDistancia(-noRecorridos);
-        resultado.sumarCosto(-noRecorridos * transito.getVehiculo().getTipo().getCostoPorKm());
-        resultado.sumarEntregas(-liberadasAhora.size());
         liberadas.addAll(liberadasAhora);
         return liberadasAhora;
     }
@@ -762,23 +819,44 @@ public final class Orquestador {
         if (pedido.getCantidad() > TipoVehiculo.capacidadMaxima()) {
             return 0;
         }
+        int unidades = despacharATiempo(pedido, instante, enRuta, resultado);
+        if (unidades > 0) {
+            return unidades;
+        }
         EscenarioOperativo escenario = escenarioDirecto(instante);
         Vehiculo vehiculo = buscarVehiculoDirecto(pedido, instante, escenario);
-        boolean aTiempo = vehiculo != null
-                && estimarLlegada(vehiculo, pedido, instante, escenario) <= pedido.getHoraLimite();
-        if (!aTiempo) {
-            List<Vehiculo> reparto = buscarRepartoATiempo(pedido, instante, escenario);
-            if (!reparto.isEmpty()) {
-                despacharReparto(pedido, reparto, instante, escenario, enRuta, resultado);
-                return reparto.size();
-            }
-        }
         if (vehiculo == null) {
             return 0;
         }
         despacharFragmento(pedido, vehiculo, pedido.getCantidad(), instante, escenario, enRuta, resultado);
         resultado.sumarEntregas(1);
         return 1;
+    }
+
+    /**
+     * Despacha un pedido solo si llega dentro del plazo: en una unidad libre o, si ninguna sola llega,
+     * repartido entre varias. Lo usan el despacho directo y el respaldo ante una averia.
+     *
+     * @param pedido    pedido (o porcion de pedido) a despachar
+     * @param instante  instante actual del reloj
+     * @param enRuta    unidades en transito (se agregan las despachadas)
+     * @param resultado resultado agregado a actualizar
+     * @return cantidad de unidades despachadas; cero si ninguna combinacion llega a tiempo
+     */
+    private int despacharATiempo(Pedido pedido, int instante, List<UnidadEnTransito> enRuta,
+                                 ResultadoSimulacion resultado) {
+        EscenarioOperativo escenario = escenarioDirecto(instante);
+        Vehiculo vehiculo = buscarVehiculoDirecto(pedido, instante, escenario);
+        if (vehiculo != null && estimarLlegada(vehiculo, pedido, instante, escenario) <= pedido.getHoraLimite()) {
+            despacharFragmento(pedido, vehiculo, pedido.getCantidad(), instante, escenario, enRuta, resultado);
+            resultado.sumarEntregas(1);
+            return 1;
+        }
+        List<Vehiculo> reparto = buscarRepartoATiempo(pedido, instante, escenario);
+        if (!reparto.isEmpty()) {
+            despacharReparto(pedido, reparto, instante, escenario, enRuta, resultado);
+        }
+        return reparto.size();
     }
 
     /**

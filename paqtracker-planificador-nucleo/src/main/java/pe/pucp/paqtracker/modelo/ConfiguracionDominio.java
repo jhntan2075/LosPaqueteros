@@ -108,6 +108,12 @@ public final class ConfiguracionDominio {
     public static final int AVERIA_TIPO3_MINIMO_MINUTOS = 2 * 1440;
 
     /**
+     * Minutos que toma trasvasar la carga de una unidad averiada a otra en el punto de la averia
+     * (indicacion del profesor). El trasvase debe terminar antes de que la averiada se vaya.
+     */
+    public static final int TRASVASE_MINUTOS = 30;
+
+    /**
      * @return minutos del dia en que inicia cada turno
      */
     public static int[] iniciosTurno() {

@@ -21,6 +21,7 @@ import pe.pucp.paqtracker.modulos.difusion.aplicacion.servicio.ServicioDifusion;
 import pe.pucp.paqtracker.modulos.difusion.dominio.PuertoDifusion;
 import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.dto.AveriaProgramada;
 import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.dto.DetallePedido;
+import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.dto.HitoPedido;
 import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.dto.ResultadoRegistroPedido;
 import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.dto.SolicitudAveriaEnVivo;
 import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.dto.SolicitudPedidoEnVivo;
@@ -291,7 +292,7 @@ class MotorEjecucionTest {
     }
 
     @Test
-    void programarAveria_tipo2EnRutaConCarga_liberaLosPedidosYReplanificaEnElMismoTick() {
+    void programarAveria_tipo2EnRutaConCarga_reparaLaCargaSinReplanificarLaColaEnElMismoTick() {
         MotorEjecucion motor = crearMotor(pedidos(), false);
         motor.preparar();
         motor.iniciar();
@@ -304,8 +305,12 @@ class MotorEjecucionTest {
 
         List<String> tipos = eventos.stream().map(MensajeEventoEjecucion::tipo).toList();
         int indiceAveria = tipos.indexOf("UNIDAD_AVERIADA");
-        assertTrue(tipos.subList(indiceAveria, tipos.size()).contains("PLAN_ACTUALIZADO"));
-        assertFalse(((List<?>) detalleDe("UNIDAD_AVERIADA").get("pedidosLiberados")).isEmpty());
+        assertFalse(tipos.subList(indiceAveria, tipos.size()).contains("PLAN_ACTUALIZADO"));
+        Map<String, Object> detalleAveria = detalleDe("UNIDAD_AVERIADA");
+        int reparados = ((List<?>) detalleAveria.get("pedidosRespaldados")).size()
+                + ((List<?>) detalleAveria.get("unidadesReceptoras")).size()
+                + ((List<?>) detalleAveria.get("pedidosLiberados")).size();
+        assertTrue(reparados > 0);
         UnidadEnMapa averiada = unidad(motor, cargada.codigo());
         assertEquals("AVERIADA", averiada.estado());
         assertEquals(0, averiada.cargaActual());
@@ -340,7 +345,7 @@ class MotorEjecucionTest {
     }
 
     @Test
-    void programarAveria_tipo1ConUnPedidoUrgenteABordo_loTrasbordaAOtraUnidadYLoDifunde() {
+    void programarAveria_tipo1ConUnPedidoUrgenteYSinReceptoraEnRuta_saleUnRespaldoYLoDifunde() {
         MotorEjecucion motor = crearMotor(List.of(new Pedido(1, new Nodo(30, 18), 3, 0, 60)), false);
         motor.preparar();
         motor.iniciar();
@@ -351,15 +356,19 @@ class MotorEjecucionTest {
         motor.programarAveria(new SolicitudAveriaEnVivo(cargada.codigo(), TipoAveria.TIPO_1));
         motor.procesarTickAhora();
 
-        Map<String, Object> trasbordo = detalleDe("TRASBORDO");
-        String receptora = (String) trasbordo.get("unidadReceptora");
-        assertEquals(cargada.codigo(), trasbordo.get("unidadAveriada"));
-        assertEquals(List.of(NomenclaturaOperacion.codigoPedido(1)), trasbordo.get("pedidos"));
-        assertEquals(false, detalleDe("UNIDAD_AVERIADA").get("conservaCarga"));
-        assertEquals("VIAJE_A_TRASBORDO", unidad(motor, receptora).tramoEnCurso().tipo());
+        Map<String, Object> averia = detalleDe("UNIDAD_AVERIADA");
+        assertEquals(false, averia.get("conservaCarga"));
+        assertEquals(List.of(NomenclaturaOperacion.codigoPedido(1)), averia.get("pedidosRespaldados"));
+        List<?> respaldos = (List<?>) averia.get("unidadesRespaldo");
+        assertEquals(1, respaldos.size());
+        String respaldo = (String) respaldos.get(0);
+        assertNotEquals(cargada.codigo(), respaldo);
+        assertFalse(hayEvento("TRASBORDO"));
+        assertEquals("VIAJE_A_ENTREGA", unidad(motor, respaldo).tramoEnCurso().tipo());
         DetallePedido pedido = motor.consultarPedido(1).orElseThrow();
-        assertEquals(receptora, pedido.pedido().unidad());
-        assertEquals("Trasbordado", pedido.hitos().get(pedido.hitos().size() - 1).titulo());
+        assertEquals(respaldo, pedido.pedido().unidad());
+        assertEquals(List.of("Respaldo por averia", "Despachado"), pedido.hitos().subList(pedido.hitos().size() - 2,
+                pedido.hitos().size()).stream().map(HitoPedido::titulo).toList());
     }
 
     @Test

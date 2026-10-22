@@ -6,8 +6,9 @@ import java.util.List;
  * Tramo que una unidad esta recorriendo. Con el reloj simulado, el front interpola su posicion sobre
  * el camino sin recibir cada movimiento (LE-064).
  *
- * @param tipo                  VIAJE_A_ENTREGA, SERVICIO, RETORNO, AVERIA (detenida con su carga, tipo 1)
- *                              o VIAJE_A_TRASBORDO (va a recoger la carga urgente de una averiada)
+ * @param tipo                  VIAJE_A_ENTREGA, SERVICIO, RETORNO, AVERIA (detenida con su carga, tipo 1),
+ *                              VIAJE_A_TRASBORDO (desvio de una unidad en ruta hasta una averiada) o
+ *                              TRASVASE (recibe la carga de la averiada, 30 min sin moverse)
  * @param origen                nodo de partida
  * @param destino               nodo de llegada
  * @param tiempoSalidaSimulado  salida, epoch en milisegundos simulados
