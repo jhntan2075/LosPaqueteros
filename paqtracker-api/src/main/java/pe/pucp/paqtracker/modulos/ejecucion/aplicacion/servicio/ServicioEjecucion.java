@@ -5,6 +5,7 @@ import pe.pucp.paqtracker.comun.excepcion.RecursoNoEncontradoException;
 import pe.pucp.paqtracker.modulos.difusion.aplicacion.dto.MensajeEstadoEjecucion;
 import pe.pucp.paqtracker.modulos.difusion.aplicacion.dto.PedidoEnMapa;
 import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.dto.AveriaProgramada;
+import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.dto.EstimacionAveria;
 import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.dto.DetallePedido;
 import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.dto.RespuestaEjecucion;
 import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.dto.ResultadoRegistroPedido;
@@ -94,6 +95,25 @@ public class ServicioEjecucion {
      */
     public AveriaProgramada registrarAveria(String id, SolicitudAveriaEnVivo solicitud) {
         return registro.obtener(id).programarAveria(solicitud);
+    }
+
+    /**
+     * @param id           ejecucion
+     * @param codigoUnidad unidad cuya averia programada se deshace
+     * @throws RecursoNoEncontradoException  si la ejecucion o la unidad no existen
+     * @throws OperacionNoPermitidaException si la averia ya se aplico
+     */
+    public void cancelarAveria(String id, String codigoUnidad) {
+        registro.obtener(id).cancelarAveria(codigoUnidad);
+    }
+
+    /**
+     * @param id ejecucion
+     * @return lo que pasaria si se registrara ahora una averia de cada tipo
+     * @throws RecursoNoEncontradoException si la ejecucion no existe
+     */
+    public List<EstimacionAveria> estimarAverias(String id) {
+        return registro.obtener(id).estimarAverias();
     }
 
     /**

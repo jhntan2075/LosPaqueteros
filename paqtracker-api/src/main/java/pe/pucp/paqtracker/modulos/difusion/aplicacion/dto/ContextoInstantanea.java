@@ -5,6 +5,7 @@ import pe.pucp.paqtracker.modulos.difusion.aplicacion.servicio.CodigosFlota;
 import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Datos de la ejecucion que acompanan a la simulacion al construir una instantanea.
@@ -22,10 +23,11 @@ import java.util.List;
  * @param codigosFlota      codigos visibles de las unidades de la ejecucion
  * @param pedidos           pedidos aun no entregados
  * @param indicadores       KPI calculados por el seguimiento de la ejecucion
+ * @param averias           averias vigentes por identificador de unidad
  */
 public record ContextoInstantanea(String ejecucionId, String tipoEscenario, String estado, long pasoSc,
                                   double minutoInicial, double minutoSimulado, LineaTiempo lineaTiempo,
                                   ZonedDateTime relojReal, Instant relojRealInicio, double factorAceleracion,
                                   CodigosFlota codigosFlota, List<PedidoEnMapa> pedidos,
-                                  IndicadoresOperacion indicadores) {
+                                  IndicadoresOperacion indicadores, Map<Integer, AveriaEnCurso> averias) {
 }

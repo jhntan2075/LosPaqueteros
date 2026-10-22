@@ -19,9 +19,11 @@ import java.util.List;
  * @param rutaRestante    ruta planificada que le falta recorrer, desde su posicion actual hasta el
  *                        almacen de retorno; vacia si no esta en ruta (lo recorrido ya no aparece)
  * @param paradas         entregas pendientes, en orden
+ * @param averia          averia vigente si la unidad esta averiada, o null
  */
 public record UnidadEnMapa(int id, String codigo, String tipo, int capacidadMaxima, int cargaActual,
                            double ocupacion, int velocidadKmH, String estado, String almacenOrigen,
                            Coordenada ubicacionActual,
-                           TramoEnCurso tramoEnCurso, List<Coordenada> rutaRestante, List<ParadaPendiente> paradas) {
+                           TramoEnCurso tramoEnCurso, List<Coordenada> rutaRestante, List<ParadaPendiente> paradas,
+                           AveriaEnCurso averia) {
 }

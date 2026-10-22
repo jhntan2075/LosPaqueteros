@@ -57,7 +57,7 @@ public class CasoUsoRegistrarAveria {
                 new SolicitudAveriaEnVivo(solicitud.unidad(), tipo));
         AveriaRegistrada registrada = repositorio.guardar(new AveriaRegistrada(null, programada.ejecucionId(),
                 programada.codigoUnidad(), programada.tipo(), Instant.ofEpochMilli(programada.instanteMs()),
-                relojPared.instant()));
+                relojPared.instant(), null));
         return new RespuestaRegistroAveria(registrada.id(), programada.ejecucionId(), programada.codigoUnidad(),
                 programada.tipo(), ESTADO_PROGRAMADA, programada.instanteMs(), programada.reincorporacionMs(),
                 programada.trasladoCentralMs());
