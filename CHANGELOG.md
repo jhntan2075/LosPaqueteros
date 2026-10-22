@@ -4,6 +4,47 @@ Formato basado en Keep a Changelog; versionado semántico (MAJOR.MINOR.PATCH).
 
 ## [Sin publicar]
 
+### Registro de averías en el front (CU-13)
+- Diálogo "Registrar avería" desde el detalle del vehículo o desde Incidencias:
+  - tipo sin valor por defecto, con ejemplo, duración y la reincorporación que estima el
+    servidor (`GET /api/ejecuciones/{id}/averias/estimacion`, no registra nada);
+  - impacto sobre los pedidos a bordo antes de confirmar;
+  - combobox con búsqueda para elegir la unidad en flotas grandes (hasta 150), con las ya
+    averiadas o por aplicarse visibles pero no elegibles.
+- Deshacer mientras la avería sigue programada: "Cancelar avería" en el detalle y "Deshacer"
+  en el aviso (`DELETE /api/ejecuciones/{id}/averias/{averiaId}`; 409 si ya se aplicó).
+  Migración V4: columna `averia.cancelada_en`; la avería cancelada queda en la bitácora.
+- La instantánea incluye la avería vigente de cada unidad (`UnidadEnMapa.averia`): el detalle
+  del vehículo, Incidencias, Flota y el mapa muestran el tipo y cuándo vuelve a operar.
+- Bitácora: `UNIDAD_AVERIADA`, `TRASBORDO` y `UNIDAD_REINCORPORADA` con texto propio; un tipo
+  de evento desconocido ya no rompe la bitácora.
+- Aviso no bloqueante (snackbar) reutilizable; foco atrapado y devuelto al cerrar en los
+  diálogos modales.
+
+### Revisión de usabilidad del front (`paqtracker-web`)
+- Glosario único (`config/glosario.ts`): holgura Crítico/Ajustado/Holgado, estados de pedido y
+  de unidad, plazos y averías con un solo nombre en todas las pantallas.
+- Navegación: pestañas Operación, Pedidos, Simulación y Métricas; Incidencias, Flota y
+  Bitácora son pestañas del panel lateral del mapa en Operación y en Simulación.
+- Mapa: pines y almacenes con la geometría de Figma, tooltip propio por objeto, detalle de
+  almacén en el panel, leyenda como panel flotante y barra de escala.
+- Flota: los seis estados de unidad del servidor, capacidad desde la API y carga a bordo por
+  tipo con el semáforo de carga; el color de los vehículos sigue la carga en toda la interfaz.
+- Pedidos: formulario sin valores precargados, "Ubicar en el mapa" que abre y centra el pedido,
+  tabla alineada y detalle que se actualiza en vivo.
+- Simulación: confirmación al detener, estado "Detenida" y bitácora propia de la corrida.
+- Accesibilidad: foco visible, contraste AA, radios nativos, texto seleccionable y tipografía
+  única Fira Sans con números tabulares.
+
+### Pruebas del front
+- Vitest + Testing Library (`npm test`); el workflow `web.yml` corre las pruebas entre el lint
+  y el build.
+
+### Design system
+- Logo y favicon; paleta derivada del logo con `tailwind.config.js` como fuente única y
+  contrastes WCAG verificados (`docs/design-system.md`). Los componentes aún usan colores fijos:
+  su migración a los tokens queda pendiente.
+
 ### Averías: trasvase a unidades en ruta y respaldo desde almacén
 - El mismo procedimiento para los tres tipos de avería en ruta:
   1. tipo 1: lo que llega a tiempo esperando las 2 h sigue a bordo;
