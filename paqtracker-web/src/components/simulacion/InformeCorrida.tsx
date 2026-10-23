@@ -4,24 +4,21 @@ import { formatearCronometro, formatearDiasHoras, formatearFechaLarga, formatear
 import type { EjecucionApi } from '../../types/api';
 import type { EstadoCorrida } from '../../types/simulacion';
 import { ESTADO_CORRIDA } from './estadoCorrida';
-import { Etiqueta } from '../ui/Etiqueta';
-import { Boton } from '../ui/Boton';
-import { Tarjeta as Superficie } from '../ui/Tarjeta';
 
 // Informe de la corrida (SI-05). El frame de Figma no estuvo disponible: esta versión reúne los datos
 // que el informe debe auditar con el lenguaje visual del resto del sistema. Los valores son los de la
 // última instantánea de la ejecución.
 
 const Tarjeta: React.FC<{ titulo: string; children: React.ReactNode }> = ({ titulo, children }) => (
-  <Superficie como="section">
-    <h2 className="h-[44px] px-[15px] flex items-center border-b border-neutral-200 font-sans font-semibold text-body-lg text-neutral-900">{titulo}</h2>
+  <section className="bg-white border border-[#E2E8F0] rounded-[10px]">
+    <h2 className="h-[44px] px-[15px] flex items-center border-b border-[#E2E8F0] font-sans font-semibold text-[14px] text-[#0F172A]">{titulo}</h2>
     <div className="px-[15px] py-[8px]">{children}</div>
-  </Superficie>
+  </section>
 );
 
-const Fila: React.FC<{ etiqueta: string; valor: string; color?: string }> = ({ etiqueta, valor, color = 'text-neutral-900' }) => (
-  <div className="h-[30px] flex items-center justify-between border-b border-dashed border-neutral-200 last:border-0 text-body">
-    <span className="font-sans text-neutral-500">{etiqueta}</span>
+const Fila: React.FC<{ etiqueta: string; valor: string; color?: string }> = ({ etiqueta, valor, color = 'text-[#0F172A]' }) => (
+  <div className="h-[30px] flex items-center justify-between border-b border-dashed border-[#E2E8F0] last:border-0 text-[12px]">
+    <span className="font-sans text-[#64748B]">{etiqueta}</span>
     <span className={`tabular-nums ${color}`}>{valor}</span>
   </div>
 );
@@ -40,19 +37,19 @@ export const InformeCorrida: React.FC<InformeCorridaProps> = ({ ejecucion, estad
   const porcentaje = (valor: number) => `${valor.toFixed(1).replace('.', ',')} %`;
   return (
     <div className="flex-1 flex flex-col min-h-0 leading-[normal]">
-      <header className="h-[80px] bg-white border-b border-neutral-200 px-[24px] flex items-center gap-[16px] shrink-0">
+      <header className="h-[80px] bg-white border-b border-[#E2E8F0] px-[24px] flex items-center gap-[16px] shrink-0">
         <div className="flex flex-col gap-[6px]">
-          <button type="button" onClick={onVolverACorrida} className="self-start font-sans font-medium text-body text-primary-600 hover:underline">
+          <button type="button" onClick={onVolverACorrida} className="self-start font-sans font-medium text-[12px] text-[#1E40AF] hover:underline">
             ‹ Volver a la corrida
           </button>
-          <h1 className="font-sans font-semibold text-title text-neutral-900">Informe de la corrida</h1>
+          <h1 className="font-sans font-semibold text-[18px] text-[#0F172A]">Informe de la corrida</h1>
         </div>
-        <Etiqueta tono={ESTADO_CORRIDA[estado].tono} className="ml-[8px]">
+        <span className={`ml-[8px] rounded-[4px] px-[10px] py-[5px] font-sans font-semibold text-[12px] tracking-[0.5px] ${ESTADO_CORRIDA[estado].clase}`}>
           {ESTADO_CORRIDA[estado].texto}
-        </Etiqueta>
-        <Boton variante="primario" tamano="md" className="ml-auto" onClick={onNuevaCorrida}>
+        </span>
+        <button type="button" onClick={onNuevaCorrida} className="ml-auto h-[36px] px-[16px] rounded-[6px] bg-[#1E40AF] hover:bg-[#1E3A8A] text-white font-sans font-semibold text-[12px]">
           Nueva corrida
-        </Boton>
+        </button>
       </header>
 
       <div className="flex-1 min-h-0 overflow-y-auto">
@@ -62,7 +59,7 @@ export const InformeCorrida: React.FC<InformeCorridaProps> = ({ ejecucion, estad
             <Fila
               etiqueta={colapso ? 'Instante del colapso' : 'Reloj simulado'}
               valor={formatearFechaLarga(datos.reloj, false)}
-              color={colapso ? 'text-critical-600' : undefined}
+              color={colapso ? 'text-[#B91C1C]' : undefined}
             />
             <Fila etiqueta="Operación soportada" valor={formatearDiasHoras(datos.transcurridoSimuladoMs)} />
             <Fila etiqueta="Tiempo de ejecución" valor={formatearCronometro(datos.transcurridoRealMs)} />
@@ -74,7 +71,7 @@ export const InformeCorrida: React.FC<InformeCorridaProps> = ({ ejecucion, estad
             <Fila etiqueta="Pedidos" valor={formatearMiles(resumen.total)} />
             <Fila etiqueta="Entregados" valor={formatearMiles(resumen.entregados)} />
             <Fila etiqueta="Cumplimiento en plazo" valor={porcentaje(indicadores.porcentajeCumplimiento)} />
-            <Fila etiqueta="Fuera de plazo" valor={String(resumen.fueraDePlazo)} color={resumen.fueraDePlazo > 0 ? 'text-critical-600' : undefined} />
+            <Fila etiqueta="Fuera de plazo" valor={String(resumen.fueraDePlazo)} color={resumen.fueraDePlazo > 0 ? 'text-[#B91C1C]' : undefined} />
             <Fila etiqueta="En espera al cierre" valor={String(resumen.enEspera)} />
             <Fila etiqueta="Distancia recorrida" valor={`${formatearMiles(Math.round(indicadores.distanciaTotalKm))} km`} />
           </Tarjeta>

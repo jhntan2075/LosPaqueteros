@@ -125,12 +125,12 @@ export const SelectorUnidad = forwardRef<HTMLInputElement, SelectorUnidadProps>(
           entradaRef.current?.focus();
           setAbierta((actual) => !actual);
         }}
-        className="h-[36px] px-[10px] flex items-center gap-[8px] border border-neutral-300 rounded-[6px] bg-white cursor-text focus-within:border-primary-600 focus-within:ring-1 focus-within:ring-primary-600/30"
+        className="h-[36px] px-[10px] flex items-center gap-[8px] border border-[#CBD5E1] rounded-[6px] bg-white cursor-text focus-within:border-[#1E40AF] focus-within:ring-1 focus-within:ring-[#1E40AF]/30"
       >
         {elegida && !abierta ? (
           <img src={iconoVehiculo(elegida.tipo, colorDeUnidad(elegida)).href} alt="" className="block -my-[4px] -ml-[4px]" />
         ) : (
-          <Search className="w-3.5 h-3.5 text-neutral-500 shrink-0" aria-hidden="true" />
+          <Search className="w-3.5 h-3.5 text-[#64748B] shrink-0" aria-hidden="true" />
         )}
         <input
           ref={(el) => {
@@ -159,9 +159,9 @@ export const SelectorUnidad = forwardRef<HTMLInputElement, SelectorUnidadProps>(
           onClick={() => setAbierta(true)}
           onBlur={() => setAbierta(false)}
           onKeyDown={alPresionar}
-          className="flex-1 min-w-0 bg-transparent outline-none text-body-lg text-neutral-900 tabular-nums placeholder:text-neutral-500"
+          className="flex-1 min-w-0 bg-transparent outline-none text-[13px] text-[#0F172A] tabular-nums placeholder:text-[#94A3B8]"
         />
-        <ChevronDown className={`w-4 h-4 text-neutral-500 shrink-0 transition-transform ${abierta ? 'rotate-180' : ''}`} aria-hidden="true" />
+        <ChevronDown className={`w-4 h-4 text-[#64748B] shrink-0 transition-transform ${abierta ? 'rotate-180' : ''}`} aria-hidden="true" />
       </div>
 
       {abierta && (
@@ -172,16 +172,16 @@ export const SelectorUnidad = forwardRef<HTMLInputElement, SelectorUnidadProps>(
           aria-label="Unidades"
           // mousedown sin preventDefault quitaría el foco del campo y cerraría la lista antes del clic.
           onMouseDown={(e) => e.preventDefault()}
-          className="absolute left-0 right-0 top-[40px] z-10 max-h-[264px] overflow-y-auto bg-white border border-neutral-200 rounded-[6px] shadow-[0px_4px_16px_rgba(0,0,0,0.14)] py-[4px]"
+          className="absolute left-0 right-0 top-[40px] z-10 max-h-[264px] overflow-y-auto bg-white border border-[#E2E8F0] rounded-[6px] shadow-[0px_4px_16px_rgba(0,0,0,0.14)] py-[4px]"
         >
           {grupos.length === 0 && (
-            <li className="px-[12px] py-[10px] text-body text-neutral-500" role="presentation">
+            <li className="px-[12px] py-[10px] text-[12px] text-[#64748B]" role="presentation">
               Ninguna unidad coincide con «{texto.trim()}».
             </li>
           )}
           {grupos.map((grupo) => (
             <li key={grupo.titulo} role="presentation">
-              <p className="px-[12px] pt-[8px] pb-[4px] text-caption font-semibold uppercase tracking-wider text-neutral-500">{grupo.titulo}</p>
+              <p className="px-[12px] pt-[8px] pb-[4px] text-[11px] font-semibold uppercase tracking-wider text-[#64748B]">{grupo.titulo}</p>
               <ul role="group" aria-label={grupo.titulo}>
                 {grupo.unidades.map((u) => {
                   const esActiva = opcionActiva?.codigo === u.codigo;
@@ -195,14 +195,14 @@ export const SelectorUnidad = forwardRef<HTMLInputElement, SelectorUnidadProps>(
                       aria-disabled={grupo.bloqueado || undefined}
                       onClick={() => !grupo.bloqueado && elegir(u)}
                       onMouseEnter={() => !grupo.bloqueado && setActiva(elegibles.indexOf(u))}
-                      className={`h-[34px] px-[12px] flex items-center gap-[10px] text-body-lg ${
+                      className={`h-[34px] px-[12px] flex items-center gap-[10px] text-[13px] ${
                         grupo.bloqueado ? 'opacity-55 cursor-not-allowed' : 'cursor-pointer'
-                      } ${esActiva ? 'bg-primary-50' : ''}`}
+                      } ${esActiva ? 'bg-[#EAF1FD]' : ''}`}
                     >
                       <img src={iconoVehiculo(u.tipo, colorDeUnidad(u)).href} alt="" className="block -my-[4px] shrink-0" />
-                      <span className="font-semibold text-neutral-900 tabular-nums w-[44px] shrink-0">{u.codigo}</span>
+                      <span className="font-semibold text-[#0F172A] tabular-nums w-[44px] shrink-0">{u.codigo}</span>
                       {/* Espacio para el nombre accesible: sin él, el lector anuncia "A-01En ruta". */}{' '}
-                      <span className="text-body text-neutral-500 tabular-nums truncate">{detalle(u)}</span>
+                      <span className="text-[12px] text-[#64748B] tabular-nums truncate">{detalle(u)}</span>
                     </li>
                   );
                 })}

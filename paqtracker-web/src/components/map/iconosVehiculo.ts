@@ -1,5 +1,4 @@
 import type { TipoUnidad } from '../../config/dominio';
-import { ATENCION, COLOR_NIVEL, CRITICO, NEUTRO, OK } from '../../config/colores';
 import { nivelDeOcupacion } from '../../lib/operacion';
 import type { UnidadOperacion } from '../../types/operacion';
 
@@ -24,15 +23,15 @@ interface FuenteIcono {
 }
 
 const FUENTES: Record<TipoUnidad, FuenteIcono> = {
-  AUTO: { svg: autoSvg, colorOriginal: ATENCION, ancho: 28.3998, alto: 18.6, centroX: 4.3 + 19.8 / 2, centroY: 3.3 + 10 / 2 },
-  MOTO: { svg: motoSvg, colorOriginal: ATENCION, ancho: 29.393, alto: 19.6566, centroX: 4.3 + 20.79 / 2, centroY: 3.3 + 11.06 / 2 },
-  BICICLETA: { svg: biciSvg, colorOriginal: OK, ancho: 30.0502, alto: 21.6361, centroX: 4.3 + 21.45 / 2, centroY: 3.3 + 13.04 / 2 },
+  AUTO: { svg: autoSvg, colorOriginal: '#B45309', ancho: 28.3998, alto: 18.6, centroX: 4.3 + 19.8 / 2, centroY: 3.3 + 10 / 2 },
+  MOTO: { svg: motoSvg, colorOriginal: '#B45309', ancho: 29.393, alto: 19.6566, centroX: 4.3 + 20.79 / 2, centroY: 3.3 + 11.06 / 2 },
+  BICICLETA: { svg: biciSvg, colorOriginal: '#15803D', ancho: 30.0502, alto: 21.6361, centroX: 4.3 + 21.45 / 2, centroY: 3.3 + 13.04 / 2 },
 };
 
 /** Semáforo de carga (verde, ámbar, rojo) y gris cuando no hay dato. */
-export const COLOR_CARGA = COLOR_NIVEL;
-export const COLOR_SIN_DATO = NEUTRO[500];
-const COLOR_AVERIADA = CRITICO;
+export const COLOR_CARGA = { VERDE: '#15803D', AMBAR: '#B45309', ROJO: '#B91C1C', CERRADO: '#94A3B8' } as const;
+export const COLOR_SIN_DATO = '#64748B';
+const COLOR_AVERIADA = '#B91C1C';
 
 /** Color de una unidad en toda la interfaz: rojo si está averiada; si no, el semáforo de su carga. */
 export const colorDeUnidad = (u: Pick<UnidadOperacion, 'estado' | 'carga' | 'capacidad'>) =>

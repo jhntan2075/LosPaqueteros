@@ -19,27 +19,27 @@ const Ficha: React.FC<FichaProps> = ({ titulo, valor, linea1, linea2, onClick, a
   const contenido = (
     <>
       <div className="flex items-center justify-between w-full">
-        <span className="font-sans text-caption font-medium text-neutral-500 tracking-tight truncate">{titulo}</span>
-        {onClick && <ArrowRight className="w-3 h-3 text-neutral-500 group-hover:text-primary-600 transition shrink-0" />}
+        <span className="font-sans text-[11px] font-medium text-[#64748B] tracking-tight truncate">{titulo}</span>
+        {onClick && <ArrowRight className="w-3 h-3 text-[#64748B] group-hover:text-[#1E40AF] transition shrink-0" />}
       </div>
-      <span className="flex items-center gap-[6px] tabular-nums font-semibold text-title leading-[1.1] text-neutral-900">
+      <span className="flex items-center gap-[6px] tabular-nums font-semibold text-[18px] leading-[1.1] text-[#0F172A]">
         {valor}
       </span>
-      <span className="font-sans text-caption text-neutral-600 truncate w-full">{linea1}</span>
-      <span className="font-sans text-caption text-neutral-500 truncate w-full">{linea2}</span>
+      <span className="font-sans text-[11px] text-[#475569] truncate w-full">{linea1}</span>
+      <span className="font-sans text-[11px] text-[#64748B] truncate w-full">{linea2}</span>
     </>
   );
 
   const baseClases =
     'flex-1 min-w-[130px] bg-white border rounded-[6px] px-[10px] py-[6px] flex flex-col gap-0.5 items-start text-left overflow-hidden leading-[normal] transition';
-  const bordeClases = esAlerta ? 'border-critical-600/30 bg-critical-50/20' : 'border-neutral-200';
+  const bordeClases = esAlerta ? 'border-red-200 bg-red-50/20' : 'border-[#E2E8F0]';
 
   return onClick ? (
     <button
       type="button"
       onClick={onClick}
       title={ayuda}
-      className={`group ${baseClases} ${bordeClases} hover:border-primary-600 hover:shadow-xs focus-visible:ring-2 focus-visible:ring-primary-600/30 cursor-pointer`}
+      className={`group ${baseClases} ${bordeClases} hover:border-[#1E40AF] hover:shadow-xs focus-visible:ring-2 focus-visible:ring-[#1E40AF]/30 cursor-pointer`}
     >
       {contenido}
     </button>
@@ -106,12 +106,12 @@ export const RailKpis: React.FC<RailKpisProps> = ({
         onClick={() => setAbierto(!abierto)}
         title="Mostrar u ocultar las métricas operativas"
         className={`h-[32px] bg-white shadow-[0px_1px_4px_rgba(0,0,0,0.13)] rounded-full border flex items-center px-3 gap-1.5 transition cursor-pointer select-none ${
-          abierto ? 'border-primary-600 bg-primary-50/40' : 'border-neutral-200 hover:bg-neutral-50'
+          abierto ? 'border-[#1E40AF] bg-blue-50/40' : 'border-[#E2E8F0] hover:bg-slate-50'
         }`}
       >
-        <BarChart3 className={`w-3.5 h-3.5 ${abierto ? 'text-primary-600' : 'text-neutral-500'}`} />
-        <span className="font-sans text-body font-medium text-neutral-900">Métricas</span>
-        <span className="tabular-nums text-caption text-neutral-500 hidden sm:inline">
+        <BarChart3 className={`w-3.5 h-3.5 ${abierto ? 'text-[#1E40AF]' : 'text-[#64748B]'}`} />
+        <span className="font-sans text-[12px] font-medium text-[#0F172A]">Métricas</span>
+        <span className="tabular-nums text-[11px] text-[#64748B] hidden sm:inline">
           {resumen.entregados} ({porcentaje} %)
         </span>
 
@@ -119,20 +119,20 @@ export const RailKpis: React.FC<RailKpisProps> = ({
         {totalRiesgo > 0 ? (
           <span
             title={`${riesgo.rojo} críticos · ${riesgo.ambar} ajustados`}
-            className={`flex items-center gap-1 px-1.5 py-0.5 rounded-full tabular-nums text-caption font-bold ${
-              riesgo.rojo > 0 ? 'bg-critical-50 text-critical-600' : 'bg-warn-50 text-warn-700'
+            className={`flex items-center gap-1 px-1.5 py-0.5 rounded-full tabular-nums text-[11px] font-bold ${
+              riesgo.rojo > 0 ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-800'
             }`}
           >
-            <span className={`w-1.5 h-1.5 rounded-full ${riesgo.rojo > 0 ? 'bg-critical-600 animate-pulse' : 'bg-warn-500'}`} />
+            <span className={`w-1.5 h-1.5 rounded-full ${riesgo.rojo > 0 ? 'bg-red-600 animate-pulse' : 'bg-amber-600'}`} />
             {totalRiesgo}
           </span>
         ) : alertaCarga ? (
-          <span className="w-2 h-2 rounded-full bg-warn-500" title="Saturación de la flota alta" />
+          <span className="w-2 h-2 rounded-full bg-amber-500" title="Saturación de la flota alta" />
         ) : null}
 
         <ChevronDown
-          className={`w-3.5 h-3.5 text-neutral-500 transition-transform duration-200 ${
-            abierto ? 'rotate-180 text-primary-600' : ''
+          className={`w-3.5 h-3.5 text-[#64748B] transition-transform duration-200 ${
+            abierto ? 'rotate-180 text-[#1E40AF]' : ''
           }`}
         />
       </button>
@@ -143,21 +143,21 @@ export const RailKpis: React.FC<RailKpisProps> = ({
           role="dialog"
           aria-label="Panel de métricas operativas"
           onPointerDown={(e) => e.stopPropagation()}
-          className="absolute left-0 top-[38px] z-30 w-[680px] max-w-[calc(100vw-24px)] bg-white/95 backdrop-blur-md border border-neutral-300 rounded-xl shadow-[0px_8px_30px_rgba(0,0,0,0.18)] p-3.5 leading-normal"
+          className="absolute left-0 top-[38px] z-30 w-[680px] max-w-[calc(100vw-24px)] bg-white/95 backdrop-blur-md border border-[#CBD5E1] rounded-xl shadow-[0px_8px_30px_rgba(0,0,0,0.18)] p-3.5 leading-normal"
         >
           {/* Encabezado del Popover */}
-          <div className="flex items-center justify-between pb-2 mb-2.5 border-b border-neutral-200">
+          <div className="flex items-center justify-between pb-2 mb-2.5 border-b border-[#E2E8F0]">
             <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded bg-primary-100 flex items-center justify-center">
-                <BarChart3 className="w-3.5 h-3.5 text-primary-600" />
+              <div className="w-6 h-6 rounded bg-[#DBEAFE] flex items-center justify-center">
+                <BarChart3 className="w-3.5 h-3.5 text-[#1E40AF]" />
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <h3 className="font-sans font-bold text-body-lg text-neutral-900 leading-tight">
+                  <h3 className="font-sans font-bold text-[13px] text-[#0F172A] leading-tight">
                     Métricas operativas
                   </h3>
                 </div>
-                <p className="font-sans text-caption text-neutral-500 leading-tight">
+                <p className="font-sans text-[11px] text-[#64748B] leading-tight">
                   Entregas, flota e incidencias en este momento
                 </p>
               </div>
@@ -166,7 +166,7 @@ export const RailKpis: React.FC<RailKpisProps> = ({
             <button
               type="button"
               onClick={() => setAbierto(false)}
-              className="size-6 rounded flex items-center justify-center hover:bg-neutral-100 text-neutral-600 hover:text-neutral-900 transition cursor-pointer"
+              className="size-6 rounded flex items-center justify-center hover:bg-slate-100 text-[#64748B] hover:text-[#0F172A] transition cursor-pointer"
               aria-label="Cerrar panel de métricas"
             >
               <X className="w-4 h-4" />
@@ -205,9 +205,9 @@ export const RailKpis: React.FC<RailKpisProps> = ({
               valor={
                 <>
                   <PuntoHolgura nivel="ROJO" />
-                  <span className="text-critical-600">{riesgo.rojo}</span>
+                  <span className="text-[#B91C1C]">{riesgo.rojo}</span>
                   <img src={trianguloAmbar} alt="" className="block" />
-                  <span className="text-warn-700">{riesgo.ambar}</span>
+                  <span className="text-[#B45309]">{riesgo.ambar}</span>
                 </>
               }
               linea1={`${riesgo.rojo} críticos · ${riesgo.ambar} ajustados`}
@@ -239,8 +239,8 @@ export const RailKpis: React.FC<RailKpisProps> = ({
               titulo="Saturación de la flota"
               valor={
                 <>
-                  {quiebre ? <span className="text-critical-600 text-caption">▲</span> : <img src={trianguloAmbar} alt="" className="block" />}
-                  <span className={quiebre ? 'text-critical-600' : 'text-warn-700'}>
+                  {quiebre ? <span className="text-[#B91C1C] text-[11px]">▲</span> : <img src={trianguloAmbar} alt="" className="block" />}
+                  <span className={quiebre ? 'text-[#B91C1C]' : 'text-[#B45309]'}>
                     {Math.round(resumen.saturacion * 100)} %
                   </span>
                 </>
@@ -252,12 +252,12 @@ export const RailKpis: React.FC<RailKpisProps> = ({
           </div>
 
           {/* Pie del Popover */}
-          <div className="mt-2.5 pt-2 border-t border-neutral-100 flex items-center justify-between text-caption text-neutral-500">
+          <div className="mt-2.5 pt-2 border-t border-[#F1F5F9] flex items-center justify-between text-[11px] text-[#64748B]">
             <span>«Pedidos en riesgo» y «Unidades en ruta» abren su detalle</span>
             <button
               type="button"
               onClick={() => setAbierto(false)}
-              className="text-primary-600 font-medium hover:underline cursor-pointer"
+              className="text-[#1E40AF] font-medium hover:underline cursor-pointer"
             >
               Cerrar panel (Esc)
             </button>

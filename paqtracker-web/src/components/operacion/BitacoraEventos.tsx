@@ -43,7 +43,7 @@ export const BitacoraEventos: React.FC = () => {
 
   return (
     <>
-      <div className="px-[12px] pt-[10px] pb-[10px] flex flex-col gap-[10px] border-b border-neutral-200">
+      <div className="px-[12px] pt-[10px] pb-[10px] flex flex-col gap-[10px] border-b border-[#E2E8F0]">
         <div className="flex gap-[4px]" role="group" aria-label="Filtrar eventos">
           {FILTROS.map(({ valor, etiqueta }) => (
             <button
@@ -51,16 +51,16 @@ export const BitacoraEventos: React.FC = () => {
               type="button"
               aria-pressed={filtro === valor}
               onClick={() => setFiltro(valor)}
-              className={`px-[7px] py-[3px] rounded-[4px] text-body font-sans ${
-                filtro === valor ? 'bg-primary-100 text-primary-600 font-medium' : 'bg-white border border-neutral-200 text-neutral-500 hover:border-neutral-300'
+              className={`px-[7px] py-[3px] rounded-[4px] text-[12px] font-sans ${
+                filtro === valor ? 'bg-[#DBEAFE] text-[#1E40AF] font-medium' : 'bg-white border border-[#E2E8F0] text-[#64748B] hover:border-[#CBD5E1]'
               }`}
             >
               {etiqueta}
             </button>
           ))}
         </div>
-        <div className="flex items-center text-body">
-          <p className="font-sans text-neutral-500">
+        <div className="flex items-center text-[12px]">
+          <p className="font-sans text-[#64748B]">
             {visibles.length} {visibles.length === 1 ? 'evento' : 'eventos'} {verTodos ? 'registrados' : 'en los últimos 30 min simulados'}
             {congelados && ' · lista en pausa'}
           </p>
@@ -69,7 +69,7 @@ export const BitacoraEventos: React.FC = () => {
             aria-pressed={congelados !== null}
             onClick={() => setCongelados(congelados ? null : [...eventos])}
             className={`ml-auto rounded-[4px] px-[7px] py-[3px] font-sans ${
-              congelados ? 'bg-primary-100 text-primary-600 font-medium' : 'bg-white border border-neutral-200 text-neutral-900 hover:bg-neutral-50'
+              congelados ? 'bg-[#DBEAFE] text-[#1E40AF] font-medium' : 'bg-white border border-[#E2E8F0] text-[#0F172A] hover:bg-[#F8FAFC]'
             }`}
           >
             {congelados ? 'Reanudar lista' : 'Pausar lista'}
@@ -79,24 +79,24 @@ export const BitacoraEventos: React.FC = () => {
 
       <ol className="flex-1 min-h-0 overflow-y-auto" aria-label="Eventos">
         {visibles.map((e, i) => (
-          <li key={e.id} className={`border-b border-neutral-200 ${i === 0 && !congelados ? 'bg-neutral-50' : ''}`}>
+          <li key={e.id} className={`border-b border-[#E2E8F0] ${i === 0 && !congelados ? 'bg-[#F8FAFC]' : ''}`}>
             <FilaConBarra
               color={e.color}
               titulo={e.titulo}
               detalle={e.detalle}
               className="px-[12px] py-[8px] min-h-[47px]"
-              derecha={<time className="tabular-nums text-body text-neutral-500 whitespace-nowrap">{e.hora}</time>}
+              derecha={<time className="tabular-nums text-[12px] text-[#64748B] whitespace-nowrap">{e.hora}</time>}
             />
           </li>
         ))}
-        {visibles.length === 0 && <li className="px-[12px] py-[14px] font-sans text-body text-neutral-500">Sin eventos para este filtro.</li>}
+        {visibles.length === 0 && <li className="px-[12px] py-[14px] font-sans text-[12px] text-[#64748B]">Sin eventos para este filtro.</li>}
       </ol>
 
-      <div className="h-[32px] px-[12px] flex items-center text-body border-t border-neutral-200 shrink-0">
-        <button type="button" onClick={() => setVerTodos(!verTodos)} className="font-sans font-medium text-primary-600 hover:underline">
+      <div className="h-[32px] px-[12px] flex items-center text-[12px] border-t border-[#E2E8F0] shrink-0">
+        <button type="button" onClick={() => setVerTodos(!verTodos)} className="font-sans font-medium text-[#1E40AF] hover:underline">
           {verTodos ? 'Ver solo los últimos 30 min' : 'Ver todos los eventos'}
         </button>
-        <button type="button" onClick={() => exportarCsv(visibles)} className="ml-auto font-sans text-neutral-500 hover:text-neutral-900">
+        <button type="button" onClick={() => exportarCsv(visibles)} className="ml-auto font-sans text-[#64748B] hover:text-[#0F172A]">
           Exportar CSV
         </button>
       </div>
