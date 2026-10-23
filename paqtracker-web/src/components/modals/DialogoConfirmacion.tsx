@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { useCerrarConEscape } from '../../hooks/useCerrarConEscape';
 import { useFocoAtrapado } from '../../hooks/useFocoAtrapado';
+import { Boton } from '../ui/Boton';
 
 // Confirmación de acciones que no se pueden deshacer. El foco arranca en "Cancelar": un Enter
 // apresurado no ejecuta la acción.
@@ -50,31 +51,27 @@ const ContenidoConfirmacion: React.FC<Omit<DialogoConfirmacionProps, 'abierto'>>
         aria-describedby="dialogo-confirmacion-descripcion"
         className="bg-white rounded-[10px] shadow-2xl border border-neutral-200 w-full max-w-[420px] p-[20px] flex flex-col gap-[12px]"
       >
-        <h2 id="dialogo-confirmacion-titulo" className="font-sans font-semibold text-[16px] text-neutral-900">
+        <h2 id="dialogo-confirmacion-titulo" className="font-sans font-semibold text-title text-neutral-900">
           {titulo}
         </h2>
-        <div id="dialogo-confirmacion-descripcion" className="font-sans text-[13px] text-neutral-700 flex flex-col gap-[6px]">
+        <div id="dialogo-confirmacion-descripcion" className="font-sans text-body-lg text-neutral-700 flex flex-col gap-[6px]">
           {descripcion}
         </div>
-        {error && <p className="border-l-[3px] border-critical-600 pl-[9px] font-sans text-[12px] text-critical-600">{error}</p>}
+        {error && <p className="border-l-[3px] border-critical-600 pl-[9px] font-sans text-body text-critical-600">{error}</p>}
         <div className="mt-[4px] flex justify-end gap-[8px]">
-          <button
+          <Boton variante="secundario" tamano="md"
             ref={cancelarRef}
-            type="button"
             onClick={onCancelar}
             disabled={enCurso}
-            className="h-[34px] px-[14px] rounded-[6px] border border-neutral-300 font-sans font-medium text-[13px] text-neutral-900 hover:bg-neutral-50 disabled:opacity-50"
           >
             Cancelar
-          </button>
-          <button
-            type="button"
+          </Boton>
+          <Boton variante="peligro" tamano="md"
             onClick={onConfirmar}
             disabled={enCurso}
-            className="h-[34px] px-[14px] rounded-[6px] bg-critical-600 hover:bg-critical-600/90 font-sans font-semibold text-[13px] text-white disabled:opacity-60"
           >
             {enCurso && textoEnCurso ? textoEnCurso : textoConfirmar}
-          </button>
+          </Boton>
         </div>
       </div>
     </div>

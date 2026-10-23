@@ -13,6 +13,7 @@ import type { UnidadOperacion } from '../../types/operacion';
 import { IndicadorRadio } from '../layout/IndicadorRadio';
 import { colorDeUnidad, iconoVehiculo } from '../map/iconosVehiculo';
 import { SelectorUnidad } from './SelectorUnidad';
+import { Boton } from '../ui/Boton';
 
 // CU-13 Registrar avería. Diálogo modal: la acción saca la unidad de servicio y replanifica sus pedidos,
 // así que pide elegir el tipo a conciencia (sin valor por defecto), muestra cuándo volvería a operar la
@@ -125,7 +126,7 @@ export const DialogoRegistrarAveria: React.FC<DialogoRegistrarAveriaProps> = ({ 
         className="bg-white rounded-[10px] shadow-2xl border border-neutral-200 w-full max-w-[540px] flex flex-col max-h-[calc(100vh-32px)]"
       >
         <header className="h-[48px] px-[20px] flex items-center border-b border-neutral-200 shrink-0">
-          <h2 id="registrar-averia-titulo" className="font-semibold text-[16px] text-neutral-900">
+          <h2 id="registrar-averia-titulo" className="font-semibold text-title text-neutral-900">
             Registrar avería
           </h2>
           <button
@@ -139,16 +140,16 @@ export const DialogoRegistrarAveria: React.FC<DialogoRegistrarAveriaProps> = ({ 
           </button>
         </header>
 
-        <div className="px-[20px] py-[16px] flex flex-col gap-[16px] overflow-y-auto text-[13px]">
+        <div className="px-[20px] py-[16px] flex flex-col gap-[16px] overflow-y-auto text-body-lg">
           {enSimulacion && corriendo && (
-            <p className="text-[12px] text-primary-600 bg-primary-50 border border-primary-100 rounded-[6px] px-[10px] py-[6px]">
+            <p className="text-body text-primary-600 bg-primary-50 border border-primary-100 rounded-[6px] px-[10px] py-[6px]">
               La simulación sigue corriendo mientras eliges: la carga y las horas se actualizan solas.
             </p>
           )}
 
           {/* Unidad */}
           <div className="flex flex-col gap-[6px]">
-            <span className="font-medium text-[12px] text-neutral-700">Unidad</span>
+            <span className="font-medium text-body text-neutral-700">Unidad</span>
             {unidadInicial && unidad ? (
               <div className="flex items-center gap-[10px] border border-neutral-200 rounded-[6px] bg-neutral-50 px-[10px] py-[8px]">
                 <img src={iconoVehiculo(unidad.tipo, colorDeUnidad(unidad)).href} alt="" className="block -my-[4px]" />
@@ -174,7 +175,7 @@ export const DialogoRegistrarAveria: React.FC<DialogoRegistrarAveriaProps> = ({ 
 
           {/* Tipo de avería: radios nativos en tarjetas, sin valor por defecto */}
           <fieldset className="flex flex-col gap-[6px]">
-            <legend className="font-medium text-[12px] text-neutral-700 mb-[6px]">Tipo de avería</legend>
+            <legend className="font-medium text-body text-neutral-700 mb-[6px]">Tipo de avería</legend>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-[8px]">
               {TIPOS.map((t, i) => {
                 const elegido = tipo === t;
@@ -195,15 +196,15 @@ export const DialogoRegistrarAveria: React.FC<DialogoRegistrarAveriaProps> = ({ 
                       ref={i === 0 && unidadInicial ? primerCampo : undefined}
                       className="sr-only"
                     />
-                    <span className="flex items-center gap-[6px] text-[11px] font-semibold uppercase tracking-wider text-neutral-500">
+                    <span className="flex items-center gap-[6px] text-caption font-semibold uppercase tracking-wider text-neutral-500">
                       <IndicadorRadio marcado={elegido} />
                       Tipo {t}
                     </span>
-                    <span className={`font-semibold text-[14px] ${elegido ? 'text-primary-600' : 'text-neutral-900'}`}>{TIPO_AVERIA[t].nombre}</span>
-                    <span className="text-[12px] text-neutral-500">Ej.: {TIPO_AVERIA[t].ejemplo}</span>
-                    <span className="text-[12px] text-neutral-900">{TIPO_AVERIA[t].duracion}</span>
+                    <span className={`font-semibold text-body-lg ${elegido ? 'text-primary-600' : 'text-neutral-900'}`}>{TIPO_AVERIA[t].nombre}</span>
+                    <span className="text-body text-neutral-500">Ej.: {TIPO_AVERIA[t].ejemplo}</span>
+                    <span className="text-body text-neutral-900">{TIPO_AVERIA[t].duracion}</span>
                     {estimacion && (
-                      <span className="mt-[2px] text-[12px] font-medium text-neutral-900 tabular-nums">
+                      <span className="mt-[2px] text-body font-medium text-neutral-900 tabular-nums">
                         Volvería {formatearMomento(new Date(estimacion.reincorporacionMs), datos.reloj)}
                       </span>
                     )}
@@ -216,16 +217,16 @@ export const DialogoRegistrarAveria: React.FC<DialogoRegistrarAveriaProps> = ({ 
           {/* Impacto antes de confirmar */}
           {unidad && (
             <div className="border-l-[3px] border-neutral-400 pl-[10px] flex flex-col gap-[2px]" aria-live="polite">
-              <p className="text-[13px] text-neutral-700" title={pedidos.length > PEDIDOS_NOMBRADOS ? pedidos.join(' ') : undefined}>
+              <p className="text-body-lg text-neutral-700" title={pedidos.length > PEDIDOS_NOMBRADOS ? pedidos.join(' ') : undefined}>
                 {impacto()}
               </p>
               {cambiaronPedidos && (
-                <p className="text-[12px] text-warn-700">Sus pedidos cambiaron desde que la elegiste: revisa antes de confirmar.</p>
+                <p className="text-body text-warn-700">Sus pedidos cambiaron desde que la elegiste: revisa antes de confirmar.</p>
               )}
             </div>
           )}
 
-          <p className="text-[12px] text-neutral-500">
+          <p className="text-body text-neutral-500">
             Se registra a las <span className="tabular-nums">{formatearHora(datos.reloj)}</span>
             {enSimulacion ? ' del reloj de la simulación y se aplica en unos segundos.' : ' y se aplica en los próximos minutos.'}
           </p>
@@ -237,29 +238,25 @@ export const DialogoRegistrarAveria: React.FC<DialogoRegistrarAveriaProps> = ({ 
               ref={errorRef}
               role="alert"
               tabIndex={-1}
-              className="border-l-[3px] border-critical-600 pl-[10px] text-[12px] text-critical-600 outline-none"
+              className="border-l-[3px] border-critical-600 pl-[10px] text-body text-critical-600 outline-none"
             >
               {error}
             </p>
           )}
           <div className="flex items-center gap-[8px]">
-            {!listo && !enviando && <span className="text-[12px] text-neutral-500">Elige {faltantes.join(' y ')}.</span>}
-            <button
-              type="button"
+            {!listo && !enviando && <span className="text-body text-neutral-500">Elige {faltantes.join(' y ')}.</span>}
+            <Boton variante="secundario" tamano="md" className="ml-auto"
               onClick={onCerrar}
               disabled={enviando}
-              className="ml-auto h-[34px] px-[14px] rounded-[6px] border border-neutral-300 font-medium text-[13px] text-neutral-900 hover:bg-neutral-50 disabled:opacity-50"
             >
               Cancelar
-            </button>
-            <button
-              type="button"
+            </Boton>
+            <Boton variante="peligro" tamano="md"
               onClick={confirmar}
               disabled={!listo}
-              className="h-[34px] px-[14px] rounded-[6px] bg-critical-600 hover:bg-critical-600/90 font-semibold text-[13px] text-white disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {enviando ? 'Registrando…' : 'Registrar avería'}
-            </button>
+            </Boton>
           </div>
         </footer>
       </div>

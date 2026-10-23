@@ -68,6 +68,8 @@ usa fuente monoespaciada.
 - Solo se cargan los pesos 400 a 700; si una pantalla necesita otro peso o cursiva, se agrega
   primero a la URL de la fuente en `index.html` y a esta tabla.
 - No se usan `font-mono` ni otras familias: `tailwind.config.js` solo define `sans`.
+- Tamaños: cinco clases (`text-caption`, `text-body`, `text-body-lg`, `text-title`,
+  `text-display`); escala y componentes base en `docs/design-system.md`.
 
 ## Variables
 

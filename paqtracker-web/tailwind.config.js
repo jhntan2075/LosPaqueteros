@@ -40,6 +40,15 @@ export default {
       fontFamily: {
         sans: ['"Fira Sans"', 'system-ui', 'sans-serif'],
       },
+      // Escala tipográfica: cinco tamaños por rol (ver docs/design-system.md, "Tipografía").
+      // Sin interlineado propio: lo hereda el contenedor, como antes de la escala.
+      fontSize: {
+        caption: '11px', // metadatos, notas, rótulos de ejes
+        body: '12px', // texto de interfaz por defecto: tablas, paneles, botones
+        'body-lg': '14px', // texto de diálogos y formularios, títulos de sección
+        title: '18px', // títulos de página
+        display: '22px', // cifras y relojes destacados
+      },
       colors: paleta,
     },
   },

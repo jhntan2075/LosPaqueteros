@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 
 // Guarda del design system: los componentes usan los tokens de la paleta (tailwind.config.js) o las
 // constantes de config/colores.ts, nunca hex sueltos ni la paleta por defecto de Tailwind. Así un cambio
-// de paleta se hace en un solo lugar y el mapa y la interfaz no se desalinean.
+// de paleta se hace en un solo lugar y el mapa y la interfaz no se desalinean. Lo mismo con los tamaños de
+// texto: solo la escala de tailwind.config.js.
 
 const modulos = import.meta.glob<string>('../components/**/*.{ts,tsx}', { query: '?raw', import: 'default', eager: true });
 const fuentes = Object.entries(modulos)
@@ -26,5 +27,10 @@ describe('componentes sin colores fijos', () => {
     const familias = 'slate|gray|zinc|blue|indigo|sky|cyan|emerald|green|teal|rose|red|pink|amber|orange|yellow';
     const patron = new RegExp(`\\b(?:text|bg|border|ring|fill|stroke|divide|accent|outline)-(?:${familias})-\\d{2,3}\\b`, 'g');
     expect(buscar(patron)).toEqual([]);
+  });
+
+  it('usan solo la escala de texto (caption, body, body-lg, title, display)', () => {
+    const sueltos = /(?<![\w-])(?:[a-z-]+:)*text-(?:\[\d+(?:\.\d+)?(?:px|rem|em)\]|xs|sm|base|lg|[2-9]?xl)(?![\w-])/g;
+    expect(buscar(sueltos)).toEqual([]);
   });
 });

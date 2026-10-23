@@ -20,6 +20,7 @@ import { DialogoRegistrarAveria } from './DialogoRegistrarAveria';
 import { EstadoFlota } from './EstadoFlota';
 
 import trianguloAmbar from '../../assets/figma/pedidos/holgura-ambar-triangulo.svg';
+import { Tarjeta } from '../ui/Tarjeta';
 
 // Panel derecho del mapa (Figma 1:4793 detalle de pedido, 1:5300 detalle de vehículo), el mismo en
 // Operación y en la corrida: pestañas Incidencias, Flota y Bitácora, y el detalle del objeto
@@ -64,7 +65,7 @@ const Semaforo: React.FC<{ nivel: NivelHolgura }> = ({ nivel }) =>
   nivel === 'AMBAR' ? <img src={trianguloAmbar} alt="" className="block" /> : <PuntoHolgura nivel={nivel} />;
 
 const Dato: React.FC<{ etiqueta: string; valor: React.ReactNode }> = ({ etiqueta, valor }) => (
-  <div className="h-[22px] px-[12px] flex items-center justify-between gap-[12px] text-[12px]">
+  <div className="h-[22px] px-[12px] flex items-center justify-between gap-[12px] text-body">
     <span className="font-sans text-neutral-500 whitespace-nowrap">{etiqueta}</span>
     <span className="tabular-nums text-neutral-900 whitespace-nowrap truncate">{valor}</span>
   </div>
@@ -76,7 +77,7 @@ const Subpestanas = <T extends string>({ opciones, activa, onCambiar, derecha }:
   onCambiar: (valor: T) => void;
   derecha?: React.ReactNode;
 }) => (
-  <div className="h-[29px] px-[12px] flex items-center gap-[14px] border-b border-neutral-200 text-[12px]" role="tablist">
+  <div className="h-[29px] px-[12px] flex items-center gap-[14px] border-b border-neutral-200 text-body" role="tablist">
     {opciones.map(({ valor, etiqueta }) => (
       <button
         key={valor}
@@ -95,18 +96,18 @@ const Subpestanas = <T extends string>({ opciones, activa, onCambiar, derecha }:
 
 const EncabezadoObjeto: React.FC<{ onVolver: () => void; titulo: React.ReactNode; estado: string }> = ({ onVolver, titulo, estado }) => (
   <div className="px-[12px] pt-[9px] pb-[9px] border-b border-neutral-200 flex flex-col gap-[6px]">
-    <button type="button" onClick={onVolver} className="self-start font-sans text-[12px] text-primary-600 hover:underline">
+    <button type="button" onClick={onVolver} className="self-start font-sans text-body text-primary-600 hover:underline">
       ‹ Volver
     </button>
     <div className="flex items-center gap-[8px]">
-      <h3 className="tabular-nums font-semibold text-[14px] text-neutral-900 flex items-center gap-[7px]">{titulo}</h3>
-      <span className="ml-auto border border-neutral-200 rounded-[4px] px-[6px] py-[2px] font-sans font-medium text-[12px] text-neutral-900">{estado}</span>
+      <h3 className="tabular-nums font-semibold text-body-lg text-neutral-900 flex items-center gap-[7px]">{titulo}</h3>
+      <span className="ml-auto border border-neutral-200 rounded-[4px] px-[6px] py-[2px] font-sans font-medium text-body text-neutral-900">{estado}</span>
     </div>
   </div>
 );
 
 const Acciones: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <div className="h-[32px] px-[12px] flex items-center justify-between border-t border-neutral-200 text-[12px] shrink-0">{children}</div>
+  <div className="h-[32px] px-[12px] flex items-center justify-between border-t border-neutral-200 text-body shrink-0">{children}</div>
 );
 
 const nombreUnidad = (u: UnidadOperacion) => `${capitalizar(UNIDADES[u.tipo].nombre)} ${u.codigo}`;
@@ -120,9 +121,9 @@ const Trazabilidad: React.FC<{ hitos: HitoTrazabilidad[] }> = ({ hitos }) => {
     <section className="px-[12px] pt-[9px] pb-[6px] flex flex-col gap-[8px]">
       <TituloSeccion derecha={reasignaciones > 0 ? `${reasignaciones} reasignación${reasignaciones > 1 ? 'es' : ''}` : undefined}>Trazabilidad</TituloSeccion>
       <ol className="flex flex-col gap-[8px]">
-        {hitos.length === 0 && <li className="font-sans text-[12px] text-neutral-500">Sin hitos registrados.</li>}
+        {hitos.length === 0 && <li className="font-sans text-body text-neutral-500">Sin hitos registrados.</li>}
         {hitos.map((hito, i) => (
-          <li key={`${hito.titulo}-${i}`} className="flex gap-[10px] text-[12px] leading-[normal]">
+          <li key={`${hito.titulo}-${i}`} className="flex gap-[10px] text-body leading-[normal]">
             <time className="w-[34px] tabular-nums text-neutral-500 shrink-0">{hito.hora}</time>
             <span className={`mt-[4px] size-[6px] rounded-full shrink-0 ${hito.reciente ? 'bg-primary-600' : 'bg-neutral-400'}`} />
             <span className="flex flex-col min-w-0">
@@ -154,12 +155,12 @@ const DetallePedido: React.FC<{ pedido: PedidoOperacion } & Omit<PanelLateralPro
         <div className="p-[12px] border-b border-neutral-200">
           <div className={`border rounded-[4px] px-[12px] py-[8px] flex items-center justify-between ${BORDE_NIVEL[pedido.nivel]}`}>
             <div className="flex flex-col">
-              <span className="flex items-center gap-[8px] font-sans text-[12px] text-neutral-500">
+              <span className="flex items-center gap-[8px] font-sans text-body text-neutral-500">
                 <Semaforo nivel={pedido.nivel} /> holgura restante
               </span>
-              <span className={`tabular-nums font-semibold text-[22px] ${COLOR_HOLGURA[pedido.nivel]}`}>{pedido.holgura}</span>
+              <span className={`tabular-nums font-semibold text-display ${COLOR_HOLGURA[pedido.nivel]}`}>{pedido.holgura}</span>
             </div>
-            <div className="flex flex-col items-end text-[12px]">
+            <div className="flex flex-col items-end text-body">
               <span className={`tabular-nums ${COLOR_HOLGURA[pedido.nivel]}`}>{Math.round(fraccion * 100)} % del plazo total</span>
               <span className="font-sans text-neutral-500">
                 {NOMBRE_HOLGURA[pedido.nivel]}
@@ -209,13 +210,13 @@ const DetallePedido: React.FC<{ pedido: PedidoOperacion } & Omit<PanelLateralPro
 const Paradas: React.FC<{ unidad: UnidadOperacion; onSeleccionar: PanelLateralProps['onSeleccionar'] }> = ({ unidad, onSeleccionar }) => (
   <section className="px-[12px] pt-[9px] pb-[6px] flex flex-col gap-[6px]">
     <TituloSeccion derecha={unidad.totalParadas > 0 ? `parada ${unidad.paradaActual} de ${unidad.totalParadas}` : undefined}>Próximas paradas</TituloSeccion>
-    {unidad.paradas.length === 0 && <p className="font-sans text-[12px] text-neutral-500">Sin paradas asignadas.</p>}
+    {unidad.paradas.length === 0 && <p className="font-sans text-body text-neutral-500">Sin paradas asignadas.</p>}
     {unidad.paradas.map((p) => (
       <button
         key={p.pedido}
         type="button"
         onClick={() => onSeleccionar({ tipo: 'pedido', codigo: p.pedido })}
-        className="h-[24px] flex items-center gap-[8px] text-[12px] hover:bg-neutral-50 -mx-[4px] px-[4px] rounded"
+        className="h-[24px] flex items-center gap-[8px] text-body hover:bg-neutral-50 -mx-[4px] px-[4px] rounded"
       >
         <Semaforo nivel={p.nivel} />
         <span className="tabular-nums font-semibold text-neutral-900">{p.pedido}</span>
@@ -234,8 +235,8 @@ type AbrirRegistroAveria = (unidad?: string) => void;
 
 /** Recuadro de la avería vigente, con el mismo formato que los recuadros de holgura y ocupación. */
 const RecuadroAveria: React.FC<{ unidad: UnidadOperacion; reloj: Date }> = ({ unidad, reloj }) => (
-  <div className="border border-critical-600 bg-critical-50 rounded-[4px] px-[12px] py-[8px] flex flex-col gap-[3px] text-[12px]">
-    <span className="flex items-center gap-[6px] font-semibold text-[13px] text-critical-600">
+  <div className="border border-critical-600 bg-critical-50 rounded-[4px] px-[12px] py-[8px] flex flex-col gap-[3px] text-body">
+    <span className="flex items-center gap-[6px] font-semibold text-body-lg text-critical-600">
       <span aria-hidden="true">✕</span> Averiada{unidad.averia && ` · ${nombreAveria(unidad.averia.tipo)}`}
     </span>
     {unidad.averia ? (
@@ -299,7 +300,7 @@ const DetalleVehiculo: React.FC<
             <div className="p-[12px] border-b border-neutral-200 flex flex-col gap-[8px]">
               {averiada && <RecuadroAveria unidad={unidad} reloj={reloj} />}
               {pendiente && (
-                <div className="border border-primary-100 bg-primary-50 rounded-[4px] px-[12px] py-[8px] flex items-center gap-[8px] text-[12px] text-primary-600">
+                <div className="border border-primary-100 bg-primary-50 rounded-[4px] px-[12px] py-[8px] flex items-center gap-[8px] text-body text-primary-600">
                   <p role="status">
                     Avería registrada ({nombreAveria(pendiente.tipo).toLowerCase()}) · se aplica a las{' '}
                     <span className="tabular-nums">{formatearHora(new Date(pendiente.instanteMs))}</span>
@@ -316,14 +317,14 @@ const DetalleVehiculo: React.FC<
               <div className={`border rounded-[4px] px-[12px] pt-[8px] pb-[10px] flex flex-col gap-[8px] ${BORDE_NIVEL[nivel]}`}>
                 <div className="flex items-center justify-between">
                   <div className="flex flex-col">
-                    <span className="flex items-center gap-[8px] font-sans text-[12px] text-neutral-500">
+                    <span className="flex items-center gap-[8px] font-sans text-body text-neutral-500">
                       <Semaforo nivel={nivel} /> ocupación
                     </span>
-                    <span className={`tabular-nums font-semibold text-[22px] ${COLOR_HOLGURA[nivel]}`}>
+                    <span className={`tabular-nums font-semibold text-display ${COLOR_HOLGURA[nivel]}`}>
                       {unidad.carga}/{unidad.capacidad}
                     </span>
                   </div>
-                  <div className="flex flex-col items-end text-[12px]">
+                  <div className="flex flex-col items-end text-body">
                     <span className={`tabular-nums ${COLOR_HOLGURA[nivel]}`}>{Math.round(fraccion * 100)} % de capacidad</span>
                     <span className="font-sans text-neutral-500">
                       ámbar desde {CORTE_OCUPACION.ambar * 100} %, rojo desde {CORTE_OCUPACION.rojo * 100} %
@@ -349,7 +350,7 @@ const DetalleVehiculo: React.FC<
         )}
         {(pestana === 'resumen' || pestana === 'ruta') && <Paradas unidad={unidad} onSeleccionar={onSeleccionar} />}
         {pestana === 'ruta' && unidad.ruta.length > 0 && (
-          <p className="px-[12px] py-[6px] tabular-nums text-[12px] text-neutral-500">
+          <p className="px-[12px] py-[6px] tabular-nums text-body text-neutral-500">
             {unidad.ruta.map((p) => `(${p.x},${p.y})`).join(' → ')}
           </p>
         )}
@@ -402,14 +403,14 @@ const DetalleAlmacen: React.FC<{ codigo: string } & Omit<PanelLateralProps, 'sel
             <div className={`border rounded-[4px] px-[12px] pt-[8px] pb-[10px] flex flex-col gap-[8px] ${BORDE_NIVEL[nivel]}`}>
               <div className="flex items-center justify-between">
                 <div className="flex flex-col">
-                  <span className="flex items-center gap-[8px] text-[12px] text-neutral-500">
+                  <span className="flex items-center gap-[8px] text-body text-neutral-500">
                     <Semaforo nivel={nivel} /> stock
                   </span>
-                  <span className={`tabular-nums font-semibold text-[22px] ${COLOR_HOLGURA[nivel]}`}>
+                  <span className={`tabular-nums font-semibold text-display ${COLOR_HOLGURA[nivel]}`}>
                     {estado.stock}/{estado.capacidad}
                   </span>
                 </div>
-                <div className="flex flex-col items-end text-[12px]">
+                <div className="flex flex-col items-end text-body">
                   <span className={`tabular-nums ${COLOR_HOLGURA[nivel]}`}>{Math.round(fraccion * 100)} % de capacidad</span>
                   <span className="text-neutral-500">{NOMBRE_INVENTARIO[nivel]}</span>
                 </div>
@@ -419,7 +420,7 @@ const DetalleAlmacen: React.FC<{ codigo: string } & Omit<PanelLateralProps, 'sel
               </div>
             </div>
           ) : (
-            <p className="text-[12px] text-neutral-500">
+            <p className="text-body text-neutral-500">
               {central ? 'Stock ilimitado: abastece a toda la red y no se agota.' : 'Sin datos de stock en este momento.'}
             </p>
           )}
@@ -431,13 +432,13 @@ const DetalleAlmacen: React.FC<{ codigo: string } & Omit<PanelLateralProps, 'sel
         </div>
         <section className="px-[12px] pt-[9px] pb-[6px] flex flex-col gap-[6px]">
           <TituloSeccion derecha={salieron.length > 0 ? salieron.length : undefined}>Unidades que salieron de aquí</TituloSeccion>
-          {salieron.length === 0 && <p className="text-[12px] text-neutral-500">Ninguna unidad en ruta salió de este almacén.</p>}
+          {salieron.length === 0 && <p className="text-body text-neutral-500">Ninguna unidad en ruta salió de este almacén.</p>}
           {salieron.map((u) => (
             <button
               key={u.codigo}
               type="button"
               onClick={() => onSeleccionar({ tipo: 'vehiculo', codigo: u.codigo })}
-              className="h-[24px] flex items-center gap-[8px] text-[12px] hover:bg-neutral-50 -mx-[4px] px-[4px] rounded"
+              className="h-[24px] flex items-center gap-[8px] text-body hover:bg-neutral-50 -mx-[4px] px-[4px] rounded"
             >
               <span className="font-semibold text-neutral-900">{nombreUnidad(u)}</span>
               {u.estado === 'AVERIADA' ? (
@@ -506,8 +507,8 @@ const ListaIncidencias: React.FC<Pick<PanelLateralProps, 'onSeleccionar' | 'onCe
         >
           Averías activas
         </TituloSeccion>
-        {!admision.admite && <p className="text-[12px] text-neutral-500">{admision.motivo}</p>}
-        {averiadas.length === 0 && <p className="text-[12px] text-neutral-500">Ninguna unidad averiada.</p>}
+        {!admision.admite && <p className="text-body text-neutral-500">{admision.motivo}</p>}
+        {averiadas.length === 0 && <p className="text-body text-neutral-500">Ninguna unidad averiada.</p>}
         {averiadas.map((u) => (
           <FilaConBarra
             key={u.codigo}
@@ -562,13 +563,13 @@ export const PanelLateral: React.FC<PanelLateralProps> = ({
   const pedido = seleccion.tipo === 'pedido' ? datos.pedidos[seleccion.codigo] : undefined;
   const unidad = seleccion.tipo === 'vehiculo' ? unidadPorCodigo(datos, seleccion.codigo) : undefined;
   return (
-    <aside
+    <Tarjeta como="aside" elevada className="absolute right-[12px] top-0 bottom-0 z-20 w-[min(340px,calc(100%-24px))] flex flex-col overflow-hidden leading-[normal]"
       aria-label="Incidencias, flota y bitácora"
-      className="absolute right-[12px] top-0 bottom-0 z-20 w-[340px] bg-white border border-neutral-200 rounded-[10px] shadow-[0px_2px_12px_0px_rgba(0,0,0,0.16)] flex flex-col overflow-hidden leading-[normal]"
+     
       data-sin-zoom
       onPointerDown={(e) => e.stopPropagation()}
     >
-      <div className="h-[36px] px-[12px] flex items-center gap-[16px] border-b border-neutral-200 text-[12px] shrink-0" role="tablist">
+      <div className="h-[36px] px-[12px] flex items-center gap-[16px] border-b border-neutral-200 text-body shrink-0" role="tablist">
         {PESTANAS.map(({ tipo, etiqueta }) => (
           <button
             key={tipo}
@@ -622,6 +623,6 @@ export const PanelLateral: React.FC<PanelLateralProps> = ({
           }}
         />
       )}
-    </aside>
+    </Tarjeta>
   );
 };

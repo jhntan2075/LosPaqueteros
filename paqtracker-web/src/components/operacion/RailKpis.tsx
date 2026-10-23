@@ -19,14 +19,14 @@ const Ficha: React.FC<FichaProps> = ({ titulo, valor, linea1, linea2, onClick, a
   const contenido = (
     <>
       <div className="flex items-center justify-between w-full">
-        <span className="font-sans text-[11px] font-medium text-neutral-500 tracking-tight truncate">{titulo}</span>
+        <span className="font-sans text-caption font-medium text-neutral-500 tracking-tight truncate">{titulo}</span>
         {onClick && <ArrowRight className="w-3 h-3 text-neutral-500 group-hover:text-primary-600 transition shrink-0" />}
       </div>
-      <span className="flex items-center gap-[6px] tabular-nums font-semibold text-[18px] leading-[1.1] text-neutral-900">
+      <span className="flex items-center gap-[6px] tabular-nums font-semibold text-title leading-[1.1] text-neutral-900">
         {valor}
       </span>
-      <span className="font-sans text-[11px] text-neutral-600 truncate w-full">{linea1}</span>
-      <span className="font-sans text-[11px] text-neutral-500 truncate w-full">{linea2}</span>
+      <span className="font-sans text-caption text-neutral-600 truncate w-full">{linea1}</span>
+      <span className="font-sans text-caption text-neutral-500 truncate w-full">{linea2}</span>
     </>
   );
 
@@ -110,8 +110,8 @@ export const RailKpis: React.FC<RailKpisProps> = ({
         }`}
       >
         <BarChart3 className={`w-3.5 h-3.5 ${abierto ? 'text-primary-600' : 'text-neutral-500'}`} />
-        <span className="font-sans text-[12px] font-medium text-neutral-900">Métricas</span>
-        <span className="tabular-nums text-[11px] text-neutral-500 hidden sm:inline">
+        <span className="font-sans text-body font-medium text-neutral-900">Métricas</span>
+        <span className="tabular-nums text-caption text-neutral-500 hidden sm:inline">
           {resumen.entregados} ({porcentaje} %)
         </span>
 
@@ -119,7 +119,7 @@ export const RailKpis: React.FC<RailKpisProps> = ({
         {totalRiesgo > 0 ? (
           <span
             title={`${riesgo.rojo} críticos · ${riesgo.ambar} ajustados`}
-            className={`flex items-center gap-1 px-1.5 py-0.5 rounded-full tabular-nums text-[11px] font-bold ${
+            className={`flex items-center gap-1 px-1.5 py-0.5 rounded-full tabular-nums text-caption font-bold ${
               riesgo.rojo > 0 ? 'bg-critical-50 text-critical-600' : 'bg-warn-50 text-warn-700'
             }`}
           >
@@ -153,11 +153,11 @@ export const RailKpis: React.FC<RailKpisProps> = ({
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <h3 className="font-sans font-bold text-[13px] text-neutral-900 leading-tight">
+                  <h3 className="font-sans font-bold text-body-lg text-neutral-900 leading-tight">
                     Métricas operativas
                   </h3>
                 </div>
-                <p className="font-sans text-[11px] text-neutral-500 leading-tight">
+                <p className="font-sans text-caption text-neutral-500 leading-tight">
                   Entregas, flota e incidencias en este momento
                 </p>
               </div>
@@ -239,7 +239,7 @@ export const RailKpis: React.FC<RailKpisProps> = ({
               titulo="Saturación de la flota"
               valor={
                 <>
-                  {quiebre ? <span className="text-critical-600 text-[11px]">▲</span> : <img src={trianguloAmbar} alt="" className="block" />}
+                  {quiebre ? <span className="text-critical-600 text-caption">▲</span> : <img src={trianguloAmbar} alt="" className="block" />}
                   <span className={quiebre ? 'text-critical-600' : 'text-warn-700'}>
                     {Math.round(resumen.saturacion * 100)} %
                   </span>
@@ -252,7 +252,7 @@ export const RailKpis: React.FC<RailKpisProps> = ({
           </div>
 
           {/* Pie del Popover */}
-          <div className="mt-2.5 pt-2 border-t border-neutral-100 flex items-center justify-between text-[11px] text-neutral-500">
+          <div className="mt-2.5 pt-2 border-t border-neutral-100 flex items-center justify-between text-caption text-neutral-500">
             <span>«Pedidos en riesgo» y «Unidades en ruta» abren su detalle</span>
             <button
               type="button"

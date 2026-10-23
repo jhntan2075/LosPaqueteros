@@ -25,7 +25,7 @@ export const ProveedorAvisos: React.FC<{ children: React.ReactNode }> = ({ child
         {aviso && (
           <div
             key={aviso.id}
-            className="pointer-events-auto flex items-center gap-[12px] bg-neutral-900 text-white rounded-[6px] pl-[12px] pr-[6px] py-[8px] shadow-lg text-[13px] leading-[normal] max-w-[calc(100vw-32px)]"
+            className="pointer-events-auto flex items-center gap-[12px] bg-neutral-900 text-white rounded-[6px] pl-[12px] pr-[6px] py-[8px] shadow-lg text-body-lg leading-[normal] max-w-[calc(100vw-32px)]"
           >
             {aviso.tipo === 'error' ? (
               <AlertTriangle className="w-4 h-4 text-critical-50 shrink-0" aria-hidden="true" />

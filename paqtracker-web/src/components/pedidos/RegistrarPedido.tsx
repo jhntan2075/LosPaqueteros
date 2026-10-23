@@ -20,6 +20,9 @@ import { IndicadorRadio } from '../layout/IndicadorRadio';
 import { PRIMARIO } from '../../config/colores';
 import { MiniMapaMalla } from '../map/MiniMapaMalla';
 import { MarcadorAlmacen, PinDestino, RotuloMapa } from './iconos';
+import { Boton } from '../ui/Boton';
+import { Campo as CampoTexto } from '../ui/Campo';
+import { Tarjeta } from '../ui/Tarjeta';
 
 const SIN_SPINNER = '[appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none';
 const CANTIDAD_MAXIMA = 999;
@@ -61,11 +64,11 @@ const Campo: React.FC<{ etiqueta: string; htmlFor?: string; ayuda?: React.ReactN
   children,
 }) => (
   <div className="flex flex-col gap-2 w-full">
-    <label htmlFor={htmlFor} className="font-sans font-medium text-xs text-neutral-700">
+    <label htmlFor={htmlFor} className="font-sans font-medium text-body text-neutral-700">
       {etiqueta}
     </label>
     {children}
-    {ayuda && <p className="font-sans text-[11px] text-neutral-500">{ayuda}</p>}
+    {ayuda && <p className="font-sans text-caption text-neutral-500">{ayuda}</p>}
   </div>
 );
 
@@ -76,7 +79,7 @@ const InputCoordenada: React.FC<{ eje: 'X' | 'Y'; valor: string; maximo: number;
   onCambiar,
 }) => (
   <label className="bg-white border border-neutral-200 rounded-lg h-10 w-28 px-3 flex items-center gap-2 focus-within:border-primary-600 focus-within:ring-1 focus-within:ring-primary-600/30 transition">
-    <span className="font-sans font-semibold text-xs text-neutral-500">{eje}:</span>
+    <span className="font-sans font-semibold text-body text-neutral-500">{eje}:</span>
     <input
       type="number"
       inputMode="numeric"
@@ -85,7 +88,7 @@ const InputCoordenada: React.FC<{ eje: 'X' | 'Y'; valor: string; maximo: number;
       value={valor}
       onChange={(e) => onCambiar(e.target.value)}
       aria-label={`Coordenada ${eje} del nodo de destino (0 a ${maximo})`}
-      className={`w-full min-w-0 bg-transparent outline-none tabular-nums font-medium text-sm text-neutral-800 ${SIN_SPINNER}`}
+      className={`w-full min-w-0 bg-transparent outline-none tabular-nums font-medium text-body-lg text-neutral-800 ${SIN_SPINNER}`}
     />
   </label>
 );
@@ -142,7 +145,7 @@ const MiniMapaDestino: React.FC<{ evaluacion: EvaluacionFactibilidad; destino: C
 };
 
 const FilaDato: React.FC<{ etiqueta: string; valor: string }> = ({ etiqueta, valor }) => (
-  <div className="flex items-center justify-between w-full text-xs">
+  <div className="flex items-center justify-between w-full text-body">
     <span className="font-sans text-neutral-500">{etiqueta}</span>
     <span className="font-sans font-medium text-neutral-800 text-right">{valor}</span>
   </div>
@@ -213,8 +216,8 @@ export const RegistrarPedido: React.FC<RegistrarPedidoProps> = ({ onCancelar, on
           className="lg:col-span-7 bg-white border border-neutral-200 rounded-[10px] p-6 shadow-xs flex flex-col gap-6"
         >
           <div>
-            <h2 className="font-sans font-bold text-base text-neutral-800">Datos del pedido</h2>
-            <p className="text-xs text-neutral-500 mt-0.5">
+            <h2 className="font-sans font-bold text-title text-neutral-800">Datos del pedido</h2>
+            <p className="text-body text-neutral-500 mt-0.5">
               Completa los detalles del pedido para que el planificador asigne la mejor unidad disponible.
             </p>
           </div>
@@ -227,14 +230,14 @@ export const RegistrarPedido: React.FC<RegistrarPedidoProps> = ({ onCancelar, on
           >
             <div className="relative">
               <User className="w-4 h-4 text-neutral-500 absolute left-3 top-1/2 -translate-y-1/2" />
-              <input
+              <CampoTexto
                 id="pedido-cliente"
                 list="pedido-clientes"
                 value={cliente}
                 onChange={(e) => setCliente(e.target.value)}
                 placeholder="Ej. Distribuidora Santa Anita S.A.C."
                 autoComplete="off"
-                className="bg-white border border-neutral-200 rounded-lg h-10 pl-9 pr-3 w-full font-sans font-medium text-xs text-neutral-800 placeholder:text-neutral-400 outline-none focus:border-primary-600 focus:ring-1 focus:ring-primary-600/30 transition [&::-webkit-calendar-picker-indicator]:!hidden"
+                className="h-10 pl-9 pr-3 w-full font-medium [&::-webkit-calendar-picker-indicator]:!hidden"
               />
             </div>
             <datalist id="pedido-clientes">
@@ -278,7 +281,7 @@ export const RegistrarPedido: React.FC<RegistrarPedidoProps> = ({ onCancelar, on
                 onClick={() => cambiarCantidad(base - 1)}
                 disabled={base <= 1}
                 aria-label="Disminuir cantidad"
-                className="w-11 h-full font-sans font-medium text-base text-neutral-500 hover:bg-neutral-50 disabled:opacity-30 transition rounded-l-lg"
+                className="w-11 h-full font-sans font-medium text-title text-neutral-500 hover:bg-neutral-50 disabled:opacity-30 transition rounded-l-lg"
               >
                 −
               </button>
@@ -290,14 +293,14 @@ export const RegistrarPedido: React.FC<RegistrarPedidoProps> = ({ onCancelar, on
                 onChange={(e) => setCantidadTexto(e.target.value)}
                 onBlur={() => cantidadTexto !== '' && !cantidadValida && cambiarCantidad(cantidad)}
                 aria-label="Cantidad de unidades de P"
-                className={`flex-1 min-w-0 h-full bg-transparent text-center outline-none tabular-nums font-bold text-sm text-neutral-900 ${SIN_SPINNER}`}
+                className={`flex-1 min-w-0 h-full bg-transparent text-center outline-none tabular-nums font-bold text-body-lg text-neutral-900 ${SIN_SPINNER}`}
               />
               <button
                 type="button"
                 onClick={() => cambiarCantidad(base + 1)}
                 disabled={base >= CANTIDAD_MAXIMA}
                 aria-label="Aumentar cantidad"
-                className="w-11 h-full font-sans font-medium text-base text-neutral-500 hover:bg-neutral-50 disabled:opacity-30 transition rounded-r-lg"
+                className="w-11 h-full font-sans font-medium text-title text-neutral-500 hover:bg-neutral-50 disabled:opacity-30 transition rounded-r-lg"
               >
                 +
               </button>
@@ -306,7 +309,7 @@ export const RegistrarPedido: React.FC<RegistrarPedidoProps> = ({ onCancelar, on
 
           {/* Tipo de entrega / Plazo */}
           <fieldset className="flex flex-col gap-2 w-full">
-            <legend className="font-sans font-medium text-xs text-neutral-700 mb-1">
+            <legend className="font-sans font-medium text-body text-neutral-700 mb-1">
               Plazo de entrega acordado *
             </legend>
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
@@ -333,7 +336,7 @@ export const RegistrarPedido: React.FC<RegistrarPedidoProps> = ({ onCancelar, on
                     <span className="flex items-center gap-[6px]">
                       <IndicadorRadio marcado={seleccionado} />
                       <span
-                        className={`text-[11px] font-sans font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded ${
+                        className={`text-caption font-sans font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded ${
                           regular ? 'bg-neutral-100 text-neutral-600' : 'bg-warn-50/80 text-warn-700'
                         }`}
                       >
@@ -341,13 +344,13 @@ export const RegistrarPedido: React.FC<RegistrarPedidoProps> = ({ onCancelar, on
                       </span>
                     </span>
                     <span
-                      className={`tabular-nums font-bold text-base mt-1 ${
+                      className={`tabular-nums font-bold text-title mt-1 ${
                         seleccionado ? 'text-primary-900' : 'text-neutral-800'
                       }`}
                     >
                       {plazo} h
                     </span>
-                    <span className="text-[11px] font-sans text-neutral-500">
+                    <span className="text-caption font-sans text-neutral-500">
                       Límite {formatearHora(sumarMinutos(reloj, plazo * 60))}
                     </span>
                   </label>
@@ -358,34 +361,31 @@ export const RegistrarPedido: React.FC<RegistrarPedidoProps> = ({ onCancelar, on
 
           {/* Acciones */}
           <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-            <button
+            <Boton variante="primario" tamano="lg"
               type="submit"
               disabled={!formularioValido || enviando}
-              className="h-11 px-6 rounded-[6px] bg-primary-600 hover:bg-primary-700 text-white font-sans font-medium text-xs flex items-center justify-center gap-2 shadow-xs disabled:opacity-40 disabled:cursor-not-allowed transition"
             >
               {enviando ? (
                 <span>Registrando y planificando…</span>
               ) : (
                 <span>Registrar y planificar pedido</span>
               )}
-            </button>
-            <button
-              type="button"
+            </Boton>
+            <Boton variante="secundario" tamano="lg"
               onClick={onCancelar}
-              className="h-11 px-5 rounded-[6px] border border-neutral-200 hover:bg-neutral-50 text-neutral-600 font-sans font-medium text-xs transition text-center"
             >
               Cancelar
-            </button>
+            </Boton>
           </div>
 
           {!formularioValido && !enviando && faltantes.length > 0 && (
-            <p className="text-xs text-neutral-500 font-sans">
+            <p className="text-body text-neutral-500 font-sans">
               Completa {faltantes.join(', ').replace(/, ([^,]*)$/, ' y $1')} para registrar el pedido.
             </p>
           )}
 
           {error && (
-            <div className="p-3 bg-critical-50 border border-critical-600/30 rounded-lg text-critical-600 text-xs flex items-center gap-2">
+            <div className="p-3 bg-critical-50 border border-critical-600/30 rounded-lg text-critical-600 text-body flex items-center gap-2">
               <AlertTriangle className="w-4 h-4 shrink-0" />
               <span>{error}</span>
             </div>
@@ -393,45 +393,45 @@ export const RegistrarPedido: React.FC<RegistrarPedidoProps> = ({ onCancelar, on
         </form>
 
         {/* Panel de factibilidad en vivo (Columna 5/12) */}
-        <aside
+        <Tarjeta como="aside" className="lg:col-span-5 p-6 shadow-xs flex flex-col gap-4 sticky top-6"
           aria-live="polite"
-          className="lg:col-span-5 bg-white border border-neutral-200 rounded-[10px] p-6 shadow-xs flex flex-col gap-4 sticky top-6"
+         
         >
           <div className="flex items-center justify-between border-b border-neutral-100 pb-3">
             <div className="flex items-center gap-2">
-              <h3 className="font-sans font-bold text-xs text-neutral-700 tracking-wider uppercase">
+              <h3 className="font-sans font-bold text-body text-neutral-700 tracking-wider uppercase">
                 Factibilidad
               </h3>
             </div>
-            <span className="text-[11px] font-sans text-neutral-500">Estimación antes de registrar</span>
+            <span className="text-caption font-sans text-neutral-500">Estimación antes de registrar</span>
           </div>
 
           {evaluacion ? (
             <>
               <MiniMapaDestino evaluacion={evaluacion} destino={destino} />
-              <p className="text-[11px] font-sans text-neutral-500">
+              <p className="text-caption font-sans text-neutral-500">
                 Ruta ortogonal proyectada entre almacén y destino.
               </p>
             </>
           ) : (
-            <div className="bg-neutral-50 border border-neutral-200 rounded-lg h-44 flex items-center justify-center px-6 text-center text-xs text-neutral-500">
+            <div className="bg-neutral-50 border border-neutral-200 rounded-lg h-44 flex items-center justify-center px-6 text-center text-body text-neutral-500">
               Ingresa un destino válido y elige un plazo para calcular la factibilidad de entrega.
             </div>
           )}
 
           {/* Hora límite resultante */}
           <div className="p-3.5 bg-neutral-50/80 rounded-[10px] border border-neutral-200 flex flex-col gap-1">
-            <span className="text-[11px] font-sans text-neutral-500">Hora límite estimada de entrega:</span>
+            <span className="text-caption font-sans text-neutral-500">Hora límite estimada de entrega:</span>
             {horaLimite && plazoHoras !== null ? (
               <div className="flex items-baseline gap-2">
-                <span className="tabular-nums font-bold text-2xl text-neutral-900">{formatearHora(horaLimite)}</span>
-                <span className="text-xs text-neutral-600 font-sans">
+                <span className="tabular-nums font-bold text-display text-neutral-900">{formatearHora(horaLimite)}</span>
+                <span className="text-body text-neutral-600 font-sans">
                   ({prefijoDia}
                   {formatearDiaMes(horaLimite)} · en {formatearDuracion(plazoHoras * 60)})
                 </span>
               </div>
             ) : (
-              <span className="text-xs text-neutral-500 font-sans">Elige un plazo de entrega para calcularla.</span>
+              <span className="text-body text-neutral-500 font-sans">Elige un plazo de entrega para calcularla.</span>
             )}
           </div>
 
@@ -441,10 +441,10 @@ export const RegistrarPedido: React.FC<RegistrarPedidoProps> = ({ onCancelar, on
               <div className={`border rounded-[10px] p-3.5 flex items-start gap-3 ${ESTILO_FACTIBILIDAD[evaluacion.nivel].caja}`}>
                 {ESTILO_FACTIBILIDAD[evaluacion.nivel].icono}
                 <div className="space-y-1">
-                  <p className={`font-sans font-bold text-xs ${ESTILO_FACTIBILIDAD[evaluacion.nivel].texto}`}>
+                  <p className={`font-sans font-bold text-body ${ESTILO_FACTIBILIDAD[evaluacion.nivel].texto}`}>
                     {ESTILO_FACTIBILIDAD[evaluacion.nivel].titulo}
                   </p>
-                  <p className="text-xs text-neutral-700 leading-relaxed">{evaluacion.mensaje}</p>
+                  <p className="text-body text-neutral-700 leading-relaxed">{evaluacion.mensaje}</p>
                 </div>
               </div>
 
@@ -459,7 +459,7 @@ export const RegistrarPedido: React.FC<RegistrarPedidoProps> = ({ onCancelar, on
               </div>
 
               {/* Fraccionamiento */}
-              <div className="p-3 bg-neutral-50 rounded-lg border border-neutral-200 flex items-center gap-2.5 text-xs text-neutral-600">
+              <div className="p-3 bg-neutral-50 rounded-lg border border-neutral-200 flex items-center gap-2.5 text-body text-neutral-600">
                 {evaluacion.unidadesNecesarias <= 1 ? (
                   <>
                     <CheckCircle2 className="w-4 h-4 text-ok-600 shrink-0" />
@@ -476,7 +476,7 @@ export const RegistrarPedido: React.FC<RegistrarPedidoProps> = ({ onCancelar, on
               </div>
             </>
           )}
-        </aside>
+        </Tarjeta>
       </div>
     </div>
   );

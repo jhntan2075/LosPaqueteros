@@ -33,7 +33,7 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
         {/* Isotipo y Nombre */}
         <div className="flex items-center gap-2 shrink-0">
           <img src={logo} alt="" aria-hidden="true" className="h-[30px] w-auto" />
-          <span className="font-sans font-bold text-[14px] text-neutral-900 tracking-tight hidden sm:inline">
+          <span className="font-sans font-bold text-body-lg text-neutral-900 tracking-tight hidden sm:inline">
             PaqTracker
           </span>
         </div>
@@ -51,7 +51,7 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
                 key={item.id}
                 onClick={() => onCambiarTab(item.id)}
                 aria-current={esActivo ? 'page' : undefined}
-                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-[6px] text-[12px] tabular-nums font-medium transition cursor-pointer ${
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-[6px] text-body tabular-nums font-medium transition cursor-pointer ${
                   esActivo
                     ? 'bg-primary-100 text-primary-600 shadow-xs font-semibold'
                     : 'text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100'
@@ -77,7 +77,7 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
             title="Reloj de la operación día a día"
           >
             <Clock className="w-3.5 h-3.5 text-neutral-500" />
-            <span className="tabular-nums font-semibold text-[12px] sm:text-[13px] text-neutral-900">
+            <span className="tabular-nums font-semibold text-body sm:text-body-lg text-neutral-900">
               {relojSimulado}
             </span>
           </div>
@@ -85,7 +85,7 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
 
         {/* Turno */}
         {turno && (
-          <span className="bg-primary-100 text-primary-600 rounded-[4px] px-2 py-1 tabular-nums font-medium text-[11px] shrink-0 hidden md:inline">
+          <span className="bg-primary-100 text-primary-600 rounded-[4px] px-2 py-1 tabular-nums font-medium text-caption shrink-0 hidden md:inline">
             Turno {turno}
           </span>
         )}
@@ -93,7 +93,7 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
         {/* Conexión con el servidor */}
         <span
           title={conectado ? 'Conectado: el estado llega en vivo desde el servidor' : 'Sin conexión con el servidor: reintentando'}
-          className={`rounded-[4px] px-2.5 py-1 flex items-center gap-1.5 font-sans font-semibold text-[11px] tracking-wider shrink-0 ${
+          className={`rounded-[4px] px-2.5 py-1 flex items-center gap-1.5 font-sans font-semibold text-caption tracking-wider shrink-0 ${
             conectado ? 'bg-primary-100 text-primary-600' : 'bg-critical-50 text-critical-600'
           }`}
         >
