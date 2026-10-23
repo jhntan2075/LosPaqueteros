@@ -4,20 +4,23 @@ import { formatearCronometro, formatearDiasHoras, formatearFechaLarga, formatear
 import type { EjecucionApi } from '../../types/api';
 import type { EstadoCorrida } from '../../types/simulacion';
 import { ESTADO_CORRIDA } from './estadoCorrida';
+import { Etiqueta } from '../ui/Etiqueta';
+import { Boton } from '../ui/Boton';
+import { Tarjeta as Superficie } from '../ui/Tarjeta';
 
 // Informe de la corrida (SI-05). El frame de Figma no estuvo disponible: esta versión reúne los datos
 // que el informe debe auditar con el lenguaje visual del resto del sistema. Los valores son los de la
 // última instantánea de la ejecución.
 
 const Tarjeta: React.FC<{ titulo: string; children: React.ReactNode }> = ({ titulo, children }) => (
-  <section className="bg-white border border-neutral-200 rounded-[10px]">
-    <h2 className="h-[44px] px-[15px] flex items-center border-b border-neutral-200 font-sans font-semibold text-[14px] text-neutral-900">{titulo}</h2>
+  <Superficie como="section">
+    <h2 className="h-[44px] px-[15px] flex items-center border-b border-neutral-200 font-sans font-semibold text-body-lg text-neutral-900">{titulo}</h2>
     <div className="px-[15px] py-[8px]">{children}</div>
-  </section>
+  </Superficie>
 );
 
 const Fila: React.FC<{ etiqueta: string; valor: string; color?: string }> = ({ etiqueta, valor, color = 'text-neutral-900' }) => (
-  <div className="h-[30px] flex items-center justify-between border-b border-dashed border-neutral-200 last:border-0 text-[12px]">
+  <div className="h-[30px] flex items-center justify-between border-b border-dashed border-neutral-200 last:border-0 text-body">
     <span className="font-sans text-neutral-500">{etiqueta}</span>
     <span className={`tabular-nums ${color}`}>{valor}</span>
   </div>
@@ -39,17 +42,17 @@ export const InformeCorrida: React.FC<InformeCorridaProps> = ({ ejecucion, estad
     <div className="flex-1 flex flex-col min-h-0 leading-[normal]">
       <header className="h-[80px] bg-white border-b border-neutral-200 px-[24px] flex items-center gap-[16px] shrink-0">
         <div className="flex flex-col gap-[6px]">
-          <button type="button" onClick={onVolverACorrida} className="self-start font-sans font-medium text-[12px] text-primary-600 hover:underline">
+          <button type="button" onClick={onVolverACorrida} className="self-start font-sans font-medium text-body text-primary-600 hover:underline">
             ‹ Volver a la corrida
           </button>
-          <h1 className="font-sans font-semibold text-[18px] text-neutral-900">Informe de la corrida</h1>
+          <h1 className="font-sans font-semibold text-title text-neutral-900">Informe de la corrida</h1>
         </div>
-        <span className={`ml-[8px] rounded-[4px] px-[10px] py-[5px] font-sans font-semibold text-[12px] tracking-[0.5px] ${ESTADO_CORRIDA[estado].clase}`}>
+        <Etiqueta tono={ESTADO_CORRIDA[estado].tono} className="ml-[8px]">
           {ESTADO_CORRIDA[estado].texto}
-        </span>
-        <button type="button" onClick={onNuevaCorrida} className="ml-auto h-[36px] px-[16px] rounded-[6px] bg-primary-600 hover:bg-primary-700 text-white font-sans font-semibold text-[12px]">
+        </Etiqueta>
+        <Boton variante="primario" tamano="md" className="ml-auto" onClick={onNuevaCorrida}>
           Nueva corrida
-        </button>
+        </Boton>
       </header>
 
       <div className="flex-1 min-h-0 overflow-y-auto">

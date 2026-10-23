@@ -123,7 +123,7 @@ export const RotuloMapa: React.FC<{ x: number; y: number; anchoMapa: number; cla
   const MEDIO_ANCHO_ESTIMADO = 40;
   const centro = Math.min(Math.max(x, MEDIO_ANCHO_ESTIMADO + 4), anchoMapa - MEDIO_ANCHO_ESTIMADO - 4);
   return (
-    <p className={`absolute -translate-x-1/2 whitespace-nowrap text-[12px] ${className}`} style={{ left: centro, top: y }}>
+    <p className={`absolute -translate-x-1/2 whitespace-nowrap text-body ${className}`} style={{ left: centro, top: y }}>
       {children}
     </p>
   );

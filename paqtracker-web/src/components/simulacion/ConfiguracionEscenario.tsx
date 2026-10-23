@@ -6,7 +6,11 @@ import { formatearFechaLarga, formatearMiles } from '../../lib/formato';
 import { NOMBRE_REGISTRO, mesDeArchivo, subirArchivo } from '../../services/servicioArchivos';
 import type { ComposicionFlotaApi, EjecucionApi, EstadoEjecucionApi } from '../../types/api';
 import { IndicadorRadio } from '../layout/IndicadorRadio';
+import { Etiqueta as EtiquetaEstado, type TonoEtiqueta } from '../ui/Etiqueta';
 import type { ArchivoCargado, EscenarioSimulacion, TipoArchivo } from '../../types/simulacion';
+import { Boton } from '../ui/Boton';
+import { Campo } from '../ui/Campo';
+import { Tarjeta } from '../ui/Tarjeta';
 
 // Configuración de escenario (Figma "Configuración de escenario · vacío / completado"). Crea una
 // simulación en paqtracker-api o abre una existente: cualquier dispositivo puede ver cualquier corrida.
@@ -24,12 +28,12 @@ const ARCHIVOS: { tipo: TipoArchivo; etiqueta: string }[] = [
   { tipo: 'bloqueos', etiqueta: 'Bloqueos (bloqueo.AAMM.txt)' },
 ];
 
-const ESTADO_EJECUCION: Record<EstadoEjecucionApi, { texto: string; clase: string }> = {
-  CONFIGURADA: { texto: 'Configurada', clase: 'bg-neutral-100 text-neutral-600' },
-  EN_CURSO: { texto: 'En curso', clase: 'bg-primary-100 text-primary-600' },
-  PAUSADA: { texto: 'Pausada', clase: 'bg-warn-50 text-warn-700' },
-  FINALIZADA: { texto: 'Finalizada', clase: 'bg-ok-50 text-ok-700' },
-  COLAPSADA: { texto: 'Colapsada', clase: 'border border-critical-600 text-critical-600' },
+const ESTADO_EJECUCION: Record<EstadoEjecucionApi, { texto: string; tono: TonoEtiqueta }> = {
+  CONFIGURADA: { texto: 'Configurada', tono: 'neutro' },
+  EN_CURSO: { texto: 'En curso', tono: 'primario' },
+  PAUSADA: { texto: 'Pausada', tono: 'atencion' },
+  FINALIZADA: { texto: 'Finalizada', tono: 'ok' },
+  COLAPSADA: { texto: 'Colapsada', tono: 'critico' },
 };
 
 const Seccion: React.FC<{ numero?: string; titulo: string; resumen: React.ReactNode; resumenPendiente?: boolean; children: React.ReactNode }> = ({
@@ -41,27 +45,27 @@ const Seccion: React.FC<{ numero?: string; titulo: string; resumen: React.ReactN
 }) => {
   const [abierta, setAbierta] = useState(true);
   return (
-    <section className="bg-white border border-neutral-200 rounded-[10px]">
+    <Tarjeta como="section">
       <button
         type="button"
         onClick={() => setAbierta(!abierta)}
         aria-expanded={abierta}
         className="w-full h-[48px] px-[15px] flex items-center gap-[14px] text-left"
       >
-        {numero && <span className="tabular-nums text-[12px] text-neutral-500">{numero}</span>}
-        <h2 className="font-sans font-semibold text-[14px] text-neutral-900">{titulo}</h2>
-        <span className={`ml-auto tabular-nums text-[12px] ${resumenPendiente ? 'text-neutral-500' : 'text-neutral-900'}`}>{resumen}</span>
-        <span className={`text-[11px] text-neutral-500 transition-transform ${abierta ? '' : 'rotate-180'}`} aria-hidden="true">
+        {numero && <span className="tabular-nums text-body text-neutral-500">{numero}</span>}
+        <h2 className="font-sans font-semibold text-body-lg text-neutral-900">{titulo}</h2>
+        <span className={`ml-auto tabular-nums text-body ${resumenPendiente ? 'text-neutral-500' : 'text-neutral-900'}`}>{resumen}</span>
+        <span className={`text-caption text-neutral-500 transition-transform ${abierta ? '' : 'rotate-180'}`} aria-hidden="true">
           ▲
         </span>
       </button>
       {abierta && <div className="px-[15px] pb-[18px] flex flex-col gap-[8px]">{children}</div>}
-    </section>
+    </Tarjeta>
   );
 };
 
 const Etiqueta: React.FC<{ htmlFor?: string; children: React.ReactNode }> = ({ htmlFor, children }) => (
-  <label htmlFor={htmlFor} className="font-sans text-[12px] text-neutral-700">
+  <label htmlFor={htmlFor} className="font-sans text-body text-neutral-700">
     {children}
   </label>
 );
@@ -80,7 +84,7 @@ const RanuraArchivo: React.FC<{
     <div className="flex flex-col gap-[8px] mb-[6px]">
       <Etiqueta htmlFor={id}>{etiqueta}</Etiqueta>
       <div
-        className={`w-full max-w-[420px] h-[32px] px-[10px] rounded-[6px] flex items-center gap-[10px] text-[12px] ${
+        className={`w-full max-w-[420px] h-[32px] px-[10px] rounded-[6px] flex items-center gap-[10px] text-body ${
           archivo ? 'border border-neutral-300 bg-white' : 'border border-dashed border-neutral-400 bg-neutral-50'
         }`}
       >
@@ -118,19 +122,19 @@ const RanuraArchivo: React.FC<{
         />
       </div>
       {archivo && archivo.lineasInvalidas.length > 0 && (
-        <p className="font-sans text-[12px] text-critical-600">
+        <p className="font-sans text-body text-critical-600">
           {archivo.lineasInvalidas.length} {archivo.lineasInvalidas.length === 1 ? 'línea no respeta' : 'líneas no respetan'} el formato (línea{' '}
           {archivo.lineasInvalidas.slice(0, 5).join(', ')}
           {archivo.lineasInvalidas.length > 5 ? '…' : ''}): el archivo no se guardó. Corrígelo y vuelve a subirlo.
         </p>
       )}
-      {archivo && archivo.guardado && <p className="font-sans text-[12px] text-ok-600">Guardado para el mes {archivo.mes}.</p>}
+      {archivo && archivo.guardado && <p className="font-sans text-body text-ok-600">Guardado para el mes {archivo.mes}.</p>}
     </div>
   );
 };
 
 const FilaResumen: React.FC<{ etiqueta: string; valor?: string }> = ({ etiqueta, valor }) => (
-  <div className="h-[33px] flex items-center justify-between border-b border-dashed border-neutral-200 text-[12px]">
+  <div className="h-[33px] flex items-center justify-between border-b border-dashed border-neutral-200 text-body">
     <span className="font-sans text-neutral-500">{etiqueta}</span>
     <span className={`tabular-nums ${valor ? 'text-neutral-900' : 'text-neutral-500'} truncate pl-[12px]`}>{valor ?? '—'}</span>
   </div>
@@ -142,17 +146,17 @@ const ListaEjecuciones: React.FC<{ onAbrir: (ejecucion: EjecucionApi) => void }>
   const simulaciones = ejecuciones.filter((e) => e.tipoEscenario !== 'DIA_A_DIA').reverse();
   return (
     <Seccion titulo="Abrir una simulación existente" resumen={`${simulaciones.length} en el servidor`} resumenPendiente={simulaciones.length === 0}>
-      <div className="flex items-center text-[12px]">
+      <div className="flex items-center text-body">
         <span className="font-sans text-neutral-500">Ábrelas desde cualquier dispositivo; todos ven la misma corrida.</span>
         <button type="button" onClick={recargar} className="ml-auto font-sans font-medium text-primary-600 hover:underline">
           Actualizar
         </button>
       </div>
-      {error && <p className="font-sans text-[12px] text-critical-600">{error}</p>}
-      {!error && !cargando && simulaciones.length === 0 && <p className="font-sans text-[12px] text-neutral-500">Aún no hay simulaciones.</p>}
+      {error && <p className="font-sans text-body text-critical-600">{error}</p>}
+      {!error && !cargando && simulaciones.length === 0 && <p className="font-sans text-body text-neutral-500">Aún no hay simulaciones.</p>}
       {simulaciones.map((e) => (
-        <div key={e.id} className="h-[36px] flex items-center gap-[10px] border-b border-dashed border-neutral-200 text-[12px]">
-          <span className={`rounded-[4px] px-[6px] py-[2px] font-sans font-medium ${ESTADO_EJECUCION[e.estado].clase}`}>{ESTADO_EJECUCION[e.estado].texto}</span>
+        <div key={e.id} className="h-[36px] flex items-center gap-[10px] border-b border-dashed border-neutral-200 text-body">
+          <EtiquetaEstado tono={ESTADO_EJECUCION[e.estado].tono}>{ESTADO_EJECUCION[e.estado].texto}</EtiquetaEstado>
           <span className="font-sans text-neutral-900 truncate">{e.nombre}</span>
           <span className="tabular-nums text-neutral-500 whitespace-nowrap">{e.relojSimulado ?? ''}</span>
           <button type="button" onClick={() => onAbrir(e)} className="ml-auto font-sans font-medium text-primary-600 hover:underline whitespace-nowrap">
@@ -238,8 +242,8 @@ export const ConfiguracionEscenario: React.FC<ConfiguracionEscenarioProps> = ({ 
   return (
     <div className="flex-1 flex flex-col min-h-0 leading-[normal]">
       <header className="h-[80px] bg-white border-b border-neutral-200 px-[24px] flex flex-col justify-center gap-[6px] shrink-0">
-        <h1 className="font-sans font-semibold text-[18px] text-neutral-900">Configuración de escenario</h1>
-        <p className="font-sans text-[12px] text-neutral-500">Abre una simulación que ya esté en el servidor o configura una nueva.</p>
+        <h1 className="font-sans font-semibold text-title text-neutral-900">Configuración de escenario</h1>
+        <p className="font-sans text-body text-neutral-500">Abre una simulación que ya esté en el servidor o configura una nueva.</p>
       </header>
 
       <div className="flex-1 min-h-0 overflow-y-auto">
@@ -247,7 +251,7 @@ export const ConfiguracionEscenario: React.FC<ConfiguracionEscenarioProps> = ({ 
           <div className="flex-1 min-w-0 flex flex-col gap-[12px]">
             <ListaEjecuciones onAbrir={onAbrir} />
 
-            <h2 className="mt-[12px] font-sans font-semibold text-[14px] text-neutral-900">Nueva simulación</h2>
+            <h2 className="mt-[12px] font-sans font-semibold text-body-lg text-neutral-900">Nueva simulación</h2>
 
             <Seccion numero="01" titulo="Escenario" resumen="">
               <fieldset className="grid grid-cols-1 sm:grid-cols-2 gap-[12px]">
@@ -269,11 +273,11 @@ export const ConfiguracionEscenario: React.FC<ConfiguracionEscenarioProps> = ({ 
                         onChange={() => setEscenario(opcion.valor)}
                         className="sr-only"
                       />
-                      <span className={`flex items-center gap-[8px] font-sans font-semibold text-[14px] ${activo ? 'text-primary-600' : 'text-neutral-900'}`}>
+                      <span className={`flex items-center gap-[8px] font-sans font-semibold text-body-lg ${activo ? 'text-primary-600' : 'text-neutral-900'}`}>
                         <IndicadorRadio marcado={activo} />
                         {opcion.titulo}
                       </span>
-                      <span className="font-sans text-[12px] text-neutral-500">{opcion.descripcion}</span>
+                      <span className="font-sans text-body text-neutral-500">{opcion.descripcion}</span>
                     </label>
                   );
                 })}
@@ -282,12 +286,12 @@ export const ConfiguracionEscenario: React.FC<ConfiguracionEscenarioProps> = ({ 
 
             <Seccion numero="02" titulo="Periodo" resumen={inicioValido ? formatearFechaLarga(inicio, false) : 'Sin definir'} resumenPendiente={!inicioValido}>
               <Etiqueta htmlFor="inicio-fecha">Fecha de inicio (la simulación arranca a las 00:00)</Etiqueta>
-              <input
+              <Campo
                 id="inicio-fecha"
                 type="date"
                 value={fecha}
                 onChange={(e) => setFecha(e.target.value)}
-                className="w-[180px] h-[32px] px-[10px] border border-neutral-300 rounded-[6px] tabular-nums text-[12px] text-neutral-900 outline-none focus:border-primary-600"
+                className="w-[180px]"
               />
             </Seccion>
 
@@ -295,7 +299,7 @@ export const ConfiguracionEscenario: React.FC<ConfiguracionEscenarioProps> = ({ 
               {ARCHIVOS.map(({ tipo, etiqueta }) => (
                 <RanuraArchivo key={tipo} tipo={tipo} etiqueta={etiqueta} archivo={archivos[tipo]} subiendo={subiendo === tipo} onCargar={(a) => cargar(tipo, a)} />
               ))}
-              <p className="border-l-[3px] border-neutral-400 pl-[9px] font-sans text-[12px] text-neutral-500">
+              <p className="border-l-[3px] border-neutral-400 pl-[9px] font-sans text-body text-neutral-500">
                 El servidor valida cada línea con el mismo lector del planificador y guarda el archivo para su mes. Las averías se incorporan en una entrega
                 posterior.
               </p>
@@ -312,14 +316,14 @@ export const ConfiguracionEscenario: React.FC<ConfiguracionEscenarioProps> = ({ 
                 ).map(({ clave, etiqueta }) => (
                   <div key={clave} className="flex flex-col gap-[8px]">
                     <Etiqueta htmlFor={`flota-${clave}`}>{etiqueta}</Etiqueta>
-                    <input
+                    <Campo
                       id={`flota-${clave}`}
                       type="number"
                       min={0}
                       max={MAXIMO_POR_TIPO}
                       value={flota[clave]}
                       onChange={(e) => cambiarFlota(clave, e.target.value)}
-                      className="w-[100px] h-[32px] px-[10px] border border-neutral-300 rounded-[6px] tabular-nums text-[12px] text-neutral-900 outline-none focus:border-primary-600"
+                      className="w-[100px]"
                     />
                   </div>
                 ))}
@@ -328,8 +332,8 @@ export const ConfiguracionEscenario: React.FC<ConfiguracionEscenarioProps> = ({ 
 
           </div>
 
-          <aside className="w-full lg:w-[360px] shrink-0 lg:sticky lg:top-0 bg-white border border-neutral-200 rounded-[10px]">
-            <h2 className="h-[48px] px-[15px] flex items-center border-b border-neutral-200 font-sans font-semibold text-[14px] text-neutral-900">Resumen de la corrida</h2>
+          <Tarjeta como="aside" className="w-full lg:w-[360px] shrink-0 lg:sticky lg:top-0">
+            <h2 className="h-[48px] px-[15px] flex items-center border-b border-neutral-200 font-sans font-semibold text-body-lg text-neutral-900">Resumen de la corrida</h2>
             <div className="px-[15px] pt-[8px] pb-[16px] flex flex-col">
               <FilaResumen etiqueta="Escenario" valor={ESCENARIOS.find((e) => e.valor === escenario)!.titulo} />
               <FilaResumen etiqueta="Inicio" valor={inicioValido ? formatearFechaLarga(inicio, false) : undefined} />
@@ -340,22 +344,20 @@ export const ConfiguracionEscenario: React.FC<ConfiguracionEscenarioProps> = ({ 
                 etiqueta="Semáforo de holgura"
                 valor={`${NOMBRE_HOLGURA.ROJO} ${RANGO_HOLGURA.ROJO} · ${NOMBRE_HOLGURA.AMBAR} ${RANGO_HOLGURA.AMBAR}`}
               />
-              <button
-                type="button"
+              <Boton variante="primario" tamano="lg" className="mt-[24px]"
                 onClick={ejecutar}
                 disabled={!listo}
-                className="mt-[24px] h-[44px] rounded-[6px] bg-primary-600 hover:bg-primary-700 disabled:bg-neutral-400 disabled:cursor-not-allowed text-white font-sans font-semibold text-[14px] transition"
               >
                 {enviando ? 'Creando simulación…' : 'Ejecutar simulación'}
-              </button>
-              {error && <p className="mt-[10px] border-l-[3px] border-critical-600 pl-[9px] font-sans text-[12px] text-critical-600">{error}</p>}
+              </Boton>
+              {error && <p className="mt-[10px] border-l-[3px] border-critical-600 pl-[9px] font-sans text-body text-critical-600">{error}</p>}
               {!listo && !enviando && faltantes.length > 0 && (
-                <p className="mt-[10px] border-l-[3px] border-neutral-400 pl-[9px] font-sans text-[12px] text-neutral-500">
+                <p className="mt-[10px] border-l-[3px] border-neutral-400 pl-[9px] font-sans text-body text-neutral-500">
                   Define {faltantes.join(', ').replace(/, ([^,]*)$/, ' y $1')} para continuar.
                 </p>
               )}
             </div>
-          </aside>
+          </Tarjeta>
         </div>
       </div>
     </div>

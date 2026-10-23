@@ -51,7 +51,7 @@ export const BitacoraEventos: React.FC = () => {
               type="button"
               aria-pressed={filtro === valor}
               onClick={() => setFiltro(valor)}
-              className={`px-[7px] py-[3px] rounded-[4px] text-[12px] font-sans ${
+              className={`px-[7px] py-[3px] rounded-[4px] text-body font-sans ${
                 filtro === valor ? 'bg-primary-100 text-primary-600 font-medium' : 'bg-white border border-neutral-200 text-neutral-500 hover:border-neutral-300'
               }`}
             >
@@ -59,7 +59,7 @@ export const BitacoraEventos: React.FC = () => {
             </button>
           ))}
         </div>
-        <div className="flex items-center text-[12px]">
+        <div className="flex items-center text-body">
           <p className="font-sans text-neutral-500">
             {visibles.length} {visibles.length === 1 ? 'evento' : 'eventos'} {verTodos ? 'registrados' : 'en los últimos 30 min simulados'}
             {congelados && ' · lista en pausa'}
@@ -85,14 +85,14 @@ export const BitacoraEventos: React.FC = () => {
               titulo={e.titulo}
               detalle={e.detalle}
               className="px-[12px] py-[8px] min-h-[47px]"
-              derecha={<time className="tabular-nums text-[12px] text-neutral-500 whitespace-nowrap">{e.hora}</time>}
+              derecha={<time className="tabular-nums text-body text-neutral-500 whitespace-nowrap">{e.hora}</time>}
             />
           </li>
         ))}
-        {visibles.length === 0 && <li className="px-[12px] py-[14px] font-sans text-[12px] text-neutral-500">Sin eventos para este filtro.</li>}
+        {visibles.length === 0 && <li className="px-[12px] py-[14px] font-sans text-body text-neutral-500">Sin eventos para este filtro.</li>}
       </ol>
 
-      <div className="h-[32px] px-[12px] flex items-center text-[12px] border-t border-neutral-200 shrink-0">
+      <div className="h-[32px] px-[12px] flex items-center text-body border-t border-neutral-200 shrink-0">
         <button type="button" onClick={() => setVerTodos(!verTodos)} className="font-sans font-medium text-primary-600 hover:underline">
           {verTodos ? 'Ver solo los últimos 30 min' : 'Ver todos los eventos'}
         </button>

@@ -159,7 +159,7 @@ export const SelectorUnidad = forwardRef<HTMLInputElement, SelectorUnidadProps>(
           onClick={() => setAbierta(true)}
           onBlur={() => setAbierta(false)}
           onKeyDown={alPresionar}
-          className="flex-1 min-w-0 bg-transparent outline-none text-[13px] text-neutral-900 tabular-nums placeholder:text-neutral-400"
+          className="flex-1 min-w-0 bg-transparent outline-none text-body-lg text-neutral-900 tabular-nums placeholder:text-neutral-500"
         />
         <ChevronDown className={`w-4 h-4 text-neutral-500 shrink-0 transition-transform ${abierta ? 'rotate-180' : ''}`} aria-hidden="true" />
       </div>
@@ -175,13 +175,13 @@ export const SelectorUnidad = forwardRef<HTMLInputElement, SelectorUnidadProps>(
           className="absolute left-0 right-0 top-[40px] z-10 max-h-[264px] overflow-y-auto bg-white border border-neutral-200 rounded-[6px] shadow-[0px_4px_16px_rgba(0,0,0,0.14)] py-[4px]"
         >
           {grupos.length === 0 && (
-            <li className="px-[12px] py-[10px] text-[12px] text-neutral-500" role="presentation">
+            <li className="px-[12px] py-[10px] text-body text-neutral-500" role="presentation">
               Ninguna unidad coincide con «{texto.trim()}».
             </li>
           )}
           {grupos.map((grupo) => (
             <li key={grupo.titulo} role="presentation">
-              <p className="px-[12px] pt-[8px] pb-[4px] text-[11px] font-semibold uppercase tracking-wider text-neutral-500">{grupo.titulo}</p>
+              <p className="px-[12px] pt-[8px] pb-[4px] text-caption font-semibold uppercase tracking-wider text-neutral-500">{grupo.titulo}</p>
               <ul role="group" aria-label={grupo.titulo}>
                 {grupo.unidades.map((u) => {
                   const esActiva = opcionActiva?.codigo === u.codigo;
@@ -195,14 +195,14 @@ export const SelectorUnidad = forwardRef<HTMLInputElement, SelectorUnidadProps>(
                       aria-disabled={grupo.bloqueado || undefined}
                       onClick={() => !grupo.bloqueado && elegir(u)}
                       onMouseEnter={() => !grupo.bloqueado && setActiva(elegibles.indexOf(u))}
-                      className={`h-[34px] px-[12px] flex items-center gap-[10px] text-[13px] ${
+                      className={`h-[34px] px-[12px] flex items-center gap-[10px] text-body-lg ${
                         grupo.bloqueado ? 'opacity-55 cursor-not-allowed' : 'cursor-pointer'
                       } ${esActiva ? 'bg-primary-50' : ''}`}
                     >
                       <img src={iconoVehiculo(u.tipo, colorDeUnidad(u)).href} alt="" className="block -my-[4px] shrink-0" />
                       <span className="font-semibold text-neutral-900 tabular-nums w-[44px] shrink-0">{u.codigo}</span>
                       {/* Espacio para el nombre accesible: sin él, el lector anuncia "A-01En ruta". */}{' '}
-                      <span className="text-[12px] text-neutral-500 tabular-nums truncate">{detalle(u)}</span>
+                      <span className="text-body text-neutral-500 tabular-nums truncate">{detalle(u)}</span>
                     </li>
                   );
                 })}

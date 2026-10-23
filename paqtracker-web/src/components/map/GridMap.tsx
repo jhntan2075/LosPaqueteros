@@ -133,6 +133,13 @@ const CAPAS: { clave: Capa; etiqueta: string }[] = [
 
 const ESTILO_PILDORA = 'h-[32px] bg-white shadow-[0px_1px_4px_rgba(0,0,0,0.13)] rounded-full border border-neutral-200 flex items-center';
 
+/** Ancho mínimo de mapa que debe quedar libre junto al panel; por debajo, el panel cubre el mapa. */
+const MAPA_LIBRE_MINIMO_PX = 360;
+
+// En pantallas angostas el panel ocupa casi todo el ancho y se superpone al mapa: el encuadre no lo descuenta.
+const panelQueDescuenta = (anchoPanel: number, anchoMapa: number) =>
+  anchoPanel > 0 && anchoMapa - anchoPanel >= MAPA_LIBRE_MINIMO_PX ? anchoPanel : 0;
+
 export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
   {
     unidades,
@@ -140,7 +147,7 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
     bloqueos,
     almacenes = [],
     seleccion,
-    anchoPanelDerecho = 0,
+    anchoPanelDerecho: anchoPanelSolicitado = 0,
     riesgo,
     onSeleccionar,
     onAbrirIncidencias,
@@ -154,6 +161,7 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
 ) {
   const containerRef = useRef<HTMLDivElement>(null);
   const { ancho, alto } = useTamanoElemento(containerRef);
+  const anchoPanelDerecho = panelQueDescuenta(anchoPanelSolicitado, ancho);
   const lienzo: Lienzo = {
     ancho,
     alto,
@@ -205,7 +213,9 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
         ancho: rect.width,
         alto: rect.height,
         ...LIENZO_BASE,
-        margenDerecho: anchoPanelDerecho > 0 ? anchoPanelDerecho + 24 : LIENZO_BASE.margen,
+        margenDerecho: panelQueDescuenta(anchoPanelSolicitado, rect.width) > 0
+          ? panelQueDescuenta(anchoPanelSolicitado, rect.width) + 24
+          : LIENZO_BASE.margen,
       };
       const factor = evento.deltaY < 0 ? 1.15 : 1 / 1.15;
       setVistaUsuario((actual) =>
@@ -214,7 +224,7 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
     };
     elemento.addEventListener('wheel', alGirar, { passive: false });
     return () => elemento.removeEventListener('wheel', alGirar);
-  }, [anchoPanelDerecho]);
+  }, [anchoPanelSolicitado]);
 
   // Arrastre con captura de puntero: sigue aunque el cursor salga del mapa, como en un visor de mapas.
   // Con la captura activa el click llega al contenedor, así que un toque sin desplazamiento sobre un
@@ -317,13 +327,13 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
               setTerminoBusqueda(e.target.value);
               setSinResultados(false);
             }}
-            className={`w-full text-[12px] font-sans bg-transparent focus:outline-none [&::-webkit-calendar-picker-indicator]:!hidden ${
+            className={`w-full text-body font-sans bg-transparent focus:outline-none [&::-webkit-calendar-picker-indicator]:!hidden ${
               sinResultados ? 'text-critical-600' : 'text-neutral-900'
-            } placeholder-neutral-400`}
+            } placeholder-neutral-500`}
           />
           <span role="status" className="absolute left-0 top-[36px] whitespace-nowrap">
             {sinResultados && (
-              <span className="block bg-white border border-critical-600/30 rounded-[6px] px-2 py-1 font-sans text-[12px] text-critical-600 shadow-xs">
+              <span className="block bg-white border border-critical-600/30 rounded-[6px] px-2 py-1 font-sans text-body text-critical-600 shadow-xs">
                 No hay pedidos ni unidades en el mapa con «{terminoBusqueda.trim()}»
               </span>
             )}
@@ -345,21 +355,21 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
           className={`${ESTILO_PILDORA} px-3 gap-1.5 hover:bg-neutral-50`}
         >
           <span className="w-2 h-2 bg-critical-600 rounded-full"></span>
-          <span className="text-critical-600 tabular-nums font-medium text-[12px]">{riesgo.rojo}</span>
-          <span className="text-warn-700 text-[11px] leading-none" aria-hidden="true">▲</span>
-          <span className="text-warn-700 tabular-nums font-medium text-[12px]">{riesgo.ambar}</span>
-          <span className="text-neutral-500 font-sans text-[12px]">en riesgo</span>
+          <span className="text-critical-600 tabular-nums font-medium text-body">{riesgo.rojo}</span>
+          <span className="text-warn-700 text-caption leading-none" aria-hidden="true">▲</span>
+          <span className="text-warn-700 tabular-nums font-medium text-body">{riesgo.ambar}</span>
+          <span className="text-neutral-500 font-sans text-body">en riesgo</span>
         </button>
 
         {!enSimulacion && (
         <button type="button" onClick={onAbrirIncidencias} className={`${ESTILO_PILDORA} px-3.5 gap-1.5 hover:bg-neutral-50`}>
           <span className="w-2 h-2 bg-warn-500 rounded-full"></span>
-          <span className="text-warn-700 tabular-nums font-medium text-[12px]">{bloqueos.length}</span>
-          <span className="text-neutral-500 font-sans text-[12px]">bloqueos</span>
+          <span className="text-warn-700 tabular-nums font-medium text-body">{bloqueos.length}</span>
+          <span className="text-neutral-500 font-sans text-body">bloqueos</span>
           <span className="w-1.5"></span>
           <span className="w-2 h-2 bg-critical-600 rounded-full"></span>
-          <span className="text-critical-600 tabular-nums font-medium text-[12px]">{averiadas}</span>
-          <span className="text-neutral-500 font-sans text-[12px]">averías</span>
+          <span className="text-critical-600 tabular-nums font-medium text-body">{averiadas}</span>
+          <span className="text-neutral-500 font-sans text-body">averías</span>
         </button>
         )}
 
@@ -372,7 +382,7 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
             className={`${ESTILO_PILDORA} px-3.5 gap-1.5 hover:bg-neutral-50 ${capasAbiertas ? 'border-primary-600' : ''}`}
           >
             <Layers className="w-3.5 h-3.5 text-neutral-500" />
-            <span className="text-neutral-500 font-sans text-[12px]">Capas</span>
+            <span className="text-neutral-500 font-sans text-body">Capas</span>
           </button>
           {capasAbiertas && (
             <fieldset
@@ -381,7 +391,7 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
             >
               <legend className="sr-only">Capas visibles</legend>
               {CAPAS.map(({ clave, etiqueta }) => (
-                <label key={clave} className="flex items-center gap-[8px] px-[6px] py-[4px] rounded hover:bg-neutral-50 text-[12px] font-sans text-neutral-900 cursor-pointer">
+                <label key={clave} className="flex items-center gap-[8px] px-[6px] py-[4px] rounded hover:bg-neutral-50 text-body font-sans text-neutral-900 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={capas[clave]}
@@ -401,7 +411,7 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
       </div>
 
       {/* Accesos al panel lateral: aparecen donde se abre y se ocultan mientras está abierto */}
-      {onAbrirPanel && anchoPanelDerecho === 0 && (
+      {onAbrirPanel && anchoPanelSolicitado === 0 && (
         <nav
           aria-label="Paneles del mapa"
           className="absolute right-4 top-3 z-10 h-[32px] bg-white shadow-[0px_1px_4px_rgba(0,0,0,0.13)] rounded-full border border-neutral-200 flex items-center px-1 gap-0.5"
@@ -411,7 +421,7 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
               key={pestana}
               type="button"
               onClick={() => onAbrirPanel(pestana)}
-              className="h-[26px] px-3 rounded-full font-sans text-[12px] text-neutral-900 hover:bg-neutral-100"
+              className="h-[26px] px-3 rounded-full font-sans text-body text-neutral-900 hover:bg-neutral-100"
             >
               {etiqueta}
             </button>
@@ -450,7 +460,7 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
         >
           <Maximize2 className="w-3.5 h-3.5" />
         </button>
-        <span className="text-[11px] tabular-nums text-center text-neutral-500 font-bold block">
+        <span className="text-caption tabular-nums text-center text-neutral-500 font-bold block">
           {vista ? Math.round((vista.escala / escalaBase) * 100) : 100}%
         </span>
       </div>
@@ -466,11 +476,11 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
             className={`${ESTILO_PILDORA} px-3 gap-1.5 hover:bg-neutral-50 ${leyendaAbierta ? 'border-primary-600' : ''}`}
           >
             <MapIcon className="w-3.5 h-3.5 text-neutral-500" />
-            <span className="text-neutral-900 font-sans text-[12px]">Leyenda</span>
+            <span className="text-neutral-900 font-sans text-body">Leyenda</span>
           </button>
           {vista && (
             <div className="bg-white/95 backdrop-blur-xs px-2.5 py-1 rounded-md border border-neutral-200 shadow-xs pointer-events-none flex flex-col gap-[3px]">
-              <span className="tabular-nums text-[11px] text-neutral-600">{barraEscala(vista.escala).km} km</span>
+              <span className="tabular-nums text-caption text-neutral-600">{barraEscala(vista.escala).km} km</span>
               <span className="block h-[5px] border-x-2 border-b-2 border-neutral-600" style={{ width: barraEscala(vista.escala).px }} />
             </div>
           )}
@@ -582,8 +592,8 @@ const TooltipObjeto: React.FC<
       className="absolute z-20 pointer-events-none -translate-x-1/2 -translate-y-full bg-neutral-900 text-white rounded-[6px] px-[10px] py-[6px] shadow-lg leading-[normal] whitespace-nowrap"
       style={{ left, top: p.y - contenido.alzaPx }}
     >
-      <p className="font-semibold text-[12px] tabular-nums">{contenido.titulo}</p>
-      <p className="flex items-center gap-[6px] text-[12px] text-neutral-300 tabular-nums">
+      <p className="font-semibold text-body tabular-nums">{contenido.titulo}</p>
+      <p className="flex items-center gap-[6px] text-body text-neutral-300 tabular-nums">
         {contenido.color && <span className="size-[7px] rounded-full shrink-0" style={{ background: contenido.color }} />}
         {contenido.detalle}
       </p>
@@ -750,7 +760,7 @@ const CapasMapa: React.FC<CapasMapaProps> = ({ vista, lienzo, capas, unidades, d
                 <circle r="21" fill="none" stroke={PRIMARIO} strokeWidth="2" />
               )}
               {central ? <AlmacenCentral /> : <AlmacenIntermedio color={color} fraccionStock={stock === undefined ? undefined : stock / 100} />}
-              <text x="24" y="5" fill={NEUTRO[500]} fontSize="13" fontWeight="500" {...halo}>
+              <text x="24" y="5" fill={NEUTRO[500]} fontSize="12" fontWeight="500" {...halo}>
                 {etiqueta}
               </text>
             </g>

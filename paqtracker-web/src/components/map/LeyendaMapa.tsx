@@ -4,6 +4,7 @@ import { RANGO_HOLGURA, RANGO_INVENTARIO, RANGO_OCUPACION } from '../../config/g
 import { ATENCION, CRITICO, NEUTRO, OK } from '../../config/colores';
 import { iconoVehiculo } from './iconosVehiculo';
 import { AlmacenCentral, AlmacenIntermedio, MarcaBloqueo, PinDestino } from './simbolos';
+import { Tarjeta } from '../ui/Tarjeta';
 
 // Leyenda del mapa: panel flotante y no modal, para leerla sin dejar de ver el mapa. Solo dice qué
 // es cada símbolo; el detalle de cada objeto está en su tooltip y en el panel lateral.
@@ -34,7 +35,7 @@ const IconoUnidad: React.FC<{ tipo: 'AUTO' | 'MOTO' | 'BICICLETA' }> = ({ tipo }
 const Fila: React.FC<{ simbolo: React.ReactNode; nombre: string; detalle?: string }> = ({ simbolo, nombre, detalle }) => (
   <li className="grid grid-cols-[28px_1fr] items-center gap-x-[10px] h-[26px]">
     <span className="h-[22px] flex items-center justify-center">{simbolo}</span>
-    <span className="text-[12px] text-neutral-900 truncate">
+    <span className="text-body text-neutral-900 truncate">
       {nombre}
       {detalle && <span className="text-neutral-500"> · {detalle}</span>}
     </span>
@@ -59,14 +60,14 @@ const SEMAFOROS: { titulo: string; rangos: Record<Nivel, string> }[] = [
 ];
 
 export const LeyendaMapa: React.FC<{ onCerrar: () => void }> = ({ onCerrar }) => (
-  <section
+  <Tarjeta como="section" elevada className="w-[280px] max-h-[calc(100vh-260px)] overflow-y-auto leading-[normal] cursor-default"
     aria-label="Leyenda del mapa"
     data-sin-zoom
     onPointerDown={(e) => e.stopPropagation()}
-    className="w-[280px] max-h-[calc(100vh-260px)] overflow-y-auto bg-white border border-neutral-200 rounded-[10px] shadow-[0px_2px_12px_0px_rgba(0,0,0,0.16)] leading-[normal] cursor-default"
+   
   >
     <header className="h-[36px] pl-[12px] pr-[8px] flex items-center border-b border-neutral-200">
-      <h2 className="font-semibold text-[13px] text-neutral-900">Leyenda</h2>
+      <h2 className="font-semibold text-body-lg text-neutral-900">Leyenda</h2>
       <button
         type="button"
         onClick={onCerrar}
@@ -105,7 +106,7 @@ export const LeyendaMapa: React.FC<{ onCerrar: () => void }> = ({ onCerrar }) =>
     </ul>
 
     <div className="px-[12px] pt-[10px] pb-[12px] border-t border-neutral-200">
-      <div className="grid grid-cols-[52px_repeat(3,minmax(0,1fr))] gap-x-[8px] gap-y-[6px] items-center text-[12px]">
+      <div className="grid grid-cols-[52px_repeat(3,minmax(0,1fr))] gap-x-[8px] gap-y-[6px] items-center text-body">
         {SEMAFOROS.map(({ titulo, rangos }) => (
           <React.Fragment key={titulo}>
             <span className="text-neutral-500">{titulo}</span>
@@ -118,7 +119,7 @@ export const LeyendaMapa: React.FC<{ onCerrar: () => void }> = ({ onCerrar }) =>
           </React.Fragment>
         ))}
       </div>
-      <p className="mt-[8px] text-[11px] text-neutral-500">La forma también indica el nivel, no solo el color.</p>
+      <p className="mt-[8px] text-caption text-neutral-500">La forma también indica el nivel, no solo el color.</p>
     </div>
-  </section>
+  </Tarjeta>
 );

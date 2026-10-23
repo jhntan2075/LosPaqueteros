@@ -44,11 +44,11 @@ export const FooterBar: React.FC<FooterBarProps> = ({
   const actualizacion = (
     <>
       <span className={`w-1.5 h-1.5 rounded-full ${indicador.punto}`}></span>
-      <span className={`font-sans text-[12px] ${indicador.color}`}>{indicador.texto}</span>
+      <span className={`font-sans text-body ${indicador.color}`}>{indicador.texto}</span>
     </>
   );
   return (
-    <footer className="h-[30px] bg-white border-t border-neutral-200 px-4 flex items-center justify-between text-[12px] select-none flex-shrink-0 z-20">
+    <footer className="h-[30px] bg-white border-t border-neutral-200 px-4 flex items-center justify-between text-body select-none flex-shrink-0 z-20">
       <div className="flex items-center gap-4 overflow-x-auto">
         {/* Nodo bajo el cursor (solo sobre el lienzo) */}
         {nodoSeleccionado && (
@@ -103,7 +103,7 @@ export const FooterBar: React.FC<FooterBarProps> = ({
 
       {/* Lado derecho: Leyenda de holguras y estado de actualización */}
       <div className="flex items-center gap-3.5 flex-shrink-0 pl-2">
-        <div className="flex items-center gap-2 text-[12px]">
+        <div className="flex items-center gap-2 text-body">
           <span className="text-neutral-500 font-sans">holgura</span>
 
           <div className="flex items-center gap-1">
@@ -112,7 +112,7 @@ export const FooterBar: React.FC<FooterBarProps> = ({
           </div>
 
           <div className="flex items-center gap-1">
-            <span className="text-warn-700 text-[11px] leading-none">▲</span>
+            <span className="text-warn-700 text-caption leading-none">▲</span>
             <span className="text-warn-700 tabular-nums font-normal">{RANGO_HOLGURA.AMBAR}</span>
           </div>
 
@@ -128,7 +128,7 @@ export const FooterBar: React.FC<FooterBarProps> = ({
         {estadoAlerta ? (
           <div className="flex items-center gap-1.5">
             <span className="w-1.5 h-1.5 bg-critical-600 rounded-full"></span>
-            <span className="text-neutral-500 font-sans text-[12px]">{estadoAlerta}</span>
+            <span className="text-neutral-500 font-sans text-body">{estadoAlerta}</span>
           </div>
         ) : (
           <div className="flex items-center gap-1.5">{actualizacion}</div>

@@ -26,9 +26,9 @@ const Indicador: React.FC<{ etiqueta: string; valor: string; detalle?: string; c
   color = 'text-neutral-800',
 }) => (
   <div className="p-3 bg-neutral-50 border border-neutral-200 rounded-lg flex flex-col gap-0.5">
-    <span className="text-neutral-600 text-xs">{etiqueta}</span>
-    <span className={`text-base font-bold tabular-nums ${color}`}>{valor}</span>
-    {detalle && <span className="text-neutral-600 text-xs">{detalle}</span>}
+    <span className="text-neutral-600 text-body">{etiqueta}</span>
+    <span className={`text-title font-bold tabular-nums ${color}`}>{valor}</span>
+    {detalle && <span className="text-neutral-600 text-body">{detalle}</span>}
   </div>
 );
 
@@ -39,9 +39,9 @@ const PanelMetricas: React.FC<{ datos: DatosOperacion }> = ({ datos }) => {
   return (
     <div className="flex-1 p-6 overflow-y-auto max-w-4xl mx-auto w-full space-y-4">
       <section className="bg-white p-6 rounded-xl border border-neutral-300 shadow-xs">
-        <h1 className="text-base font-bold text-neutral-800 mb-1">Métricas de la operación</h1>
-        <p className="text-xs text-neutral-600 mb-4">Indicadores en vivo de la operación día a día.</p>
-        <h2 className="text-xs font-semibold text-neutral-600 uppercase tracking-wider mb-2">Entregas y flota</h2>
+        <h1 className="text-title font-bold text-neutral-800 mb-1">Métricas de la operación</h1>
+        <p className="text-body text-neutral-600 mb-4">Indicadores en vivo de la operación día a día.</p>
+        <h2 className="text-body font-semibold text-neutral-600 uppercase tracking-wider mb-2">Entregas y flota</h2>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
           <Indicador
             etiqueta="Entregas en plazo"
@@ -57,7 +57,7 @@ const PanelMetricas: React.FC<{ datos: DatosOperacion }> = ({ datos }) => {
           />
           <Indicador etiqueta="Tiempo promedio de entrega" valor={`${Math.round(indicadores.tiempoPromedioEntregaMinutos)} min`} />
         </div>
-        <h2 className="text-xs font-semibold text-neutral-600 uppercase tracking-wider mb-2">Planificador</h2>
+        <h2 className="text-body font-semibold text-neutral-600 uppercase tracking-wider mb-2">Planificador</h2>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <Indicador etiqueta="Planificaciones ejecutadas" valor={formatearMiles(indicadores.replanificaciones)} />
           <Indicador etiqueta="Tiempo de la última planificación" valor={`${indicadores.tiempoComputoUltimoTaMs} ms`} color="text-primary-600" />

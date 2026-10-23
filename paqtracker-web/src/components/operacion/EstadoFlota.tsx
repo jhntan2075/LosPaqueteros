@@ -18,7 +18,7 @@ const FONDO_NIVEL = { ROJO: 'bg-critical-600', AMBAR: 'bg-warn-500', VERDE: 'bg-
 const unidades = (n: number) => `${n} ${n === 1 ? 'unidad' : 'unidades'}`;
 
 const Leyenda: React.FC<{ color: string; etiqueta: string; valor: number }> = ({ color, etiqueta, valor }) => (
-  <span className="flex items-center gap-[5px] text-[12px] whitespace-nowrap">
+  <span className="flex items-center gap-[5px] text-body whitespace-nowrap">
     <span className={`size-[7px] rounded-[1px] ${color}`} />
     <span className="font-sans text-neutral-500">{etiqueta}</span>
     <span className="tabular-nums font-medium text-neutral-900">{valor}</span>
@@ -97,7 +97,7 @@ export const EstadoFlota: React.FC = () => {
             const nivel = cargaABordo === null ? null : nivelDeOcupacion(carga, capacidad);
             return (
               <div key={tipo} className="flex flex-col gap-[5px]">
-                <div className="flex items-center gap-[8px] text-[12px]">
+                <div className="flex items-center gap-[8px] text-body">
                   <img src={iconoVehiculo(tipo, colorDeCarga(carga, capacidad)).href} alt="" className="block -my-[4px]" />
                   <span className="font-sans font-semibold text-neutral-900">{ETIQUETA[tipo]}</span>
                   <span className="tabular-nums text-neutral-500">
@@ -125,7 +125,7 @@ export const EstadoFlota: React.FC = () => {
               </div>
             );
           })}
-          <p className="text-[11px] text-neutral-500">
+          <p className="text-caption text-neutral-500">
             Carga: verde {RANGO_OCUPACION.VERDE} · ámbar {RANGO_OCUPACION.AMBAR} · rojo {RANGO_OCUPACION.ROJO}
           </p>
         </section>
@@ -133,7 +133,7 @@ export const EstadoFlota: React.FC = () => {
         {/* Requiere atención */}
         <section className="px-[12px] pt-[12px] pb-[14px] flex flex-col gap-[12px]">
           <TituloSeccion derecha={atencion.length}>Requiere atención</TituloSeccion>
-          {atencion.length === 0 && <p className="font-sans text-[12px] text-neutral-500">Ninguna unidad requiere atención.</p>}
+          {atencion.length === 0 && <p className="font-sans text-body text-neutral-500">Ninguna unidad requiere atención.</p>}
           {atencion.map((item) => (
             <FilaConBarra key={item.titulo} color={item.color} titulo={item.titulo} detalle={item.detalle} detalleMono />
           ))}

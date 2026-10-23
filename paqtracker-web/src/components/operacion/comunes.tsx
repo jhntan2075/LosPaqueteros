@@ -4,9 +4,9 @@ import React from 'react';
 
 export const TituloSeccion: React.FC<{ children: React.ReactNode; derecha?: React.ReactNode }> = ({ children, derecha }) => (
   <div className="flex items-center gap-[12px] leading-[normal]">
-    <h2 className="font-sans font-semibold text-[12px] text-neutral-500 tracking-[0.7px] uppercase">{children}</h2>
+    <h2 className="font-sans font-semibold text-body text-neutral-500 tracking-[0.7px] uppercase">{children}</h2>
     <div className="flex-1" />
-    {derecha && <span className="tabular-nums text-[12px] text-neutral-500 whitespace-nowrap">{derecha}</span>}
+    {derecha && <span className="tabular-nums text-body text-neutral-500 whitespace-nowrap">{derecha}</span>}
   </div>
 );
 
@@ -31,8 +31,8 @@ export const FilaConBarra: React.FC<{
     <>
       <span className={`w-[3px] self-stretch rounded-[1px] shrink-0 ${COLOR_BARRA[color]}`} />
       <span className="flex-1 min-w-0 flex flex-col gap-[2px] text-left">
-        <span className="font-sans font-semibold text-[12px] text-neutral-900 truncate">{titulo}</span>
-        <span className={`text-[12px] text-neutral-500 truncate ${detalleMono ? 'tabular-nums' : 'font-sans'}`}>{detalle}</span>
+        <span className="font-sans font-semibold text-body text-neutral-900 truncate">{titulo}</span>
+        <span className={`text-body text-neutral-500 truncate ${detalleMono ? 'tabular-nums' : 'font-sans'}`}>{detalle}</span>
       </span>
       {derecha}
     </>
