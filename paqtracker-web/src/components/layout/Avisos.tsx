@@ -25,12 +25,12 @@ export const ProveedorAvisos: React.FC<{ children: React.ReactNode }> = ({ child
         {aviso && (
           <div
             key={aviso.id}
-            className="pointer-events-auto flex items-center gap-[12px] bg-neutral-900 text-white rounded-[6px] pl-[12px] pr-[6px] py-[8px] shadow-lg text-body-lg leading-[normal] max-w-[calc(100vw-32px)]"
+            className="pointer-events-auto flex items-center gap-[12px] bg-[#0F172A] text-white rounded-[6px] pl-[12px] pr-[6px] py-[8px] shadow-lg text-[13px] leading-[normal] max-w-[calc(100vw-32px)]"
           >
             {aviso.tipo === 'error' ? (
-              <AlertTriangle className="w-4 h-4 text-critical-50 shrink-0" aria-hidden="true" />
+              <AlertTriangle className="w-4 h-4 text-[#FCA5A5] shrink-0" aria-hidden="true" />
             ) : (
-              <CheckCircle2 className="w-4 h-4 text-ok-50 shrink-0" aria-hidden="true" />
+              <CheckCircle2 className="w-4 h-4 text-[#4ADE80] shrink-0" aria-hidden="true" />
             )}
             <span>{aviso.texto}</span>
             {aviso.accion && (
@@ -40,7 +40,7 @@ export const ProveedorAvisos: React.FC<{ children: React.ReactNode }> = ({ child
                   aviso.accion?.alHacer();
                   setAviso(null);
                 }}
-                className="font-semibold text-primary-100 hover:text-white whitespace-nowrap"
+                className="font-semibold text-[#93C5FD] hover:text-white whitespace-nowrap"
               >
                 {aviso.accion.etiqueta}
               </button>
@@ -49,7 +49,7 @@ export const ProveedorAvisos: React.FC<{ children: React.ReactNode }> = ({ child
               type="button"
               onClick={() => setAviso(null)}
               aria-label="Cerrar aviso"
-              className="size-[24px] flex items-center justify-center rounded text-neutral-300 hover:text-white hover:bg-white/10"
+              className="size-[24px] flex items-center justify-center rounded text-[#CBD5E1] hover:text-white hover:bg-white/10"
             >
               <X className="w-3.5 h-3.5" />
             </button>

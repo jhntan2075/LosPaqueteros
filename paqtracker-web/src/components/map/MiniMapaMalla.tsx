@@ -1,4 +1,3 @@
-import { NEUTRO } from '../../config/colores';
 import React, { useRef } from 'react';
 import { MALLA_ALTO_KM, MALLA_ANCHO_KM } from '../../config/dominio';
 import { useTamanoElemento } from '../../hooks/useTamanoElemento';
@@ -35,7 +34,7 @@ export const MiniMapaMalla: React.FC<MiniMapaMallaProps> = ({ alto, margen = 40,
       ref={ref}
       role="img"
       aria-label={etiqueta}
-      className="relative w-full shrink-0 bg-neutral-100 border border-neutral-200 rounded-[8px] overflow-hidden"
+      className="relative w-full shrink-0 bg-[#F1F5F9] border border-[#E2E8F0] rounded-[8px] overflow-hidden"
       style={{ height: alto }}
     >
       {vista && (
@@ -57,16 +56,16 @@ const CuadriculaMalla: React.FC<{ vista: Vista }> = ({ vista }) => {
   const alto = MALLA_ALTO_KM * vista.escala;
   return (
     <g>
-      <rect x={origen.x} y={origen.y} width={ancho} height={alto} fill={NEUTRO[50]} />
+      <rect x={origen.x} y={origen.y} width={ancho} height={alto} fill="#F8FAFC" />
       {Array.from({ length: Math.floor(MALLA_ANCHO_KM / paso) + 1 }, (_, i) => {
         const x = origen.x + i * paso * vista.escala;
-        return <line key={`v${i}`} x1={x} y1={origen.y} x2={x} y2={origen.y + alto} stroke={NEUTRO[200]} strokeWidth="1" />;
+        return <line key={`v${i}`} x1={x} y1={origen.y} x2={x} y2={origen.y + alto} stroke="#E2E8F0" strokeWidth="1" />;
       })}
       {Array.from({ length: Math.floor(MALLA_ALTO_KM / paso) + 1 }, (_, i) => {
         const y = origen.y + i * paso * vista.escala;
-        return <line key={`h${i}`} x1={origen.x} y1={y} x2={origen.x + ancho} y2={y} stroke={NEUTRO[200]} strokeWidth="1" />;
+        return <line key={`h${i}`} x1={origen.x} y1={y} x2={origen.x + ancho} y2={y} stroke="#E2E8F0" strokeWidth="1" />;
       })}
-      <rect x={origen.x} y={origen.y} width={ancho} height={alto} fill="none" stroke={NEUTRO[300]} strokeWidth="1" />
+      <rect x={origen.x} y={origen.y} width={ancho} height={alto} fill="none" stroke="#CBD5E1" strokeWidth="1" />
     </g>
   );
 };

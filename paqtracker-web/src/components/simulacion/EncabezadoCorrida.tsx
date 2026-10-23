@@ -1,10 +1,8 @@
 import React, { useState } from 'react';
 import { DialogoConfirmacion } from '../modals/DialogoConfirmacion';
 import { ESTADO_CORRIDA } from './estadoCorrida';
-import { Etiqueta } from '../ui/Etiqueta';
 import { formatearCronometro, formatearDiasHoras, formatearFechaLarga, formatearHora } from '../../lib/formato';
 import type { EscenarioSimulacion, EstadoCorrida, MarcaAvance } from '../../types/simulacion';
-import { Boton } from '../ui/Boton';
 
 // Franjas superiores de la corrida (Figma "Corrida de Simulación" y "· Hasta el colapso"):
 // banda de modo (24 px), encabezado de corrida (56 px) y avance de la corrida (44 px).
@@ -36,12 +34,12 @@ interface EncabezadoCorridaProps {
 
 const Bloque: React.FC<{ etiqueta: string; children: React.ReactNode }> = ({ etiqueta, children }) => (
   <div className="flex flex-col gap-[2px] whitespace-nowrap">
-    <span className="font-sans text-body text-neutral-500">{etiqueta}</span>
+    <span className="font-sans text-[12px] text-[#64748B]">{etiqueta}</span>
     {children}
   </div>
 );
 
-const Separador = () => <div className="bg-neutral-200 h-[36px] w-px shrink-0" />;
+const Separador = () => <div className="bg-[#E2E8F0] h-[36px] w-px shrink-0" />;
 
 export const EncabezadoCorrida: React.FC<EncabezadoCorridaProps> = ({
   escenario,
@@ -78,7 +76,7 @@ export const EncabezadoCorrida: React.FC<EncabezadoCorridaProps> = ({
   return (
     <div className="shrink-0 leading-[normal]">
       {/* Banda de modo */}
-      <div className={`h-[24px] px-[16px] flex items-center gap-[8px] text-body text-white ${colapso ? 'bg-critical-600' : 'bg-primary-600'}`}>
+      <div className={`h-[24px] px-[16px] flex items-center gap-[8px] text-[12px] text-white ${colapso ? 'bg-[#B91C1C]' : 'bg-[#1E40AF]'}`}>
         <span className="size-[6px] rounded-full bg-white" />
         <span className="font-sans font-semibold tracking-[0.5px]">{titulo}</span>
         <span className="tabular-nums opacity-80">
@@ -96,24 +94,24 @@ export const EncabezadoCorrida: React.FC<EncabezadoCorridaProps> = ({
       </div>
 
       {/* Encabezado de corrida */}
-      <header className="h-[56px] bg-white border-b border-neutral-200 px-[16px] flex items-center gap-[20px]">
+      <header className="h-[56px] bg-white border-b border-[#E2E8F0] px-[16px] flex items-center gap-[20px]">
         <Bloque etiqueta={colapso ? 'Instante del colapso' : 'Fecha y hora simulada'}>
-          <span className={`tabular-nums font-semibold text-display ${colapso ? 'text-critical-600' : 'text-neutral-900'}`}>{formatearFechaLarga(relojSimulado)}</span>
+          <span className={`tabular-nums font-semibold text-[20px] ${colapso ? 'text-[#B91C1C]' : 'text-[#0F172A]'}`}>{formatearFechaLarga(relojSimulado)}</span>
         </Bloque>
         <span
-          className={`rounded-[4px] px-[8px] py-[4px] tabular-nums font-medium text-body whitespace-nowrap ${
-            colapso ? 'border border-critical-600 text-critical-600' : 'bg-primary-100 text-primary-600'
+          className={`rounded-[4px] px-[8px] py-[4px] tabular-nums font-medium text-[12px] whitespace-nowrap ${
+            colapso ? 'border border-[#B91C1C] text-[#B91C1C]' : 'bg-[#DBEAFE] text-[#1E40AF]'
           }`}
         >
           {colapso ? `Día simulado ${dia}` : `Día ${dia} de ${diasTotales}`}
         </span>
         <Separador />
         <Bloque etiqueta="Tiempo simulado transcurrido">
-          <span className="tabular-nums text-body text-neutral-900">{formatearDiasHoras(simuladoMs)}</span>
+          <span className="tabular-nums text-[12px] text-[#0F172A]">{formatearDiasHoras(simuladoMs)}</span>
         </Bloque>
         <Separador />
         <Bloque etiqueta={colapso || terminada ? 'Tiempo real / Estado' : 'Tiempo real transcurrido / Restante'}>
-          <span className="tabular-nums text-body text-neutral-900">
+          <span className="tabular-nums text-[12px] text-[#0F172A]">
             {formatearCronometro(transcurridoRealMs)} · {colapso || terminada ? 'terminada' : `~${formatearCronometro(restanteRealMs)}`}
           </span>
         </Bloque>
@@ -121,14 +119,14 @@ export const EncabezadoCorrida: React.FC<EncabezadoCorridaProps> = ({
           <>
             <Separador />
             <Bloque etiqueta={`Ventana de ejecución ${VENTANA_EJECUCION_MIN.minima}–${VENTANA_EJECUCION_MIN.maxima} min`}>
-              <span className={`tabular-nums text-body ${enVentana ? 'text-ok-600' : 'text-warn-700'}`}>
+              <span className={`tabular-nums text-[12px] ${enVentana ? 'text-[#15803D]' : 'text-[#B45309]'}`}>
                 {formatearCronometro(estimadoTotalRealMs)} estimado {enVentana ? '✓' : '· fuera de la ventana'}
               </span>
             </Bloque>
           </>
         )}
         <div className="flex-1" />
-        <button type="button" onClick={onSalir} className="font-sans text-body text-neutral-500 hover:text-neutral-900 hover:underline">
+        <button type="button" onClick={onSalir} className="font-sans text-[12px] text-[#64748B] hover:text-[#0F172A] hover:underline">
           ‹ Otras simulaciones
         </button>
         {estado === 'EJECUCION' && (
@@ -138,25 +136,29 @@ export const EncabezadoCorrida: React.FC<EncabezadoCorridaProps> = ({
             <button
               type="button"
               onClick={() => setConfirmandoDetener(true)}
-              className="h-[30px] px-[12px] rounded-[6px] border border-critical-600/30 font-sans font-medium text-body text-critical-600 hover:bg-critical-50 whitespace-nowrap"
+              className="h-[30px] px-[12px] rounded-[6px] border border-[#FECACA] font-sans font-medium text-[12px] text-[#B91C1C] hover:bg-[#FEF2F2] whitespace-nowrap"
             >
               Detener simulación
             </button>
-            <Etiqueta tono={ESTADO_CORRIDA.EJECUCION.tono} punto="pulso">
-              {ESTADO_CORRIDA.EJECUCION.texto}
-            </Etiqueta>
+            <span className="bg-[#DBEAFE] rounded-[4px] px-[10px] py-[5px] flex items-center gap-[6px] font-sans font-semibold text-[12px] tracking-[0.5px] text-[#1E40AF] whitespace-nowrap">
+              <span className="size-[6px] rounded-full bg-[#1E40AF] animate-pulse" /> EN EJECUCIÓN
+            </span>
           </>
         )}
         {estado !== 'EJECUCION' && (
           <>
-            <Etiqueta tono={ESTADO_CORRIDA[estado].tono} punto>
-              {ESTADO_CORRIDA[estado].texto}
-            </Etiqueta>
-            <Boton variante="primario" tamano="sm"
+            <span
+              className={`rounded-[4px] px-[10px] py-[5px] flex items-center gap-[6px] font-sans font-semibold text-[12px] tracking-[0.5px] whitespace-nowrap ${ESTADO_CORRIDA[estado].clase}`}
+            >
+              <span className={`size-[6px] rounded-full ${ESTADO_CORRIDA[estado].punto}`} /> {ESTADO_CORRIDA[estado].texto}
+            </span>
+            <button
+              type="button"
               onClick={onVerInforme}
+              className="h-[32px] px-[16px] rounded-[6px] bg-[#1E40AF] hover:bg-[#1E3A8A] text-white font-sans font-semibold text-[12px] whitespace-nowrap"
             >
               Ver informe de la corrida
-            </Boton>
+            </button>
           </>
         )}
       </header>
@@ -184,17 +186,17 @@ export const EncabezadoCorrida: React.FC<EncabezadoCorridaProps> = ({
       />
 
       {/* Avance de la corrida */}
-      <div className="h-[44px] bg-white border-b border-neutral-200 px-[16px] flex items-center gap-[16px] text-body">
-        <span className="font-sans text-neutral-500 whitespace-nowrap w-[110px] shrink-0">Avance de la corrida</span>
+      <div className="h-[44px] bg-white border-b border-[#E2E8F0] px-[16px] flex items-center gap-[16px] text-[12px]">
+        <span className="font-sans text-[#64748B] whitespace-nowrap w-[110px] shrink-0">Avance de la corrida</span>
         <div className="relative flex-1 h-full" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={porcentaje} aria-label="Avance de la corrida">
-          <div className="absolute left-0 right-0 top-[20px] h-[2px] bg-neutral-300" />
-          <div className={`absolute left-0 top-[19px] h-[4px] ${colapso ? 'bg-critical-600' : 'bg-primary-600'}`} style={{ width: `${progreso * 100}%` }} />
+          <div className="absolute left-0 right-0 top-[20px] h-[2px] bg-[#CBD5E1]" />
+          <div className={`absolute left-0 top-[19px] h-[4px] ${colapso ? 'bg-[#B91C1C]' : 'bg-[#1E40AF]'}`} style={{ width: `${progreso * 100}%` }} />
           {Array.from({ length: diasTotales }, (_, i) => i)
             .filter((i) => i % pasoRotulo === 0)
             .map((i) => (
               <div key={i} className="absolute top-[16px]" style={{ left: `${(i / diasTotales) * 100}%` }}>
-                <div className="w-px h-[10px] bg-neutral-400" />
-                <span className="absolute top-[12px] left-[2px] tabular-nums text-caption text-neutral-500">D{i + 1}</span>
+                <div className="w-px h-[10px] bg-[#94A3B8]" />
+                <span className="absolute top-[12px] left-[2px] tabular-nums text-[11px] text-[#64748B]">D{i + 1}</span>
               </div>
             ))}
           {/* Marcas de incidencias y del planificador ya ocurridas */}
@@ -204,14 +206,14 @@ export const EncabezadoCorrida: React.FC<EncabezadoCorridaProps> = ({
               <span
                 key={m.id}
                 title={m.tipo === 'INCIDENCIA' ? 'Incidencia' : 'Planificador'}
-                className={`absolute ${m.tipo === 'INCIDENCIA' ? 'top-[7px] size-[4px] bg-neutral-500' : 'top-[7px] w-px h-[7px] bg-neutral-400'}`}
+                className={`absolute ${m.tipo === 'INCIDENCIA' ? 'top-[7px] size-[4px] bg-[#64748B]' : 'top-[7px] w-px h-[7px] bg-[#94A3B8]'}`}
                 style={{ left: `${Math.min(100, ((m.minuto * 60_000) / duracionMs) * 100)}%` }}
               />
             ))}
           <div className="absolute top-[12px]" style={{ left: `${progreso * 100}%` }}>
-            <div className={`w-[2px] h-[18px] ${colapso ? 'bg-critical-600' : 'bg-primary-600'}`} />
+            <div className={`w-[2px] h-[18px] ${colapso ? 'bg-[#B91C1C]' : 'bg-[#1E40AF]'}`} />
             <span
-              className={`absolute -top-[10px] left-[6px] tabular-nums font-medium text-body whitespace-nowrap ${colapso ? 'text-critical-600' : 'text-primary-600'} ${
+              className={`absolute -top-[10px] left-[6px] tabular-nums font-medium text-[12px] whitespace-nowrap ${colapso ? 'text-[#B91C1C]' : 'text-[#1E40AF]'} ${
                 progreso > 0.85 ? '-translate-x-[calc(100%+12px)]' : ''
               }`}
             >
@@ -220,10 +222,10 @@ export const EncabezadoCorrida: React.FC<EncabezadoCorridaProps> = ({
             </span>
           </div>
         </div>
-        <span className="flex items-center gap-[6px] font-sans text-neutral-500 whitespace-nowrap">
-          <span className="size-[5px] bg-neutral-500" /> Incidencia <span className="w-px h-[9px] bg-neutral-400" /> Planificador
+        <span className="flex items-center gap-[6px] font-sans text-[#64748B] whitespace-nowrap">
+          <span className="size-[5px] bg-[#64748B]" /> Incidencia <span className="w-px h-[9px] bg-[#94A3B8]" /> Planificador
         </span>
-        <span className="tabular-nums font-medium text-neutral-900 whitespace-nowrap">
+        <span className="tabular-nums font-medium text-[#0F172A] whitespace-nowrap">
           {colapso || estado === 'DETENIDA' ? `Detenida en ${porcentaje} %` : `${porcentaje} % completado`}
         </span>
       </div>

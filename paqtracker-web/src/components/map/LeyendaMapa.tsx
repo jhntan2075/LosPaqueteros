@@ -1,18 +1,16 @@
 import React from 'react';
 import { X } from 'lucide-react';
 import { RANGO_HOLGURA, RANGO_INVENTARIO, RANGO_OCUPACION } from '../../config/glosario';
-import { ATENCION, CRITICO, NEUTRO, OK } from '../../config/colores';
 import { iconoVehiculo } from './iconosVehiculo';
 import { AlmacenCentral, AlmacenIntermedio, MarcaBloqueo, PinDestino } from './simbolos';
-import { Tarjeta } from '../ui/Tarjeta';
 
 // Leyenda del mapa: panel flotante y no modal, para leerla sin dejar de ver el mapa. Solo dice qué
 // es cada símbolo; el detalle de cada objeto está en su tooltip y en el panel lateral.
 
-const ROJO = CRITICO;
-const AMBAR = ATENCION;
-const VERDE = OK;
-const GRIS = NEUTRO[500];
+const ROJO = '#B91C1C';
+const AMBAR = '#B45309';
+const VERDE = '#15803D';
+const GRIS = '#64748B';
 
 type Nivel = 'ROJO' | 'AMBAR' | 'VERDE';
 
@@ -35,9 +33,9 @@ const IconoUnidad: React.FC<{ tipo: 'AUTO' | 'MOTO' | 'BICICLETA' }> = ({ tipo }
 const Fila: React.FC<{ simbolo: React.ReactNode; nombre: string; detalle?: string }> = ({ simbolo, nombre, detalle }) => (
   <li className="grid grid-cols-[28px_1fr] items-center gap-x-[10px] h-[26px]">
     <span className="h-[22px] flex items-center justify-center">{simbolo}</span>
-    <span className="text-body text-neutral-900 truncate">
+    <span className="text-[12px] text-[#0F172A] truncate">
       {nombre}
-      {detalle && <span className="text-neutral-500"> · {detalle}</span>}
+      {detalle && <span className="text-[#64748B]"> · {detalle}</span>}
     </span>
   </li>
 );
@@ -60,19 +58,19 @@ const SEMAFOROS: { titulo: string; rangos: Record<Nivel, string> }[] = [
 ];
 
 export const LeyendaMapa: React.FC<{ onCerrar: () => void }> = ({ onCerrar }) => (
-  <Tarjeta como="section" elevada className="w-[280px] max-h-[calc(100vh-260px)] overflow-y-auto leading-[normal] cursor-default"
+  <section
     aria-label="Leyenda del mapa"
     data-sin-zoom
     onPointerDown={(e) => e.stopPropagation()}
-   
+    className="w-[280px] max-h-[calc(100vh-260px)] overflow-y-auto bg-white border border-[#E2E8F0] rounded-[10px] shadow-[0px_2px_12px_0px_rgba(0,0,0,0.16)] leading-[normal] cursor-default"
   >
-    <header className="h-[36px] pl-[12px] pr-[8px] flex items-center border-b border-neutral-200">
-      <h2 className="font-semibold text-body-lg text-neutral-900">Leyenda</h2>
+    <header className="h-[36px] pl-[12px] pr-[8px] flex items-center border-b border-[#E2E8F0]">
+      <h2 className="font-semibold text-[13px] text-[#0F172A]">Leyenda</h2>
       <button
         type="button"
         onClick={onCerrar}
         aria-label="Cerrar leyenda"
-        className="ml-auto size-[24px] flex items-center justify-center rounded text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900"
+        className="ml-auto size-[24px] flex items-center justify-center rounded text-[#64748B] hover:bg-[#F1F5F9] hover:text-[#0F172A]"
       >
         <X className="w-3.5 h-3.5" />
       </button>
@@ -91,13 +89,13 @@ export const LeyendaMapa: React.FC<{ onCerrar: () => void }> = ({ onCerrar }) =>
       <Fila simbolo={<Simbolo caja="-14 -27 28 29"><PinDestino color={VERDE} /></Simbolo>} nombre="Destino" detalle="color = holgura" />
       <Fila simbolo={<Simbolo caja="-14 -27 28 29"><PinDestino color={ROJO} critico /></Simbolo>} nombre="Destino crítico" />
       <Fila
-        simbolo={<Simbolo caja="-14 -11 28 22"><line x1="-12" y1="0" x2="12" y2="0" stroke={NEUTRO[300]} strokeWidth="2" /></Simbolo>}
+        simbolo={<Simbolo caja="-14 -11 28 22"><line x1="-12" y1="0" x2="12" y2="0" stroke="#9EABBA" strokeWidth="2" /></Simbolo>}
         nombre="Tramo recorrido"
       />
       <Fila
         simbolo={
           <Simbolo caja="-14 -11 28 22">
-            <line x1="-12" y1="0" x2="12" y2="0" stroke={NEUTRO[400]} strokeWidth="2.5" strokeDasharray="6 4" />
+            <line x1="-12" y1="0" x2="12" y2="0" stroke="#94A3B8" strokeWidth="2.5" strokeDasharray="6 4" />
           </Simbolo>
         }
         nombre="Tramo pendiente"
@@ -105,13 +103,13 @@ export const LeyendaMapa: React.FC<{ onCerrar: () => void }> = ({ onCerrar }) =>
       <Fila simbolo={<Simbolo caja="-14 -11 28 22"><MarcaBloqueo /></Simbolo>} nombre="Tramo bloqueado" />
     </ul>
 
-    <div className="px-[12px] pt-[10px] pb-[12px] border-t border-neutral-200">
-      <div className="grid grid-cols-[52px_repeat(3,minmax(0,1fr))] gap-x-[8px] gap-y-[6px] items-center text-body">
+    <div className="px-[12px] pt-[10px] pb-[12px] border-t border-[#E2E8F0]">
+      <div className="grid grid-cols-[52px_repeat(3,minmax(0,1fr))] gap-x-[8px] gap-y-[6px] items-center text-[12px]">
         {SEMAFOROS.map(({ titulo, rangos }) => (
           <React.Fragment key={titulo}>
-            <span className="text-neutral-500">{titulo}</span>
+            <span className="text-[#64748B]">{titulo}</span>
             {NIVELES.map((nivel) => (
-              <span key={nivel} className="flex items-center gap-[4px] whitespace-nowrap tabular-nums text-neutral-900">
+              <span key={nivel} className="flex items-center gap-[4px] whitespace-nowrap tabular-nums text-[#0F172A]">
                 <Marca nivel={nivel} />
                 {rangos[nivel]}
               </span>
@@ -119,7 +117,7 @@ export const LeyendaMapa: React.FC<{ onCerrar: () => void }> = ({ onCerrar }) =>
           </React.Fragment>
         ))}
       </div>
-      <p className="mt-[8px] text-caption text-neutral-500">La forma también indica el nivel, no solo el color.</p>
+      <p className="mt-[8px] text-[11px] text-[#64748B]">La forma también indica el nivel, no solo el color.</p>
     </div>
-  </Tarjeta>
+  </section>
 );

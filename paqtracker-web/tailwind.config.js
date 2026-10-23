@@ -40,16 +40,27 @@ export default {
       fontFamily: {
         sans: ['"Fira Sans"', 'system-ui', 'sans-serif'],
       },
-      // Escala tipográfica: cinco tamaños por rol (ver docs/design-system.md, "Tipografía").
-      // Sin interlineado propio: lo hereda el contenedor, como antes de la escala.
-      fontSize: {
-        caption: '11px', // metadatos, notas, rótulos de ejes
-        body: '12px', // texto de interfaz por defecto: tablas, paneles, botones
-        'body-lg': '14px', // texto de diálogos y formularios, títulos de sección
-        title: '18px', // títulos de página
-        display: '22px', // cifras y relojes destacados
+      colors: {
+        ...paleta,
+        // Alias heredados: los componentes existentes los usan. Migrar a los tokens de arriba.
+        brand: {
+          blue: paleta.primary[600],
+          'blue-soft': paleta.primary[100],
+          sidebar: paleta.neutral[100],
+          border: paleta.neutral[200],
+          'border-dark': paleta.neutral[300],
+          slate: {
+            900: paleta.neutral[900],
+            500: paleta.neutral[500],
+            400: paleta.neutral[400],
+          },
+          status: {
+            green: paleta.ok[600],
+            amber: paleta.warn[700],
+            red: paleta.critical[600],
+          },
+        },
       },
-      colors: paleta,
     },
   },
   plugins: [],

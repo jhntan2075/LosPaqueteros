@@ -4,18 +4,6 @@ Formato basado en Keep a Changelog; versionado semántico (MAJOR.MINOR.PATCH).
 
 ## [Sin publicar]
 
-### Design system: tipografía, componentes base y pantallas angostas (`paqtracker-web`)
-- Escala de texto de 5 tamaños (`caption` 11, `body` 12, `body-lg` 14, `title` 18,
-  `display` 22) en lugar de 13 tamaños sueltos; todos los componentes migrados.
-- Componentes base en `components/ui/`: `Boton` (primario, secundario, peligro; sm, md, lg),
-  `Etiqueta` (estados con tonos AA), `Campo` y `Tarjeta`; `cn()` en `lib/clases.ts`.
-- Placeholders en `neutral-500` (contraste AA).
-- Paneles laterales del mapa con ancho `min(340px, 100% − 24px)`; en pantallas angostas se
-  superponen al mapa sin desplazar el encuadre.
-- La guarda del design system también rechaza tamaños de texto fuera de la escala.
-- `docs/design-system.md`: colores dinámicos del mapa (carga, stock, holgura), escala
-  tipográfica, componentes base y pantallas angostas.
-
 ### Registro de averías en el front (CU-13)
 - Diálogo "Registrar avería" desde el detalle del vehículo o desde Incidencias:
   - tipo sin valor por defecto, con ejemplo, duración y la reincorporación que estima el
@@ -54,11 +42,8 @@ Formato basado en Keep a Changelog; versionado semántico (MAJOR.MINOR.PATCH).
 
 ### Design system
 - Logo y favicon; paleta derivada del logo con `tailwind.config.js` como fuente única y
-  contrastes WCAG verificados (`docs/design-system.md`).
-- Los componentes usan solo clases de token y `config/colores.ts` (SVG y estilos en línea); los
-  assets de Figma pasan a la paleta y una prueba impide volver a usar hex fijos o la paleta por
-  defecto de Tailwind. Se corrigen dos combinaciones que no llegaban a AA (verde sobre verde suave
-  y gris secundario sobre `neutral-100`) y los rótulos de ejes del mapa.
+  contrastes WCAG verificados (`docs/design-system.md`). Los componentes aún usan colores fijos:
+  su migración a los tokens queda pendiente.
 
 ### Averías: trasvase a unidades en ruta y respaldo desde almacén
 - El mismo procedimiento para los tres tipos de avería en ruta:

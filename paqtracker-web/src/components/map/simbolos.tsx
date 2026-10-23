@@ -1,5 +1,4 @@
 import React from 'react';
-import { BLANCO, CRITICO, CRITICO_SUAVE, NEUTRO } from '../../config/colores';
 
 // Símbolos del mapa como elementos SVG, con la geometría de los frames de Figma (pin de destino,
 // depósito central e intermedio). Los usan el mapa y su leyenda, para que la leyenda muestre
@@ -18,14 +17,14 @@ export const CENTRO_CABEZA_PIN = -15;
  */
 export const PinDestino: React.FC<{ color: string; critico?: boolean }> = ({ color, critico = false }) => (
   <>
-    <path d={PIN_PATH} fill={color} stroke={BLANCO} strokeWidth="1.5" strokeLinejoin="round" filter={SOMBRA} />
+    <path d={PIN_PATH} fill={color} stroke="#FFFFFF" strokeWidth="1.5" strokeLinejoin="round" filter={SOMBRA} />
     {critico ? (
       <>
-        <rect x="-1" y="-20" width="2" height="5.5" rx="1" fill={BLANCO} />
-        <circle cx="0" cy="-11.6" r="1.2" fill={BLANCO} />
+        <rect x="-1" y="-20" width="2" height="5.5" rx="1" fill="#FFFFFF" />
+        <circle cx="0" cy="-11.6" r="1.2" fill="#FFFFFF" />
       </>
     ) : (
-      <circle cx="0" cy={CENTRO_CABEZA_PIN} r="3" fill={BLANCO} />
+      <circle cx="0" cy={CENTRO_CABEZA_PIN} r="3" fill="#FFFFFF" />
     )}
   </>
 );
@@ -33,8 +32,8 @@ export const PinDestino: React.FC<{ color: string; critico?: boolean }> = ({ col
 /** Depósito central (28 × 26, centrado en el nodo): silueta rellena con puerta. */
 export const AlmacenCentral: React.FC = () => (
   <>
-    <path d="M0 -13L14 -4V13H-14V-4L0 -13Z" fill={NEUTRO[900]} stroke={BLANCO} strokeWidth="2" strokeLinejoin="round" filter={SOMBRA} />
-    <rect x="-4" y="3" width="8" height="10" rx="1" fill={BLANCO} />
+    <path d="M0 -13L14 -4V13H-14V-4L0 -13Z" fill="#0F172A" stroke="#FFFFFF" strokeWidth="2" strokeLinejoin="round" filter={SOMBRA} />
+    <rect x="-4" y="3" width="8" height="10" rx="1" fill="#FFFFFF" />
   </>
 );
 
@@ -46,8 +45,8 @@ export const AlmacenIntermedio: React.FC<{ color: string; fraccionStock?: number
   const alto = 12 * Math.min(1, Math.max(0, fraccionStock ?? 0));
   return (
     <>
-      <path d="M0 -11L12 -3V11H-12V-3L0 -11Z" fill={BLANCO} stroke={color} strokeWidth="2" strokeLinejoin="round" filter={SOMBRA} />
-      <rect x="-10" y="-2" width="20" height="12" rx="1" fill={NEUTRO[200]} />
+      <path d="M0 -11L12 -3V11H-12V-3L0 -11Z" fill="#FFFFFF" stroke={color} strokeWidth="2" strokeLinejoin="round" filter={SOMBRA} />
+      <rect x="-10" y="-2" width="20" height="12" rx="1" fill="#E2E8F0" />
       {fraccionStock !== undefined && <rect x="-10" y={10 - alto} width="20" height={alto} rx="1" fill={color} />}
     </>
   );
@@ -56,7 +55,7 @@ export const AlmacenIntermedio: React.FC<{ color: string; fraccionStock?: number
 /** Tramo bloqueado: aspa roja sobre fondo claro, centrada en el punto medio del tramo. */
 export const MarcaBloqueo: React.FC = () => (
   <>
-    <circle r="10" fill={CRITICO_SUAVE} />
-    <path d="M -6 -6 L 6 6 M -6 6 L 6 -6" stroke={CRITICO} strokeWidth="2.5" />
+    <circle r="10" fill="#FEE2E2" />
+    <path d="M -6 -6 L 6 6 M -6 6 L 6 -6" stroke="#B91C1C" strokeWidth="2.5" />
   </>
 );

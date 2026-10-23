@@ -27,19 +27,19 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
   ];
 
   return (
-    <header className="h-[52px] bg-white border-b border-neutral-300 px-3 md:px-4 flex items-center justify-between z-30 select-none shadow-xs shrink-0">
+    <header className="h-[52px] bg-white border-b border-[#CBD5E1] px-3 md:px-4 flex items-center justify-between z-30 select-none shadow-xs shrink-0">
       {/* 1. Lado Izquierdo: Marca + Pestañas de Módulos */}
       <div className="flex items-center gap-2 sm:gap-3 overflow-x-auto no-scrollbar">
         {/* Isotipo y Nombre */}
         <div className="flex items-center gap-2 shrink-0">
           <img src={logo} alt="" aria-hidden="true" className="h-[30px] w-auto" />
-          <span className="font-sans font-bold text-body-lg text-neutral-900 tracking-tight hidden sm:inline">
+          <span className="font-sans font-bold text-[14px] text-slate-900 tracking-tight hidden sm:inline">
             PaqTracker
           </span>
         </div>
 
         {/* Separador vertical */}
-        <div className="h-5 w-[1px] bg-neutral-200 shrink-0 mx-1" />
+        <div className="h-5 w-[1px] bg-[#E2E8F0] shrink-0 mx-1" />
 
         {/* Pestañas Principales (Segmented Navigation) */}
         <nav className="flex items-center gap-1 shrink-0" aria-label="Navegación principal">
@@ -51,14 +51,14 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
                 key={item.id}
                 onClick={() => onCambiarTab(item.id)}
                 aria-current={esActivo ? 'page' : undefined}
-                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-[6px] text-body tabular-nums font-medium transition cursor-pointer ${
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-[6px] text-[12px] tabular-nums font-medium transition cursor-pointer ${
                   esActivo
-                    ? 'bg-primary-100 text-primary-600 shadow-xs font-semibold'
-                    : 'text-neutral-500 hover:text-neutral-900 hover:bg-neutral-100'
+                    ? 'bg-[#DBEAFE] text-[#1E40AF] shadow-xs font-semibold'
+                    : 'text-[#64748B] hover:text-[#0F172A] hover:bg-slate-100'
                 }`}
               >
                 <Icon
-                  className={`w-4 h-4 shrink-0 ${esActivo ? 'text-primary-600' : 'text-neutral-500'}`}
+                  className={`w-4 h-4 shrink-0 ${esActivo ? 'text-[#1E40AF]' : 'text-[#64748B]'}`}
                   strokeWidth={esActivo ? 2.2 : 1.8}
                 />
                 <span>{item.label}</span>
@@ -73,11 +73,11 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
         {/* Reloj de la operación día a día (oculto en Simulación, que muestra el de su corrida) */}
         {relojSimulado && (
           <div
-            className="flex items-center gap-1.5 bg-neutral-50 border border-neutral-200 rounded-[6px] px-2.5 py-1 shrink-0"
+            className="flex items-center gap-1.5 bg-[#F8FAFC] border border-[#E2E8F0] rounded-[6px] px-2.5 py-1 shrink-0"
             title="Reloj de la operación día a día"
           >
-            <Clock className="w-3.5 h-3.5 text-neutral-500" />
-            <span className="tabular-nums font-semibold text-body sm:text-body-lg text-neutral-900">
+            <Clock className="w-3.5 h-3.5 text-[#64748B]" />
+            <span className="tabular-nums font-semibold text-[12px] sm:text-[13px] text-[#0F172A]">
               {relojSimulado}
             </span>
           </div>
@@ -85,7 +85,7 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
 
         {/* Turno */}
         {turno && (
-          <span className="bg-primary-100 text-primary-600 rounded-[4px] px-2 py-1 tabular-nums font-medium text-caption shrink-0 hidden md:inline">
+          <span className="bg-[#DBEAFE] text-[#1E40AF] rounded-[4px] px-2 py-1 tabular-nums font-medium text-[11px] shrink-0 hidden md:inline">
             Turno {turno}
           </span>
         )}
@@ -93,11 +93,11 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
         {/* Conexión con el servidor */}
         <span
           title={conectado ? 'Conectado: el estado llega en vivo desde el servidor' : 'Sin conexión con el servidor: reintentando'}
-          className={`rounded-[4px] px-2.5 py-1 flex items-center gap-1.5 font-sans font-semibold text-caption tracking-wider shrink-0 ${
-            conectado ? 'bg-primary-100 text-primary-600' : 'bg-critical-50 text-critical-600'
+          className={`rounded-[4px] px-2.5 py-1 flex items-center gap-1.5 font-sans font-semibold text-[11px] tracking-wider shrink-0 ${
+            conectado ? 'bg-[#DBEAFE] text-[#1E40AF]' : 'bg-[#FEF2F2] text-[#B91C1C]'
           }`}
         >
-          <Radio className={`w-3 h-3 ${conectado ? 'text-primary-600 animate-pulse' : 'text-critical-600'}`} />
+          <Radio className={`w-3 h-3 ${conectado ? 'text-[#1E40AF] animate-pulse' : 'text-[#B91C1C]'}`} />
           <span className="hidden sm:inline">{conectado ? 'CONECTADO' : 'SIN CONEXIÓN'}</span>
         </span>
       </div>
