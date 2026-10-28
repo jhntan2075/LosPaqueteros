@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { formatearHora } from '../lib/formato';
+import { formatearDiaMesHora } from '../lib/formato';
 import { clienteApi } from '../services/clienteApi';
 import type { HitoTrazabilidad } from '../types/operacion';
 
@@ -15,9 +15,17 @@ export function useTrazabilidadPedido(ejecucionId: string, codigo: string, estad
       .detallePedido(ejecucionId, codigo)
       .then((detalle) => {
         if (!vigente) return;
-        // El más reciente primero, como en el diseño; el último hito se resalta.
-        const ordenados = [...detalle.hitos].reverse();
-        setHitos(ordenados.map((h, i) => ({ hora: formatearHora(new Date(h.instanteMs)), titulo: h.titulo, detalle: h.detalle, reciente: i === 0 })));
+        // En orden cronológico, para leer cómo ocurrió (registro → despacho → entrega); el último se resalta.
+        // El orden estable conserva el del servidor entre hitos del mismo minuto.
+        const ordenados = [...detalle.hitos].sort((a, b) => a.instanteMs - b.instanteMs);
+        setHitos(
+          ordenados.map((h, i) => ({
+            hora: formatearDiaMesHora(new Date(h.instanteMs)),
+            titulo: h.titulo,
+            detalle: h.detalle,
+            reciente: i === ordenados.length - 1,
+          })),
+        );
       })
       .catch(() => {
         if (vigente) setHitos([]);

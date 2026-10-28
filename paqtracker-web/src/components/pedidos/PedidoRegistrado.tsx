@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { ALMACENES, UNIDADES } from '../../config/dominio';
 import { ESTADO_EN_ESPERA, etiquetaPlazo } from '../../config/glosario';
-import { capitalizar, formatearHolgura, formatearHoraRelativa } from '../../lib/formato';
+import { capitalizar, formatearDiaMesHora, formatearHolgura } from '../../lib/formato';
 import { proyectar, tramoOrtogonal, trazado } from '../../lib/malla';
 import type { Coordenada } from '../../types/domain';
 import type { PedidoRegistrado as Pedido, VehiculoAsignado } from '../../types/pedidos';
@@ -99,7 +99,6 @@ const MiniMapaRuta: React.FC<{ pedido: Pedido; vehiculo: VehiculoAsignado; unida
 
 interface PedidoRegistradoProps {
   pedido: Pedido;
-  reloj: Date;
   /** Sin valor, el pedido aún no figura en el estado en vivo y no se ofrece ubicarlo. */
   onVerEnLienzo?: () => void;
   onRegistrarOtro: () => void;
@@ -108,7 +107,6 @@ interface PedidoRegistradoProps {
 
 export const PedidoRegistrado: React.FC<PedidoRegistradoProps> = ({
   pedido,
-  reloj,
   onVerEnLienzo,
   onRegistrarOtro,
   onVerCola,
@@ -185,7 +183,7 @@ export const PedidoRegistrado: React.FC<PedidoRegistradoProps> = ({
               />
               <FilaResumen
                 etiqueta="Hora límite"
-                valor={<span className="tabular-nums font-bold text-slate-900">{formatearHoraRelativa(pedido.horaLimite, reloj)}</span>}
+                valor={<span className="tabular-nums font-bold text-slate-900">{formatearDiaMesHora(pedido.horaLimite)}</span>}
               />
               <FilaResumen etiqueta="Almacén de despacho" valor={almacen?.nombre ?? '—'} />
             </div>
@@ -204,9 +202,9 @@ export const PedidoRegistrado: React.FC<PedidoRegistradoProps> = ({
               <CeldaKpi etiqueta="Vehículo" icono={<Truck className="w-3 h-3 text-blue-600" />}>
                 <span className="tabular-nums font-bold text-sm text-slate-900 truncate">{nombreVehiculo}</span>
               </CeldaKpi>
-              <CeldaKpi etiqueta="ETA" icono={<Clock className="w-3 h-3 text-slate-500" />}>
+              <CeldaKpi etiqueta="Llegada estimada" icono={<Clock className="w-3 h-3 text-slate-500" />}>
                 <span className="tabular-nums font-bold text-sm text-slate-900">
-                  {pedido.eta ? formatearHoraRelativa(pedido.eta, reloj) : '—'}
+                  {pedido.eta ? formatearDiaMesHora(pedido.eta) : '—'}
                 </span>
               </CeldaKpi>
               <CeldaKpi etiqueta="Holgura">

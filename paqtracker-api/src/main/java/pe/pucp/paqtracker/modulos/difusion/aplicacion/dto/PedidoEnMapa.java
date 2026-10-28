@@ -13,7 +13,9 @@ package pe.pucp.paqtracker.modulos.difusion.aplicacion.dto;
  * @param estado       REGISTRADO, EN_TRANSITO o ENTREGADO
  * @param nivelHolgura VERDE, AMBAR, ROJO o CERRADO (ya entregado)
  * @param unidad       codigo de la unidad que lo lleva, o null
+ * @param cliente      identificador del cliente segun el archivo de ventas, o null
  */
 public record PedidoEnMapa(int id, String codigo, Coordenada destino, int cantidad, long registroMs,
-                           long horaLimiteMs, Long etaMs, String estado, String nivelHolgura, String unidad) {
+                           long horaLimiteMs, Long etaMs, String estado, String nivelHolgura, String unidad,
+                           String cliente) {
 }

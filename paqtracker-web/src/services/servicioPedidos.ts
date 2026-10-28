@@ -1,5 +1,5 @@
 import type { TipoUnidad } from '../config/dominio';
-import { formatearHolgura, formatearHora, formatearHoraRelativa } from '../lib/formato';
+import { formatearDiaMesHora, formatearHolgura } from '../lib/formato';
 import type { PedidoApi } from '../types/api';
 import type { DatosOperacion } from '../types/operacion';
 import type { BorradorPedido, EstadoPedidoCola, PedidoEnCola, PedidoRegistrado, VehiculoAsignado } from '../types/pedidos';
@@ -32,8 +32,8 @@ export function adaptarPedidoEnCola(pedido: PedidoApi, reloj: Date): PedidoEnCol
     destino: pedido.destino ? { x: pedido.destino.x, y: pedido.destino.y } : undefined,
     cantidad: pedido.cantidad,
     plazoHoras: Math.round((pedido.horaLimiteMs - pedido.registroMs) / MS_POR_HORA),
-    horaLimite: formatearHoraRelativa(new Date(pedido.horaLimiteMs), reloj),
-    eta: pedido.etaMs === null ? null : formatearHora(new Date(pedido.etaMs)),
+    horaLimite: formatearDiaMesHora(new Date(pedido.horaLimiteMs)),
+    eta: pedido.etaMs === null ? null : formatearDiaMesHora(new Date(pedido.etaMs)),
     holgura: formatearHolgura((pedido.horaLimiteMs - referencia) / MS_POR_MINUTO),
     nivelHolgura: pedido.nivelHolgura,
     vehiculo: vehiculoDeCodigo(pedido.unidad),

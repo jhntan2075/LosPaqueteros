@@ -206,7 +206,9 @@ public final class CargadorPedidos {
         int cantidad = Integer.parseInt(campos[3].trim());
         int plazoHoras = Integer.parseInt(campos[4].trim());
         int plazo = formatoTemporal ? plazoHoras * MINUTOS_POR_HORA : plazoHoras;
-        return new Pedido(id, new Nodo(x, y), cantidad, registro, plazo);
+        // Solo el formato con marca de tiempo trae el cliente: ddDhhHmmM:x,y,cliente,cantidad,plazo.
+        String cliente = formatoTemporal ? campos[2].trim() : null;
+        return new Pedido(id, new Nodo(x, y), cantidad, registro, plazo, cliente);
     }
 
     /**

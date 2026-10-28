@@ -2,7 +2,7 @@ import React from 'react';
 import { X } from 'lucide-react';
 import { RANGO_HOLGURA, RANGO_INVENTARIO, RANGO_OCUPACION } from '../../config/glosario';
 import { iconoVehiculo } from './iconosVehiculo';
-import { AlmacenCentral, AlmacenIntermedio, MarcaBloqueo, PinDestino } from './simbolos';
+import { AlmacenCentral, AlmacenIntermedio, COLOR_EN_ENTREGA, MarcaBloqueo, PinDestino } from './simbolos';
 
 // Leyenda del mapa: panel flotante y no modal, para leerla sin dejar de ver el mapa. Solo dice qué
 // es cada símbolo; el detalle de cada objeto está en su tooltip y en el panel lateral.
@@ -88,6 +88,7 @@ export const LeyendaMapa: React.FC<{ onCerrar: () => void }> = ({ onCerrar }) =>
       <Fila simbolo={<IconoUnidad tipo="BICICLETA" />} nombre="Bicicleta" />
       <Fila simbolo={<Simbolo caja="-14 -27 28 29"><PinDestino color={VERDE} /></Simbolo>} nombre="Destino" detalle="color = holgura" />
       <Fila simbolo={<Simbolo caja="-14 -27 28 29"><PinDestino color={ROJO} critico /></Simbolo>} nombre="Destino crítico" />
+      <Fila simbolo={<Simbolo caja="-14 -27 28 29"><PinDestino color={COLOR_EN_ENTREGA} /></Simbolo>} nombre="Entregando ahora" detalle="la unidad está en el destino" />
       <Fila
         simbolo={<Simbolo caja="-14 -11 28 22"><line x1="-12" y1="0" x2="12" y2="0" stroke="#9EABBA" strokeWidth="2" /></Simbolo>}
         nombre="Tramo recorrido"

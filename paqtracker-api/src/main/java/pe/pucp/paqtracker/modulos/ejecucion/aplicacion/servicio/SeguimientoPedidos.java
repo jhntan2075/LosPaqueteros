@@ -330,7 +330,7 @@ public final class SeguimientoPedidos {
                 new Coordenada(pedido.getDestino().getX(), pedido.getDestino().getY()), pedido.getCantidad(),
                 lineaTiempo.aMilisegundos(pedido.getInstanteRegistro()),
                 lineaTiempo.aMilisegundos(pedido.getHoraLimite()), eta, seguimiento.estado.name(), nivel,
-                seguimiento.unidad);
+                seguimiento.unidad, pedido.getCliente());
     }
 
     /**

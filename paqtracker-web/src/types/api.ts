@@ -14,7 +14,7 @@ export interface CoordenadaApi {
 }
 
 export interface TramoEnCursoApi {
-  tipo: 'VIAJE_A_ENTREGA' | 'SERVICIO' | 'RETORNO';
+  tipo: 'VIAJE_A_ENTREGA' | 'SERVICIO' | 'RETORNO' | 'AVERIA' | 'VIAJE_A_TRASBORDO' | 'TRASVASE';
   origen: CoordenadaApi;
   destino: CoordenadaApi;
   tiempoSalidaSimulado: number;
@@ -98,6 +98,8 @@ export interface PedidoEnMapaApi {
   estado: EstadoPedidoApi;
   nivelHolgura: NivelPedidoApi;
   unidad: string | null;
+  /** Cliente según el archivo de ventas (p. ej. "c8662"), o null si no se conoce. */
+  cliente?: string | null;
 }
 
 export interface BloqueoEnMapaApi {
