@@ -40,6 +40,7 @@ export const ModuloOperacion: React.FC<ModuloOperacionProps> = ({
   const porCentrarRef = useRef<Coordenada | null>(pedidoInicial?.destino ?? null);
 
   const flota = estadoFlota(datos);
+  const riesgo = resumenRiesgo(datos);
   const destinos: DestinoMapa[] = useMemo(
     () => datos.flota.flatMap((u) => u.paradas.map((p) => ({ pedido: p.pedido, destino: p.destino, nivel: p.nivel, holgura: p.holgura, unidad: u.codigo }))),
     [datos.flota],
@@ -81,7 +82,7 @@ export const ModuloOperacion: React.FC<ModuloOperacionProps> = ({
           almacenes={datos.almacenes}
           seleccion={detalle}
           anchoPanelDerecho={panelAbierto ? ANCHO_PANEL_PX : 0}
-          riesgo={resumenRiesgo(datos)}
+          riesgo={riesgo}
           onSeleccionar={setDetalle}
           onAbrirIncidencias={() => seleccionar({ tipo: 'incidencias' })}
           onAbrirPanel={(pestana) => seleccionar({ tipo: pestana })}
@@ -89,7 +90,7 @@ export const ModuloOperacion: React.FC<ModuloOperacionProps> = ({
           slotKpis={
             <RailKpis
               resumen={datos.resumen}
-              riesgo={resumenRiesgo(datos)}
+              riesgo={riesgo}
               flota={{ ...flota, averiadas: flota.averiadas.length }}
               onVerFlota={() => seleccionar({ tipo: 'flota' })}
               onVerIncidencias={() => seleccionar({ tipo: 'incidencias' })}

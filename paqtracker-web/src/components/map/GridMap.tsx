@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useImperativeHandle, forwardRef } from 'react';
+import React, { useState, useRef, useEffect, useImperativeHandle, useMemo, forwardRef } from 'react';
 import { Search, ZoomIn, ZoomOut, Maximize2, Layers, MapIcon } from 'lucide-react';
 import { ALMACENES, MALLA_ALTO_KM, MALLA_ANCHO_KM, UNIDADES } from '../../config/dominio';
 import { NOMBRE_HOLGURA, NOMBRE_INVENTARIO, SITUACION_UNIDAD } from '../../config/glosario';
@@ -19,7 +19,7 @@ import {
   type Vista,
 } from '../../lib/malla';
 import { fueraDelAlmacen } from '../../lib/operacion';
-import { colorDeUnidad, iconoVehiculo } from './iconosVehiculo';
+import { COLOR_CARGA, COLOR_SIN_DATO, colorDeUnidad, iconoVehiculo } from './iconosVehiculo';
 import { LeyendaMapa } from './LeyendaMapa';
 import { AlmacenCentral, AlmacenIntermedio, CENTRO_CABEZA_PIN, COLOR_EN_ENTREGA, MarcaBloqueo, PinDestino } from './simbolos';
 import haloSeleccion from '../../assets/figma/pedidos/halo.svg';
@@ -120,7 +120,6 @@ const guardarLeyendaAbierta = (abierta: boolean) => {
   }
 };
 
-const COLOR_NIVEL: Record<NivelHolgura, string> = { ROJO: '#B91C1C', AMBAR: '#B45309', VERDE: '#15803D', CERRADO: '#94A3B8' };
 
 type Capa = 'rutas' | 'unidades' | 'destinos' | 'bloqueos' | 'almacenes';
 const CAPAS: { clave: Capa; etiqueta: string }[] = [
@@ -154,17 +153,23 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
 ) {
   const containerRef = useRef<HTMLDivElement>(null);
   const { ancho, alto } = useTamanoElemento(containerRef);
-  const lienzo: Lienzo = {
-    ancho,
-    alto,
-    ...LIENZO_BASE,
-    margenDerecho: anchoPanelDerecho > 0 ? anchoPanelDerecho + 24 : LIENZO_BASE.margen,
-  };
+  const lienzo: Lienzo = useMemo(
+    () => ({
+      ancho,
+      alto,
+      ...LIENZO_BASE,
+      margenDerecho: anchoPanelDerecho > 0 ? anchoPanelDerecho + 24 : LIENZO_BASE.margen,
+    }),
+    [ancho, alto, anchoPanelDerecho],
+  );
 
   // Vista elegida por el usuario (zoom / desplazamiento). null = vista inicial centrada, que se recalcula
   // sola con el tamaño del contenedor; una vista elegida se reajusta con limitarVista si el contenedor cambia.
   const [vistaUsuario, setVistaUsuario] = useState<Vista | null>(null);
-  const vista = ancho > 0 && alto > 0 ? (vistaUsuario ? limitarVista(vistaUsuario, lienzo) : vistaCompleta(lienzo)) : null;
+  const vista = useMemo(
+    () => (ancho > 0 && alto > 0 ? (vistaUsuario ? limitarVista(vistaUsuario, lienzo) : vistaCompleta(lienzo)) : null),
+    [ancho, alto, vistaUsuario, lienzo],
+  );
   const [isDragging, setIsDragging] = useState(false);
   const arrastreRef = useRef({ x: 0, y: 0, inicioX: 0, inicioY: 0, objeto: null as string | null, activo: false });
 
@@ -496,8 +501,13 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
           bloqueos={bloqueos}
           almacenes={almacenes}
           seleccion={seleccion}
-          nodoActivo={nodoActivo}
         />
+      )}
+      {/* Retícula del nodo bajo el cursor: va aparte para que moverla no redibuje las capas */}
+      {vista && (
+        <svg className="absolute inset-0 w-full h-full pointer-events-none">
+          <ReticulaNodo vista={vista} nodo={nodoActivo} />
+        </svg>
       )}
 
       {/* Tooltip del objeto bajo el cursor (identifica; el detalle se abre con clic) */}
@@ -519,7 +529,6 @@ interface CapasMapaProps {
   bloqueos: BloqueoOperacion[];
   almacenes: AlmacenOperacion[];
   seleccion: ObjetoMapa | null;
-  nodoActivo: Coordenada;
 }
 
 /** Pedidos que se nombran en el tooltip de un almacén; el resto se resume como "+N". */
@@ -547,7 +556,7 @@ function contenidoTooltip(
       titulo: `Pedido ${d.pedido}`,
       detalle: `Holgura ${d.holgura} · ${NOMBRE_HOLGURA[d.nivel].toLowerCase()}`,
       extra: entregando.length > 0 ? `Entregando ahora · ${entregando.join(', ')}` : undefined,
-      color: COLOR_NIVEL[d.nivel],
+      color: COLOR_CARGA[d.nivel],
       punto: d.destino,
       alzaPx: 30,
     };
@@ -583,7 +592,7 @@ function contenidoTooltip(
       titulo: `Almacén ${a.nombre}`,
       detalle: conStock ? `Stock ${estado.porcentajeStock} % · ${NOMBRE_INVENTARIO[estado.nivel as 'ROJO'].toLowerCase()}` : 'Stock ilimitado',
       extra: pedidosQueSalen(datos.unidades, a.id),
-      color: conStock ? COLOR_NIVEL[estado.nivel as 'ROJO'] : undefined,
+      color: conStock ? COLOR_CARGA[estado.nivel as 'ROJO'] : undefined,
       punto: a.ubicacion,
       alzaPx: 20,
     };
@@ -593,7 +602,7 @@ function contenidoTooltip(
   return {
     titulo: 'Tramo bloqueado',
     detalle: `Hasta ${b.fin}`,
-    color: COLOR_NIVEL.ROJO,
+    color: COLOR_CARGA.ROJO,
     punto: { x: (b.desde.x + b.hasta.x) / 2, y: (b.desde.y + b.hasta.y) / 2 },
     alzaPx: 14,
   };
@@ -658,7 +667,7 @@ function orientacionIcono(unidad: UnidadOperacion): string | undefined {
   return dy > 0 ? 'rotate(90)' : 'rotate(-90)';
 }
 
-const CapasMapa: React.FC<CapasMapaProps> = ({ vista, lienzo, capas, unidades, destinos, bloqueos, almacenes, seleccion, nodoActivo }) => {
+const CapasMapaBase: React.FC<CapasMapaProps> = ({ vista, lienzo, capas, unidades, destinos, bloqueos, almacenes, seleccion }) => {
   const origen = proyectar(vista, { x: 0, y: 0 });
   const paso = pasoCuadricula(vista.escala);
   const pasoPx = paso * vista.escala;
@@ -696,8 +705,6 @@ const CapasMapa: React.FC<CapasMapaProps> = ({ vista, lienzo, capas, unidades, d
   const enRuta = unidades.filter((u) => u.estado === 'EN_RUTA');
   // Las rutas destacadas se dibujan al final para quedar encima de las demás.
   const ordenRutas = [...enRuta].sort((a, b) => Number(unidadesDestacadas.has(a.codigo)) - Number(unidadesDestacadas.has(b.codigo)));
-
-  const activo = proyectar(vista, nodoActivo);
 
   return (
     <svg className="absolute inset-0 w-full h-full">
@@ -797,7 +804,7 @@ const CapasMapa: React.FC<CapasMapaProps> = ({ vista, lienzo, capas, unidades, d
           const nivel = almacenes.find((a) => a.id === almacen.id)?.nivel;
           const etiqueta = stock === undefined ? almacen.nombre : `${almacen.nombreCorto.replace('Int.', 'Interm.')} / ${stock} %`;
           // Semáforo de inventario calculado por la API (LE-078).
-          const color = stock === undefined || !nivel ? '#64748B' : COLOR_NIVEL[nivel];
+          const color = stock === undefined || !nivel ? COLOR_SIN_DATO : COLOR_CARGA[nivel];
           const central = almacen.id === 'CENTRAL';
           return (
             <g key={almacen.id} transform={`translate(${x}, ${y})`} className="cursor-pointer" data-objeto={`almacen:${almacen.id}`}>
@@ -822,7 +829,7 @@ const CapasMapa: React.FC<CapasMapaProps> = ({ vista, lienzo, capas, unidades, d
           return (
             <g key={`${d.pedido}-${d.unidad}`} transform={`translate(${x}, ${y})`} className="cursor-pointer" data-objeto={`pedido:${d.pedido}`}>
               {seleccionado && <circle cx="0" cy={CENTRO_CABEZA_PIN} r="13" fill="none" stroke="#1E40AF" strokeWidth="2" />}
-              <PinDestino color={entregando ? COLOR_EN_ENTREGA : COLOR_NIVEL[d.nivel]} critico={!entregando && d.nivel === 'ROJO'} />
+              <PinDestino color={entregando ? COLOR_EN_ENTREGA : COLOR_CARGA[d.nivel]} critico={!entregando && d.nivel === 'ROJO'} />
             </g>
           );
         })}
@@ -879,12 +886,19 @@ const CapasMapa: React.FC<CapasMapaProps> = ({ vista, lienzo, capas, unidades, d
               </g>
             );
           })}
-
-      {/* Retícula del nodo bajo el cursor */}
-      <g transform={`translate(${activo.x}, ${activo.y})`} pointerEvents="none">
-        <circle r="6" fill="none" stroke="#1E40AF" strokeWidth="1.5" strokeDasharray="2 2" />
-        <circle r="2.5" fill="#1E40AF" />
-      </g>
     </svg>
+  );
+};
+
+// Las capas solo se redibujan si cambian sus datos o la vista, no con el hover ni el nodo activo.
+const CapasMapa = React.memo(CapasMapaBase);
+
+const ReticulaNodo: React.FC<{ vista: Vista; nodo: Coordenada }> = ({ vista, nodo }) => {
+  const activo = proyectar(vista, nodo);
+  return (
+    <g transform={`translate(${activo.x}, ${activo.y})`} pointerEvents="none">
+      <circle r="6" fill="none" stroke="#1E40AF" strokeWidth="1.5" strokeDasharray="2 2" />
+      <circle r="2.5" fill="#1E40AF" />
+    </g>
   );
 };

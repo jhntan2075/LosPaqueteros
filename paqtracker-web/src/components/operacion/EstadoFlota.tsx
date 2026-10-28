@@ -4,7 +4,7 @@ import { RANGO_OCUPACION } from '../../config/glosario';
 import { capitalizar, formatearMomento } from '../../lib/formato';
 import { useDatosOperacion } from '../../hooks/useDatosOperacion';
 import { estadoFlota, nivelDeOcupacion } from '../../lib/operacion';
-import { COLOR_HOLGURA } from '../pedidos/estilos';
+import { COLOR_HOLGURA, FONDO_NIVEL } from '../pedidos/estilos';
 import { FilaConBarra, TituloSeccion } from './comunes';
 
 import { colorDeCarga, iconoVehiculo } from '../map/iconosVehiculo';
@@ -13,7 +13,6 @@ import { colorDeCarga, iconoVehiculo } from '../map/iconosVehiculo';
 // diseño no estuvo disponible (límite de llamadas de Figma), así que medidas y espaciados son aproximados.
 
 const ETIQUETA: Record<TipoUnidad, string> = { AUTO: 'Auto', MOTO: 'Moto', BICICLETA: 'Bici' };
-const FONDO_NIVEL = { ROJO: 'bg-[#B91C1C]', AMBAR: 'bg-[#B45309]', VERDE: 'bg-[#15803D]', CERRADO: 'bg-[#94A3B8]' } as const;
 
 const unidades = (n: number) => `${n} ${n === 1 ? 'unidad' : 'unidades'}`;
 

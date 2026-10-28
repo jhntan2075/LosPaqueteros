@@ -14,7 +14,7 @@ export interface Ejecuciones {
   crearEIniciar: (solicitud: SolicitudEjecucionApi) => Promise<EjecucionApi>;
 }
 
-const mensajeDe = (error: unknown, porDefecto: string) => (error instanceof ErrorDeApi ? error.message : porDefecto);
+export const mensajeDeError = (error: unknown, porDefecto: string) => (error instanceof ErrorDeApi ? error.message : porDefecto);
 
 export function useEjecuciones(): Ejecuciones {
   const [ejecuciones, setEjecuciones] = useState<EjecucionApi[]>([]);
@@ -32,7 +32,7 @@ export function useEjecuciones(): Ejecuciones {
         setError(null);
       })
       .catch((e: unknown) => {
-        if (vigente) setError(mensajeDe(e, 'No se pudo obtener la lista de ejecuciones'));
+        if (vigente) setError(mensajeDeError(e, 'No se pudo obtener la lista de ejecuciones'));
       })
       .finally(() => {
         if (vigente) setCargando(false);
@@ -54,8 +54,6 @@ export function useEjecuciones(): Ejecuciones {
   return { ejecuciones, cargando, error, recargar, crearEIniciar };
 }
 
-export { mensajeDe as mensajeDeError };
-
 /** Acciones sobre el reloj de una ejecución. Solo se exponen las del alcance: no hay control de velocidad. */
 export function useControlEjecucion(ejecucionId: string) {
   const [error, setError] = useState<string | null>(null);
@@ -66,7 +64,7 @@ export function useControlEjecucion(ejecucionId: string) {
       await clienteApi.detener(ejecucionId);
       return true;
     } catch (e) {
-      setError(mensajeDe(e, 'No se pudo detener la simulación. Inténtalo de nuevo.'));
+      setError(mensajeDeError(e, 'No se pudo detener la simulación. Inténtalo de nuevo.'));
       return false;
     }
   }, [ejecucionId]);
