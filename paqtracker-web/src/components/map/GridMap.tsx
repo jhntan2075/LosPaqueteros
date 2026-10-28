@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useImperativeHandle, forwardRef } from 'react';
 import { Search, ZoomIn, ZoomOut, Maximize2, Layers, MapIcon } from 'lucide-react';
 import { ALMACENES, MALLA_ALTO_KM, MALLA_ANCHO_KM, UNIDADES } from '../../config/dominio';
-import { NOMBRE_HOLGURA, NOMBRE_INVENTARIO } from '../../config/glosario';
+import { NOMBRE_HOLGURA, NOMBRE_INVENTARIO, SITUACION_UNIDAD } from '../../config/glosario';
 import { useTamanoElemento } from '../../hooks/useTamanoElemento';
 import { capitalizar, formatearMomento } from '../../lib/formato';
 import { useDatosOperacion } from '../../hooks/useDatosOperacion';
@@ -21,7 +21,7 @@ import {
 import { fueraDelAlmacen } from '../../lib/operacion';
 import { colorDeUnidad, iconoVehiculo } from './iconosVehiculo';
 import { LeyendaMapa } from './LeyendaMapa';
-import { AlmacenCentral, AlmacenIntermedio, CENTRO_CABEZA_PIN, MarcaBloqueo, PinDestino } from './simbolos';
+import { AlmacenCentral, AlmacenIntermedio, CENTRO_CABEZA_PIN, COLOR_EN_ENTREGA, MarcaBloqueo, PinDestino } from './simbolos';
 import haloSeleccion from '../../assets/figma/pedidos/halo.svg';
 import type { Coordenada } from '../../types/domain';
 import type { AlmacenOperacion, BloqueoOperacion, UnidadOperacion } from '../../types/operacion';
@@ -542,7 +542,15 @@ function contenidoTooltip(
   if (objeto.tipo === 'pedido') {
     const d = datos.destinos.find((x) => x.pedido === objeto.codigo);
     if (!d) return null;
-    return { titulo: `Pedido ${d.pedido}`, detalle: `Holgura ${d.holgura} · ${NOMBRE_HOLGURA[d.nivel].toLowerCase()}`, color: COLOR_NIVEL[d.nivel], punto: d.destino, alzaPx: 30 };
+    const entregando = datos.unidades.filter((u) => u.pedidoEnEntrega === d.pedido).map((u) => u.codigo);
+    return {
+      titulo: `Pedido ${d.pedido}`,
+      detalle: `Holgura ${d.holgura} · ${NOMBRE_HOLGURA[d.nivel].toLowerCase()}`,
+      extra: entregando.length > 0 ? `Entregando ahora · ${entregando.join(', ')}` : undefined,
+      color: COLOR_NIVEL[d.nivel],
+      punto: d.destino,
+      alzaPx: 30,
+    };
   }
   if (objeto.tipo === 'vehiculo') {
     const u = datos.unidades.find((x) => x.codigo === objeto.codigo);
@@ -555,7 +563,12 @@ function contenidoTooltip(
         ? u.averia
           ? `Averiada · tipo ${u.averia.tipo} · vuelve ${formatearMomento(u.averia.vuelve, reloj)}`
           : 'Averiada'
-        : `Carga ${u.carga}/${capacidad} · ${capacidad === 0 ? 0 : Math.round((u.carga / capacidad) * 100)} %${u.estado === 'EN_REFRIGERIO' ? ' · en refrigerio' : ''}`,
+        : `Carga ${u.carga}/${capacidad} · ${capacidad === 0 ? 0 : Math.round((u.carga / capacidad) * 100)} %`,
+      extra: averiada
+        ? undefined
+        : u.pedidoEnEntrega
+          ? `Entregando ${u.pedidoEnEntrega}`
+          : SITUACION_UNIDAD[u.situacion],
       color: colorDeUnidad(u),
       punto: u.posicion,
       alzaPx: 16,
@@ -804,13 +817,28 @@ const CapasMapa: React.FC<CapasMapaProps> = ({ vista, lienzo, capas, unidades, d
         destinos.map((d) => {
           const { x, y } = proyectar(vista, d.destino);
           const seleccionado = seleccion?.tipo === 'pedido' && seleccion.codigo === d.pedido;
+          // Mientras su unidad lo entrega, el pin cambia de color para distinguirlo de los que esperan.
+          const entregando = unidades.some((u) => u.codigo === d.unidad && u.pedidoEnEntrega === d.pedido);
           return (
             <g key={`${d.pedido}-${d.unidad}`} transform={`translate(${x}, ${y})`} className="cursor-pointer" data-objeto={`pedido:${d.pedido}`}>
               {seleccionado && <circle cx="0" cy={CENTRO_CABEZA_PIN} r="13" fill="none" stroke="#1E40AF" strokeWidth="2" />}
-              <PinDestino color={COLOR_NIVEL[d.nivel]} critico={d.nivel === 'ROJO'} />
+              <PinDestino color={entregando ? COLOR_EN_ENTREGA : COLOR_NIVEL[d.nivel]} critico={!entregando && d.nivel === 'ROJO'} />
             </g>
           );
         })}
+      {/* El servidor da el pedido por entregado al llegar: durante el servicio ya no está entre las paradas,
+          así que su pin se dibuja en la unidad que lo entrega y, al tocarlo, abre esa unidad. */}
+      {capas.destinos &&
+        unidades
+          .filter((u) => u.pedidoEnEntrega && !destinos.some((d) => d.pedido === u.pedidoEnEntrega))
+          .map((u) => {
+            const { x, y } = proyectar(vista, u.posicion);
+            return (
+              <g key={`entrega-${u.codigo}`} transform={`translate(${x}, ${y})`} className="cursor-pointer" data-objeto={`vehiculo:${u.codigo}`}>
+                <PinDestino color={COLOR_EN_ENTREGA} />
+              </g>
+            );
+          })}
 
       {/* --- UNIDADES en ruta (color por ocupación, CF-02) y averiadas --- */}
       {capas.unidades &&

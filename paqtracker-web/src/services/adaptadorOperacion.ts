@@ -1,4 +1,4 @@
-import { formatearDiaMes, formatearHolgura, formatearHora } from '../lib/formato';
+import { formatearDiaMesHora, formatearHolgura, formatearHora } from '../lib/formato';
 import { puntoEnRecorrido } from '../lib/malla';
 import type {
   BloqueoEnMapaApi,
@@ -19,6 +19,7 @@ import type {
   Parada,
   PedidoOperacion,
   ResumenPedidos,
+  SituacionUnidad,
   UnidadOperacion,
 } from '../types/operacion';
 
@@ -45,6 +46,24 @@ const ESTADO_UNIDAD: Record<string, UnidadOperacion['estado']> = {
   AVERIADA: 'AVERIADA',
 };
 
+/** Situación de una unidad en ruta según el tramo que recorre. */
+const SITUACION_POR_TRAMO: Record<NonNullable<UnidadEnMapaApi['tramoEnCurso']>['tipo'], SituacionUnidad> = {
+  VIAJE_A_ENTREGA: 'A_ENTREGA',
+  SERVICIO: 'ENTREGANDO',
+  RETORNO: 'RETORNANDO',
+  VIAJE_A_TRASBORDO: 'A_TRASBORDO',
+  TRASVASE: 'RECIBIENDO_CARGA',
+  AVERIA: 'AVERIADA',
+};
+
+/** Qué hace la unidad: su estado fuera de ruta o, en ruta, el tramo en curso; sin tramo, espera su salida. */
+function situacionDe(unidad: UnidadEnMapaApi, estado: UnidadOperacion['estado']): SituacionUnidad {
+  if (estado === 'AVERIADA' || estado === 'EN_REFRIGERIO' || estado === 'FUERA_DE_TURNO') return estado;
+  if (estado === 'DISPONIBLE') return 'EN_ALMACEN';
+  if (unidad.estado === 'EN_ENTREGA') return 'ENTREGANDO';
+  return unidad.tramoEnCurso ? (SITUACION_POR_TRAMO[unidad.tramoEnCurso.tipo] ?? 'EN_ESPERA') : 'EN_ESPERA';
+}
+
 const EVENTO: Record<TipoEventoApi, { titulo: string; categoria: CategoriaEvento; color: EventoBitacora['color'] }> = {
   NUEVO_PEDIDO: { titulo: 'Pedido registrado', categoria: 'ENTREGA', color: 'gris' },
   PLAN_ACTUALIZADO: { titulo: 'Replanificación', categoria: 'PLANIFICADOR', color: 'azul' },
@@ -61,15 +80,14 @@ const EVENTO: Record<TipoEventoApi, { titulo: string; categoria: CategoriaEvento
 const dosDigitos = (n: number) => String(n).padStart(2, '0');
 const horaConSegundos = (fecha: Date) => `${formatearHora(fecha)}:${dosDigitos(fecha.getSeconds())}`;
 const coordenada = ({ x, y }: CoordenadaApi): Coordenada => ({ x, y });
-/** "03/03 02:00": un plazo de hasta 36 h cruza de día, así que la hora sola no basta. */
-const fechaYHora = (ms: number) => { const fecha = new Date(ms); return `${formatearDiaMes(fecha)} ${formatearHora(fecha)}`; };
+const fechaYHora = (ms: number) => formatearDiaMesHora(new Date(ms));
 
 function adaptarPedido(pedido: PedidoEnMapaApi, ahoraMs: number): PedidoOperacion {
   const referencia = pedido.etaMs ?? ahoraMs;
   const holguraMinutos = Math.round((pedido.horaLimiteMs - referencia) / MS_POR_MINUTO);
   return {
     codigo: pedido.codigo,
-    cliente: '—',
+    cliente: pedido.cliente ?? '—',
     cantidad: pedido.cantidad,
     plazoHoras: Math.round((pedido.horaLimiteMs - pedido.registroMs) / MS_POR_HORA),
     registrado: fechaYHora(pedido.registroMs),
@@ -111,15 +129,20 @@ function adaptarUnidad(unidad: UnidadEnMapaApi, pedidos: Record<string, PedidoOp
     return {
       pedido: parada.codigoPedido,
       destino: coordenada(parada.destino),
-      eta: formatearHora(new Date(parada.etaMs)),
+      cantidad: parada.cantidad,
+      eta: fechaYHora(parada.etaMs),
       holgura: formatearHolgura(pedido?.holguraMinutos ?? 0),
       nivel: pedido?.nivel ?? 'VERDE',
     };
   });
+  const estado = ESTADO_UNIDAD[unidad.estado] ?? 'DISPONIBLE';
+  const situacion = situacionDe(unidad, estado);
   return {
     codigo: unidad.codigo,
     tipo: unidad.tipo,
-    estado: ESTADO_UNIDAD[unidad.estado] ?? 'DISPONIBLE',
+    estado,
+    situacion,
+    pedidoEnEntrega: situacion === 'ENTREGANDO' ? (unidad.tramoEnCurso?.codigoPedido ?? undefined) : undefined,
     posicion,
     origen: unidad.almacenOrigen,
     carga: unidad.cargaActual,

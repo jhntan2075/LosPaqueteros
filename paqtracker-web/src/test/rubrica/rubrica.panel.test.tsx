@@ -235,7 +235,7 @@ describe('Rúbrica · panel · unidades de transporte', () => {
     expect(panel().getByText('Próximas paradas')).toBeTruthy();
     const parada = panel().getByRole('button', { name: /#1001/ });
     expect(parada.textContent).toContain('(27,24)');
-    expect(parada.textContent).toContain('ETA 09:00');
+    expect(parada.textContent).toMatch(/llega \d{2}\/\d{2} 09:00/); // llegada estimada con fecha y hora
   });
 
   it('C74 · se busca una unidad desde el mapa y se abre su detalle', () => {

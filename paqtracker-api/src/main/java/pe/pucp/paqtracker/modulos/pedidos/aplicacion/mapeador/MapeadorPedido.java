@@ -12,11 +12,11 @@ public class MapeadorPedido {
 
     /**
      * @param pedido  pedido con su estado en la ejecucion
-     * @param cliente cliente, o null si el pedido vino de un archivo
+     * @param cliente cliente registrado a mano, o null; sin el se usa el del archivo de ventas
      * @return respuesta REST
      */
     public RespuestaPedido aRespuesta(PedidoEnMapa pedido, String cliente) {
-        return new RespuestaPedido(pedido.codigo(), cliente, pedido.destino(), pedido.cantidad(), pedido.registroMs(),
+        return new RespuestaPedido(pedido.codigo(), cliente != null ? cliente : pedido.cliente(), pedido.destino(), pedido.cantidad(), pedido.registroMs(),
                 pedido.horaLimiteMs(), pedido.etaMs(), pedido.estado(), pedido.nivelHolgura(), pedido.unidad());
     }
 }

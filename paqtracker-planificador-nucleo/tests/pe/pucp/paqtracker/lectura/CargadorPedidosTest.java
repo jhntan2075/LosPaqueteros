@@ -1,6 +1,11 @@
 package pe.pucp.paqtracker.lectura;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
+import pe.pucp.paqtracker.modelo.Pedido;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -36,5 +41,14 @@ class CargadorPedidosTest {
         assertTrue(resultado.getErrores().get(0).startsWith("Linea 2:"));
         assertTrue(resultado.getErrores().get(1).startsWith("Linea 3:"));
         assertTrue(resultado.getErrores().get(2).startsWith("Linea 4:"));
+    }
+
+    @Test
+    void cargar_formatoConMarcaDeTiempo_conservaElCliente(@TempDir Path carpeta) throws IOException {
+        Path archivo = Files.writeString(carpeta.resolve("ventas.202601.txt"), "01d01h30m:56,30,c4910,02,36" + System.lineSeparator());
+
+        List<Pedido> pedidos = CargadorPedidos.cargar(archivo.toString(), Integer.MAX_VALUE);
+
+        assertEquals("c4910", pedidos.get(0).getCliente());
     }
 }

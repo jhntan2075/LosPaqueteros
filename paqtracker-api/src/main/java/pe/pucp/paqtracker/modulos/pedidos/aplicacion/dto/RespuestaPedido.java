@@ -6,7 +6,7 @@ import pe.pucp.paqtracker.modulos.difusion.aplicacion.dto.Coordenada;
  * Pedido con su estado en la ejecucion.
  *
  * @param codigo       codigo visible
- * @param cliente      cliente, o null si el pedido vino de un archivo de ventas
+ * @param cliente      cliente registrado o el del archivo de ventas, o null si no se conoce
  * @param destino      punto de entrega
  * @param cantidad     paquetes
  * @param registroMs   registro, epoch en milisegundos simulados

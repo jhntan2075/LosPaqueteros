@@ -9,6 +9,9 @@ export const formatearHora = (fecha: Date) => `${dosDigitos(fecha.getHours())}:$
 /** "dd/MM" de una fecha. */
 export const formatearDiaMes = (fecha: Date) => `${dosDigitos(fecha.getDate())}/${dosDigitos(fecha.getMonth() + 1)}`;
 
+/** "04/03 22:30": un plazo de hasta 36 h cruza de día, así que la hora sola no basta. */
+export const formatearDiaMesHora = (fecha: Date) => `${formatearDiaMes(fecha)} ${formatearHora(fecha)}`;
+
 const inicioDelDia = (fecha: Date) => new Date(fecha.getFullYear(), fecha.getMonth(), fecha.getDate()).getTime();
 
 /** Días calendario entre dos fechas (0 = mismo día). */

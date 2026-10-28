@@ -15,6 +15,9 @@ export const CENTRO_CABEZA_PIN = -15;
  * Pin de destino: la punta marca el nodo de entrega y el color es la holgura del pedido. El crítico
  * lleva un signo de admiración además del rojo, para no depender solo del color.
  */
+/** Pin del pedido que una unidad está entregando en este momento: distinto de los colores de holgura. */
+export const COLOR_EN_ENTREGA = '#7C3AED';
+
 export const PinDestino: React.FC<{ color: string; critico?: boolean }> = ({ color, critico = false }) => (
   <>
     <path d={PIN_PATH} fill={color} stroke="#FFFFFF" strokeWidth="1.5" strokeLinejoin="round" filter={SOMBRA} />

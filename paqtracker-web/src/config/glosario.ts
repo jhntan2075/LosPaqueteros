@@ -1,5 +1,5 @@
 import { CORTE_HOLGURA, CORTE_INVENTARIO, CORTE_OCUPACION, esPlazoRegular } from './dominio';
-import type { EstadoUnidad } from '../types/operacion';
+import type { EstadoUnidad, SituacionUnidad } from '../types/operacion';
 import type { NivelHolgura } from '../types/pedidos';
 
 // Glosario de la interfaz: un solo nombre por concepto en todas las pantallas. Si un término cambia,
@@ -79,6 +79,20 @@ export const ESTADO_UNIDAD: Record<EstadoUnidad, string> = {
   EN_RUTA: 'En ruta',
   EN_REFRIGERIO: 'En refrigerio',
   DISPONIBLE: 'Disponible',
+  FUERA_DE_TURNO: 'Fuera de turno',
+  AVERIADA: 'Averiada',
+};
+
+/** Qué está haciendo una unidad; detalla el "En ruta" de ESTADO_UNIDAD. */
+export const SITUACION_UNIDAD: Record<SituacionUnidad, string> = {
+  A_ENTREGA: 'En ruta a entrega',
+  ENTREGANDO: 'Entregando pedido',
+  RETORNANDO: 'Regresando al almacén',
+  A_TRASBORDO: 'En ruta a trasbordo',
+  RECIBIENDO_CARGA: 'Recibiendo carga',
+  EN_ESPERA: 'En espera',
+  EN_ALMACEN: 'En almacén',
+  EN_REFRIGERIO: 'En refrigerio',
   FUERA_DE_TURNO: 'Fuera de turno',
   AVERIADA: 'Averiada',
 };

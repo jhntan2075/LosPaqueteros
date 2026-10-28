@@ -12,6 +12,7 @@ public final class Pedido {
     private final int cantidad;
     private final int instanteRegistro;
     private final int plazo;
+    private final String cliente;
 
     /**
      * @param id               identificador del pedido
@@ -21,11 +22,24 @@ public final class Pedido {
      * @param plazo            plazo comprometido en minutos
      */
     public Pedido(int id, Nodo destino, int cantidad, int instanteRegistro, int plazo) {
+        this(id, destino, cantidad, instanteRegistro, plazo, null);
+    }
+
+    /**
+     * @param id               identificador del pedido
+     * @param destino          nodo de entrega
+     * @param cantidad         unidades de producto solicitadas
+     * @param instanteRegistro minuto absoluto en que ingresa el pedido
+     * @param plazo            plazo comprometido en minutos
+     * @param cliente          identificador del cliente, o null si no se conoce
+     */
+    public Pedido(int id, Nodo destino, int cantidad, int instanteRegistro, int plazo, String cliente) {
         this.id = id;
         this.destino = destino;
         this.cantidad = cantidad;
         this.instanteRegistro = instanteRegistro;
         this.plazo = plazo;
+        this.cliente = cliente;
     }
 
     public int getId() {
@@ -46,6 +60,13 @@ public final class Pedido {
 
     public int getPlazo() {
         return plazo;
+    }
+
+    /**
+     * @return identificador del cliente (p. ej. "c8662"), o null si no se conoce
+     */
+    public String getCliente() {
+        return cliente;
     }
 
     /**

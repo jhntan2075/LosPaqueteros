@@ -91,7 +91,7 @@ export const DiagnosticoColapso: React.FC<DiagnosticoColapsoProps> = ({ diaColap
               </div>
               <Dato etiqueta="Destino / Cantidad" valor={`(${critico.destino.x},${critico.destino.y}) · ${critico.cantidad} u`} />
               <Dato etiqueta="Registrado / Límite" valor={`${critico.registrado} → ${critico.horaLimite}`} />
-              <Dato etiqueta="Mejor ETA factible" valor={critico.eta} />
+              <Dato etiqueta="Mejor llegada factible" valor={critico.eta} />
               <Dato etiqueta="Holgura" valor={critico.holgura} color="text-[#B91C1C]" />
             </div>
           ) : (

@@ -113,7 +113,7 @@ const SelectFiltro: React.FC<SelectFiltroProps> = ({ label, valor, opciones, act
 };
 
 function exportarCsv(pedidos: PedidoEnCola[]) {
-  const encabezado = ['ID', 'Cliente', 'Destino', 'Cantidad', 'Plazo', 'Hora límite', 'ETA', 'Holgura', 'Vehículo', 'Estado'];
+  const encabezado = ['ID', 'Cliente', 'Destino', 'Cantidad', 'Plazo', 'Hora límite', 'Llegada estimada', 'Holgura', 'Vehículo', 'Estado'];
   const filas = pedidos.map((p) => [
     p.codigo,
     p.cliente,
@@ -251,7 +251,7 @@ const DrawerDetallePedido: React.FC<{
                 </div>
               </div>
               <div className="p-3 bg-white rounded-lg border border-slate-200">
-                <span className="text-[11px] text-slate-500 block mb-1">ETA</span>
+                <span className="text-[11px] text-slate-500 block mb-1">Llegada estimada</span>
                 <div className="tabular-nums font-semibold text-slate-900">
                   {pedido.eta ? pedido.eta : 'Aún sin calcular'}
                 </div>
@@ -499,7 +499,7 @@ export const ColaPedidos: React.FC<{
               <th className="py-2.5 px-4 text-right">Cant.</th>
               <th className="py-2.5 px-4">Plazo</th>
               <th className="py-2.5 px-4">Hora límite</th>
-              <th className="py-2.5 px-4">ETA</th>
+              <th className="py-2.5 px-4">Llegada estimada</th>
               <th className="py-2.5 px-4">Holgura</th>
               <th className="py-2.5 px-4">Vehículo</th>
               <th className="py-2.5 px-4">Estado</th>

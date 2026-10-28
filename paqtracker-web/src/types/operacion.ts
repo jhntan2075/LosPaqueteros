@@ -14,9 +14,28 @@ export type SubvistaOperacion = 'vivo' | 'incidencias' | 'flota' | 'bitacora';
  */
 export type EstadoUnidad = 'EN_RUTA' | 'EN_REFRIGERIO' | 'DISPONIBLE' | 'FUERA_DE_TURNO' | 'AVERIADA';
 
+/**
+ * Qué está haciendo una unidad, a partir de su estado y del tramo que recorre: detalla el "en ruta" del
+ * servidor (va a entregar, entrega, vuelve al almacén o espera su siguiente salida).
+ */
+export type SituacionUnidad =
+  | 'A_ENTREGA'
+  | 'ENTREGANDO'
+  | 'RETORNANDO'
+  | 'A_TRASBORDO'
+  | 'RECIBIENDO_CARGA'
+  | 'EN_ESPERA'
+  | 'EN_ALMACEN'
+  | 'EN_REFRIGERIO'
+  | 'FUERA_DE_TURNO'
+  | 'AVERIADA';
+
 export interface Parada {
   pedido: string; // "#1088"
   destino: Coordenada;
+  /** Paquetes de ese pedido que lleva esta unidad (un pedido fraccionado va en varias). */
+  cantidad: number;
+  /** Llegada estimada con fecha y hora: "04/03 22:30". */
   eta: string;
   holgura: string;
   nivel: NivelHolgura;
@@ -26,6 +45,9 @@ export interface UnidadOperacion {
   codigo: string; // "A-04"
   tipo: TipoUnidad;
   estado: EstadoUnidad;
+  situacion: SituacionUnidad;
+  /** Pedido que está entregando en este momento (tramo de servicio en su destino). */
+  pedidoEnEntrega?: string;
   posicion: Coordenada;
   origen: IdAlmacen;
   /** Paquetes a bordo que aún no entrega: baja con cada entrega. */

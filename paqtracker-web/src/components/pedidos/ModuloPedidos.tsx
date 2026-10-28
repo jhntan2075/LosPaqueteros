@@ -17,7 +17,7 @@ interface ModuloPedidosProps {
 
 export const ModuloPedidos: React.FC<ModuloPedidosProps> = ({ vista, onCambiarVista, onVerEnLienzo }) => {
   const [registrado, setRegistrado] = useState<Pedido | null>(null);
-  const { reloj, pedidos } = useDatosOperacion();
+  const { pedidos } = useDatosOperacion();
   const volverACola = () => onCambiarVista('cola');
 
   if (vista === 'registrar' || (vista === 'registrado' && !registrado)) {
@@ -48,7 +48,6 @@ export const ModuloPedidos: React.FC<ModuloPedidosProps> = ({ vista, onCambiarVi
         />
         <PedidoRegistrado
           pedido={registrado}
-          reloj={reloj}
           // Solo se ofrece cuando el pedido ya figura en el estado en vivo: antes no hay nada que ubicar.
           onVerEnLienzo={pedidos[registrado.codigo] ? () => onVerEnLienzo(registrado.codigo) : undefined}
           onRegistrarOtro={() => onCambiarVista('registrar')}

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ALMACENES, CORTE_OCUPACION, UNIDADES } from '../../config/dominio';
-import { ESTADO_UNIDAD, NOMBRE_HOLGURA, NOMBRE_INVENTARIO, RANGO_HOLGURA, etiquetaPlazo, nombreAveria } from '../../config/glosario';
+import { NOMBRE_HOLGURA, SITUACION_UNIDAD, NOMBRE_INVENTARIO, RANGO_HOLGURA, etiquetaPlazo, nombreAveria } from '../../config/glosario';
 import { admisionDeAverias, useAveriaPendiente, useAverias } from '../../hooks/useAverias';
 import { useDatosOperacion } from '../../hooks/useDatosOperacion';
 import { useTrazabilidadPedido } from '../../hooks/useTrazabilidadPedido';
@@ -119,15 +119,19 @@ const Trazabilidad: React.FC<{ hitos: HitoTrazabilidad[] }> = ({ hitos }) => {
   return (
     <section className="px-[12px] pt-[9px] pb-[6px] flex flex-col gap-[8px]">
       <TituloSeccion derecha={reasignaciones > 0 ? `${reasignaciones} reasignación${reasignaciones > 1 ? 'es' : ''}` : undefined}>Trazabilidad</TituloSeccion>
-      <ol className="flex flex-col gap-[8px]">
+      {/* En orden cronológico: de arriba hacia abajo se lee cómo ocurrió; el último hito se resalta. */}
+      <ol className="flex flex-col">
         {hitos.length === 0 && <li className="font-sans text-[12px] text-[#64748B]">Sin hitos registrados.</li>}
         {hitos.map((hito, i) => (
           <li key={`${hito.titulo}-${i}`} className="flex gap-[10px] text-[12px] leading-[normal]">
-            <time className="w-[34px] tabular-nums text-[#64748B] shrink-0">{hito.hora}</time>
-            <span className={`mt-[4px] size-[6px] rounded-full shrink-0 ${hito.reciente ? 'bg-[#1E40AF]' : 'bg-[#94A3B8]'}`} />
-            <span className="flex flex-col min-w-0">
+            <time className="w-[72px] tabular-nums text-[#64748B] whitespace-nowrap shrink-0">{hito.hora}</time>
+            <span className="relative flex flex-col items-center shrink-0" aria-hidden="true">
+              <span className={`mt-[4px] size-[7px] rounded-full ${hito.reciente ? 'bg-[#1E40AF]' : 'bg-[#94A3B8]'}`} />
+              {i < hitos.length - 1 && <span className="w-px flex-1 bg-[#CBD5E1]" />}
+            </span>
+            <span className="flex flex-col min-w-0 pb-[10px]">
               <span className="font-sans font-semibold text-[#0F172A]">{hito.titulo}</span>
-              <span className="font-sans text-[#64748B] truncate">{hito.detalle}</span>
+              <span className="font-sans text-[#64748B]">{hito.detalle}</span>
             </span>
           </li>
         ))}
@@ -144,6 +148,11 @@ const DetallePedido: React.FC<{ pedido: PedidoOperacion } & Omit<PanelLateralPro
   const datos = useDatosOperacion();
   const hitos = useTrazabilidadPedido(datos.ejecucionId, pedido.codigo, pedido.estado);
   const unidad = unidadPorCodigo(datos, pedido.unidad);
+  // Un pedido fraccionado va repartido en varias unidades: se listan todas las que lo llevan a bordo.
+  const portadoras = datos.flota.flatMap((u) => {
+    const parada = u.paradas.find((p) => p.pedido === pedido.codigo);
+    return parada ? [{ unidad: u, parada }] : [];
+  });
   const origen = unidad ? ALMACENES.find((a) => a.id === unidad.origen) : undefined;
   const km = distanciaDesdeOrigen(datos, pedido);
   const fraccion = pedido.holguraMinutos / (pedido.plazoHoras * 60);
@@ -174,20 +183,43 @@ const DetallePedido: React.FC<{ pedido: PedidoOperacion } & Omit<PanelLateralPro
           <Dato etiqueta="Tipo de entrega" valor={etiquetaPlazo(pedido.plazoHoras)} />
           <Dato etiqueta="Registrado" valor={pedido.registrado} />
           <Dato etiqueta="Hora límite" valor={pedido.horaLimite} />
-          <Dato etiqueta="ETA actual" valor={pedido.eta} />
+          <Dato etiqueta="Llegada estimada" valor={pedido.eta} />
           <Dato etiqueta="Destino" valor={`(${pedido.destino.x},${pedido.destino.y})`} />
-          <Dato
-            etiqueta="Vehículo asignado"
-            valor={
-              unidad ? (
-                <button type="button" onClick={() => onSeleccionar({ tipo: 'vehiculo', codigo: unidad.codigo })} className="hover:underline">
-                  {nombreUnidad(unidad)} · {unidad.carga}/{unidad.capacidad}
-                </button>
-              ) : (
-                'Sin asignar'
-              )
-            }
-          />
+          {portadoras.length > 1 ? (
+            <div className="px-[12px] py-[3px] flex flex-col gap-[2px] text-[12px]">
+              <span className="font-sans text-[#64748B]">Vehículos asignados · pedido fraccionado en {portadoras.length}</span>
+              <ul aria-label="Vehículos asignados" className="flex flex-col">
+                {portadoras.map(({ unidad: u, parada }) => (
+                  <li key={u.codigo}>
+                    <button
+                      type="button"
+                      onClick={() => onSeleccionar({ tipo: 'vehiculo', codigo: u.codigo })}
+                      className="w-full h-[22px] flex items-center gap-[8px] tabular-nums text-[#0F172A] hover:underline"
+                    >
+                      <span>{nombreUnidad(u)}</span>
+                      <span className="text-[#64748B]">
+                        {parada.cantidad} de {pedido.cantidad} paq.
+                      </span>
+                      <span className="ml-auto text-[#64748B]">llega {parada.eta}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : (
+            <Dato
+              etiqueta="Vehículo asignado"
+              valor={
+                unidad ? (
+                  <button type="button" onClick={() => onSeleccionar({ tipo: 'vehiculo', codigo: unidad.codigo })} className="hover:underline">
+                    {nombreUnidad(unidad)} · {unidad.carga}/{unidad.capacidad}
+                  </button>
+                ) : (
+                  'Sin asignar'
+                )
+              }
+            />
+          )}
           {unidad && origen && km !== null && (
             <Dato etiqueta="Origen / distancia" valor={`${origen.nombre} · ${km} km · ${formatoSoles(km * UNIDADES[unidad.tipo].costoKm)}`} />
           )}
@@ -222,7 +254,7 @@ const Paradas: React.FC<{ unidad: UnidadOperacion; onSeleccionar: PanelLateralPr
         <span className="tabular-nums text-[#64748B]">
           ({p.destino.x},{p.destino.y})
         </span>
-        <span className="ml-auto tabular-nums text-[#64748B]">ETA {p.eta}</span>
+        <span className="ml-auto tabular-nums text-[#64748B]">llega {p.eta}</span>
         <span className={`tabular-nums font-medium ${COLOR_HOLGURA[p.nivel]}`}>{p.holgura}</span>
       </button>
     ))}
@@ -282,7 +314,7 @@ const DetalleVehiculo: React.FC<
             {nombreUnidad(unidad)}
           </>
         }
-        estado={ESTADO_UNIDAD[unidad.estado]}
+        estado={SITUACION_UNIDAD[unidad.situacion]}
       />
       <Subpestanas
         opciones={[
@@ -291,7 +323,7 @@ const DetalleVehiculo: React.FC<
         ]}
         activa={pestana}
         onCambiar={setPestana}
-        derecha={`nodo (${unidad.posicion.x},${unidad.posicion.y})`}
+        derecha={`nodo (${Math.round(unidad.posicion.x)},${Math.round(unidad.posicion.y)})`}
       />
       <div className="flex-1 min-h-0 overflow-y-auto">
         {pestana === 'resumen' && (
@@ -342,6 +374,7 @@ const DetalleVehiculo: React.FC<
               <Dato etiqueta="Turno vigente" valor={turno.actual} />
               <Dato etiqueta="Próximo turno" valor={turno.siguiente} />
               <Dato etiqueta="En refrigerio" valor={alimentacion} />
+              {unidad.pedidoEnEntrega && <Dato etiqueta="Entregando ahora" valor={unidad.pedidoEnEntrega} />}
               <Dato etiqueta="Pedidos a bordo" valor={`${unidad.paradas.length}${enRojo > 0 ? ` · ${enRojo} en rojo` : ''}`} />
               <Dato etiqueta="Origen de carga" valor={ALMACENES.find((a) => a.id === unidad.origen)!.nombre} />
             </div>
@@ -484,7 +517,7 @@ const ListaIncidencias: React.FC<Pick<PanelLateralProps, 'onSeleccionar' | 'onCe
             key={p.codigo}
             color={p.nivel === 'ROJO' ? 'rojo' : 'ambar'}
             titulo={`${p.codigo} · ${p.unidad}`}
-            detalle={`holgura ${p.holgura} · ETA ${p.eta}`}
+            detalle={`holgura ${p.holgura} · llega ${p.eta}`}
             detalleMono
             onClick={() => onSeleccionar({ tipo: 'pedido', codigo: p.codigo })}
             className="py-[5px] rounded"
