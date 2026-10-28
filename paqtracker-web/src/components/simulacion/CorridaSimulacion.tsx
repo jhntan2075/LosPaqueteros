@@ -67,6 +67,7 @@ const CorridaEnVivo: React.FC<CorridaSimulacionProps & { recibidoEnMs: number }>
   const verDiagnostico = colapso && !diagnosticoCerrado && panel === null;
   const flota = estadoFlota(datos);
   const riesgo = pedidosEnRiesgo(datos);
+  const resumenDeRiesgo = resumenRiesgo(datos);
   const dia = `${datos.reloj.getDate()} ${MESES[datos.reloj.getMonth()]}`;
   const destinos: DestinoMapa[] = useMemo(
     () => datos.flota.flatMap((u) => u.paradas.map((p) => ({ pedido: p.pedido, destino: p.destino, nivel: p.nivel, holgura: p.holgura, unidad: u.codigo }))),
@@ -112,7 +113,7 @@ const CorridaEnVivo: React.FC<CorridaSimulacionProps & { recibidoEnMs: number }>
           almacenes={datos.almacenes}
           seleccion={panel && (panel.tipo === 'pedido' || panel.tipo === 'vehiculo' || panel.tipo === 'almacen') ? panel : null}
           anchoPanelDerecho={panel || verDiagnostico ? ANCHO_PANEL_PX : 0}
-          riesgo={resumenRiesgo(datos)}
+          riesgo={resumenDeRiesgo}
           onSeleccionar={setPanel}
           onAbrirIncidencias={() => setPanel({ tipo: 'incidencias' })}
           onAbrirPanel={(pestana) => setPanel({ tipo: pestana })}
@@ -120,7 +121,7 @@ const CorridaEnVivo: React.FC<CorridaSimulacionProps & { recibidoEnMs: number }>
           slotKpis={
             <RailKpis
               resumen={datos.resumen}
-              riesgo={resumenRiesgo(datos)}
+              riesgo={resumenDeRiesgo}
               flota={{ ...flota, averiadas: flota.averiadas.length }}
               notaSaturacion={colapso ? 'Al detectarse el colapso' : undefined}
               onVerFlota={() => setPanel({ tipo: 'flota' })}

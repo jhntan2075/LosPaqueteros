@@ -229,10 +229,12 @@ export function adaptarEvento(evento: MensajeEventoApi): EventoBitacora {
 
 function resumir(mensaje: MensajeEstadoApi, pedidos: PedidoEnMapaApi[], ahoraMs: number): ResumenPedidos {
   const i = mensaje.indicadores;
-  const proximas = pedidos
-    .filter((p) => p.estado === 'EN_TRANSITO' && p.etaMs !== null)
-    .map((p) => ((p.etaMs as number) - ahoraMs) / MS_POR_MINUTO)
-    .filter((minutos) => minutos >= 0);
+  let proxima = Infinity;
+  for (const p of pedidos) {
+    if (p.estado !== 'EN_TRANSITO' || p.etaMs === null) continue;
+    const minutos = (p.etaMs - ahoraMs) / MS_POR_MINUTO;
+    if (minutos >= 0 && minutos < proxima) proxima = minutos;
+  }
   return {
     total: i.pedidosRegistrados,
     entregados: i.pedidosEntregadosATiempo + i.pedidosEntregadosConRetraso,
@@ -241,10 +243,34 @@ function resumir(mensaje: MensajeEstadoApi, pedidos: PedidoEnMapaApi[], ahoraMs:
     enRuta: i.pedidosEnTransito,
     enEspera: i.pedidosPendientes,
     sinRuta: i.pedidosPendientes,
-    proximaEntregaMin: proximas.length === 0 ? null : Math.round(Math.min(...proximas)),
+    proximaEntregaMin: proxima === Infinity ? null : Math.round(proxima),
     saturacion: mensaje.unidades.length === 0 ? 0 : i.unidadesEnRuta / mensaje.unidades.length,
   };
 }
+
+/**
+ * Adapta una vez por arreglo de entrada: el reloj interpolado reconstruye los datos cada 100 ms, pero las
+ * listas que no dependen de él (almacenes, bloqueos, eventos) solo cambian cuando llega otro mensaje.
+ */
+function porIdentidad<K extends object, V>(adaptar: (entrada: K) => V): (entrada: K) => V {
+  const memo = new WeakMap<K, V>();
+  return (entrada) => {
+    if (!memo.has(entrada)) memo.set(entrada, adaptar(entrada));
+    return memo.get(entrada) as V;
+  };
+}
+
+const adaptarAlmacenes = porIdentidad((almacenes: MensajeEstadoApi['almacenes']): AlmacenOperacion[] =>
+  almacenes.map((a) => ({
+    id: a.codigo,
+    stock: a.stockActual,
+    capacidad: a.capacidadMaxima,
+    porcentajeStock: a.stockActual === null || !a.capacidadMaxima ? null : Math.round((a.stockActual / a.capacidadMaxima) * 100),
+    nivel: a.nivelInventario,
+  })),
+);
+const adaptarBloqueos = porIdentidad((bloqueos: MensajeEstadoApi['bloqueos']) => bloqueos.flatMap(adaptarBloqueo));
+const adaptarEventos = porIdentidad((eventos: MensajeEventoApi[]) => eventos.map(adaptarEvento));
 
 /**
  * @param mensaje   última instantánea de la ejecución
@@ -256,13 +282,6 @@ export function construirDatosOperacion(mensaje: MensajeEstadoApi, ahoraMs: numb
   mensaje.pedidos.forEach((p) => {
     pedidos[p.codigo] = adaptarPedido(p, ahoraMs);
   });
-  const almacenes: AlmacenOperacion[] = mensaje.almacenes.map((a) => ({
-    id: a.codigo,
-    stock: a.stockActual,
-    capacidad: a.capacidadMaxima,
-    porcentajeStock: a.stockActual === null || !a.capacidadMaxima ? null : Math.round((a.stockActual / a.capacidadMaxima) * 100),
-    nivel: a.nivelInventario,
-  }));
   return {
     ejecucionId: mensaje.ejecucionId,
     tipoEscenario: mensaje.tipoEscenario,
@@ -279,10 +298,10 @@ export function construirDatosOperacion(mensaje: MensajeEstadoApi, ahoraMs: numb
     factorAceleracion: mensaje.factorAceleracion,
     flota: mensaje.unidades.map((u) => adaptarUnidad(u, pedidos, ahoraMs)),
     pedidos,
-    bloqueos: mensaje.bloqueos.flatMap(adaptarBloqueo),
-    eventos: eventos.map(adaptarEvento),
+    bloqueos: adaptarBloqueos(mensaje.bloqueos),
+    eventos: adaptarEventos(eventos),
     resumen: resumir(mensaje, mensaje.pedidos, ahoraMs),
-    almacenes,
+    almacenes: adaptarAlmacenes(mensaje.almacenes),
     indicadores: mensaje.indicadores,
   };
 }

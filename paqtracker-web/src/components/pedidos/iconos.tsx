@@ -11,9 +11,6 @@ import depositoCentral from '../../assets/figma/pedidos/deposito-central.svg';
 import depositoIntermedio from '../../assets/figma/pedidos/deposito-intermedio.svg';
 import almacenIntermedio from '../../assets/figma/pedidos/almacen-intermedio.svg';
 import almacenIntermedioRuta from '../../assets/figma/pedidos/almacen-intermedio-ruta.svg';
-import iconoAuto from '../../assets/figma/pedidos/icono-auto.svg';
-import iconoMoto from '../../assets/figma/pedidos/icono-moto.svg';
-import iconoBici from '../../assets/figma/pedidos/icono-bici.svg';
 import halo from '../../assets/figma/pedidos/halo.svg';
 import destinoRiesgo from '../../assets/figma/pedidos/destino-riesgo.svg';
 import destinoAmbar from '../../assets/figma/pedidos/destino-ambar.svg';
@@ -62,26 +59,6 @@ export const MarcadorAlmacen: React.FC<{ almacen: IdAlmacen; cx: number; cy: num
     )}
   </div>
 );
-
-/** Caja visible del ícono en Figma y desplazamiento del SVG (que incluye su sombra). */
-const ICONO_VEHICULO: Record<TipoUnidad, { src: string; ancho: number; alto: number; dx: number; dy: number }> = {
-  AUTO: { src: iconoAuto, ancho: 19.8, alto: 10, dx: 4.3, dy: 3.3 },
-  MOTO: { src: iconoMoto, ancho: 20.79, alto: 11.06, dx: 4.3, dy: 3.3 },
-  BICICLETA: { src: iconoBici, ancho: 21.45, alto: 13.04, dx: 4.3, dy: 3.3 },
-};
-
-/** Ícono de la unidad centrado en (cx, cy) dentro de un contenedor relativo. */
-export const IconoVehiculo: React.FC<{ tipo: TipoUnidad; cx: number; cy: number }> = ({ tipo, cx, cy }) => {
-  const { src, ancho, alto, dx, dy } = ICONO_VEHICULO[tipo];
-  return (
-    <img
-      src={src}
-      alt=""
-      className="absolute block max-w-none"
-      style={{ left: cx - ancho / 2 - dx, top: cy - alto / 2 - dy }}
-    />
-  );
-};
 
 /**
  * Unidad en ruta: halo de 26 px centrado en el nodo, con el ícono ligeramente elevado como en el diseño.

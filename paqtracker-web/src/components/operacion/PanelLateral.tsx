@@ -11,7 +11,7 @@ import type { Coordenada } from '../../types/domain';
 import type { HitoTrazabilidad, PedidoOperacion, UnidadOperacion } from '../../types/operacion';
 import type { NivelHolgura } from '../../types/pedidos';
 import { colorDeUnidad, iconoVehiculo } from '../map/iconosVehiculo';
-import { COLOR_HOLGURA } from '../pedidos/estilos';
+import { COLOR_HOLGURA, FONDO_NIVEL } from '../pedidos/estilos';
 import { PuntoHolgura } from '../pedidos/iconos';
 import { BitacoraEventos } from './BitacoraEventos';
 import { FilaConBarra, TituloSeccion } from './comunes';
@@ -52,12 +52,6 @@ const BORDE_NIVEL: Record<NivelHolgura, string> = {
   AMBAR: 'border-[#B45309]',
   VERDE: 'border-[#15803D]',
   CERRADO: 'border-[#CBD5E1]',
-};
-const FONDO_NIVEL: Record<NivelHolgura, string> = {
-  ROJO: 'bg-[#B91C1C]',
-  AMBAR: 'bg-[#B45309]',
-  VERDE: 'bg-[#15803D]',
-  CERRADO: 'bg-[#94A3B8]',
 };
 
 const Semaforo: React.FC<{ nivel: NivelHolgura }> = ({ nivel }) =>

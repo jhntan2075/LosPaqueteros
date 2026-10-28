@@ -1,6 +1,5 @@
 import {
   ALMACENES,
-  CORTE_HOLGURA,
   MALLA_ALTO_KM,
   MALLA_ANCHO_KM,
   TIEMPO_SERVICIO_MINUTOS,
@@ -11,7 +10,6 @@ import {
   type TipoUnidad,
 } from '../config/dominio';
 import type { Coordenada } from '../types/domain';
-import type { NivelHolgura } from '../types/pedidos';
 import { capitalizar, unirAlternativas } from './formato';
 
 // Estimación previa al registro (panel "Factibilidad en vivo" de PE-01). Usa distancia
@@ -87,11 +85,3 @@ export function evaluarFactibilidad(destino: Coordenada, cantidad: number, plazo
     unidadesNecesarias: capacidadMayor > 0 ? Math.ceil(cantidad / capacidadMayor) : 0,
   };
 }
-
-/** Semáforo de holgura según la fracción del plazo que queda libre. */
-export const nivelDeHolgura = (holguraMinutos: number, plazoMinutos: number): NivelHolgura => {
-  const fraccion = holguraMinutos / plazoMinutos;
-  if (fraccion > CORTE_HOLGURA.ambar) return 'VERDE';
-  if (fraccion >= CORTE_HOLGURA.rojo) return 'AMBAR';
-  return 'ROJO';
-};
