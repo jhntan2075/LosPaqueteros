@@ -35,7 +35,7 @@ public class MapeadorEjecucion {
                 semaforo.fraccionAmbar());
         return new RespuestaEjecucion(configuracion.id(), configuracion.nombre(),
                 configuracion.tipoEscenario().name(), motor.getEstado().name(), configuracion.algoritmo().name(),
-                configuracion.fechaInicio(), configuracion.dias(),
+                configuracion.fechaInicio(), configuracion.horaInicio(), configuracion.dias(),
                 instantanea == null ? null : instantanea.relojSimuladoFormateado(),
                 instantanea == null ? null : instantanea.relojRealFormateado(), parametros,
                 instantanea == null ? null : instantanea.indicadores(), configuracion.flota());

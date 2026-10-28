@@ -5,6 +5,7 @@ import pe.pucp.paqtracker.modulos.planificacion.aplicacion.dto.ComposicionFlota;
 import pe.pucp.paqtracker.modulos.planificacion.dominio.AlgoritmoPlanificacion;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalTime;
 
 /**
  * Parametros fijos de un motor de ejecucion.
@@ -14,6 +15,7 @@ import java.time.LocalDate;
  * @param tipoEscenario     escenario
  * @param algoritmo         metaheuristica
  * @param fechaInicio       primer dia del horizonte
+ * @param horaInicio        hora del primer dia en la que arranca el reloj
  * @param dias              dias del horizonte
  * @param factorAceleracion factor k
  * @param scSegundos        segundos reales entre difusiones
@@ -23,7 +25,7 @@ import java.time.LocalDate;
  * @param flota             composicion de la flota
  */
 public record ConfiguracionMotor(String id, String nombre, TipoEscenario tipoEscenario,
-                                 AlgoritmoPlanificacion algoritmo, LocalDate fechaInicio, int dias,
+                                 AlgoritmoPlanificacion algoritmo, LocalDate fechaInicio, LocalTime horaInicio, int dias,
                                  double factorAceleracion, int scSegundos, int saMinutos, int maxPasosPorTick,
                                  Instant creadaEn, ComposicionFlota flota) {
 }

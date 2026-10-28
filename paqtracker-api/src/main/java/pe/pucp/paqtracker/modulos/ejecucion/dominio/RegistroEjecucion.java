@@ -2,6 +2,7 @@ package pe.pucp.paqtracker.modulos.ejecucion.dominio;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalTime;
 
 /**
  * Datos persistentes de una ejecucion: su configuracion y su resultado final. El estado en vivo
@@ -12,6 +13,7 @@ import java.time.LocalDate;
  * @param estado             estado al momento de guardar
  * @param algoritmo          GA o IACO
  * @param fechaInicio        primer dia del horizonte
+ * @param horaInicio         hora del primer dia en la que arranca el reloj
  * @param dias               dias del horizonte
  * @param factorAceleracion  factor k
  * @param creadaEn           instante real de creacion
@@ -24,7 +26,8 @@ import java.time.LocalDate;
  * @param bicicletas         bicicletas de la flota
  */
 public record RegistroEjecucion(String id, TipoEscenario tipoEscenario, EstadoEjecucion estado, String algoritmo,
-                                LocalDate fechaInicio, int dias, double factorAceleracion, Instant creadaEn,
+                                LocalDate fechaInicio, LocalTime horaInicio, int dias, double factorAceleracion,
+                                Instant creadaEn,
                                 Instant finalizadaEn, int entregas, int incumplimientos, Instant fechaColapso,
                                 int autos, int motos, int bicicletas) {
 }

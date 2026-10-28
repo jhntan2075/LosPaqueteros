@@ -67,6 +67,7 @@ describe('formato', () => {
     expect(formatearCronometro(3_909_000)).toBe('1:05:09');
     expect(formatearCronometro(-1)).toBe('00:00');
     expect(formatearDiasHoras(((4 * 24 + 9) * 60 + 12) * 60_000)).toBe('4 d 09 h 12 m');
+    expect(formatearDiasHoras(((26 * 60 + 3) * 60 + 4) * 1000, true)).toBe('1 d 02 h 03 m 04 s');
   });
 
   it('suma minutos, capitaliza y une alternativas', () => {

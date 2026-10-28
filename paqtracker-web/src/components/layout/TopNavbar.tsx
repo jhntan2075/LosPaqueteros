@@ -1,6 +1,7 @@
 import React from 'react';
 import logo from '../../assets/marca/logo.svg';
 import { LayoutGrid, Package, PlayCircle, BarChart3, Clock, Radio } from 'lucide-react';
+import { RelojReal } from './RelojReal';
 
 export type TabModulo = 'operacion' | 'pedidos' | 'simulacion' | 'metricas';
 
@@ -80,6 +81,19 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
             <span className="tabular-nums font-semibold text-[12px] sm:text-[13px] text-[#0F172A]">
               {relojSimulado}
             </span>
+          </div>
+        )}
+
+        {/* Fecha y hora real del equipo, junto al reloj de la operación (en Simulación va en su encabezado) */}
+        {relojSimulado && (
+          <div
+            role="group"
+            aria-label="Fecha y hora real"
+            className="items-center gap-1.5 px-1 shrink-0 hidden lg:flex"
+            title="Fecha y hora real"
+          >
+            <span className="font-sans text-[11px] text-[#64748B]">Real</span>
+            <RelojReal className="tabular-nums text-[12px] text-[#0F172A]" />
           </div>
         )}
 

@@ -273,13 +273,18 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
     const termino = terminoBusqueda.trim().toUpperCase().replace(/^#?(\d+)$/, '#$1');
     const destino = destinos.find((d) => d.pedido === termino);
     const unidad = unidades.find((u) => u.codigo === termino);
-    setSinResultados(!destino && !unidad);
+    const nombre = terminoBusqueda.trim().toLowerCase();
+    const almacen = ALMACENES.find((a) => [a.id, a.nombre, a.nombreCorto].some((n) => n.toLowerCase() === nombre));
+    setSinResultados(!destino && !unidad && !almacen);
     if (destino) {
       onSeleccionar({ tipo: 'pedido', codigo: destino.pedido });
       centrarEn(destino.destino);
     } else if (unidad) {
       onSeleccionar({ tipo: 'vehiculo', codigo: unidad.codigo });
       centrarEn(unidad.posicion);
+    } else if (almacen) {
+      onSeleccionar({ tipo: 'almacen', codigo: almacen.id });
+      centrarEn(almacen.ubicacion);
     }
   };
 
@@ -309,7 +314,7 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
           <Search className="w-3.5 h-3.5 text-[#64748B] shrink-0" />
           <input
             type="search"
-            placeholder="Pedido o unidad (#1088, A-04)"
+            placeholder="Pedido, unidad o almacén"
             aria-label="Buscar pedido o unidad en el mapa"
             list="mapa-objetos"
             value={terminoBusqueda}
@@ -324,16 +329,19 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
           <span role="status" className="absolute left-0 top-[36px] whitespace-nowrap">
             {sinResultados && (
               <span className="block bg-white border border-[#FECACA] rounded-[6px] px-2 py-1 font-sans text-[12px] text-[#B91C1C] shadow-xs">
-                No hay pedidos ni unidades en el mapa con «{terminoBusqueda.trim()}»
+                No hay pedidos, unidades ni almacenes en el mapa con «{terminoBusqueda.trim()}»
               </span>
             )}
           </span>
           <datalist id="mapa-objetos">
-            {destinos.map((d) => (
-              <option key={d.pedido} value={d.pedido} />
+            {[...new Set(destinos.map((d) => d.pedido))].map((pedido) => (
+              <option key={pedido} value={pedido} />
             ))}
             {unidades.map((u) => (
               <option key={u.codigo} value={u.codigo} />
+            ))}
+            {ALMACENES.map((a) => (
+              <option key={a.id} value={a.nombre} />
             ))}
           </datalist>
         </form>
@@ -514,12 +522,23 @@ interface CapasMapaProps {
   nodoActivo: Coordenada;
 }
 
+/** Pedidos que se nombran en el tooltip de un almacén; el resto se resume como "+N". */
+const MAX_PEDIDOS_TOOLTIP = 3;
+
+/** Pedidos a bordo de las unidades que salieron del almacén, p. ej. "Salen: #1001, #1002 +3". */
+function pedidosQueSalen(unidades: UnidadOperacion[], almacen: AlmacenOperacion['id']): string | undefined {
+  const codigos = [...new Set(unidades.filter((u) => u.origen === almacen).flatMap((u) => u.paradas.map((p) => p.pedido)))];
+  if (codigos.length === 0) return undefined;
+  const resto = codigos.length - MAX_PEDIDOS_TOOLTIP;
+  return `Salen: ${codigos.slice(0, MAX_PEDIDOS_TOOLTIP).join(', ')}${resto > 0 ? ` +${resto}` : ''}`;
+}
+
 /** Contenido del tooltip y punto del mapa sobre el que se ancla (encima del símbolo). */
 function contenidoTooltip(
   objeto: ObjetoHover,
   datos: Pick<GridMapProps, 'unidades' | 'destinos' | 'bloqueos'> & { almacenes: AlmacenOperacion[] },
   reloj: Date,
-): { titulo: string; detalle: string; color?: string; punto: Coordenada; alzaPx: number } | null {
+): { titulo: string; detalle: string; extra?: string; color?: string; punto: Coordenada; alzaPx: number } | null {
   if (objeto.tipo === 'pedido') {
     const d = datos.destinos.find((x) => x.pedido === objeto.codigo);
     if (!d) return null;
@@ -550,6 +569,7 @@ function contenidoTooltip(
     return {
       titulo: `Almacén ${a.nombre}`,
       detalle: conStock ? `Stock ${estado.porcentajeStock} % · ${NOMBRE_INVENTARIO[estado.nivel as 'ROJO'].toLowerCase()}` : 'Stock ilimitado',
+      extra: pedidosQueSalen(datos.unidades, a.id),
       color: conStock ? COLOR_NIVEL[estado.nivel as 'ROJO'] : undefined,
       punto: a.ubicacion,
       alzaPx: 20,
@@ -587,6 +607,7 @@ const TooltipObjeto: React.FC<
         {contenido.color && <span className="size-[7px] rounded-full shrink-0" style={{ background: contenido.color }} />}
         {contenido.detalle}
       </p>
+      {contenido.extra && <p className="text-[12px] text-[#CBD5E1] tabular-nums">{contenido.extra}</p>}
     </div>
   );
 };
@@ -606,6 +627,22 @@ function dividirRuta(unidad: UnidadOperacion): { recorrido: Coordenada[]; pendie
     if (enX || enY) return { recorrido: [...ruta.slice(0, i + 1), p], pendiente: [p, ...ruta.slice(i + 1)] };
   }
   return { recorrido: [], pendiente: ruta };
+}
+
+/**
+ * Transform del ícono según el sentido del tramo que recorre, con centro en su anclaje. Las siluetas
+ * miran al este: al oeste se espejan y al norte o al sur se giran 90°. Detenida, queda como está.
+ */
+function orientacionIcono(unidad: UnidadOperacion): string | undefined {
+  const { pendiente } = dividirRuta(unidad);
+  const p = pendiente[0];
+  const siguiente = pendiente.find((q) => q.x !== p?.x || q.y !== p?.y);
+  if (!p || !siguiente) return undefined;
+  const dx = siguiente.x - p.x;
+  const dy = siguiente.y - p.y;
+  if (Math.abs(dx) >= Math.abs(dy)) return dx < 0 ? 'scale(-1, 1)' : undefined;
+  // En pantalla la y crece hacia abajo (sur).
+  return dy > 0 ? 'rotate(90)' : 'rotate(-90)';
 }
 
 const CapasMapa: React.FC<CapasMapaProps> = ({ vista, lienzo, capas, unidades, destinos, bloqueos, almacenes, seleccion, nodoActivo }) => {
@@ -635,12 +672,17 @@ const CapasMapa: React.FC<CapasMapaProps> = ({ vista, lienzo, capas, unidades, d
 
   const halo = { stroke: '#FFFFFF', strokeWidth: 3, paintOrder: 'stroke' } as const;
 
-  // Unidad destacada: la seleccionada o la que lleva el pedido seleccionado.
-  const unidadDestacada =
-    seleccion?.tipo === 'vehiculo' ? seleccion.codigo : seleccion?.tipo === 'pedido' ? destinos.find((d) => d.pedido === seleccion.codigo)?.unidad : undefined;
+  // Unidades destacadas: la seleccionada o todas las que llevan el pedido seleccionado (puede ir fraccionado).
+  const unidadesDestacadas = new Set(
+    seleccion?.tipo === 'vehiculo'
+      ? [seleccion.codigo]
+      : seleccion?.tipo === 'pedido'
+        ? destinos.filter((d) => d.pedido === seleccion.codigo).map((d) => d.unidad)
+        : [],
+  );
   const enRuta = unidades.filter((u) => u.estado === 'EN_RUTA');
-  // La ruta destacada se dibuja al final para quedar encima de las demás.
-  const ordenRutas = [...enRuta].sort((a, b) => Number(a.codigo === unidadDestacada) - Number(b.codigo === unidadDestacada));
+  // Las rutas destacadas se dibujan al final para quedar encima de las demás.
+  const ordenRutas = [...enRuta].sort((a, b) => Number(unidadesDestacadas.has(a.codigo)) - Number(unidadesDestacadas.has(b.codigo)));
 
   const activo = proyectar(vista, nodoActivo);
 
@@ -703,7 +745,7 @@ const CapasMapa: React.FC<CapasMapaProps> = ({ vista, lienzo, capas, unidades, d
       {capas.rutas &&
         ordenRutas.map((unidad) => {
           const { recorrido, pendiente } = dividirRuta(unidad);
-          const destacada = unidad.codigo === unidadDestacada;
+          const destacada = unidadesDestacadas.has(unidad.codigo);
           return (
             <g key={`ruta-${unidad.codigo}`}>
               {recorrido.length > 1 && <path d={trazado(vista, recorrido)} fill="none" stroke="#9EABBA" strokeWidth="2" />}
@@ -763,7 +805,7 @@ const CapasMapa: React.FC<CapasMapaProps> = ({ vista, lienzo, capas, unidades, d
           const { x, y } = proyectar(vista, d.destino);
           const seleccionado = seleccion?.tipo === 'pedido' && seleccion.codigo === d.pedido;
           return (
-            <g key={d.pedido} transform={`translate(${x}, ${y})`} className="cursor-pointer" data-objeto={`pedido:${d.pedido}`}>
+            <g key={`${d.pedido}-${d.unidad}`} transform={`translate(${x}, ${y})`} className="cursor-pointer" data-objeto={`pedido:${d.pedido}`}>
               {seleccionado && <circle cx="0" cy={CENTRO_CABEZA_PIN} r="13" fill="none" stroke="#1E40AF" strokeWidth="2" />}
               <PinDestino color={COLOR_NIVEL[d.nivel]} critico={d.nivel === 'ROJO'} />
             </g>
@@ -785,7 +827,14 @@ const CapasMapa: React.FC<CapasMapaProps> = ({ vista, lienzo, capas, unidades, d
             return (
               <g key={u.codigo} transform={`translate(${x}, ${y})`} className="cursor-pointer" data-objeto={`vehiculo:${u.codigo}`}>
                 {seleccionada && <image href={haloSeleccion} x={-13} y={-13} width={26} height={26} />}
-                <image href={icono.href} x={-icono.centroX} y={-icono.centroY} width={icono.ancho} height={icono.alto} />
+                <image
+                  href={icono.href}
+                  x={-icono.centroX}
+                  y={-icono.centroY}
+                  width={icono.ancho}
+                  height={icono.alto}
+                  transform={averiada ? undefined : orientacionIcono(u)}
+                />
                 {averiada ? (
                   <text x={rotuloX} y="4" fill="#B91C1C" fontSize="12" fontWeight="600" {...halo}>
                     ✕ {u.codigo}

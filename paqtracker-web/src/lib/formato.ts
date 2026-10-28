@@ -73,8 +73,11 @@ export const formatearCronometro = (ms: number) => {
   return h > 0 ? `${h}:${dosDigitos(m)}:${dosDigitos(s)}` : `${dosDigitos(m)}:${dosDigitos(s)}`;
 };
 
-/** Duración simulada larga: "4 d 09 h 12 m". */
-export const formatearDiasHoras = (ms: number) => {
+/** Duración simulada larga: "4 d 09 h 12 m" (con segundos: "4 d 09 h 12 m 05 s"). */
+export const formatearDiasHoras = (ms: number, conSegundos = false) => {
   const minutos = Math.floor(ms / 60_000);
-  return `${Math.floor(minutos / 1440)} d ${dosDigitos(Math.floor((minutos % 1440) / 60))} h ${dosDigitos(minutos % 60)} m`;
+  return (
+    `${Math.floor(minutos / 1440)} d ${dosDigitos(Math.floor((minutos % 1440) / 60))} h ${dosDigitos(minutos % 60)} m` +
+    (conSegundos ? ` ${dosDigitos(Math.floor(ms / 1000) % 60)} s` : '')
+  );
 };

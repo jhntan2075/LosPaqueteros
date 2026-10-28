@@ -180,6 +180,8 @@ export interface EjecucionApi {
   estado: EstadoEjecucionApi;
   algoritmo: 'GA' | 'IACO';
   fechaInicio: string;
+  /** HH:mm:ss del primer día en que arrancó el reloj. */
+  horaInicio: string;
   dias: number;
   relojSimulado: string | null;
   relojReal: string | null;
@@ -198,6 +200,8 @@ export interface SolicitudEjecucionApi {
   tipoEscenario: 'SIMULACION_PERIODO' | 'COLAPSO_LOGISTICO';
   /** yyyy-MM-dd */
   fechaInicio: string;
+  /** HH:mm del primer día en que arranca el reloj; el servidor usa 00:00 si se omite. */
+  horaInicio?: string;
   dias?: number;
   algoritmo?: 'GA' | 'IACO';
   flota?: ComposicionFlotaApi;

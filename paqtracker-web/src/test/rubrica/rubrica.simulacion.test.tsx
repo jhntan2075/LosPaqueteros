@@ -19,6 +19,7 @@ const ejecucion: EjecucionApi = {
   estado: 'EN_CURSO',
   algoritmo: 'GA',
   fechaInicio: '2026-03-03',
+  horaInicio: '00:00:00',
   dias: 5,
   relojSimulado: null,
   relojReal: null,
@@ -55,9 +56,15 @@ describe('Rúbrica · inicio de la simulación semanal', () => {
     expect(clienteApi.crearEjecucion).toHaveBeenCalledWith(expect.objectContaining({ tipoEscenario: 'SIMULACION_PERIODO', fechaInicio: '2026-03-03', dias: 5 }));
   });
 
-  it.fails('C1 (brecha) · pide también la hora de inicio (hoy se fija a las 00:00)', () => {
+  it('C1 · pide también la hora de inicio y la envía al crear la simulación', async () => {
     render(<ConfiguracionEscenario onAbrir={() => {}} />);
-    expect(screen.getByLabelText(/Hora de inicio/)).toBeTruthy();
+    expect((screen.getByLabelText(/Hora de inicio/) as HTMLInputElement).value).toBe('00:00');
+    fireEvent.change(screen.getByLabelText(/Fecha de inicio/), { target: { value: '2026-03-03' } });
+    fireEvent.change(screen.getByLabelText(/Hora de inicio/), { target: { value: '08:30' } });
+    fireEvent.click(botonEjecutar());
+    await waitFor(() =>
+      expect(clienteApi.crearEjecucion).toHaveBeenCalledWith(expect.objectContaining({ fechaInicio: '2026-03-03', horaInicio: '08:30' })),
+    );
   });
 });
 

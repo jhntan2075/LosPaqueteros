@@ -49,9 +49,10 @@ public class CasoUsoEjecutarColapso {
         AlgoritmoPlanificacion algoritmo = AlgoritmoPlanificacion.desde(solicitud.algoritmo() == null
                 ? propiedades.planificador().algoritmo() : solicitud.algoritmo());
         String id = "colapso-" + UUID.randomUUID().toString().substring(0, LONGITUD_ID);
-        MotorEjecucion motor = creador.crear(id, "Simulacion hasta el colapso desde " + solicitud.fechaInicio(),
-                TipoEscenario.COLAPSO_LOGISTICO, algoritmo, solicitud.fechaInicio(), dias,
-                propiedades.ejecucion().factorColapso(), cargadorDatos.cargarRango(solicitud.fechaInicio(), dias),
+        MotorEjecucion motor = creador.crear(id, "Simulacion hasta el colapso desde " + solicitud.descripcionInicio(),
+                TipoEscenario.COLAPSO_LOGISTICO, algoritmo, solicitud.fechaInicio(),
+                solicitud.horaInicioOMedianoche(), dias,
+                propiedades.ejecucion().factorColapso(), cargadorDatos.cargarRango(solicitud.fechaInicio(), solicitud.horaInicioOMedianoche(), dias),
                 solicitud.flotaOPorDefecto());
         return mapeador.aRespuesta(motor);
     }

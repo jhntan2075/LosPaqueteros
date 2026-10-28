@@ -119,7 +119,7 @@ describe('Rúbrica · panel · almacenes', () => {
     expect(panel().getByText('10/100').className).toContain('text-[#B91C1C]');
   });
 
-  it.fails('C61 (brecha) · se puede buscar un almacén (p. ej. "Central") desde el buscador del mapa', () => {
+  it('C61 · se puede buscar un almacén (p. ej. "Central") desde el buscador del mapa', () => {
     montarOperacion();
     const buscador = screen.getByLabelText('Buscar pedido o unidad en el mapa');
     fireEvent.change(buscador, { target: { value: 'Central' } });
@@ -136,7 +136,7 @@ describe('Rúbrica · panel · incidencias (cancelaciones = averías en este dom
     expect(fila.textContent).toContain('hoy 10:10'); // vuelve INICIO + 130 min = 10:10
   });
 
-  it.fails('C64 (brecha) · la lista de averías indica la ubicación (nodo) de la unidad', () => {
+  it('C64 · la lista de averías indica la ubicación (nodo) de la unidad', () => {
     montarOperacion({ subvista: 'incidencias' });
     expect(panel().getByRole('button', { name: /Bicicleta B-01/ }).textContent).toContain('(10,10)');
   });
@@ -167,7 +167,7 @@ describe('Rúbrica · panel · pedidos', () => {
     expect(panel().getByRole('heading', { name: 'Pedido #1001' })).toBeTruthy();
   });
 
-  it.fails('C67 (brecha) · un pedido fraccionado en dos unidades resalta las dos rutas', () => {
+  it('C67 · un pedido fraccionado en dos unidades resalta las dos rutas', () => {
     // #1001 repartido entre A-01 y M-01: ambas lo llevan en sus paradas.
     const base = mensajeRubrica();
     const unidades = base.unidades!.map((u) =>

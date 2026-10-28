@@ -43,6 +43,7 @@ import pe.pucp.paqtracker.util.Malla;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.List;
@@ -589,7 +590,8 @@ class MotorEjecucionTest {
         SeguimientoPedidos seguimiento = new SeguimientoPedidos(lineaTiempo, propiedades.semaforo(),
                 CodigosFlota.de(simulacion.getFlota()), 100);
         ConfiguracionMotor configuracion = new ConfiguracionMotor("prueba", "Prueba",
-                tipoEscenario, AlgoritmoPlanificacion.GA, LocalDate.of(2026, 1, 1), 2, FACTOR,
+                tipoEscenario, AlgoritmoPlanificacion.GA, LocalDate.of(2026, 1, 1), LocalTime.MIDNIGHT, 2,
+                FACTOR,
                 SC_SIN_TICK_PROGRAMADO, SA, Integer.MAX_VALUE, pared.instant(), flota);
         PuertoDifusion puerto = new PuertoDifusion() {
             @Override
