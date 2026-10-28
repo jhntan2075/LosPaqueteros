@@ -6,6 +6,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 
 /**
  * Fila de la tabla {@code ejecucion}. Los enums se guardan como texto y los instantes como fecha y
@@ -30,6 +31,9 @@ public class EntidadEjecucion {
 
     @Column(name = "fecha_inicio", nullable = false)
     private LocalDate fechaInicio;
+
+    @Column(name = "hora_inicio", nullable = false)
+    private LocalTime horaInicio;
 
     @Column(name = "dias", nullable = false)
     private int dias;
@@ -71,6 +75,7 @@ public class EntidadEjecucion {
      * @param estado            estado
      * @param algoritmo         algoritmo
      * @param fechaInicio       primer dia del horizonte
+     * @param horaInicio        hora del primer dia en la que arranca el reloj
      * @param dias              dias del horizonte
      * @param factorAceleracion factor k
      * @param creadaEn          creacion, UTC
@@ -83,7 +88,7 @@ public class EntidadEjecucion {
      * @param bicicletas        bicicletas de la flota
      */
     public EntidadEjecucion(String id, String tipoEscenario, String estado, String algoritmo, LocalDate fechaInicio,
-                            int dias, double factorAceleracion, LocalDateTime creadaEn, LocalDateTime finalizadaEn,
+                            LocalTime horaInicio, int dias, double factorAceleracion, LocalDateTime creadaEn, LocalDateTime finalizadaEn,
                             int entregas, int incumplimientos, LocalDateTime fechaColapso, int autos, int motos,
                             int bicicletas) {
         this.autos = autos;
@@ -94,6 +99,7 @@ public class EntidadEjecucion {
         this.estado = estado;
         this.algoritmo = algoritmo;
         this.fechaInicio = fechaInicio;
+        this.horaInicio = horaInicio;
         this.dias = dias;
         this.factorAceleracion = factorAceleracion;
         this.creadaEn = creadaEn;
@@ -121,6 +127,10 @@ public class EntidadEjecucion {
 
     public LocalDate getFechaInicio() {
         return fechaInicio;
+    }
+
+    public LocalTime getHoraInicio() {
+        return horaInicio;
     }
 
     public int getDias() {

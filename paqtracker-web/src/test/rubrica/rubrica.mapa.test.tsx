@@ -112,7 +112,7 @@ describe('Rúbrica · MAPA · almacén principal', () => {
     expect(screen.getByRole('button', { name: /#1001/ })).toBeTruthy();
   });
 
-  it.fails('C9 (brecha) · al pasar el mouse por el central se listan los pedidos que salen', () => {
+  it('C9 · al pasar el mouse por el central se listan los pedidos que salen', () => {
     const { container } = montarOperacion();
     pasarMouse(objetoMapa(container, 'almacen:CENTRAL')!);
     expect(tooltip()).toContain('#1001');
@@ -164,7 +164,7 @@ describe('Rúbrica · MAPA · almacenes intermedios', () => {
     expect(barra('INTERMEDIO_2')).toBeCloseTo(12 * 0.1);
   });
 
-  it.fails('C16 (brecha) · el intermedio presenta la lista de pedidos que arriban (o salen) al pasar el mouse', () => {
+  it('C16 · el intermedio presenta la lista de pedidos que arriban (o salen) al pasar el mouse', () => {
     const { container } = montarOperacion();
     pasarMouse(objetoMapa(container, 'almacen:INTERMEDIO_2')!);
     expect(tooltip()).toContain('#1002');
@@ -217,11 +217,11 @@ describe('Rúbrica · MAPA · unidades de transporte', () => {
     expect(posicionEn(INICIO_MS + 60 * MIN)).toEqual({ x: 27, y: 24 });
   });
 
-  it.fails('C26 (brecha) · el ícono indica la dirección del desplazamiento (rotación o espejo según el sentido)', () => {
+  it('C26 · el ícono indica la dirección del desplazamiento (rotación o espejo según el sentido)', () => {
     const { container } = montarOperacion();
     const imagen = objetoMapa(container, 'vehiculo:A-01')!.querySelector('image')!;
-    // A-01 va hacia el sur: se esperaría un transform de rotación/espejo en el ícono.
-    expect(imagen.getAttribute('transform') ?? '').toMatch(/rotate|scale/);
+    // A-01 va hacia el sur: el ícono, que mira al este, se gira 90°.
+    expect(imagen.getAttribute('transform') ?? '').toBe('rotate(90)');
   });
 
   it('C27 · el movimiento es fluido: entre cuadros de 100 ms no hay saltos ni retrocesos', () => {

@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { TopNavbar } from '../../components/layout/TopNavbar';
 import { EstadoFlota } from '../../components/operacion/EstadoFlota';
 import { RailKpis } from '../../components/operacion/RailKpis';
 import { EncabezadoCorrida } from '../../components/simulacion/EncabezadoCorrida';
@@ -48,10 +49,23 @@ describe('Rúbrica · tiempos de la simulación', () => {
     expect(bloque('Fecha y hora simulada')).toContain('6 ene 2026 · 02:03:04');
   });
 
-  it.fails('C36 (brecha) · muestra fecha, hora, minuto y segundo del momento actual (tiempo real)', () => {
-    montarEncabezado();
-    // Solo se muestra el tiempo real transcurrido; no la fecha-hora real actual.
-    expect(screen.getByText(/Fecha y hora real/)).toBeTruthy();
+  it('C36 · muestra fecha, hora, minuto y segundo del momento actual (tiempo real)', () => {
+    vi.useFakeTimers({ toFake: ['Date', 'setInterval', 'clearInterval'] });
+    vi.setSystemTime(new Date(2026, 9, 28, 15, 4, 5));
+    try {
+      montarEncabezado();
+      expect(bloque('Fecha y hora real')).toContain('28 oct 2026 · 15:04:05');
+      // Se actualiza cada segundo.
+      act(() => vi.advanceTimersByTime(1000));
+      expect(bloque('Fecha y hora real')).toContain('28 oct 2026 · 15:04:06');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('C36 · en Operación la barra superior muestra la fecha y hora real junto al reloj de la operación', () => {
+    render(<TopNavbar tabActiva="operacion" onCambiarTab={() => {}} relojSimulado="28/10/2026 · 15:04:05" />);
+    expect(screen.getByRole('group', { name: 'Fecha y hora real' }).textContent).toMatch(/\d{1,2} \w{3} \d{4} · \d{2}:\d{2}:\d{2}/);
   });
 
   it('C37 · muestra el tiempo transcurrido dentro de lo simulado (días, horas, minutos)', () => {
@@ -59,7 +73,7 @@ describe('Rúbrica · tiempos de la simulación', () => {
     expect(bloque('Tiempo simulado transcurrido')).toContain('1 d 02 h 03 m');
   });
 
-  it.fails('C37 (brecha menor) · el tiempo simulado transcurrido incluye los segundos', () => {
+  it('C37 · el tiempo simulado transcurrido incluye los segundos', () => {
     montarEncabezado();
     expect(bloque('Tiempo simulado transcurrido')).toMatch(/04 s/);
   });

@@ -3,6 +3,7 @@ package pe.pucp.paqtracker.modulos.ejecucion.aplicacion.dto;
 import pe.pucp.paqtracker.modulos.difusion.aplicacion.dto.IndicadoresOperacion;
 import pe.pucp.paqtracker.modulos.planificacion.aplicacion.dto.ComposicionFlota;
 import java.time.LocalDate;
+import java.time.LocalTime;
 
 /**
  * Resumen de una ejecucion para listarla y controlarla.
@@ -13,6 +14,7 @@ import java.time.LocalDate;
  * @param estado        estado actual
  * @param algoritmo     GA o IACO
  * @param fechaInicio   primer dia del horizonte
+ * @param horaInicio    hora del primer dia en la que arranca el reloj
  * @param dias          dias del horizonte
  * @param relojSimulado reloj simulado legible
  * @param relojReal     reloj real legible
@@ -21,7 +23,7 @@ import java.time.LocalDate;
  * @param flota         composicion de la flota
  */
 public record RespuestaEjecucion(String id, String nombre, String tipoEscenario, String estado, String algoritmo,
-                                 LocalDate fechaInicio, int dias, String relojSimulado, String relojReal,
+                                 LocalDate fechaInicio, LocalTime horaInicio, int dias, String relojSimulado, String relojReal,
                                  ParametrosEjecucion parametros, IndicadoresOperacion indicadores,
                                  ComposicionFlota flota) {
 }

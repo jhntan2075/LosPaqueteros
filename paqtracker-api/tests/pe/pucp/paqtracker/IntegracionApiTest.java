@@ -91,6 +91,37 @@ class IntegracionApiTest {
     }
 
     @Test
+    void simulacionPeriodo_conHoraDeInicio_arrancaElRelojEnEsaHora() {
+        RestClient cliente = RestClient.create("http://localhost:" + puerto);
+        long sinHora = inicioDelReloj(cliente, Map.of("tipoEscenario", "SIMULACION_PERIODO",
+                "fechaInicio", "2026-01-01", "dias", 1), "00:00:00");
+        long conHora = inicioDelReloj(cliente, Map.of("tipoEscenario", "SIMULACION_PERIODO",
+                "fechaInicio", "2026-01-01", "horaInicio", "08:30", "dias", 1), "08:30:00");
+
+        assertEquals(TimeUnit.MINUTES.toMillis(8 * 60 + 30), conHora - sinHora);
+    }
+
+    @Test
+    void simulacionPeriodo_queTerminaEnUnMesSinVentas_seRechaza() {
+        RestClient cliente = RestClient.create("http://localhost:" + puerto);
+        // 31 ene 08:30 + 1 dia llega al 1 feb, y los fixtures solo traen ventas de enero.
+        assertEquals(400, estado(cliente.post().uri("/api/ejecuciones").contentType(MediaType.APPLICATION_JSON)
+                .body(Map.of("tipoEscenario", "SIMULACION_PERIODO", "fechaInicio", "2026-01-31",
+                        "horaInicio", "08:30", "dias", 1))));
+    }
+
+    /** Crea la ejecucion, comprueba la hora que informa, lee el inicio de su reloj y la detiene. */
+    private long inicioDelReloj(RestClient cliente, Map<String, Object> solicitud, String horaEsperada) {
+        Map<?, ?> creada = cliente.post().uri("/api/ejecuciones").contentType(MediaType.APPLICATION_JSON)
+                .body(solicitud).retrieve().body(Map.class);
+        assertEquals(horaEsperada, creada.get("horaInicio"));
+        String id = (String) creada.get("id");
+        Map<?, ?> estado = cliente.get().uri("/api/ejecuciones/{id}/estado", id).retrieve().body(Map.class);
+        cliente.post().uri("/api/ejecuciones/{id}/detener", id).retrieve().toBodilessEntity();
+        return ((Number) estado.get("relojSimuladoInicioMs")).longValue();
+    }
+
+    @Test
     void importarBloqueos_archivoConLineasInvalidas_lasInformaYNoLoGuarda() {
         RestClient cliente = RestClient.create("http://localhost:" + puerto);
         MultiValueMap<String, Object> formulario = new LinkedMultiValueMap<>();

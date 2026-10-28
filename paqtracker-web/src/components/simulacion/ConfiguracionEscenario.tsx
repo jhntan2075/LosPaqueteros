@@ -172,13 +172,14 @@ export const ConfiguracionEscenario: React.FC<ConfiguracionEscenarioProps> = ({ 
   const { crearEIniciar } = useEjecuciones();
   const [escenario, setEscenario] = useState<EscenarioSimulacion>('SIMULACION_PERIODO');
   const [fecha, setFecha] = useState('');
+  const [hora, setHora] = useState('00:00');
   const [archivos, setArchivos] = useState<Partial<Record<TipoArchivo, ArchivoCargado>>>({});
   const [subiendo, setSubiendo] = useState<TipoArchivo | null>(null);
   const [flota, setFlota] = useState<ComposicionFlotaApi>({ autos: UNIDADES.AUTO.cantidad, motos: UNIDADES.MOTO.cantidad, bicicletas: UNIDADES.BICICLETA.cantidad });
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const inicio = fecha ? new Date(`${fecha}T00:00`) : null;
+  const inicio = fecha && hora ? new Date(`${fecha}T${hora}`) : null;
   const inicioValido = inicio !== null && !Number.isNaN(inicio.getTime());
   const totalFlota = flota.autos + flota.motos + flota.bicicletas;
   const flotaValida = totalFlota > 0 && [flota.autos, flota.motos, flota.bicicletas].every((n) => n >= 0 && n <= MAXIMO_POR_TIPO);
@@ -217,6 +218,7 @@ export const ConfiguracionEscenario: React.FC<ConfiguracionEscenarioProps> = ({ 
       const ejecucion = await crearEIniciar({
         tipoEscenario: escenario,
         fechaInicio: fecha,
+        horaInicio: hora,
         dias: escenario === 'SIMULACION_PERIODO' ? DIAS_PERIODO : undefined,
         flota,
       });
@@ -281,14 +283,28 @@ export const ConfiguracionEscenario: React.FC<ConfiguracionEscenarioProps> = ({ 
             </Seccion>
 
             <Seccion numero="02" titulo="Periodo" resumen={inicioValido ? formatearFechaLarga(inicio, false) : 'Sin definir'} resumenPendiente={!inicioValido}>
-              <Etiqueta htmlFor="inicio-fecha">Fecha de inicio (la simulación arranca a las 00:00)</Etiqueta>
-              <input
-                id="inicio-fecha"
-                type="date"
-                value={fecha}
-                onChange={(e) => setFecha(e.target.value)}
-                className="w-[180px] h-[32px] px-[10px] border border-[#CBD5E1] rounded-[6px] tabular-nums text-[12px] text-[#0F172A] outline-none focus:border-[#1E40AF]"
-              />
+              <div className="flex flex-wrap gap-[16px]">
+                <div className="flex flex-col gap-[6px]">
+                  <Etiqueta htmlFor="inicio-fecha">Fecha de inicio</Etiqueta>
+                  <input
+                    id="inicio-fecha"
+                    type="date"
+                    value={fecha}
+                    onChange={(e) => setFecha(e.target.value)}
+                    className="w-[180px] h-[32px] px-[10px] border border-[#CBD5E1] rounded-[6px] tabular-nums text-[12px] text-[#0F172A] outline-none focus:border-[#1E40AF]"
+                  />
+                </div>
+                <div className="flex flex-col gap-[6px]">
+                  <Etiqueta htmlFor="inicio-hora">Hora de inicio</Etiqueta>
+                  <input
+                    id="inicio-hora"
+                    type="time"
+                    value={hora}
+                    onChange={(e) => setHora(e.target.value)}
+                    className="w-[120px] h-[32px] px-[10px] border border-[#CBD5E1] rounded-[6px] tabular-nums text-[12px] text-[#0F172A] outline-none focus:border-[#1E40AF]"
+                  />
+                </div>
+              </div>
             </Seccion>
 
             <Seccion numero="03" titulo="Datos de la simulación" resumen={`${Object.keys(archivos).length}/2 archivos nuevos`} resumenPendiente={Object.keys(archivos).length === 0}>

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { RelojReal } from '../layout/RelojReal';
 import { DialogoConfirmacion } from '../modals/DialogoConfirmacion';
 import { ESTADO_CORRIDA } from './estadoCorrida';
 import { formatearCronometro, formatearDiasHoras, formatearFechaLarga, formatearHora } from '../../lib/formato';
@@ -107,13 +108,17 @@ export const EncabezadoCorrida: React.FC<EncabezadoCorridaProps> = ({
         </span>
         <Separador />
         <Bloque etiqueta="Tiempo simulado transcurrido">
-          <span className="tabular-nums text-[12px] text-[#0F172A]">{formatearDiasHoras(simuladoMs)}</span>
+          <span className="tabular-nums text-[12px] text-[#0F172A]">{formatearDiasHoras(simuladoMs, true)}</span>
         </Bloque>
         <Separador />
         <Bloque etiqueta={colapso || terminada ? 'Tiempo real / Estado' : 'Tiempo real transcurrido / Restante'}>
           <span className="tabular-nums text-[12px] text-[#0F172A]">
             {formatearCronometro(transcurridoRealMs)} · {colapso || terminada ? 'terminada' : `~${formatearCronometro(restanteRealMs)}`}
           </span>
+        </Bloque>
+        <Separador />
+        <Bloque etiqueta="Fecha y hora real">
+          <RelojReal className="tabular-nums text-[12px] text-[#0F172A]" />
         </Bloque>
         {escenario === 'SIMULACION_PERIODO' && !colapso && (
           <>

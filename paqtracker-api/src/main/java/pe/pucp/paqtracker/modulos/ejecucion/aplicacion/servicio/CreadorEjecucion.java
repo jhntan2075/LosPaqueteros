@@ -10,6 +10,7 @@ import pe.pucp.paqtracker.modulos.planificacion.aplicacion.dto.ComposicionFlota;
 import pe.pucp.paqtracker.modulos.planificacion.dominio.AlgoritmoPlanificacion;
 import java.time.Clock;
 import java.time.LocalDate;
+import java.time.LocalTime;
 
 /**
  * Alta comun de una ejecucion: valida el cupo de simulaciones, arma el motor, lo registra y difunde
@@ -43,6 +44,7 @@ public class CreadorEjecucion {
      * @param tipo              escenario
      * @param algoritmo         metaheuristica
      * @param fechaInicio       primer dia del horizonte
+     * @param horaInicio        hora del primer dia en la que arranca el reloj
      * @param dias              dias del horizonte
      * @param factorAceleracion factor k
      * @param datos             pedidos, bloqueos y linea de tiempo
@@ -52,14 +54,15 @@ public class CreadorEjecucion {
      * @throws SolicitudInvalidaException    si la flota esta vacia o excede el tope por tipo
      */
     public MotorEjecucion crear(String id, String nombre, TipoEscenario tipo, AlgoritmoPlanificacion algoritmo,
-                                LocalDate fechaInicio, int dias, double factorAceleracion, DatosEscenario datos,
+                                LocalDate fechaInicio, LocalTime horaInicio, int dias, double factorAceleracion,
+                                DatosEscenario datos,
                                 ComposicionFlota flota) {
         validarFlota(flota);
         if (tipo != TipoEscenario.DIA_A_DIA && registro.contarSimulacionesActivas() >= parametros.maxSimultaneas()) {
             throw new OperacionNoPermitidaException("Ya hay " + parametros.maxSimultaneas()
                     + " simulaciones sin terminar; detenga una antes de crear otra");
         }
-        ConfiguracionMotor configuracion = new ConfiguracionMotor(id, nombre, tipo, algoritmo, fechaInicio, dias,
+        ConfiguracionMotor configuracion = new ConfiguracionMotor(id, nombre, tipo, algoritmo, fechaInicio, horaInicio, dias,
                 factorAceleracion, parametros.scSegundos(), parametros.saMinutos(), parametros.maxPasosPorTick(),
                 relojPared.instant(), flota);
         MotorEjecucion motor = fabrica.crear(configuracion, datos, tipo == TipoEscenario.COLAPSO_LOGISTICO);

@@ -579,8 +579,8 @@ public final class MotorEjecucion {
         Instant colapso = simulacion.huboColapso()
                 ? lineaTiempo.aFecha(resultado.getInstanteColapso()).toInstant() : null;
         repositorio.guardar(new RegistroEjecucion(configuracion.id(), configuracion.tipoEscenario(), estado,
-                configuracion.algoritmo().name(), configuracion.fechaInicio(), configuracion.dias(),
-                configuracion.factorAceleracion(), configuracion.creadaEn(), finalizadaEn,
+                configuracion.algoritmo().name(), configuracion.fechaInicio(), configuracion.horaInicio(),
+                configuracion.dias(), configuracion.factorAceleracion(), configuracion.creadaEn(), finalizadaEn,
                 resultado.getTotalEntregas(), resultado.getTotalIncumplimientos(), colapso,
                 configuracion.flota().autos(), configuracion.flota().motos(), configuracion.flota().bicicletas()));
     }

@@ -513,9 +513,9 @@ const ListaIncidencias: React.FC<Pick<PanelLateralProps, 'onSeleccionar' | 'onCe
             key={u.codigo}
             color="rojo"
             titulo={nombreUnidad(u)}
-            detalle={
+            detalle={`${
               u.averia ? `${nombreAveria(u.averia.tipo)} · vuelve ${formatearMomento(u.averia.vuelve, datos.reloj)}` : 'Fuera de servicio'
-            }
+            } · (${Math.round(u.posicion.x)},${Math.round(u.posicion.y)})`}
             onClick={() => onSeleccionar({ tipo: 'vehiculo', codigo: u.codigo })}
             className="py-[5px] rounded"
           />
