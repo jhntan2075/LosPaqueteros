@@ -108,6 +108,28 @@ class MotorEjecucionTest {
         assertTrue(instantanea.indicadores().pedidosEntregadosATiempo() > 0);
     }
 
+    /** Rubrica c.1inf54.26-2, criterio general 10: el planificador corre por bloques, uno cada Sa simulado. */
+    @Test
+    void procesarTick_planificador_correPorBloquesAlineadosASa() {
+        MotorEjecucion motor = crearMotor(pedidos(), false);
+        motor.preparar();
+        motor.iniciar();
+
+        pared.avanzar(Duration.ofMinutes(12));
+        motor.procesarTickAhora();
+
+        long inicioMs = INICIO.toInstant().toEpochMilli();
+        List<Long> planificaciones = eventos.stream().filter(evento -> evento.tipo().equals("PLAN_ACTUALIZADO"))
+                .map(evento -> (evento.timestampSimuladoMs() - inicioMs) / 60_000).toList();
+        assertFalse(planificaciones.isEmpty());
+        planificaciones.forEach(minuto -> assertEquals(0, minuto % SA, "Planificacion fuera de un salto Sa: minuto " + minuto));
+        // Nunca dos planificaciones en el mismo bloque.
+        assertEquals(planificaciones.size(), planificaciones.stream().distinct().count());
+        // Cada planificacion informa su Ta.
+        eventos.stream().filter(evento -> evento.tipo().equals("PLAN_ACTUALIZADO"))
+                .forEach(evento -> assertNotNull(evento.detalle().get("tiempoComputoMs")));
+    }
+
     @Test
     void procesarTick_alcanzaElHorizonte_finalizaYGuardaElResultado() {
         MotorEjecucion motor = crearMotor(pedidos(), false);
