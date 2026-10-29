@@ -6,11 +6,16 @@ la VM del laboratorio (sin Docker).
 ```
 init-db/01-init.sql            Inicialización del MySQL del docker-compose de desarrollo
 mysql/crear-base.sh            Base y usuario de permisos mínimos en el MySQL de la VM
-nginx/paqtracker.conf          Proxy inverso: SPA + /api + /ws hacia 127.0.0.1:3000
+nginx/paqtracker.conf          Proxy inverso: SPA + /api + /ws hacia 127.0.0.1:3000 (server propio en el 80)
+nginx/paqtracker-app.conf      Las mismas location, para incluir en un server existente (VM de la PUCP)
 systemd/paqtracker-api.service Servicio de la API (-Xmx640m, SerialGC)
 systemd/paqtracker.env.example Variables de la API en la VM (/etc/paqtracker/paqtracker.env)
 scripts/desplegar.sh           Construye e instala API y SPA, y reinicia el servicio
 ```
+
+`desplegar.sh` acepta `NGINX_MODO=conf|snippet` y `CONSTRUIR_WEB=1|0` (ver la cabecera del
+script). Guías por máquina: `DESPLIEGUE-AWS.md` (modo `conf`) y `DESPLIEGUE-VM-PUCP.md`
+(modo `snippet`, junto al Nginx de certbot y Tomcat).
 
 ## Arquitectura en la VM
 

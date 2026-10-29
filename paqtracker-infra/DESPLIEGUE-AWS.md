@@ -88,5 +88,6 @@ Cada comando se pega **solo y de uno en uno**, esperando a que vuelva el cursor.
 
 ## Pendiente
 
-- Registro manual de averías en la API: todavía no está implementado.
+El registro manual de averías ya está implementado (`POST /api/ejecuciones/{id}/averias` y el panel del front); un despliegue actualizado con `git pull` lo incluye.
+
 - IP elástica y HTTPS, si se necesita una dirección estable.
