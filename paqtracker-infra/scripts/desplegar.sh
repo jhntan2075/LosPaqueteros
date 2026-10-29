@@ -4,23 +4,69 @@
 #
 # Uso, desde la raiz del repositorio en la VM:
 #   sudo bash paqtracker-infra/scripts/desplegar.sh
+#   sudo env NGINX_MODO=snippet CONSTRUIR_WEB=0 bash paqtracker-infra/scripts/desplegar.sh
+#
+# Variables:
+#   NGINX_MODO=conf     (por defecto) instala nginx/paqtracker.conf en conf.d, con su propio server en el 80.
+#                       Para una maquina sin otros sitios (AWS).
+#   NGINX_MODO=snippet  instala nginx/paqtracker-app.conf en snippets/ para incluirlo en un server existente
+#                       (el 443 de certbot en la VM de la PUCP). No toca conf.d ni sites-enabled.
+#   CONSTRUIR_WEB=1     (por defecto) compila la SPA si hay Node.
+#   CONSTRUIR_WEB=0     no compila: publica paqtracker-web/dist ya generado en otra maquina (compilar con
+#                       Node puede agotar la memoria de la VM).
 set -euo pipefail
 
 RAIZ="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 DESTINO_API=/opt/paqtracker
 DESTINO_WEB=/var/www/paqtracker
 USUARIO=paqtracker
+NGINX_MODO="${NGINX_MODO:-conf}"
+CONSTRUIR_WEB="${CONSTRUIR_WEB:-1}"
+NGINX_CONF=/etc/nginx/conf.d/paqtracker.conf
+NGINX_SNIPPET=/etc/nginx/snippets/paqtracker-app.conf
+
+# Se valida antes de construir para no perder minutos de compilacion por un valor mal escrito.
+case "$NGINX_MODO" in
+    conf | snippet) ;;
+    *) echo "!! NGINX_MODO debe ser conf o snippet (se recibio: ${NGINX_MODO})" >&2; exit 2 ;;
+esac
+case "$CONSTRUIR_WEB" in
+    0 | 1) ;;
+    *) echo "!! CONSTRUIR_WEB debe ser 0 o 1 (se recibio: ${CONSTRUIR_WEB})" >&2; exit 2 ;;
+esac
+
+# nginx -T vuelca la configuracion activa y marca cada archivo incluido; asi se detecta el include sin
+# importar si se escribio con ruta absoluta o relativa.
+snippet_incluido() {
+    local activa
+    activa="$(nginx -T 2>/dev/null)" || return 1
+    grep -qF "# configuration file ${NGINX_SNIPPET}:" <<<"$activa"
+}
+
+avisar_snippet_sin_incluir() {
+    cat <<AVISO
+!! ${NGINX_SNIPPET} esta instalado pero ningun server de Nginx lo incluye; no se recarga Nginx.
+   Hacerlo una sola vez: en /etc/nginx/sites-enabled/default, dentro del server que escucha en 443,
+   reemplazar su 'root ...;' y su 'location / { ... }' por la linea
+       include ${NGINX_SNIPPET};
+   conservando 'location /tomcat/' y las lineas de certbot. Luego:
+       sudo nginx -t && sudo systemctl reload nginx
+   Detalle en paqtracker-infra/DESPLIEGUE-VM-PUCP.md.
+AVISO
+}
 
 cd "$RAIZ"
 
 echo "== Construyendo la API"
 ./mvnw -B -ntp -pl paqtracker-api -am package -DskipTests
 
-if command -v npm >/dev/null 2>&1 && [ -f paqtracker-web/package.json ]; then
+if [ "$CONSTRUIR_WEB" = 0 ]; then
+    echo "== CONSTRUIR_WEB=0: no se compila la SPA; se publica paqtracker-web/dist si existe"
+elif command -v npm >/dev/null 2>&1 && [ -f paqtracker-web/package.json ]; then
     echo "== Construyendo la SPA"
     (cd paqtracker-web && npm ci && VITE_API_BASE_URL=/api VITE_WS_URL=/ws npm run build)
 else
-    echo "== Sin Node: se conserva la SPA ya publicada en ${DESTINO_WEB}"
+    echo "== Sin Node: no se compila la SPA"
 fi
 
 echo "== Instalando archivos"
@@ -30,15 +76,27 @@ install -o "$USUARIO" -g "$USUARIO" -m 0644 paqtracker-api/target/paqtracker-api
 # Los datos se copian sin pisar los archivos que los usuarios ya subieron por la API (CU-02).
 cp -rn datos/ventas.v20260909 datos/bloqueos.v20260909 "$DESTINO_API/datos/"
 chown -R "$USUARIO:$USUARIO" "$DESTINO_API/datos"
-if [ -d paqtracker-web/dist ]; then
+# Sin index.html el dist esta vacio o incompleto: se conserva la SPA publicada en vez de borrarla.
+if [ -f paqtracker-web/dist/index.html ]; then
     install -d "$DESTINO_WEB"
     rm -rf "${DESTINO_WEB:?}"/*
     cp -r paqtracker-web/dist/. "$DESTINO_WEB/"
+else
+    echo "== Sin paqtracker-web/dist/index.html: se conserva la SPA ya publicada en ${DESTINO_WEB}"
 fi
 
-echo "== Configuracion del sistema"
+echo "== Configuracion del sistema (Nginx en modo ${NGINX_MODO})"
 install -m 0644 paqtracker-infra/systemd/paqtracker-api.service /etc/systemd/system/paqtracker-api.service
-install -m 0644 paqtracker-infra/nginx/paqtracker.conf /etc/nginx/conf.d/paqtracker.conf
+if [ "$NGINX_MODO" = snippet ]; then
+    install -d -m 0755 /etc/nginx/snippets
+    install -m 0644 paqtracker-infra/nginx/paqtracker-app.conf "$NGINX_SNIPPET"
+    if [ -f "$NGINX_CONF" ]; then
+        echo "!! ${NGINX_CONF} (del modo conf) sigue instalado y choca con el server de certbot."
+        echo "   Quitarlo con: sudo rm ${NGINX_CONF}"
+    fi
+else
+    install -m 0644 paqtracker-infra/nginx/paqtracker.conf "$NGINX_CONF"
+fi
 if [ ! -f /etc/paqtracker/paqtracker.env ]; then
     install -d -m 0750 -g "$USUARIO" /etc/paqtracker
     install -m 0640 -g "$USUARIO" paqtracker-infra/systemd/paqtracker.env.example /etc/paqtracker/paqtracker.env
@@ -49,7 +107,20 @@ fi
 systemctl daemon-reload
 systemctl enable paqtracker-api
 systemctl restart paqtracker-api
-nginx -t && systemctl reload nginx
+
+# Si la configuracion no es valida, Nginx sigue sirviendo la que ya tenia cargada.
+if ! nginx -t; then
+    echo "!! nginx -t fallo: no se recarga Nginx. Revise el error de arriba." >&2
+    if [ "$NGINX_MODO" = conf ]; then
+        echo "   Si ya hay otro server en el 80 (certbot), use NGINX_MODO=snippet." >&2
+    fi
+    exit 1
+fi
+if [ "$NGINX_MODO" = snippet ] && ! snippet_incluido; then
+    avisar_snippet_sin_incluir
+else
+    systemctl reload nginx
+fi
 
 echo "== Listo. Estado del servicio:"
 systemctl --no-pager --lines=5 status paqtracker-api
