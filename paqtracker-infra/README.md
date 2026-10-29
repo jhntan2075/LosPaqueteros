@@ -13,8 +13,8 @@ systemd/paqtracker.env.example Variables de la API en la VM (/etc/paqtracker/paq
 scripts/desplegar.sh           Construye e instala API y SPA, y reinicia el servicio
 ```
 
-`desplegar.sh` acepta `NGINX_MODO=conf|snippet` y `CONSTRUIR_WEB=1|0` (ver la cabecera del
-script). Guías por máquina: `DESPLIEGUE-AWS.md` (modo `conf`) y `DESPLIEGUE-VM-PUCP.md`
+`desplegar.sh` acepta `NGINX_MODO=conf|snippet`, `CONSTRUIR_API=1|0` y `CONSTRUIR_WEB=1|0`
+(ver la cabecera del script). Guías por máquina: `DESPLIEGUE-AWS.md` (modo `conf`) y `DESPLIEGUE-VM-PUCP.md`
 (modo `snippet`, junto al Nginx de certbot y Tomcat).
 
 ## Arquitectura en la VM
