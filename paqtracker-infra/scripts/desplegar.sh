@@ -4,9 +4,12 @@
 #
 # Uso, desde la raiz del repositorio en la VM:
 #   sudo bash paqtracker-infra/scripts/desplegar.sh
-#   sudo env NGINX_MODO=snippet CONSTRUIR_WEB=0 bash paqtracker-infra/scripts/desplegar.sh
+#   sudo env NGINX_MODO=snippet CONSTRUIR_API=0 CONSTRUIR_WEB=0 bash paqtracker-infra/scripts/desplegar.sh
 #
 # Variables:
+#   CONSTRUIR_API=1     (por defecto) compila el JAR con ./mvnw; requiere JDK 21.
+#   CONSTRUIR_API=0     no ejecuta ./mvnw: instala paqtracker-api/target/paqtracker-api.jar compilado en otra
+#                       maquina (para una VM con solo JRE). Si falta, termina sin tocar nada instalado.
 #   NGINX_MODO=conf     (por defecto) instala nginx/paqtracker.conf en conf.d, con su propio server en el 80.
 #                       Para una maquina sin otros sitios (AWS).
 #   NGINX_MODO=snippet  instala nginx/paqtracker-app.conf en snippets/ para incluirlo en un server existente
@@ -21,7 +24,9 @@ DESTINO_API=/opt/paqtracker
 DESTINO_WEB=/var/www/paqtracker
 USUARIO=paqtracker
 NGINX_MODO="${NGINX_MODO:-conf}"
+CONSTRUIR_API="${CONSTRUIR_API:-1}"
 CONSTRUIR_WEB="${CONSTRUIR_WEB:-1}"
+JAR_API=paqtracker-api/target/paqtracker-api.jar
 NGINX_CONF=/etc/nginx/conf.d/paqtracker.conf
 NGINX_SNIPPET=/etc/nginx/snippets/paqtracker-app.conf
 
@@ -29,6 +34,10 @@ NGINX_SNIPPET=/etc/nginx/snippets/paqtracker-app.conf
 case "$NGINX_MODO" in
     conf | snippet) ;;
     *) echo "!! NGINX_MODO debe ser conf o snippet (se recibio: ${NGINX_MODO})" >&2; exit 2 ;;
+esac
+case "$CONSTRUIR_API" in
+    0 | 1) ;;
+    *) echo "!! CONSTRUIR_API debe ser 0 o 1 (se recibio: ${CONSTRUIR_API})" >&2; exit 2 ;;
 esac
 case "$CONSTRUIR_WEB" in
     0 | 1) ;;
@@ -57,8 +66,19 @@ AVISO
 
 cd "$RAIZ"
 
-echo "== Construyendo la API"
-./mvnw -B -ntp -pl paqtracker-api -am package -DskipTests
+if [ "$CONSTRUIR_API" = 0 ]; then
+    echo "== CONSTRUIR_API=0: no se compila la API; se usa ${JAR_API}"
+else
+    echo "== Construyendo la API"
+    ./mvnw -B -ntp -pl paqtracker-api -am package -DskipTests
+fi
+# Antes de instalar nada: sin JAR, el servicio quedaria reiniciando sobre un archivo inexistente o viejo.
+if [ ! -f "$JAR_API" ]; then
+    echo "!! No existe ${RAIZ}/${JAR_API}. Compilelo en una maquina con JDK 21" >&2
+    echo "   (./mvnw -B -ntp -pl paqtracker-api -am package -DskipTests) y copielo a esa ruta." >&2
+    echo "   No se instalo ni se cambio nada." >&2
+    exit 1
+fi
 
 if [ "$CONSTRUIR_WEB" = 0 ]; then
     echo "== CONSTRUIR_WEB=0: no se compila la SPA; se publica paqtracker-web/dist si existe"
@@ -72,7 +92,7 @@ fi
 echo "== Instalando archivos"
 id -u "$USUARIO" >/dev/null 2>&1 || useradd --system --home "$DESTINO_API" --shell /usr/sbin/nologin "$USUARIO"
 install -d -o "$USUARIO" -g "$USUARIO" "$DESTINO_API" "$DESTINO_API/datos"
-install -o "$USUARIO" -g "$USUARIO" -m 0644 paqtracker-api/target/paqtracker-api.jar "$DESTINO_API/paqtracker-api.jar"
+install -o "$USUARIO" -g "$USUARIO" -m 0644 "$JAR_API" "$DESTINO_API/paqtracker-api.jar"
 # Los datos se copian sin pisar los archivos que los usuarios ya subieron por la API (CU-02).
 cp -rn datos/ventas.v20260909 datos/bloqueos.v20260909 "$DESTINO_API/datos/"
 chown -R "$USUARIO:$USUARIO" "$DESTINO_API/datos"

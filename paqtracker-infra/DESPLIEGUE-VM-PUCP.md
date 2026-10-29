@@ -7,7 +7,7 @@ Procedimiento para la VM que asignó el curso. A diferencia de AWS (`DESPLIEGUE-
 | Elemento | Estado | Consecuencia para PaqTracker |
 |---|---|---|
 | Ubuntu 24, 3.8 GB de RAM | Compartida con Tomcat y MySQL | La API corre con `-Xmx640m`; la SPA se compila fuera (`CONSTRUIR_WEB=0`) |
-| Java 21, MySQL 8.4.6 | Instalados | No se instala nada: hacerlo requiere autorización del profesor |
+| Java 21 (solo JRE), MySQL 8.4.6 | Instalados | Sin JDK no se puede compilar: el JAR se compila en una laptop y se sube (`CONSTRUIR_API=0`). No se instala nada: hacerlo requiere autorización del profesor |
 | Tomcat en el 8080 | En uso | La API usa `127.0.0.1:3000`; no hay choque |
 | Nginx, `/etc/nginx/sites-enabled/default` | Gestionado por certbot: server en el 80 (`default_server`) y en el 443 con certificado y `location /tomcat/` | No se agrega otro server: se incluye `paqtracker-app.conf` dentro del 443 (`NGINX_MODO=snippet`) y se conserva `/tomcat/` |
 
@@ -27,7 +27,7 @@ Cada comando se pega **solo y de uno en uno**. En los ejemplos, `<dominio>` es e
 ## 0. Comprobaciones previas (solo lectura)
 
 ```bash
-java -version && javac -version          # 21; javac hace falta para compilar con ./mvnw
+java -version                            # 21 (JRE; no hay javac)
 mysql --version && nginx -v
 free -h                                  # memoria libre antes de compilar
 sudo ss -ltnp | grep -E ':(80|443|3000|3306|8080)\b'   # 3000 debe estar libre
@@ -35,24 +35,36 @@ sudo nginx -t                            # la configuracion actual debe ser vali
 readlink -f "$(command -v java)"         # el servicio usa /usr/bin/java
 ```
 
-Si `javac` no existe (solo hay JRE) o `./mvnw` no puede descargar Maven por falta de salida a internet, compilar el JAR en otra máquina; ver *Pendiente*.
-
-## 1. Código y SPA
+## 1. Código, JAR y SPA
 
 En la VM:
 
 ```bash
 git clone https://github.com/jhntan2075/LosPaqueteros.git && cd LosPaqueteros
+mkdir -p paqtracker-api/target paqtracker-web
 ```
 
-La SPA se compila en una máquina del equipo (Node 22) y se copia ya construida. En Windows (PowerShell), desde la raíz del repositorio:
+La VM no compila nada: el JAR y la SPA se construyen en una laptop del equipo y se suben ya listos. La laptop necesita **JDK 21** (el proyecto compila con `release 21`; un JDK 17 falla) y Node 22. En Windows (PowerShell), desde la raíz del repositorio, en la misma versión del código que se despliega:
 
 ```powershell
+.\mvnw.cmd -B -ntp -pl paqtracker-api -am package -DskipTests
+scp paqtracker-api/target/paqtracker-api.jar <usuario>@<vm>:~/LosPaqueteros/paqtracker-api/target/
+
 cd paqtracker-web; npm ci; $env:VITE_API_BASE_URL='/api'; $env:VITE_WS_URL='/ws'; npm run build
 scp -r dist <usuario>@<vm>:~/LosPaqueteros/paqtracker-web/
 ```
 
-Debe quedar `~/LosPaqueteros/paqtracker-web/dist/index.html` en la VM. Compilar con la misma versión del código que se despliega.
+Deben quedar en la VM `~/LosPaqueteros/paqtracker-api/target/paqtracker-api.jar` y `~/LosPaqueteros/paqtracker-web/dist/index.html`.
+
+Variables de `desplegar.sh` que se usan en esta VM:
+
+| Variable | Valor aquí | Efecto |
+|---|---|---|
+| `NGINX_MODO` | `snippet` | Instala `paqtracker-app.conf` en `/etc/nginx/snippets/`; no toca `conf.d` ni `sites-enabled` |
+| `CONSTRUIR_API` | `0` | No ejecuta `./mvnw` (no hay JDK): instala el JAR subido. Si no está, el script termina con error **antes de instalar nada** |
+| `CONSTRUIR_WEB` | `0` | No compila la SPA: publica `paqtracker-web/dist`. Si no hay `dist/index.html`, conserva la SPA ya publicada |
+
+Cualquier otro valor (por ejemplo `CONSTRUIR_API=no`) hace que el script termine con código 2 sin hacer nada.
 
 ## 2. Base de datos y usuario de MySQL
 
@@ -77,10 +89,10 @@ sudo env DB_PASSWORD="$(cat ~/.db_password)" bash paqtracker-infra/mysql/crear-b
 ## 3. Primer despliegue (crea el archivo de variables)
 
 ```bash
-sudo env NGINX_MODO=snippet CONSTRUIR_WEB=0 bash paqtracker-infra/scripts/desplegar.sh
+sudo env NGINX_MODO=snippet CONSTRUIR_API=0 CONSTRUIR_WEB=0 bash paqtracker-infra/scripts/desplegar.sh
 ```
 
-Compila el JAR, instala API, SPA, servicio y `/etc/nginx/snippets/paqtracker-app.conf`, crea `/etc/paqtracker/paqtracker.env` y **se detiene a propósito**. No copia nada a `conf.d` ni toca `sites-enabled`.
+Instala el JAR y la SPA subidos, el servicio y `/etc/nginx/snippets/paqtracker-app.conf`, crea `/etc/paqtracker/paqtracker.env` y **se detiene a propósito**. No copia nada a `conf.d` ni toca `sites-enabled`.
 
 ## 4. Completar `/etc/paqtracker/paqtracker.env`
 
@@ -161,14 +173,11 @@ Si falla, restaurar con `sudo cp ~/nginx-default.<fecha>.bak /etc/nginx/sites-en
 
 ## 6. Despliegue completo
 
-En segundo plano, porque compilar tarda varios minutos:
-
 ```bash
-nohup sudo env NGINX_MODO=snippet CONSTRUIR_WEB=0 bash paqtracker-infra/scripts/desplegar.sh > ~/despliegue.log 2>&1 &
-tail -f ~/despliegue.log
+sudo env NGINX_MODO=snippet CONSTRUIR_API=0 CONSTRUIR_WEB=0 bash paqtracker-infra/scripts/desplegar.sh
 ```
 
-**Ctrl + C** deja de mirar el registro sin detener el despliegue. El script reinicia la API, ejecuta `nginx -t` y solo recarga Nginx si pasa. Si el snippet no está incluido en ningún server, no recarga y muestra la instrucción del paso 5.
+Como no compila, termina en segundos. El script reinicia la API, ejecuta `nginx -t` y solo recarga Nginx si pasa. Si el snippet no está incluido en ningún server, no recarga y muestra la instrucción del paso 5.
 
 ## 7. Comprobación
 
@@ -191,10 +200,9 @@ En el navegador, abrir `https://<dominio>`: debe cargar la interfaz y el mapa. E
 
 - **Registro de la API:** `journalctl -u paqtracker-api -f`
 - **Memoria:** `free -h`; la API no debería pasar de unos 800 MB en total (heap de 640 MB).
-- **Actualizar:** compilar la SPA y copiar `dist` como en el paso 1, y luego `cd ~/LosPaqueteros && git pull && sudo env NGINX_MODO=snippet CONSTRUIR_WEB=0 bash paqtracker-infra/scripts/desplegar.sh`. No pisa las variables, los archivos subidos ni el `sites-enabled/default` editado.
+- **Actualizar:** en la VM, `cd ~/LosPaqueteros && git pull`; en la laptop, compilar y subir el JAR y `dist` como en el paso 1 (misma versión del código); en la VM, `sudo env NGINX_MODO=snippet CONSTRUIR_API=0 CONSTRUIR_WEB=0 bash paqtracker-infra/scripts/desplegar.sh`. Si no se sube un JAR nuevo, se reinstala el anterior que quedó en `target/`. No pisa las variables, los archivos subidos ni el `sites-enabled/default` editado.
 - **Retirar PaqTracker:** restaurar el respaldo del paso 5, `sudo nginx -t && sudo systemctl reload nginx` y `sudo systemctl disable --now paqtracker-api`.
 
 ## Pendiente
 
-- Si `./mvnw` agota la memoria o no tiene salida a internet, hoy no hay forma de saltar la compilación del JAR en `desplegar.sh`: compilarlo fuera y copiarlo a `paqtracker-api/target/paqtracker-api.jar` no basta, porque el script vuelve a compilar.
 - Crear swap mejoraría el margen de memoria, pero cambia la configuración del sistema: consultarlo antes con el profesor.
