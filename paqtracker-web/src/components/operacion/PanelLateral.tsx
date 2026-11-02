@@ -5,10 +5,10 @@ import { admisionDeAverias, useAveriaPendiente, useAverias } from '../../hooks/u
 import { useDatosOperacion } from '../../hooks/useDatosOperacion';
 import { useTrazabilidadPedido } from '../../hooks/useTrazabilidadPedido';
 import { capitalizar, formatearHora, formatearMomento } from '../../lib/formato';
-import { distanciaDesdeOrigen, fueraDelAlmacen, nivelDeOcupacion, pedidosEnRiesgo, unidadPorCodigo } from '../../lib/operacion';
+import { cantidadBloqueos, distanciaDesdeOrigen, fueraDelAlmacen, nivelDeOcupacion, pedidosEnRiesgo, unidadPorCodigo } from '../../lib/operacion';
 import { turnoVigente } from '../../lib/turnos';
 import type { Coordenada } from '../../types/domain';
-import type { HitoTrazabilidad, PedidoOperacion, UnidadOperacion } from '../../types/operacion';
+import type { HitoTrazabilidad, PedidoOperacion, PestanaPanel, SeleccionPanel, UnidadOperacion } from '../../types/operacion';
 import type { NivelHolgura } from '../../types/pedidos';
 import { colorDeUnidad, iconoVehiculo } from '../map/iconosVehiculo';
 import { COLOR_HOLGURA } from '../pedidos/estilos';
@@ -18,34 +18,31 @@ import { FilaConBarra, TituloSeccion } from './comunes';
 import { useAvisos } from '../../hooks/useAvisos';
 import { DialogoRegistrarAveria } from './DialogoRegistrarAveria';
 import { EstadoFlota } from './EstadoFlota';
-
-import trianguloAmbar from '../../assets/figma/pedidos/holgura-ambar-triangulo.svg';
+import { ResumenOperacion } from './ResumenOperacion';
 
 // Panel derecho del mapa (Figma 1:4793 detalle de pedido, 1:5300 detalle de vehículo), el mismo en
-// Operación y en la corrida: pestañas Incidencias, Flota y Bitácora, y el detalle del objeto
-// seleccionado. Implementado sobre las capturas de los frames: el contexto de diseño no estuvo
-// disponible (límite de llamadas de Figma).
+// Operación y en la corrida: Resumen, Incidencias, Flota y Bitácora se eligen desde la barra vertical
+// de paneles (fuera de este componente); aquí solo vive el contenido de la pestaña activa y el detalle
+// del objeto seleccionado. Implementado sobre las capturas de los frames: el contexto de diseño no
+// estuvo disponible (límite de llamadas de Figma).
 
-export type SeleccionPanel =
-  | { tipo: 'incidencias' }
-  | { tipo: 'flota' }
-  | { tipo: 'bitacora' }
-  | { tipo: 'pedido'; codigo: string }
-  | { tipo: 'vehiculo'; codigo: string }
-  | { tipo: 'almacen'; codigo: string };
+export type { SeleccionPanel };
+
+const TITULO_PESTANA: Record<PestanaPanel, string> = {
+  resumen: 'Resumen',
+  incidencias: 'Incidencias',
+  flota: 'Flota',
+  bitacora: 'Bitácora',
+};
 
 interface PanelLateralProps {
   seleccion: SeleccionPanel;
   onSeleccionar: (seleccion: SeleccionPanel) => void;
   onCerrar: () => void;
   onCentrar: (punto: Coordenada) => void;
+  /** "‹ Volver" de un detalle (pedido, vehículo o almacén); sin valor, vuelve a Incidencias. */
+  onVolver?: () => void;
 }
-
-const PESTANAS: { tipo: 'incidencias' | 'flota' | 'bitacora'; etiqueta: string }[] = [
-  { tipo: 'incidencias', etiqueta: 'Incidencias' },
-  { tipo: 'flota', etiqueta: 'Flota' },
-  { tipo: 'bitacora', etiqueta: 'Bitácora' },
-];
 
 const BORDE_NIVEL: Record<NivelHolgura, string> = {
   ROJO: 'border-[#B91C1C]',
@@ -60,8 +57,8 @@ const FONDO_NIVEL: Record<NivelHolgura, string> = {
   CERRADO: 'bg-[#94A3B8]',
 };
 
-const Semaforo: React.FC<{ nivel: NivelHolgura }> = ({ nivel }) =>
-  nivel === 'AMBAR' ? <img src={trianguloAmbar} alt="" className="block" /> : <PuntoHolgura nivel={nivel} />;
+/** Mismo punto de 7 px para los cuatro niveles: la forma del semáforo no cambia de una pantalla a otra. */
+const Semaforo: React.FC<{ nivel: NivelHolgura }> = ({ nivel }) => <PuntoHolgura nivel={nivel} />;
 
 const Dato: React.FC<{ etiqueta: string; valor: React.ReactNode }> = ({ etiqueta, valor }) => (
   <div className="h-[22px] px-[12px] flex items-center justify-between gap-[12px] text-[12px]">
@@ -93,11 +90,21 @@ const Subpestanas = <T extends string>({ opciones, activa, onCambiar, derecha }:
   </div>
 );
 
-const EncabezadoObjeto: React.FC<{ onVolver: () => void; titulo: React.ReactNode; estado: string }> = ({ onVolver, titulo, estado }) => (
+const EncabezadoObjeto: React.FC<{ onVolver: () => void; onCerrar: () => void; titulo: React.ReactNode; estado: string }> = ({
+  onVolver,
+  onCerrar,
+  titulo,
+  estado,
+}) => (
   <div className="px-[12px] pt-[9px] pb-[9px] border-b border-[#E2E8F0] flex flex-col gap-[6px]">
-    <button type="button" onClick={onVolver} className="self-start font-sans text-[12px] text-[#1E40AF] hover:underline">
-      ‹ Volver
-    </button>
+    <div className="flex items-center justify-between">
+      <button type="button" onClick={onVolver} className="font-sans text-[12px] text-[#1E40AF] hover:underline">
+        ‹ Volver
+      </button>
+      <button type="button" onClick={onCerrar} aria-label="Cerrar panel" className="size-[24px] rounded text-[#64748B] hover:bg-[#F1F5F9] hover:text-[#0F172A]">
+        ✕
+      </button>
+    </div>
     <div className="flex items-center gap-[8px]">
       <h3 className="tabular-nums font-semibold text-[14px] text-[#0F172A] flex items-center gap-[7px]">{titulo}</h3>
       <span className="ml-auto border border-[#E2E8F0] rounded-[4px] px-[6px] py-[2px] font-sans font-medium text-[12px] text-[#0F172A]">{estado}</span>
@@ -140,11 +147,14 @@ const Trazabilidad: React.FC<{ hitos: HitoTrazabilidad[] }> = ({ hitos }) => {
   );
 };
 
-const DetallePedido: React.FC<{ pedido: PedidoOperacion } & Omit<PanelLateralProps, 'seleccion' | 'onCerrar'>> = ({
+const DetallePedido: React.FC<{ pedido: PedidoOperacion } & Omit<PanelLateralProps, 'seleccion'>> = ({
   pedido,
   onSeleccionar,
   onCentrar,
+  onCerrar,
+  onVolver,
 }) => {
+  const volver = onVolver ?? (() => onSeleccionar({ tipo: 'incidencias' }));
   const datos = useDatosOperacion();
   const hitos = useTrazabilidadPedido(datos.ejecucionId, pedido.codigo, pedido.estado);
   const unidad = unidadPorCodigo(datos, pedido.unidad);
@@ -158,7 +168,7 @@ const DetallePedido: React.FC<{ pedido: PedidoOperacion } & Omit<PanelLateralPro
   const fraccion = pedido.holguraMinutos / (pedido.plazoHoras * 60);
   return (
     <>
-      <EncabezadoObjeto onVolver={() => onSeleccionar({ tipo: 'incidencias' })} titulo={`Pedido ${pedido.codigo}`} estado={pedido.estado} />
+      <EncabezadoObjeto onVolver={volver} onCerrar={onCerrar} titulo={`Pedido ${pedido.codigo}`} estado={pedido.estado} />
       <div className="flex-1 min-h-0 overflow-y-auto">
         <div className="p-[12px] border-b border-[#E2E8F0]">
           <div className={`border rounded-[4px] px-[12px] py-[8px] flex items-center justify-between ${BORDE_NIVEL[pedido.nivel]}`}>
@@ -240,7 +250,9 @@ const DetallePedido: React.FC<{ pedido: PedidoOperacion } & Omit<PanelLateralPro
 
 const Paradas: React.FC<{ unidad: UnidadOperacion; onSeleccionar: PanelLateralProps['onSeleccionar'] }> = ({ unidad, onSeleccionar }) => (
   <section className="px-[12px] pt-[9px] pb-[6px] flex flex-col gap-[6px]">
-    <TituloSeccion derecha={unidad.totalParadas > 0 ? `parada ${unidad.paradaActual} de ${unidad.totalParadas}` : undefined}>Próximas paradas</TituloSeccion>
+    <TituloSeccion derecha={unidad.totalParadas > 0 ? `${unidad.totalParadas} ${unidad.totalParadas === 1 ? 'parada' : 'paradas'}` : undefined}>
+      Próximas paradas
+    </TituloSeccion>
     {unidad.paradas.length === 0 && <p className="font-sans text-[12px] text-[#64748B]">Sin paradas asignadas.</p>}
     {unidad.paradas.map((p) => (
       <button
@@ -286,11 +298,9 @@ const RecuadroAveria: React.FC<{ unidad: UnidadOperacion; reloj: Date }> = ({ un
 );
 
 const DetalleVehiculo: React.FC<
-  { unidad: UnidadOperacion; onRegistrarAveria: AbrirRegistroAveria; onDeshacerAveria: (unidad: string) => void } & Omit<
-    PanelLateralProps,
-    'seleccion' | 'onCerrar'
-  >
-> = ({ unidad, onSeleccionar, onCentrar, onRegistrarAveria, onDeshacerAveria }) => {
+  { unidad: UnidadOperacion; onRegistrarAveria: AbrirRegistroAveria; onDeshacerAveria: (unidad: string) => void } & Omit<PanelLateralProps, 'seleccion'>
+> = ({ unidad, onSeleccionar, onCentrar, onCerrar, onRegistrarAveria, onDeshacerAveria, onVolver }) => {
+  const volver = onVolver ?? (() => onSeleccionar({ tipo: 'incidencias' }));
   const [pestana, setPestana] = useState<'resumen' | 'ruta'>('resumen');
   const parametros = UNIDADES[unidad.tipo];
   const datos = useDatosOperacion();
@@ -307,7 +317,8 @@ const DetalleVehiculo: React.FC<
   return (
     <>
       <EncabezadoObjeto
-        onVolver={() => onSeleccionar({ tipo: 'incidencias' })}
+        onVolver={volver}
+        onCerrar={onCerrar}
         titulo={
           <>
             <img src={iconoVehiculo(unidad.tipo, colorDeUnidad(unidad)).href} alt="" className="block -my-[6px] -ml-[4px]" />
@@ -369,8 +380,6 @@ const DetalleVehiculo: React.FC<
             </div>
             <div className="py-[4px] border-b border-[#E2E8F0]">
               <Dato etiqueta="Tipo / velocidad" valor={`${capitalizar(parametros.nombre)} · ${parametros.velocidadKmH} km/h`} />
-
-              <Dato etiqueta="Conductor" valor={unidad.conductor} />
               <Dato etiqueta="Turno vigente" valor={turno.actual} />
               <Dato etiqueta="Próximo turno" valor={turno.siguiente} />
               <Dato etiqueta="En refrigerio" valor={alimentacion} />
@@ -407,11 +416,14 @@ const DetalleVehiculo: React.FC<
 
 // --- Detalle de almacén --------------------------------------------------------------------------
 
-const DetalleAlmacen: React.FC<{ codigo: string } & Omit<PanelLateralProps, 'seleccion' | 'onCerrar'>> = ({
+const DetalleAlmacen: React.FC<{ codigo: string } & Omit<PanelLateralProps, 'seleccion'>> = ({
   codigo,
   onSeleccionar,
   onCentrar,
+  onCerrar,
+  onVolver,
 }) => {
+  const volver = onVolver ?? (() => onSeleccionar({ tipo: 'incidencias' }));
   const datos = useDatosOperacion();
   const almacen = ALMACENES.find((a) => a.id === codigo);
   if (!almacen) return null;
@@ -424,11 +436,7 @@ const DetalleAlmacen: React.FC<{ codigo: string } & Omit<PanelLateralProps, 'sel
   const salieron = datos.flota.filter((u) => u.origen === almacen.id && fueraDelAlmacen(u));
   return (
     <>
-      <EncabezadoObjeto
-        onVolver={() => onSeleccionar({ tipo: 'incidencias' })}
-        titulo={`Almacén ${almacen.nombre}`}
-        estado={central ? 'Central' : 'Intermedio'}
-      />
+      <EncabezadoObjeto onVolver={volver} onCerrar={onCerrar} titulo={`Almacén ${almacen.nombre}`} estado={central ? 'Central' : 'Intermedio'} />
       <div className="flex-1 min-h-0 overflow-y-auto">
         <div className="p-[12px] border-b border-[#E2E8F0]">
           {conStock && nivel ? (
@@ -498,6 +506,9 @@ const DetalleAlmacen: React.FC<{ codigo: string } & Omit<PanelLateralProps, 'sel
 
 // --- Incidencias ---------------------------------------------------------------------------------
 
+/** Filas de "Pedidos en riesgo" que se muestran antes de ofrecer "ver más": con 26 en riesgo no tenía sentido listarlos todos de una. */
+const LIMITE_RIESGO_VISIBLE = 8;
+
 const ListaIncidencias: React.FC<Pick<PanelLateralProps, 'onSeleccionar' | 'onCentrar'> & { onRegistrarAveria: AbrirRegistroAveria }> = ({
   onSeleccionar,
   onCentrar,
@@ -508,11 +519,13 @@ const ListaIncidencias: React.FC<Pick<PanelLateralProps, 'onSeleccionar' | 'onCe
   const averiadas = datos.flota.filter((u) => u.estado === 'AVERIADA');
   const admision = admisionDeAverias(datos);
   const bloqueos = datos.bloqueos;
+  const [verTodoElRiesgo, setVerTodoElRiesgo] = useState(false);
+  const riesgoVisible = verTodoElRiesgo ? riesgo : riesgo.slice(0, LIMITE_RIESGO_VISIBLE);
   return (
     <div className="flex-1 min-h-0 overflow-y-auto">
       <section className="px-[12px] pt-[10px] pb-[8px] flex flex-col gap-[4px] border-b border-[#E2E8F0]">
         <TituloSeccion derecha={riesgo.length}>Pedidos en riesgo · menor holgura</TituloSeccion>
-        {riesgo.map((p) => (
+        {riesgoVisible.map((p) => (
           <FilaConBarra
             key={p.codigo}
             color={p.nivel === 'ROJO' ? 'rojo' : 'ambar'}
@@ -523,6 +536,15 @@ const ListaIncidencias: React.FC<Pick<PanelLateralProps, 'onSeleccionar' | 'onCe
             className="py-[5px] rounded"
           />
         ))}
+        {riesgo.length > LIMITE_RIESGO_VISIBLE && (
+          <button
+            type="button"
+            onClick={() => setVerTodoElRiesgo(!verTodoElRiesgo)}
+            className="self-start font-sans text-[12px] font-medium text-[#1E40AF] hover:underline"
+          >
+            {verTodoElRiesgo ? 'Ver menos' : `Ver los ${riesgo.length - LIMITE_RIESGO_VISIBLE} restantes`}
+          </button>
+        )}
       </section>
       <section className="px-[12px] pt-[10px] pb-[8px] flex flex-col gap-[4px] border-b border-[#E2E8F0]">
         <TituloSeccion
@@ -555,13 +577,13 @@ const ListaIncidencias: React.FC<Pick<PanelLateralProps, 'onSeleccionar' | 'onCe
         ))}
       </section>
       <section className="px-[12px] pt-[10px] pb-[8px] flex flex-col gap-[4px]">
-        <TituloSeccion derecha={bloqueos.length}>Bloqueos activos</TituloSeccion>
+        <TituloSeccion derecha={cantidadBloqueos(datos)}>Bloqueos activos</TituloSeccion>
         {bloqueos.map((b) => (
           <FilaConBarra
             key={b.id}
-            color="ambar"
+            color="rojo"
             titulo={`(${b.desde.x},${b.desde.y})–(${b.hasta.x},${b.hasta.y})`}
-            detalle={`hasta ${b.fin} · ${b.rutasAfectadas === 0 ? 'sin rutas afectadas' : `${b.rutasAfectadas} ruta${b.rutasAfectadas > 1 ? 's' : ''} afectada${b.rutasAfectadas > 1 ? 's' : ''}`}`}
+            detalle={`hasta ${b.fin}${b.rutasAfectadas > 0 ? ` · ${b.rutasAfectadas} ruta${b.rutasAfectadas > 1 ? 's' : ''} afectada${b.rutasAfectadas > 1 ? 's' : ''}` : ''}`}
             onClick={() => onCentrar({ x: (b.desde.x + b.hasta.x) / 2, y: (b.desde.y + b.hasta.y) / 2 })}
             className="py-[5px] rounded"
           />
@@ -571,12 +593,7 @@ const ListaIncidencias: React.FC<Pick<PanelLateralProps, 'onSeleccionar' | 'onCe
   );
 };
 
-export const PanelLateral: React.FC<PanelLateralProps> = ({
-  seleccion,
-  onSeleccionar,
-  onCerrar,
-  onCentrar,
-}) => {
+export const PanelLateral: React.FC<PanelLateralProps> = ({ seleccion, onSeleccionar, onCerrar, onCentrar, onVolver }) => {
   const datos = useDatosOperacion();
   const mostrarAviso = useAvisos();
   const { cancelar } = useAverias();
@@ -601,45 +618,34 @@ export const PanelLateral: React.FC<PanelLateralProps> = ({
       data-sin-zoom
       onPointerDown={(e) => e.stopPropagation()}
     >
-      <div className="h-[36px] px-[12px] flex items-center gap-[16px] border-b border-[#E2E8F0] text-[12px] shrink-0" role="tablist">
-        {PESTANAS.map(({ tipo, etiqueta }) => (
-          <button
-            key={tipo}
-            type="button"
-            role="tab"
-            aria-selected={seleccion.tipo === tipo}
-            onClick={() => onSeleccionar({ tipo })}
-            className={`h-full font-sans border-b-2 ${seleccion.tipo === tipo ? 'border-[#1E40AF] text-[#1E40AF] font-medium' : 'border-transparent text-[#64748B] hover:text-[#0F172A]'}`}
-          >
-            {etiqueta}
+      {!esDetalle && (
+        <div className="h-[36px] px-[12px] flex items-center border-b border-[#E2E8F0] shrink-0">
+          <h2 className="font-sans font-semibold text-[13px] text-[#0F172A]">{TITULO_PESTANA[seleccion.tipo]}</h2>
+          <button type="button" onClick={onCerrar} aria-label="Cerrar panel" className="ml-auto size-[24px] rounded text-[#64748B] hover:bg-[#F1F5F9] hover:text-[#0F172A]">
+            ✕
           </button>
-        ))}
-        {esDetalle && (
-          <span className="h-full flex items-center font-sans font-medium text-[#0F172A] border-b-2 border-[#1E40AF]">
-            Detalle
-          </span>
-        )}
-        <button type="button" onClick={onCerrar} aria-label="Cerrar panel" className="ml-auto size-[22px] rounded text-[#64748B] hover:bg-[#F1F5F9] hover:text-[#0F172A]">
-          ✕
-        </button>
-      </div>
-      {pedido && <DetallePedido key={pedido.codigo} pedido={pedido} onSeleccionar={onSeleccionar} onCentrar={onCentrar} />}
+        </div>
+      )}
+      {pedido && <DetallePedido key={pedido.codigo} pedido={pedido} onSeleccionar={onSeleccionar} onCentrar={onCentrar} onCerrar={onCerrar} onVolver={onVolver} />}
       {unidad && (
         <DetalleVehiculo
           key={unidad.codigo}
           unidad={unidad}
           onSeleccionar={onSeleccionar}
           onCentrar={onCentrar}
+          onCerrar={onCerrar}
           onRegistrarAveria={abrirRegistro}
           onDeshacerAveria={deshacerAveria}
+          onVolver={onVolver}
         />
       )}
       {seleccion.tipo === 'almacen' && (
-        <DetalleAlmacen key={seleccion.codigo} codigo={seleccion.codigo} onSeleccionar={onSeleccionar} onCentrar={onCentrar} />
+        <DetalleAlmacen key={seleccion.codigo} codigo={seleccion.codigo} onSeleccionar={onSeleccionar} onCentrar={onCentrar} onCerrar={onCerrar} onVolver={onVolver} />
       )}
+      {seleccion.tipo === 'resumen' && <ResumenOperacion onSeleccionar={onSeleccionar} />}
       {seleccion.tipo === 'incidencias' && <ListaIncidencias onSeleccionar={onSeleccionar} onCentrar={onCentrar} onRegistrarAveria={abrirRegistro} />}
-      {seleccion.tipo === 'flota' && <EstadoFlota />}
-      {seleccion.tipo === 'bitacora' && <BitacoraEventos />}
+      {seleccion.tipo === 'flota' && <EstadoFlota onSeleccionar={onSeleccionar} />}
+      {seleccion.tipo === 'bitacora' && <BitacoraEventos onSeleccionar={onSeleccionar} />}
       {registro && (
         <DialogoRegistrarAveria
           unidadInicial={registro.unidad}

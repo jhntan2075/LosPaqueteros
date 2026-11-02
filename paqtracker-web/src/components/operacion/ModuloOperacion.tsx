@@ -2,13 +2,14 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useDatosOperacion } from '../../hooks/useDatosOperacion';
 import { estadoFlota, fueraDelAlmacen, resumenRiesgo } from '../../lib/operacion';
 import type { Coordenada } from '../../types/domain';
-import type { SubvistaOperacion } from '../../types/operacion';
+import type { PestanaPanel, SeleccionPanel, SubvistaOperacion } from '../../types/operacion';
 import { GridMap, type DestinoMapa, type GridMapHandle, type ObjetoMapa } from '../map/GridMap';
-import { PanelLateral, type SeleccionPanel } from './PanelLateral';
-import { RailKpis } from './RailKpis';
+import { BarraPaneles } from './BarraPaneles';
+import { PanelLateral } from './PanelLateral';
 
-// Operación día a día: mapa en vivo de la ejecución que difunde paqtracker-api. Incidencias, flota y
-// bitácora son pestañas del panel lateral sobre el mapa, igual que en la corrida de simulación.
+// Operación día a día: mapa en vivo de la ejecución que difunde paqtracker-api. Resumen, Incidencias,
+// Flota y Bitácora son pestañas del panel lateral sobre el mapa, elegidas desde la barra vertical fija
+// a su derecha, igual que en la corrida de simulación.
 
 const ANCHO_PANEL_PX = 340 + 12;
 
@@ -31,15 +32,15 @@ export const ModuloOperacion: React.FC<ModuloOperacionProps> = ({
 }) => {
   const datos = useDatosOperacion();
   const mapaRef = useRef<GridMapHandle>(null);
-  // Operación se monta al entrar a la pestaña, así que el pedido solicitado desde otra pantalla se abre
-  // directamente en el estado inicial del panel.
-  const pedidoInicial = pedidoAEnfocar ? datos.pedidos[pedidoAEnfocar] : undefined;
-  // Objeto abierto en el panel derecho; sin objeto, el panel muestra la lista de incidencias.
-  const [detalle, setDetalle] = useState<ObjetoMapa | null>(() => (pedidoInicial ? { tipo: 'pedido', codigo: pedidoInicial.codigo } : null));
+  // Objeto abierto en el panel derecho; sin objeto, el panel muestra la pestaña de subvista.
+  const [detalle, setDetalle] = useState<ObjetoMapa | null>(null);
   // Destino por centrar: se reintenta con cada instantánea hasta que el mapa midió su contenedor.
-  const porCentrarRef = useRef<Coordenada | null>(pedidoInicial?.destino ?? null);
+  const porCentrarRef = useRef<Coordenada | null>(null);
+  // Último pedidoAEnfocar ya abierto: evita reabrirlo en cada render mientras la prop sigue viva.
+  const [ultimoPedidoAEnfocar, setUltimoPedidoAEnfocar] = useState<string | null>(null);
 
   const flota = estadoFlota(datos);
+  const riesgo = resumenRiesgo(datos);
   const destinos: DestinoMapa[] = useMemo(
     () => datos.flota.flatMap((u) => u.paradas.map((p) => ({ pedido: p.pedido, destino: p.destino, nivel: p.nivel, holgura: p.holgura, unidad: u.codigo }))),
     [datos.flota],
@@ -47,18 +48,37 @@ export const ModuloOperacion: React.FC<ModuloOperacionProps> = ({
   const unidadesEnMapa = datos.flota.filter(fueraDelAlmacen);
   // La subvista es la pestaña abierta del panel; 'vivo' es el mapa sin panel.
   const panelAbierto = subvista !== 'vivo' || detalle !== null;
-  const seleccionPanel: SeleccionPanel = detalle ?? { tipo: subvista === 'vivo' ? 'incidencias' : subvista };
+  // Pestaña a la que "Volver" regresa y que la barra vertical resalta: la última elegida, o Incidencias
+  // si el detalle se abrió sin pasar por una pestaña (p. ej. desde el buscador).
+  const pestanaDesdeSubvista: PestanaPanel = subvista === 'vivo' ? 'incidencias' : subvista;
+  const seleccionPanel: SeleccionPanel = detalle ?? { tipo: pestanaDesdeSubvista };
 
+  // Pedido pedido desde otra pantalla ("Ubicar en el mapa"): se abre en cuanto cambia la prop, no solo
+  // al montar (Operación ahora queda montada entre pestañas, para no perder el zoom, el panel y las
+  // capas). El detalle se ajusta aquí mismo, durante el render, como recomienda React para derivar
+  // estado de una prop que cambia (evita el repintado extra de hacerlo en un efecto).
+  const pedidoAEnfocarActual = pedidoAEnfocar ?? null;
+  if (pedidoAEnfocarActual !== ultimoPedidoAEnfocar) {
+    setUltimoPedidoAEnfocar(pedidoAEnfocarActual);
+    const pedido = pedidoAEnfocarActual ? datos.pedidos[pedidoAEnfocarActual] : undefined;
+    if (pedido) setDetalle({ tipo: 'pedido', codigo: pedido.codigo });
+  }
+
+  // Centrar el mapa y avisar al padre que ya se abrió sí son efectos: el primero toca un ref que otro
+  // efecto lee más abajo, y el segundo sincroniza con el estado de otro componente.
   useEffect(() => {
-    if (pedidoAEnfocar) onPedidoEnfocado?.();
-  }, [pedidoAEnfocar, onPedidoEnfocado]);
+    if (!pedidoAEnfocar) return;
+    const pedido = datos.pedidos[pedidoAEnfocar];
+    if (pedido) porCentrarRef.current = pedido.destino;
+    onPedidoEnfocado?.();
+  }, [pedidoAEnfocar, datos, onPedidoEnfocado]);
 
   useEffect(() => {
     if (porCentrarRef.current && panelAbierto && mapaRef.current?.centrarEn(porCentrarRef.current)) porCentrarRef.current = null;
   }, [datos, panelAbierto]);
 
   const seleccionar = (seleccion: SeleccionPanel) => {
-    if (seleccion.tipo === 'incidencias' || seleccion.tipo === 'flota' || seleccion.tipo === 'bitacora') {
+    if (seleccion.tipo === 'resumen' || seleccion.tipo === 'incidencias' || seleccion.tipo === 'flota' || seleccion.tipo === 'bitacora') {
       setDetalle(null);
       onCambiarSubvista(seleccion.tipo);
     } else {
@@ -81,20 +101,11 @@ export const ModuloOperacion: React.FC<ModuloOperacionProps> = ({
           almacenes={datos.almacenes}
           seleccion={detalle}
           anchoPanelDerecho={panelAbierto ? ANCHO_PANEL_PX : 0}
-          riesgo={resumenRiesgo(datos)}
+          riesgo={riesgo}
           onSeleccionar={setDetalle}
           onAbrirIncidencias={() => seleccionar({ tipo: 'incidencias' })}
-          onAbrirPanel={(pestana) => seleccionar({ tipo: pestana })}
+          onAbrirAverias={() => seleccionar({ tipo: 'flota' })}
           onHoverCoordenada={onHoverCoordenada}
-          slotKpis={
-            <RailKpis
-              resumen={datos.resumen}
-              riesgo={resumenRiesgo(datos)}
-              flota={{ ...flota, averiadas: flota.averiadas.length }}
-              onVerFlota={() => seleccionar({ tipo: 'flota' })}
-              onVerIncidencias={() => seleccionar({ tipo: 'incidencias' })}
-            />
-          }
         >
           {panelAbierto && (
             <PanelLateral
@@ -102,9 +113,15 @@ export const ModuloOperacion: React.FC<ModuloOperacionProps> = ({
               onSeleccionar={seleccionar}
               onCerrar={cerrarPanel}
               onCentrar={(punto) => mapaRef.current?.centrarEn(punto)}
+              onVolver={() => seleccionar({ tipo: pestanaDesdeSubvista })}
             />
           )}
         </GridMap>
+        <BarraPaneles
+          activa={panelAbierto ? pestanaDesdeSubvista : null}
+          onSeleccionar={(tipo) => seleccionar({ tipo })}
+          conteos={{ incidencias: riesgo.rojo + riesgo.ambar, flota: flota.averiadas.length }}
+        />
       </main>
     </div>
   );

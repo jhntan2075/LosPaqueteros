@@ -9,7 +9,7 @@ import { ALMACENES, MALLA_ALTO_KM, MALLA_ANCHO_KM, PLAZOS_HORAS, UNIDADES, esPla
 import { tipoDeEntrega } from '../../config/glosario';
 import { coordenadaValida, evaluarFactibilidad, type EvaluacionFactibilidad, type NivelFactibilidad } from '../../lib/factibilidad';
 import { diasDeDiferencia, formatearDiaMes, formatearDuracion, formatearHora, sumarMinutos } from '../../lib/formato';
-import { proyectar, tramoOrtogonal, trazado } from '../../lib/malla';
+import { nodoEn, proyectar, tramoOrtogonal, trazado, type Vista } from '../../lib/malla';
 import { useDatosOperacion } from '../../hooks/useDatosOperacion';
 import { useColaPedidos } from '../../hooks/usePedidos';
 import { ErrorDeApi } from '../../services/clienteApi';
@@ -89,50 +89,90 @@ const InputCoordenada: React.FC<{ eje: 'X' | 'Y'; valor: string; maximo: number;
   </label>
 );
 
-/** Malla completa con el almacén de origen, el destino y el recorrido ortogonal estimado entre ambos */
-const MiniMapaDestino: React.FC<{ evaluacion: EvaluacionFactibilidad; destino: Coordenada }> = ({ evaluacion, destino }) => {
-  const { almacen } = evaluacion.origen;
-  const stock = useDatosOperacion().almacenes.find((a) => a.id === almacen.id)?.porcentajeStock ?? undefined;
+/**
+ * Malla completa con el almacén de origen (si ya se conoce), el destino y el recorrido ortogonal
+ * estimado entre ambos. Tocar la malla fija el destino ahí, sin esperar a escribir las coordenadas.
+ */
+const MiniMapaDestino: React.FC<{
+  evaluacion: EvaluacionFactibilidad | null;
+  destino: Coordenada | null;
+  onElegirDestino: (nodo: Coordenada) => void;
+}> = ({ evaluacion, destino, onElegirDestino }) => {
+  const almacen = evaluacion?.origen.almacen;
+  const stock = useDatosOperacion().almacenes.find((a) => a.id === almacen?.id)?.porcentajeStock ?? undefined;
+  const encuadrar = destino ? (almacen ? [almacen.ubicacion, destino] : [destino]) : undefined;
   return (
     <MiniMapaMalla
       alto={180}
-      encuadrar={[almacen.ubicacion, destino]}
-      etiqueta={`Malla de ${MALLA_ANCHO_KM} por ${MALLA_ALTO_KM} km: destino (${destino.x},${destino.y}) a ${evaluacion.origen.km} km del ${almacen.nombre}`}
+      encuadrar={encuadrar}
+      etiqueta={
+        almacen && destino
+          ? `Malla de ${MALLA_ANCHO_KM} por ${MALLA_ALTO_KM} km: destino (${destino.x},${destino.y}) a ${evaluacion!.origen.km} km del ${almacen.nombre}`
+          : `Malla de ${MALLA_ANCHO_KM} por ${MALLA_ALTO_KM} km, para elegir el nodo de destino con un clic`
+      }
     >
       {(vista, { ancho }) => {
-        const pOrigen = proyectar(vista, almacen.ubicacion);
-        const pDestino = proyectar(vista, destino);
+        const elegirDesdeClic = (vistaActual: Vista) => (e: React.MouseEvent<HTMLDivElement>) => {
+          const rect = e.currentTarget.getBoundingClientRect();
+          const nodo = nodoEn(vistaActual, e.clientX - rect.left, e.clientY - rect.top);
+          if (nodo) onElegirDestino(nodo);
+        };
         return (
           <>
-            <svg className="absolute inset-0 w-full h-full" aria-hidden="true">
-              <path
-                d={trazado(vista, tramoOrtogonal(almacen.ubicacion, destino))}
-                fill="none"
-                stroke="#1E40AF"
-                strokeWidth="1.5"
-                strokeDasharray="5 4"
-              />
-            </svg>
-            {ALMACENES.filter((otro) => otro.id !== almacen.id).map((otro) => {
-              const p = proyectar(vista, otro.ubicacion);
-              return (
-                <span
-                  key={otro.id}
-                  title={otro.nombre}
-                  className="absolute size-2 rounded-xs bg-slate-400 border border-white"
-                  style={{ left: p.x - 4, top: p.y - 4 }}
+            <div
+              className="absolute inset-0 w-full h-full cursor-crosshair"
+              onClick={elegirDesdeClic(vista)}
+              title="Clic para fijar el destino en este nodo"
+              aria-hidden="true"
+            />
+            {almacen && destino && (
+              <svg className="absolute inset-0 w-full h-full" aria-hidden="true">
+                <path
+                  d={trazado(vista, tramoOrtogonal(almacen.ubicacion, destino))}
+                  fill="none"
+                  stroke="#1E40AF"
+                  strokeWidth="1.5"
+                  strokeDasharray="5 4"
                 />
-              );
-            })}
-            <MarcadorAlmacen almacen={almacen.id} cx={pOrigen.x} cy={pOrigen.y} />
-            <RotuloMapa x={pOrigen.x} y={pOrigen.y + 20} anchoMapa={ancho} className="font-sans font-medium text-slate-500">
-              {almacen.nombreCorto}
-              {stock !== undefined && ` · ${stock}%`}
-            </RotuloMapa>
-            <PinDestino variante="riesgo" x={pDestino.x} y={pDestino.y} />
-            <RotuloMapa x={pDestino.x} y={pDestino.y + 4} anchoMapa={ancho} className="tabular-nums font-medium text-slate-900">
-              ({destino.x},{destino.y})
-            </RotuloMapa>
+              </svg>
+            )}
+            {almacen &&
+              ALMACENES.filter((otro) => otro.id !== almacen.id).map((otro) => {
+                const p = proyectar(vista, otro.ubicacion);
+                return (
+                  <span
+                    key={otro.id}
+                    title={otro.nombre}
+                    className="absolute size-2 rounded-xs bg-slate-400 border border-white pointer-events-none"
+                    style={{ left: p.x - 4, top: p.y - 4 }}
+                  />
+                );
+              })}
+            {almacen &&
+              (() => {
+                const pOrigen = proyectar(vista, almacen.ubicacion);
+                return (
+                  <>
+                    <MarcadorAlmacen almacen={almacen.id} cx={pOrigen.x} cy={pOrigen.y} />
+                    <RotuloMapa x={pOrigen.x} y={pOrigen.y + 20} anchoMapa={ancho} className="font-sans font-medium text-slate-500">
+                      {almacen.nombreCorto}
+                      {stock !== undefined && ` · ${stock}%`}
+                    </RotuloMapa>
+                  </>
+                );
+              })()}
+            {destino &&
+              (() => {
+                const pDestino = proyectar(vista, destino);
+                return (
+                  <>
+                    <PinDestino variante="riesgo" x={pDestino.x} y={pDestino.y} />
+                    <RotuloMapa x={pDestino.x} y={pDestino.y + 4} anchoMapa={ancho} className="tabular-nums font-medium text-slate-900">
+                      ({destino.x},{destino.y})
+                    </RotuloMapa>
+                  </>
+                );
+              })()}
           </>
         );
       }}
@@ -312,6 +352,9 @@ export const RegistrarPedido: React.FC<RegistrarPedidoProps> = ({ onCancelar, on
               {PLAZOS_HORAS.map((plazo) => {
                 const seleccionado = plazo === plazoHoras;
                 const regular = esPlazoRegular(plazo);
+                const limiteCard = sumarMinutos(reloj, plazo * 60);
+                const diasLimiteCard = diasDeDiferencia(reloj, limiteCard);
+                const prefijoDiaCard = diasLimiteCard === 0 ? 'hoy ' : diasLimiteCard === 1 ? 'mañana ' : `${formatearDiaMes(limiteCard)} `;
                 return (
                   <label
                     key={plazo}
@@ -347,7 +390,8 @@ export const RegistrarPedido: React.FC<RegistrarPedidoProps> = ({ onCancelar, on
                       {plazo} h
                     </span>
                     <span className="text-[11px] font-sans text-slate-500">
-                      Límite {formatearHora(sumarMinutos(reloj, plazo * 60))}
+                      Límite {prefijoDiaCard}
+                      {formatearHora(limiteCard)}
                     </span>
                   </label>
                 );
@@ -405,16 +449,22 @@ export const RegistrarPedido: React.FC<RegistrarPedidoProps> = ({ onCancelar, on
             <span className="text-[11px] font-sans text-slate-500">Estimación antes de registrar</span>
           </div>
 
-          {evaluacion ? (
-            <>
-              <MiniMapaDestino evaluacion={evaluacion} destino={destino} />
-              <p className="text-[11px] font-sans text-slate-500">
-                Ruta ortogonal proyectada entre almacén y destino.
-              </p>
-            </>
-          ) : (
-            <div className="bg-slate-50 border border-slate-200 rounded-lg h-44 flex items-center justify-center px-6 text-center text-xs text-slate-500">
-              Ingresa un destino válido y elige un plazo para calcular la factibilidad de entrega.
+          <MiniMapaDestino
+            evaluacion={evaluacion}
+            destino={destinoValido ? destino : null}
+            onElegirDestino={(nodo) => {
+              setX(String(nodo.x));
+              setY(String(nodo.y));
+            }}
+          />
+          <p className="text-[11px] font-sans text-slate-500">
+            {evaluacion
+              ? 'Ruta ortogonal proyectada entre almacén y destino.'
+              : 'Haz clic en la malla para fijar el destino, o escribe sus coordenadas.'}
+          </p>
+          {!evaluacion && (
+            <div className="bg-slate-50 border border-slate-200 rounded-lg px-4 py-3 text-center text-xs text-slate-500">
+              {destinoValido ? 'Elige un plazo de entrega para calcular la factibilidad.' : 'Elige un destino y un plazo de entrega para calcular la factibilidad.'}
             </div>
           )}
 

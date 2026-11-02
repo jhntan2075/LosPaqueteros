@@ -3,15 +3,16 @@ import { ContextoDatosOperacion, useDatosOperacion, useEjecucionEnVivo } from '.
 import { useConexionStomp } from '../../hooks/useConexionStomp';
 import { useControlEjecucion } from '../../hooks/useEjecuciones';
 import { useSegundosDesde } from '../../hooks/useSegundosDesde';
-import { estadoFlota, fueraDelAlmacen, pedidosEnRiesgo, resumenRiesgo } from '../../lib/operacion';
+import { cantidadBloqueos, estadoFlota, fueraDelAlmacen, pedidosEnRiesgo, resumenRiesgo } from '../../lib/operacion';
 import type { EjecucionApi } from '../../types/api';
 import type { Coordenada } from '../../types/domain';
+import type { PestanaPanel } from '../../types/operacion';
 import type { EscenarioSimulacion, EstadoCorrida, MarcaAvance } from '../../types/simulacion';
 import { EstadoConexion } from '../layout/EstadoConexion';
 import { FooterBar } from '../layout/FooterBar';
 import { GridMap, type DestinoMapa, type GridMapHandle } from '../map/GridMap';
+import { BarraPaneles } from '../operacion/BarraPaneles';
 import { PanelLateral, type SeleccionPanel } from '../operacion/PanelLateral';
-import { RailKpis } from '../operacion/RailKpis';
 import { DiagnosticoColapso } from './DiagnosticoColapso';
 import { EncabezadoCorrida } from './EncabezadoCorrida';
 import { InformeCorrida } from './InformeCorrida';
@@ -48,8 +49,17 @@ const CorridaEnVivo: React.FC<CorridaSimulacionProps & { recibidoEnMs: number }>
   const segundosActualizado = useSegundosDesde(recibidoEnMs);
   const mapaRef = useRef<GridMapHandle>(null);
   const [panel, setPanel] = useState<SeleccionPanel | null>(null);
+  // Pestaña del panel (la que resalta la barra vertical y a la que "Volver" regresa al salir de un
+  // detalle de pedido, vehículo o almacén).
+  const [ultimaPestana, setUltimaPestana] = useState<PestanaPanel>('incidencias');
+  const seleccionar = (seleccion: SeleccionPanel) => {
+    if (seleccion.tipo === 'resumen' || seleccion.tipo === 'incidencias' || seleccion.tipo === 'flota' || seleccion.tipo === 'bitacora') {
+      setUltimaPestana(seleccion.tipo);
+    }
+    setPanel(seleccion);
+  };
   const [verInforme, setVerInforme] = useState(false);
-  // El diagnóstico se abre solo al detectar el colapso; el usuario puede cerrarlo.
+  // El diagnóstico se abre solo al detectar el colapso; el usuario puede cerrarlo y reabrirlo.
   const [diagnosticoCerrado, setDiagnosticoCerrado] = useState(false);
   const [nodo, setNodo] = useState<Coordenada>({ x: 19, y: 9 });
 
@@ -101,6 +111,7 @@ const CorridaEnVivo: React.FC<CorridaSimulacionProps & { recibidoEnMs: number }>
         errorDetener={errorDetener}
         onSalir={onSalir}
         onVerInforme={() => setVerInforme(true)}
+        conectado={conectado}
       />
       <main className="flex-1 relative flex min-h-0 bg-[#F8FAFC]">
         <GridMap
@@ -113,38 +124,44 @@ const CorridaEnVivo: React.FC<CorridaSimulacionProps & { recibidoEnMs: number }>
           seleccion={panel && (panel.tipo === 'pedido' || panel.tipo === 'vehiculo' || panel.tipo === 'almacen') ? panel : null}
           anchoPanelDerecho={panel || verDiagnostico ? ANCHO_PANEL_PX : 0}
           riesgo={resumenRiesgo(datos)}
-          onSeleccionar={setPanel}
-          onAbrirIncidencias={() => setPanel({ tipo: 'incidencias' })}
-          onAbrirPanel={(pestana) => setPanel({ tipo: pestana })}
+          onSeleccionar={seleccionar}
+          onAbrirIncidencias={() => seleccionar({ tipo: 'incidencias' })}
+          onAbrirAverias={() => seleccionar({ tipo: 'flota' })}
           onHoverCoordenada={setNodo}
-          slotKpis={
-            <RailKpis
-              resumen={datos.resumen}
-              riesgo={resumenRiesgo(datos)}
-              flota={{ ...flota, averiadas: flota.averiadas.length }}
-              notaSaturacion={colapso ? 'Al detectarse el colapso' : undefined}
-              onVerFlota={() => setPanel({ tipo: 'flota' })}
-              onVerIncidencias={() => setPanel({ tipo: 'incidencias' })}
-            />
-          }
         >
           {panel && (
             <PanelLateral
               seleccion={panel}
-              onSeleccionar={setPanel}
+              onSeleccionar={seleccionar}
               onCerrar={() => setPanel(null)}
               onCentrar={(punto) => mapaRef.current?.centrarEn(punto)}
+              onVolver={() => seleccionar({ tipo: ultimaPestana })}
             />
           )}
           {verDiagnostico && (
             <DiagnosticoColapso
               diaColapso={dia}
               onCerrar={() => setDiagnosticoCerrado(true)}
-              onEstadoCompleto={() => setPanel({ tipo: 'incidencias' })}
+              onEstadoCompleto={() => seleccionar({ tipo: 'incidencias' })}
               onVerInforme={() => setVerInforme(true)}
             />
           )}
+          {/* El diagnóstico se puede cerrar para ver el mapa completo; este acceso lo reabre. */}
+          {colapso && diagnosticoCerrado && panel === null && (
+            <button
+              type="button"
+              onClick={() => setDiagnosticoCerrado(false)}
+              className="absolute right-4 top-3 z-10 h-[32px] px-3.5 bg-white shadow-[0px_1px_4px_rgba(0,0,0,0.13)] rounded-full border border-[#B91C1C] font-sans text-[12px] font-medium text-[#B91C1C] hover:bg-[#FEF2F2]"
+            >
+              Ver diagnóstico del colapso
+            </button>
+          )}
         </GridMap>
+        <BarraPaneles
+          activa={panel || verDiagnostico ? ultimaPestana : null}
+          onSeleccionar={(tipo) => seleccionar({ tipo })}
+          conteos={{ incidencias: riesgo.length, flota: flota.averiadas.length }}
+        />
       </main>
       {/* Terminada la corrida el servidor deja de difundir: la antigüedad del dato ya no indica un problema. */}
       <FooterBar
@@ -153,7 +170,7 @@ const CorridaEnVivo: React.FC<CorridaSimulacionProps & { recibidoEnMs: number }>
         entregados={datos.resumen.entregados}
         enRuta={datos.resumen.enRuta}
         criticos={riesgo.filter((p) => p.nivel === 'ROJO').length}
-        bloqueosActivos={datos.bloqueos.length}
+        bloqueosActivos={cantidadBloqueos(datos)}
         averiasActivas={flota.averiadas.length}
         segundosDesdeActualizacion={segundosActualizado}
         conectado={conectado}

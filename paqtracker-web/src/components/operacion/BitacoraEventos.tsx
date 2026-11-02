@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useDatosOperacion } from '../../hooks/useDatosOperacion';
-import type { CategoriaEvento, EventoBitacora } from '../../types/operacion';
+import type { CategoriaEvento, DatosOperacion, EventoBitacora, SeleccionPanel } from '../../types/operacion';
 import { FilaConBarra } from './comunes';
 
 // OP-09 · Bitácora de eventos (Figma 1:4555). Implementado sobre la captura del frame: el contexto de
@@ -28,14 +28,29 @@ function exportarCsv(eventos: EventoBitacora[]) {
   setTimeout(() => URL.revokeObjectURL(enlace.href), 0);
 }
 
+/**
+ * Código de pedido o de unidad mencionado en el texto del evento, si ese objeto sigue existiendo en el
+ * estado en vivo (un pedido ya entregado, por ejemplo, deja de estar en `datos.pedidos`). El mensaje no
+ * trae el código por separado, así que se busca en el texto ya mostrado.
+ */
+function referenciaDeEvento(evento: EventoBitacora, datos: DatosOperacion): SeleccionPanel | null {
+  const texto = `${evento.titulo} ${evento.detalle}`;
+  const pedido = texto.match(/#\d+/)?.[0];
+  if (pedido && datos.pedidos[pedido]) return { tipo: 'pedido', codigo: pedido };
+  const unidad = texto.match(/\b[ABM]-\d{2,}\b/)?.[0];
+  if (unidad && datos.flota.some((u) => u.codigo === unidad)) return { tipo: 'vehiculo', codigo: unidad };
+  return null;
+}
+
 /** Pestaña "Bitácora" del panel lateral del mapa (Operación y corrida de simulación). */
-export const BitacoraEventos: React.FC = () => {
+export const BitacoraEventos: React.FC<{ onSeleccionar: (seleccion: SeleccionPanel) => void }> = ({ onSeleccionar }) => {
   const [filtro, setFiltro] = useState<Filtro>('TODOS');
   // "Pausar lista" fija los eventos visibles para leerlos sin que se desplacen con los nuevos.
   const [congelados, setCongelados] = useState<EventoBitacora[] | null>(null);
   const [verTodos, setVerTodos] = useState(false);
 
-  const { eventos, reloj } = useDatosOperacion();
+  const datos = useDatosOperacion();
+  const { eventos, reloj } = datos;
   const fuente = congelados ?? eventos;
   const recientes = fuente.filter((e) => reloj.getTime() - e.instanteMs <= VENTANA_RECIENTES_MS);
   const base = verTodos ? fuente : recientes;
@@ -78,7 +93,9 @@ export const BitacoraEventos: React.FC = () => {
       </div>
 
       <ol className="flex-1 min-h-0 overflow-y-auto" aria-label="Eventos">
-        {visibles.map((e, i) => (
+        {visibles.map((e, i) => {
+          const referencia = referenciaDeEvento(e, datos);
+          return (
           <li key={e.id} className={`border-b border-[#E2E8F0] ${i === 0 && !congelados ? 'bg-[#F8FAFC]' : ''}`}>
             <FilaConBarra
               color={e.color}
@@ -86,9 +103,11 @@ export const BitacoraEventos: React.FC = () => {
               detalle={e.detalle}
               className="px-[12px] py-[8px] min-h-[47px]"
               derecha={<time className="tabular-nums text-[12px] text-[#64748B] whitespace-nowrap">{e.hora}</time>}
+              onClick={referencia ? () => onSeleccionar(referencia) : undefined}
             />
           </li>
-        ))}
+          );
+        })}
         {visibles.length === 0 && <li className="px-[12px] py-[14px] font-sans text-[12px] text-[#64748B]">Sin eventos para este filtro.</li>}
       </ol>
 

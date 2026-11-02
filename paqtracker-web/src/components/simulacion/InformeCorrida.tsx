@@ -1,9 +1,48 @@
 import React from 'react';
+import { Download } from 'lucide-react';
 import { useDatosOperacion } from '../../hooks/useDatosOperacion';
+import type { DatosOperacion } from '../../types/operacion';
 import { formatearCronometro, formatearDiasHoras, formatearFechaLarga, formatearMiles } from '../../lib/formato';
 import type { EjecucionApi } from '../../types/api';
 import type { EstadoCorrida } from '../../types/simulacion';
 import { ESTADO_CORRIDA } from './estadoCorrida';
+
+/** Mismas filas que las tres tarjetas del informe, para que la descarga audite exactamente lo que se ve en pantalla. */
+function exportarCsv(ejecucion: EjecucionApi, estado: EstadoCorrida, datos: DatosOperacion) {
+  const { resumen, indicadores } = datos;
+  const colapso = estado === 'COLAPSO';
+  const porcentaje = (valor: number) => `${valor.toFixed(1).replace('.', ',')} %`;
+  const filas: [string, string][] = [
+    ['Estado', ESTADO_CORRIDA[estado].texto],
+    ['Escenario', ejecucion.tipoEscenario === 'COLAPSO_LOGISTICO' ? 'Hasta el colapso' : `Simulación ${ejecucion.dias} días`],
+    [colapso ? 'Instante del colapso' : 'Reloj simulado', formatearFechaLarga(datos.reloj, false)],
+    ['Operación soportada', formatearDiasHoras(datos.transcurridoSimuladoMs)],
+    ['Tiempo de ejecución', formatearCronometro(datos.transcurridoRealMs)],
+    ['Planificaciones', String(indicadores.replanificaciones)],
+    ['Tiempo de la última planificación', `${indicadores.tiempoComputoUltimoTaMs} ms`],
+    ['Pedidos', String(resumen.total)],
+    ['Entregados', String(resumen.entregados)],
+    ['Cumplimiento en plazo', porcentaje(indicadores.porcentajeCumplimiento)],
+    ['Fuera de plazo', String(resumen.fueraDePlazo)],
+    ['En espera al cierre', String(resumen.enEspera)],
+    ['Distancia recorrida', `${Math.round(indicadores.distanciaTotalKm)} km`],
+    ['Inicio', formatearFechaLarga(datos.relojInicio, false)],
+    ['Algoritmo', ejecucion.algoritmo],
+    ['Flota', `${ejecucion.flota.autos} A · ${ejecucion.flota.motos} M · ${ejecucion.flota.bicicletas} B`],
+    ['Factor de aceleración (k)', `×${ejecucion.parametros.factorAceleracionK}`],
+    ['Planifica cada', `${ejecucion.parametros.saltoAlgoritmoSaMinutos} min simulados`],
+    ['Actualiza la vista cada', `${ejecucion.parametros.saltoConsumoScSegundos} s reales`],
+    ['Semáforo de holgura', `ajustado < ${Math.round(ejecucion.parametros.fraccionSemaforoAmbar * 100)} % · crítico < ${Math.round(ejecucion.parametros.fraccionSemaforoRojo * 100)} %`],
+  ];
+  const csv = [['Indicador', 'Valor'], ...filas]
+    .map((fila) => fila.map((c) => `"${c.replace(/"/g, '""')}"`).join(','))
+    .join('\n');
+  const enlace = document.createElement('a');
+  enlace.href = URL.createObjectURL(new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' }));
+  enlace.download = `informe-${ejecucion.id}.csv`;
+  enlace.click();
+  setTimeout(() => URL.revokeObjectURL(enlace.href), 0);
+}
 
 // Informe de la corrida (SI-05). El frame de Figma no estuvo disponible: esta versión reúne los datos
 // que el informe debe auditar con el lenguaje visual del resto del sistema. Los valores son los de la
@@ -47,7 +86,15 @@ export const InformeCorrida: React.FC<InformeCorridaProps> = ({ ejecucion, estad
         <span className={`ml-[8px] rounded-[4px] px-[10px] py-[5px] font-sans font-semibold text-[12px] tracking-[0.5px] ${ESTADO_CORRIDA[estado].clase}`}>
           {ESTADO_CORRIDA[estado].texto}
         </span>
-        <button type="button" onClick={onNuevaCorrida} className="ml-auto h-[36px] px-[16px] rounded-[6px] bg-[#1E40AF] hover:bg-[#1E3A8A] text-white font-sans font-semibold text-[12px]">
+        <button
+          type="button"
+          onClick={() => exportarCsv(ejecucion, estado, datos)}
+          className="ml-auto h-[36px] px-[14px] rounded-[6px] border border-[#E2E8F0] hover:bg-[#F8FAFC] text-[#334155] font-sans font-medium text-[12px] flex items-center gap-[8px]"
+        >
+          <Download className="w-[14px] h-[14px]" />
+          Exportar informe (CSV)
+        </button>
+        <button type="button" onClick={onNuevaCorrida} className="h-[36px] px-[16px] rounded-[6px] bg-[#1E40AF] hover:bg-[#1E3A8A] text-white font-sans font-semibold text-[12px]">
           Nueva corrida
         </button>
       </header>

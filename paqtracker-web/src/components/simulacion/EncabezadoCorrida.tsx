@@ -31,6 +31,8 @@ interface EncabezadoCorridaProps {
   errorDetener?: string | null;
   onSalir: () => void;
   onVerInforme: () => void;
+  /** Sin conexión con el servidor, detener la corrida no tiene efecto: el botón se deshabilita. */
+  conectado?: boolean;
 }
 
 const Bloque: React.FC<{ etiqueta: string; children: React.ReactNode }> = ({ etiqueta, children }) => (
@@ -56,12 +58,15 @@ export const EncabezadoCorrida: React.FC<EncabezadoCorridaProps> = ({
   errorDetener,
   onSalir,
   onVerInforme,
+  conectado = true,
 }) => {
   const [confirmandoDetener, setConfirmandoDetener] = useState(false);
   const [deteniendo, setDeteniendo] = useState(false);
   const colapso = estado === 'COLAPSO';
   /** Completada o detenida: la corrida ya no avanza. */
   const terminada = estado === 'COMPLETADA' || estado === 'DETENIDA';
+  /** "Hasta el colapso" no tiene una duración fijada de antemano: un % de avance sobre ella no tendría sentido. */
+  const sinHorizonteFijo = escenario === 'COLAPSO_LOGISTICO';
   const duracionMs = diasTotales * DIA_MS;
   const fin = new Date(inicio.getTime() + duracionMs);
   const progreso = duracionMs === 0 ? 0 : Math.min(1, simuladoMs / duracionMs);
@@ -94,8 +99,9 @@ export const EncabezadoCorrida: React.FC<EncabezadoCorridaProps> = ({
         </span>
       </div>
 
-      {/* Encabezado de corrida */}
-      <header className="h-[56px] bg-white border-b border-[#E2E8F0] px-[16px] flex items-center gap-[20px]">
+      {/* Encabezado de corrida. flex-wrap: a lo ancho justo (~1366 px con "Detener simulación" visible)
+          pasa a una segunda línea en vez de cortar los botones de la derecha. */}
+      <header className="min-h-[56px] bg-white border-b border-[#E2E8F0] px-[16px] py-[10px] flex flex-wrap items-center gap-x-[20px] gap-y-[10px]">
         <Bloque etiqueta={colapso ? 'Instante del colapso' : 'Fecha y hora simulada'}>
           <span className={`tabular-nums font-semibold text-[20px] ${colapso ? 'text-[#B91C1C]' : 'text-[#0F172A]'}`}>{formatearFechaLarga(relojSimulado)}</span>
         </Bloque>
@@ -141,7 +147,9 @@ export const EncabezadoCorrida: React.FC<EncabezadoCorridaProps> = ({
             <button
               type="button"
               onClick={() => setConfirmandoDetener(true)}
-              className="h-[30px] px-[12px] rounded-[6px] border border-[#FECACA] font-sans font-medium text-[12px] text-[#B91C1C] hover:bg-[#FEF2F2] whitespace-nowrap"
+              disabled={!conectado}
+              title={conectado ? undefined : 'Sin conexión con el servidor: espera a reconectar'}
+              className="h-[30px] px-[12px] rounded-[6px] border border-[#FECACA] font-sans font-medium text-[12px] text-[#B91C1C] hover:bg-[#FEF2F2] whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent"
             >
               Detener simulación
             </button>
@@ -193,46 +201,62 @@ export const EncabezadoCorrida: React.FC<EncabezadoCorridaProps> = ({
       {/* Avance de la corrida */}
       <div className="h-[44px] bg-white border-b border-[#E2E8F0] px-[16px] flex items-center gap-[16px] text-[12px]">
         <span className="font-sans text-[#64748B] whitespace-nowrap w-[110px] shrink-0">Avance de la corrida</span>
-        <div className="relative flex-1 h-full" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={porcentaje} aria-label="Avance de la corrida">
-          <div className="absolute left-0 right-0 top-[20px] h-[2px] bg-[#CBD5E1]" />
-          <div className={`absolute left-0 top-[19px] h-[4px] ${colapso ? 'bg-[#B91C1C]' : 'bg-[#1E40AF]'}`} style={{ width: `${progreso * 100}%` }} />
-          {Array.from({ length: diasTotales }, (_, i) => i)
-            .filter((i) => i % pasoRotulo === 0)
-            .map((i) => (
-              <div key={i} className="absolute top-[16px]" style={{ left: `${(i / diasTotales) * 100}%` }}>
-                <div className="w-px h-[10px] bg-[#94A3B8]" />
-                <span className="absolute top-[12px] left-[2px] tabular-nums text-[11px] text-[#64748B]">D{i + 1}</span>
-              </div>
-            ))}
-          {/* Marcas de incidencias y del planificador ya ocurridas */}
-          {marcas
-            .filter((m) => m.minuto * 60_000 <= simuladoMs)
-            .map((m) => (
-              <span
-                key={m.id}
-                title={m.tipo === 'INCIDENCIA' ? 'Incidencia' : 'Planificador'}
-                className={`absolute ${m.tipo === 'INCIDENCIA' ? 'top-[7px] size-[4px] bg-[#64748B]' : 'top-[7px] w-px h-[7px] bg-[#94A3B8]'}`}
-                style={{ left: `${Math.min(100, ((m.minuto * 60_000) / duracionMs) * 100)}%` }}
+        {sinHorizonteFijo ? (
+          <>
+            <div className="relative flex-1 h-full flex items-center" role="status" aria-label="Avance de la corrida: sin horizonte fijo, corre hasta el colapso">
+              <div className="absolute left-0 right-0 h-[4px] rounded-full bg-[#E2E8F0]" />
+              <div
+                className={`absolute h-[4px] rounded-full ${colapso ? 'bg-[#B91C1C] left-0 right-0' : terminada ? 'bg-[#94A3B8] left-0 right-0' : 'bg-[#1E40AF] left-0 w-1/3 animate-pulse'}`}
               />
-            ))}
-          <div className="absolute top-[12px]" style={{ left: `${progreso * 100}%` }}>
-            <div className={`w-[2px] h-[18px] ${colapso ? 'bg-[#B91C1C]' : 'bg-[#1E40AF]'}`} />
-            <span
-              className={`absolute -top-[10px] left-[6px] tabular-nums font-medium text-[12px] whitespace-nowrap ${colapso ? 'text-[#B91C1C]' : 'text-[#1E40AF]'} ${
-                progreso > 0.85 ? '-translate-x-[calc(100%+12px)]' : ''
-              }`}
-            >
-              D{dia} · {formatearHora(relojSimulado)}
-              {colapso && ' · Colapso'}
+            </div>
+            <span className="tabular-nums font-medium text-[#0F172A] whitespace-nowrap">
+              {colapso ? `Colapsó en el día simulado ${dia}` : estado === 'DETENIDA' ? `Detenida en el día simulado ${dia}` : `Día simulado ${dia} · sin horizonte fijo`}
             </span>
-          </div>
-        </div>
-        <span className="flex items-center gap-[6px] font-sans text-[#64748B] whitespace-nowrap">
-          <span className="size-[5px] bg-[#64748B]" /> Incidencia <span className="w-px h-[9px] bg-[#94A3B8]" /> Planificador
-        </span>
-        <span className="tabular-nums font-medium text-[#0F172A] whitespace-nowrap">
-          {colapso || estado === 'DETENIDA' ? `Detenida en ${porcentaje} %` : `${porcentaje} % completado`}
-        </span>
+          </>
+        ) : (
+          <>
+            <div className="relative flex-1 h-full" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={porcentaje} aria-label="Avance de la corrida">
+              <div className="absolute left-0 right-0 top-[20px] h-[2px] bg-[#CBD5E1]" />
+              <div className={`absolute left-0 top-[19px] h-[4px] ${colapso ? 'bg-[#B91C1C]' : 'bg-[#1E40AF]'}`} style={{ width: `${progreso * 100}%` }} />
+              {Array.from({ length: diasTotales }, (_, i) => i)
+                .filter((i) => i % pasoRotulo === 0)
+                .map((i) => (
+                  <div key={i} className="absolute top-[16px]" style={{ left: `${(i / diasTotales) * 100}%` }}>
+                    <div className="w-px h-[10px] bg-[#94A3B8]" />
+                    <span className="absolute top-[12px] left-[2px] tabular-nums text-[11px] text-[#64748B]">D{i + 1}</span>
+                  </div>
+                ))}
+              {/* Marcas de incidencias y del planificador ya ocurridas */}
+              {marcas
+                .filter((m) => m.minuto * 60_000 <= simuladoMs)
+                .map((m) => (
+                  <span
+                    key={m.id}
+                    title={m.tipo === 'INCIDENCIA' ? 'Incidencia' : 'Planificador'}
+                    className={`absolute ${m.tipo === 'INCIDENCIA' ? 'top-[7px] size-[4px] bg-[#64748B]' : 'top-[7px] w-px h-[7px] bg-[#94A3B8]'}`}
+                    style={{ left: `${Math.min(100, ((m.minuto * 60_000) / duracionMs) * 100)}%` }}
+                  />
+                ))}
+              <div className="absolute top-[12px]" style={{ left: `${progreso * 100}%` }}>
+                <div className={`w-[2px] h-[18px] ${colapso ? 'bg-[#B91C1C]' : 'bg-[#1E40AF]'}`} />
+                <span
+                  className={`absolute -top-[10px] left-[6px] tabular-nums font-medium text-[12px] whitespace-nowrap ${colapso ? 'text-[#B91C1C]' : 'text-[#1E40AF]'} ${
+                    progreso > 0.85 ? '-translate-x-[calc(100%+12px)]' : ''
+                  }`}
+                >
+                  D{dia} · {formatearHora(relojSimulado)}
+                  {colapso && ' · Colapso'}
+                </span>
+              </div>
+            </div>
+            <span className="flex items-center gap-[6px] font-sans text-[#64748B] whitespace-nowrap">
+              <span className="size-[5px] bg-[#64748B]" /> Incidencia <span className="w-px h-[9px] bg-[#94A3B8]" /> Planificador
+            </span>
+            <span className="tabular-nums font-medium text-[#0F172A] whitespace-nowrap">
+              {colapso || estado === 'DETENIDA' ? `Detenida en ${porcentaje} %` : `${porcentaje} % completado`}
+            </span>
+          </>
+        )}
       </div>
     </div>
   );

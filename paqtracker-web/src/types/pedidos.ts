@@ -25,8 +25,10 @@ export interface PedidoEnCola {
   /** Plazo en horas; los archivos de ventas pueden traer plazos fuera del catálogo de la UI. */
   plazoHoras: number;
   horaLimite: string; // "05/03 03:21"
+  horaLimiteMs: number;
   eta: string | null;
   holgura: string;
+  holguraMinutos: number;
   nivelHolgura: NivelHolgura;
   vehiculo: VehiculoAsignado | null;
   estado: EstadoPedidoCola;

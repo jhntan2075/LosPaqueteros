@@ -6,7 +6,20 @@ import type { EstadoEjecucionApi, IndicadoresApi, TipoEscenarioApi } from './api
 // Modelos de vista del módulo Operación (lienzo en vivo, OP-07 flota, OP-09 bitácora).
 
 /** Mapa de Operación: 'vivo' sin panel, o la pestaña abierta del panel lateral. */
-export type SubvistaOperacion = 'vivo' | 'incidencias' | 'flota' | 'bitacora';
+export type SubvistaOperacion = 'vivo' | 'resumen' | 'incidencias' | 'flota' | 'bitacora';
+
+/** Pestaña del panel lateral, tal como las muestra la barra vertical de paneles. */
+export type PestanaPanel = Exclude<SubvistaOperacion, 'vivo'>;
+
+/** Qué muestra el panel lateral del mapa: una de sus pestañas, o el detalle de un objeto. */
+export type SeleccionPanel =
+  | { tipo: 'resumen' }
+  | { tipo: 'incidencias' }
+  | { tipo: 'flota' }
+  | { tipo: 'bitacora' }
+  | { tipo: 'pedido'; codigo: string }
+  | { tipo: 'vehiculo'; codigo: string }
+  | { tipo: 'almacen'; codigo: string };
 
 /**
  * Estado de una unidad, a partir de EstadoVehiculo del planificador. EN_RUTA agrupa EN_RUTA y EN_ENTREGA
@@ -103,6 +116,8 @@ export interface PedidoOperacion {
 
 export interface BloqueoOperacion {
   id: string;
+  /** Id del bloqueo en la API: varios tramos de una misma polilínea comparten el mismo valor. */
+  idOriginal: number;
   desde: Coordenada;
   hasta: Coordenada;
   fin: string;

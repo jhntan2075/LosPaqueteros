@@ -1,11 +1,13 @@
 import React from 'react';
 import { X } from 'lucide-react';
 import { RANGO_HOLGURA, RANGO_INVENTARIO, RANGO_OCUPACION } from '../../config/glosario';
+import { CAPAS, type Capa } from './capas';
 import { iconoVehiculo } from './iconosVehiculo';
 import { AlmacenCentral, AlmacenIntermedio, COLOR_EN_ENTREGA, MarcaBloqueo, PinDestino } from './simbolos';
 
-// Leyenda del mapa: panel flotante y no modal, para leerla sin dejar de ver el mapa. Solo dice qué
-// es cada símbolo; el detalle de cada objeto está en su tooltip y en el panel lateral.
+// Capas y leyenda del mapa: panel flotante y no modal, para usarlo sin dejar de ver el mapa. Qué capas
+// se dibujan (rutas, unidades, destinos, bloqueos, almacenes) y qué es cada símbolo; el detalle de cada
+// objeto está en su tooltip y en el panel lateral.
 
 const ROJO = '#B91C1C';
 const AMBAR = '#B45309';
@@ -57,24 +59,43 @@ const SEMAFOROS: { titulo: string; rangos: Record<Nivel, string> }[] = [
   { titulo: 'Stock', rangos: RANGO_INVENTARIO },
 ];
 
-export const LeyendaMapa: React.FC<{ onCerrar: () => void }> = ({ onCerrar }) => (
+interface LeyendaMapaProps {
+  onCerrar: () => void;
+  /** Qué capas se dibujan; sin valor (o sin onCambiarCapa), el panel no muestra la sección de capas. */
+  capas?: Record<Capa, boolean>;
+  onCambiarCapa?: (clave: Capa) => void;
+}
+
+export const LeyendaMapa: React.FC<LeyendaMapaProps> = ({ onCerrar, capas, onCambiarCapa }) => (
   <section
-    aria-label="Leyenda del mapa"
+    aria-label="Capas y leyenda"
     data-sin-zoom
     onPointerDown={(e) => e.stopPropagation()}
     className="w-[280px] max-h-[calc(100vh-260px)] overflow-y-auto bg-white border border-[#E2E8F0] rounded-[10px] shadow-[0px_2px_12px_0px_rgba(0,0,0,0.16)] leading-[normal] cursor-default"
   >
     <header className="h-[36px] pl-[12px] pr-[8px] flex items-center border-b border-[#E2E8F0]">
-      <h2 className="font-semibold text-[13px] text-[#0F172A]">Leyenda</h2>
+      <h2 className="font-semibold text-[13px] text-[#0F172A]">Capas y leyenda</h2>
       <button
         type="button"
         onClick={onCerrar}
-        aria-label="Cerrar leyenda"
+        aria-label="Cerrar capas y leyenda"
         className="ml-auto size-[24px] flex items-center justify-center rounded text-[#64748B] hover:bg-[#F1F5F9] hover:text-[#0F172A]"
       >
         <X className="w-3.5 h-3.5" />
       </button>
     </header>
+
+    {capas && onCambiarCapa && (
+      <fieldset className="px-[12px] py-[8px] border-b border-[#E2E8F0] flex flex-col gap-[2px]">
+        <legend className="sr-only">Capas visibles</legend>
+        {CAPAS.map(({ clave, etiqueta }) => (
+          <label key={clave} className="flex items-center gap-[8px] py-[2px] text-[12px] font-sans text-[#0F172A] cursor-pointer">
+            <input type="checkbox" checked={capas[clave]} onChange={() => onCambiarCapa(clave)} className="accent-[#1E40AF]" />
+            {etiqueta}
+          </label>
+        ))}
+      </fieldset>
+    )}
 
     <ul className="px-[12px] py-[8px]">
       <Fila simbolo={<Simbolo caja="-16 -16 32 32"><AlmacenCentral /></Simbolo>} nombre="Almacén central" />

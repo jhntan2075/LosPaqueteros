@@ -91,7 +91,7 @@ export const FooterBar: React.FC<FooterBarProps> = ({
         {/* Bloqueos activos */}
         <div className="flex items-center gap-1.5 flex-shrink-0">
           <span className="text-[#64748B] font-sans font-normal">bloqueos activos</span>
-          <span className="text-[#B45309] tabular-nums font-medium">{bloqueosActivos}</span>
+          <span className="text-[#B91C1C] tabular-nums font-medium">{bloqueosActivos}</span>
         </div>
 
         {/* Averías activas */}

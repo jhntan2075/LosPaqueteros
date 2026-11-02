@@ -62,9 +62,14 @@ export function estadoFlota(datos: DatosOperacion) {
     averiadas: porEstado('AVERIADA'),
     porTipo,
     llenas: enRuta.filter((u) => u.carga >= u.capacidad),
-    ociosas: [] as UnidadOperacion[],
   };
 }
+
+/**
+ * Cantidad de bloqueos distintos activos: un bloqueo con una polilínea de varios puntos se parte en
+ * varios tramos (`datos.bloqueos`, uno por segmento) pero sigue siendo un solo bloqueo para el usuario.
+ */
+export const cantidadBloqueos = (datos: DatosOperacion) => new Set(datos.bloqueos.map((b) => b.idOriginal)).size;
 
 /** Riesgo agregado para la fila de KPIs. */
 export function resumenRiesgo(datos: DatosOperacion) {

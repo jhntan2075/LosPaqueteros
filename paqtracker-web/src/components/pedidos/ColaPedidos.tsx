@@ -3,6 +3,9 @@ import {
   Search,
   X,
   ChevronDown,
+  ArrowUp,
+  ArrowDown,
+  ArrowUpDown,
   Download,
   Plus,
   MapPin,
@@ -69,6 +72,54 @@ const SIN_FILTROS: Filtros = {
   plazo: TODOS,
   vehiculo: TODOS,
   holgura: TODOS,
+};
+
+type CampoOrden = 'codigo' | 'cliente' | 'cantidad' | 'horaLimite' | 'holgura' | 'estado';
+type Orden = { campo: CampoOrden; asc: boolean };
+
+const RANGO_ORDEN_HOLGURA: Record<NivelHolgura, number> = { ROJO: 0, AMBAR: 1, VERDE: 2, CERRADO: 3 };
+
+function comparar(a: PedidoEnCola, b: PedidoEnCola, campo: CampoOrden): number {
+  switch (campo) {
+    case 'codigo':
+      return a.codigo.localeCompare(b.codigo, undefined, { numeric: true });
+    case 'cliente':
+      return a.cliente.localeCompare(b.cliente);
+    case 'cantidad':
+      return a.cantidad - b.cantidad;
+    case 'horaLimite':
+      return a.horaLimiteMs - b.horaLimiteMs;
+    case 'holgura':
+      return RANGO_ORDEN_HOLGURA[a.nivelHolgura] - RANGO_ORDEN_HOLGURA[b.nivelHolgura] || a.holguraMinutos - b.holguraMinutos;
+    case 'estado':
+      return ESTADOS[a.estado].etiqueta.localeCompare(ESTADOS[b.estado].etiqueta);
+  }
+}
+
+/** Encabezado de columna ordenable: clic alterna ascendente → descendente → sin orden. */
+const EncabezadoOrdenable: React.FC<{
+  campo: CampoOrden;
+  orden: Orden | null;
+  onOrdenar: (campo: CampoOrden) => void;
+  alinear?: 'right';
+  children: React.ReactNode;
+}> = ({ campo, orden, onOrdenar, alinear, children }) => {
+  const activo = orden?.campo === campo;
+  const Icono = activo ? (orden!.asc ? ArrowUp : ArrowDown) : ArrowUpDown;
+  return (
+    <th className={`py-2 px-4 ${alinear === 'right' ? 'text-right' : ''}`}>
+      <button
+        type="button"
+        onClick={() => onOrdenar(campo)}
+        className={`inline-flex items-center gap-1 hover:text-slate-900 transition ${
+          alinear === 'right' ? 'flex-row-reverse' : ''
+        } ${activo ? 'text-slate-900' : ''}`}
+      >
+        {children}
+        <Icono className={`w-3 h-3 ${activo ? 'text-blue-700' : 'text-slate-400'}`} />
+      </button>
+    </th>
+  );
 };
 
 const etiquetaVehiculo = (pedido: PedidoEnCola) =>
@@ -333,12 +384,35 @@ export const ColaPedidos: React.FC<{
   const datos = useDatosOperacion();
   const [busqueda, setBusqueda] = useState('');
   const [filtros, setFiltros] = useState<Filtros>(SIN_FILTROS);
+  const [orden, setOrden] = useState<Orden | null>(null);
   const [codigoSeleccionado, setCodigoSeleccionado] = useState<string | null>(null);
   const pedidoSeleccionado = codigoSeleccionado ? (pedidos.find((p) => p.codigo === codigoSeleccionado) ?? null) : null;
+  const buscadorRef = useRef<HTMLInputElement>(null);
+
+  // Atajo "/" para enfocar el buscador, salvo que ya se esté escribiendo en algún campo o el detalle esté abierto.
+  useEffect(() => {
+    const alPresionar = (e: KeyboardEvent) => {
+      const activo = document.activeElement;
+      const escribiendo = activo instanceof HTMLElement && (activo.tagName === 'INPUT' || activo.tagName === 'TEXTAREA' || activo.isContentEditable);
+      if (e.key === '/' && !escribiendo && !pedidoSeleccionado) {
+        e.preventDefault();
+        buscadorRef.current?.focus();
+      }
+    };
+    document.addEventListener('keydown', alPresionar);
+    return () => document.removeEventListener('keydown', alPresionar);
+  }, [pedidoSeleccionado]);
+
+  const alternarOrden = (campo: CampoOrden) =>
+    setOrden((actual) => {
+      if (actual?.campo !== campo) return { campo, asc: true };
+      if (actual.asc) return { campo, asc: false };
+      return null;
+    });
 
   const visibles = useMemo(() => {
     const q = busqueda.trim().toLowerCase();
-    return pedidos.filter((pedido) => {
+    const filtradas = pedidos.filter((pedido) => {
       if (q) {
         const coincideCodigo = pedido.codigo.toLowerCase().includes(q);
         const coincideCliente = pedido.cliente.toLowerCase().includes(q);
@@ -356,7 +430,10 @@ export const ColaPedidos: React.FC<{
 
       return true;
     });
-  }, [pedidos, busqueda, filtros]);
+    if (!orden) return filtradas;
+    const factor = orden.asc ? 1 : -1;
+    return [...filtradas].sort((a, b) => factor * comparar(a, b, orden.campo));
+  }, [pedidos, busqueda, filtros, orden]);
 
   const filtrosActivos =
     Object.values(filtros).filter((v) => v !== TODOS).length + (busqueda.trim() !== '' ? 1 : 0);
@@ -372,7 +449,7 @@ export const ColaPedidos: React.FC<{
       <div className="px-6 py-4 border-b border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white">
         <div>
           <div className="flex items-center gap-2.5">
-            <h2 className="font-sans font-bold text-base text-slate-800 tracking-tight">Cola de pedidos</h2>
+            <h2 className="font-sans font-bold text-base text-slate-800 tracking-tight">Pedidos</h2>
             <span className="px-2.5 py-0.5 rounded-full text-xs tabular-nums font-medium bg-slate-100 text-slate-700 border border-slate-200">
               {formatearMiles(total)} pedidos
             </span>
@@ -410,6 +487,7 @@ export const ColaPedidos: React.FC<{
           <div className="relative w-64 min-w-[200px]">
             <Search className="w-3.5 h-3.5 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
+              ref={buscadorRef}
               type="text"
               placeholder="Buscar por código, cliente, destino o unidad…"
               aria-label="Buscar pedidos"
@@ -417,6 +495,11 @@ export const ColaPedidos: React.FC<{
               onChange={(e) => setBusqueda(e.target.value)}
               className="w-full h-8 pl-8 pr-7 text-xs font-sans bg-white border border-slate-200 rounded-lg outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600/30 placeholder:text-slate-400"
             />
+            {!busqueda && (
+              <kbd className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-sans text-slate-400 border border-slate-200 rounded px-1 pointer-events-none">
+                /
+              </kbd>
+            )}
             {busqueda && (
               <button
                 type="button"
@@ -428,6 +511,33 @@ export const ColaPedidos: React.FC<{
               </button>
             )}
           </div>
+
+          {/* Accesos rápidos a los filtros más usados */}
+          <button
+            type="button"
+            aria-pressed={filtros.holgura === 'ROJO'}
+            onClick={() => setFiltros({ ...filtros, holgura: filtros.holgura === 'ROJO' ? TODOS : 'ROJO' })}
+            className={`h-8 px-2.5 rounded-lg text-xs font-sans font-medium border transition ${
+              filtros.holgura === 'ROJO'
+                ? 'bg-rose-100 border-rose-300 text-rose-800'
+                : 'bg-white border-slate-200 text-slate-600 hover:border-rose-200 hover:bg-rose-50'
+            }`}
+          >
+            Críticos
+          </button>
+          <button
+            type="button"
+            aria-pressed={filtros.estado === 'REGISTRADO'}
+            onClick={() => setFiltros({ ...filtros, estado: filtros.estado === 'REGISTRADO' ? TODOS : 'REGISTRADO' })}
+            className={`h-8 px-2.5 rounded-lg text-xs font-sans font-medium border transition ${
+              filtros.estado === 'REGISTRADO'
+                ? 'bg-blue-50 border-blue-300 text-blue-800'
+                : 'bg-white border-slate-200 text-slate-600 hover:border-blue-200 hover:bg-blue-50'
+            }`}
+          >
+            {ESTADO_EN_ESPERA}
+          </button>
+          <span className="w-px h-5 bg-slate-200" aria-hidden="true" />
 
           {/* Filtros Dropdowns */}
           <SelectFiltro
@@ -493,17 +603,17 @@ export const ColaPedidos: React.FC<{
         <table className="w-full table-auto text-left text-xs font-sans border-collapse whitespace-nowrap">
           <thead className="sticky top-0 bg-slate-50 border-b border-slate-200 z-10 text-slate-600 font-semibold tracking-wider text-[11px] uppercase">
             <tr>
-              <th className="py-2.5 px-4">Código</th>
-              <th className="py-2.5 px-4">Cliente</th>
-              <th className="py-2.5 px-4">Destino</th>
-              <th className="py-2.5 px-4 text-right">Cant.</th>
-              <th className="py-2.5 px-4">Plazo</th>
-              <th className="py-2.5 px-4">Hora límite</th>
-              <th className="py-2.5 px-4">Llegada estimada</th>
-              <th className="py-2.5 px-4">Holgura</th>
-              <th className="py-2.5 px-4">Vehículo</th>
-              <th className="py-2.5 px-4">Estado</th>
-              <th className="py-2.5 px-3 w-10 text-center">
+              <EncabezadoOrdenable campo="codigo" orden={orden} onOrdenar={alternarOrden}>Código</EncabezadoOrdenable>
+              <EncabezadoOrdenable campo="cliente" orden={orden} onOrdenar={alternarOrden}>Cliente</EncabezadoOrdenable>
+              <th className="py-2 px-4">Destino</th>
+              <EncabezadoOrdenable campo="cantidad" orden={orden} onOrdenar={alternarOrden} alinear="right">Cant.</EncabezadoOrdenable>
+              <th className="py-2 px-4">Plazo</th>
+              <EncabezadoOrdenable campo="horaLimite" orden={orden} onOrdenar={alternarOrden}>Hora límite</EncabezadoOrdenable>
+              <th className="py-2 px-4">Llegada estimada</th>
+              <EncabezadoOrdenable campo="holgura" orden={orden} onOrdenar={alternarOrden}>Holgura</EncabezadoOrdenable>
+              <th className="py-2 px-4">Vehículo</th>
+              <EncabezadoOrdenable campo="estado" orden={orden} onOrdenar={alternarOrden}>Estado</EncabezadoOrdenable>
+              <th className="py-2 px-3 w-10 text-center">
                 <span className="sr-only">Abrir detalle</span>
               </th>
             </tr>
@@ -525,19 +635,19 @@ export const ColaPedidos: React.FC<{
                   tabIndex={0}
                   className="hover:bg-blue-50/40 focus-visible:bg-blue-50/60 cursor-pointer transition-colors group"
                 >
-                  <td className="py-3 px-4 tabular-nums font-semibold text-slate-900 group-hover:text-blue-700">
+                  <td className="py-2 px-4 tabular-nums font-semibold text-slate-900 group-hover:text-blue-700">
                     {pedido.codigo}
                   </td>
-                  <td className="py-3 px-4 font-medium text-slate-800" title={pedido.cliente}>
+                  <td className="py-2 px-4 font-medium text-slate-800" title={pedido.cliente}>
                     <div className="max-w-[260px] truncate">{pedido.cliente}</div>
                   </td>
-                  <td className="py-3 px-4 tabular-nums text-slate-500">
+                  <td className="py-2 px-4 tabular-nums text-slate-500">
                     {pedido.destino ? `(${pedido.destino.x}, ${pedido.destino.y})` : '—'}
                   </td>
-                  <td className="py-3 px-4 tabular-nums text-right text-slate-700 font-medium">
+                  <td className="py-2 px-4 tabular-nums text-right text-slate-700 font-medium">
                     {pedido.cantidad} u.
                   </td>
-                  <td className="py-3 px-4">
+                  <td className="py-2 px-4">
                     <span
                       className={`inline-block px-2 py-0.5 rounded text-[11px] font-sans font-medium ${
                         regular ? 'bg-slate-100 text-slate-700' : 'bg-amber-50 text-amber-800 border border-amber-200'
@@ -546,28 +656,28 @@ export const ColaPedidos: React.FC<{
                       {etiquetaPlazo(pedido.plazoHoras)}
                     </span>
                   </td>
-                  <td className="py-3 px-4 tabular-nums text-slate-600">{pedido.horaLimite}</td>
-                  <td className="py-3 px-4 tabular-nums text-slate-700 font-medium">{pedido.eta ?? '—'}</td>
-                  <td className="py-3 px-4">
+                  <td className="py-2 px-4 tabular-nums text-slate-600">{pedido.horaLimite}</td>
+                  <td className="py-2 px-4 tabular-nums text-slate-700 font-medium">{pedido.eta ?? '—'}</td>
+                  <td className="py-2 px-4">
                     <span className="inline-flex items-center gap-1.5 tabular-nums font-medium">
                       <PuntoHolgura nivel={pedido.nivelHolgura} />
                       <span className={COLOR_HOLGURA[pedido.nivelHolgura]}>{pedido.holgura}</span>
                     </span>
                   </td>
-                  <td className="py-3 px-4 tabular-nums text-slate-700">
+                  <td className="py-2 px-4 tabular-nums text-slate-700">
                     {pedido.vehiculo ? (
                       <span className="font-medium text-blue-700">{etiquetaVehiculo(pedido)}</span>
                     ) : (
                       <span className="text-slate-500">Sin asignar</span>
                     )}
                   </td>
-                  <td className="py-3 px-4">
+                  <td className="py-2 px-4">
                     <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium border ${estado.badge}`}>
                       <span className={`size-1.5 rounded-full ${estado.dot}`} />
                       {estado.etiqueta}
                     </span>
                   </td>
-                  <td className="py-3 px-3 text-center text-slate-300 group-hover:text-blue-600 transition">
+                  <td className="py-2 px-3 text-center text-slate-300 group-hover:text-blue-600 transition">
                     <ChevronRight className="w-4 h-4 inline-block" />
                   </td>
                 </tr>

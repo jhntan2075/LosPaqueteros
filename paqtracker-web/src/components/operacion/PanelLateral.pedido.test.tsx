@@ -149,3 +149,14 @@ describe('Pedido en entrega', () => {
     expect(panel().getByRole('heading', { name: /A-01/ }).parentElement!.textContent).toContain('Entregando pedido');
   });
 });
+
+describe('Volver desde un detalle', () => {
+  it('regresa a la pestaña desde la que se abrió el detalle, no siempre a Incidencias', () => {
+    montarOperacion({ subvista: 'flota' });
+    expect(panel().getByText(/Estado de la flota/)).toBeTruthy();
+    tocar(objetoMapa(document.body, 'vehiculo:A-01')!);
+    expect(panel().getByRole('heading', { name: /A-01/ })).toBeTruthy();
+    fireEvent.click(panel().getByRole('button', { name: '‹ Volver' }));
+    expect(panel().getByText(/Estado de la flota/)).toBeTruthy();
+  });
+});

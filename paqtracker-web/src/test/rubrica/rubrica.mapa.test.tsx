@@ -64,15 +64,14 @@ describe('Rúbrica · MAPA · pantalla principal', () => {
     expect(der.x - izq.x).toBeGreaterThan(ANCHO_MAPA / 2);
   });
 
-  it('C4 · al inicio el mapa está libre: panel lateral, leyenda, capas y métricas cerrados', () => {
+  it('C4 · al inicio el mapa está libre: panel lateral y capas y leyenda cerrados', () => {
     localStorage.clear();
     montarOperacion();
     expect(screen.queryByRole('complementary', { name: 'Incidencias, flota y bitácora' })).toBeNull();
-    expect(screen.queryByRole('region', { name: 'Leyenda del mapa' })).toBeNull();
+    expect(screen.queryByRole('region', { name: 'Capas y leyenda' })).toBeNull();
     expect(screen.queryByRole('group', { name: 'Capas visibles' })).toBeNull();
-    expect(screen.queryByRole('dialog', { name: 'Panel de métricas operativas' })).toBeNull();
-    // Se abren a demanda desde los accesos flotantes.
-    fireEvent.click(screen.getByRole('button', { name: 'Flota' }));
+    // Se abre a demanda desde la barra vertical de paneles, siempre visible junto al mapa.
+    fireEvent.click(screen.getByRole('tab', { name: /Flota/ }));
     expect(screen.getByRole('complementary', { name: 'Incidencias, flota y bitácora' })).toBeTruthy();
   });
 });
@@ -284,7 +283,7 @@ describe('Rúbrica · MAPA · línea de la ruta', () => {
 
   it('C32 · los colores de la ruta tienen leyenda (tramo recorrido y pendiente con el mismo trazo que el mapa)', () => {
     render(<LeyendaMapa onCerrar={() => {}} />);
-    const leyenda = screen.getByRole('region', { name: 'Leyenda del mapa' });
+    const leyenda = screen.getByRole('region', { name: 'Capas y leyenda' });
     expect(leyenda.textContent).toContain('Tramo recorrido');
     expect(leyenda.textContent).toContain('Tramo pendiente');
     const pendiente = leyenda.querySelector('line[stroke-dasharray]')!;

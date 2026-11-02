@@ -170,6 +170,7 @@ function adaptarBloqueo(bloqueo: BloqueoEnMapaApi): BloqueoOperacion[] {
   const fin = formatearHora(new Date(bloqueo.finMs));
   return bloqueo.puntos.slice(1).map((hasta, i) => ({
     id: `BQ-${bloqueo.id}${bloqueo.puntos.length > 2 ? `.${i + 1}` : ''}`,
+    idOriginal: bloqueo.id,
     desde: coordenada(bloqueo.puntos[i]),
     hasta: coordenada(hasta),
     fin,
