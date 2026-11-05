@@ -79,6 +79,16 @@ export interface UnidadOperacion {
   minutosOciosa?: number;
   /** Avería vigente, solo si la unidad está averiada. */
   averia?: AveriaUnidad;
+  /** Tramo que recorre ahora (viaje, servicio, retorno…); sin valor si está detenida en un almacén. */
+  tramo?: TramoUnidad;
+}
+
+export interface TramoUnidad {
+  origen: Coordenada;
+  /** Destino inmediato: el final del tramo en curso. */
+  destino: Coordenada;
+  salida: Date;
+  llegada: Date;
 }
 
 export interface AveriaUnidad {

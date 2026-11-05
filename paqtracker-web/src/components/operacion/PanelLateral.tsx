@@ -262,6 +262,7 @@ const Paradas: React.FC<{ unidad: UnidadOperacion; onSeleccionar: PanelLateralPr
         <span className="tabular-nums text-[#64748B]">
           ({p.destino.x},{p.destino.y})
         </span>
+        <span className="tabular-nums text-[#0F172A]">{p.cantidad} paq.</span>
         <span className="ml-auto tabular-nums text-[#64748B]">llega {p.eta}</span>
         <span className={`tabular-nums font-medium ${COLOR_HOLGURA[p.nivel]}`}>{p.holgura}</span>
       </button>

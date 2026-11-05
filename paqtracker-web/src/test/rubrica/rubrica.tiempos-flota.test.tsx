@@ -121,7 +121,7 @@ describe('Rúbrica · nivel de uso de la flota total', () => {
     expect(relleno('Carga a bordo de auto')).toContain('bg-[#B45309]');
     expect(relleno('Carga a bordo de moto')).toContain('bg-[#B91C1C]');
     // La barra segmentada por estado tiene su texto alternativo con las cantidades.
-    expect(screen.getByRole('img').getAttribute('aria-label')).toBe('2 en ruta, 1 disponibles, 1 averiadas');
+    expect(screen.getByRole('img', { name: /en ruta/ }).getAttribute('aria-label')).toBe('2 en ruta, 1 disponibles, 1 averiadas');
   });
 });
 

@@ -1,9 +1,21 @@
 import React, { useState } from 'react';
+import { ArrowDownWideNarrow, ArrowUpNarrowWide } from 'lucide-react';
 import { UNIDADES, type TipoUnidad } from '../../config/dominio';
 import { ESTADO_UNIDAD, NOMBRE_CARGA, RANGO_OCUPACION } from '../../config/glosario';
-import { capitalizar, formatearMomento } from '../../lib/formato';
+import { capitalizar, formatearDuracion, formatearHora, formatearMomento } from '../../lib/formato';
 import { useDatosOperacion } from '../../hooks/useDatosOperacion';
+import {
+  CRITERIOS_ORDEN,
+  dentroDeMinutos,
+  minutosDesdeSalida,
+  minutosParaLlegar,
+  ordenarUnidades,
+  type CriterioOrden,
+  type ReferenciaTiempo,
+  type Sentido,
+} from '../../lib/listaUnidades';
 import { estadoFlota } from '../../lib/operacion';
+import { MarcaSemaforo } from '../map/simbolos';
 import { FONDO_SEMAFORO, NIVELES_CARGA, TEXTO_SEMAFORO, nivelDeOcupacion } from '../../lib/semaforo';
 import type { EstadoUnidad, SeleccionPanel } from '../../types/operacion';
 import { FilaConBarra, TituloSeccion } from './comunes';
@@ -26,6 +38,9 @@ const FILTROS_UNIDAD: { valor: FiltroUnidad; etiqueta: string }[] = [
   { valor: 'FUERA_DE_TURNO', etiqueta: 'Fuera de turno' },
   { valor: 'AVERIADA', etiqueta: 'Averiadas' },
 ];
+
+/** Sentido con que arranca cada criterio: lo más útil primero (más ocupadas, salidas y llegadas más próximas). */
+const SENTIDO_NATURAL: Record<CriterioOrden, Sentido> = { CODIGO: 'ASC', OCUPACION: 'DESC', SALIDA: 'ASC', LLEGADA: 'ASC' };
 
 const Leyenda: React.FC<{ color: string; etiqueta: string; valor: number }> = ({ color, etiqueta, valor }) => (
   <span className="flex items-center gap-[5px] text-[12px] whitespace-nowrap">
@@ -72,8 +87,18 @@ export const EstadoFlota: React.FC<{ onSeleccionar: (seleccion: SeleccionPanel) 
   ].filter(Boolean) as { color: 'rojo' | 'ambar'; titulo: string; detalle: string }[];
 
   const [filtro, setFiltro] = useState<FiltroUnidad>('TODAS');
-  const todasOrdenadas = [...datos.flota].sort((a, b) => a.codigo.localeCompare(b.codigo));
-  const unidadesFiltradas = filtro === 'TODAS' ? todasOrdenadas : todasOrdenadas.filter((u) => u.estado === filtro);
+  const [orden, setOrden] = useState<CriterioOrden>('CODIGO');
+  const [sentido, setSentido] = useState<Sentido>('ASC');
+  const [minutos, setMinutos] = useState('');
+  const [referencia, setReferencia] = useState<ReferenciaTiempo>('LLEGADA');
+  const limite = minutos.trim() === '' || Number.isNaN(Number(minutos)) ? null : Number(minutos);
+  const porEstado = filtro === 'TODAS' ? datos.flota : datos.flota.filter((u) => u.estado === filtro);
+  const buscadas = limite === null ? porEstado : porEstado.filter((u) => dentroDeMinutos(u, limite, referencia, reloj));
+  const unidadesFiltradas = ordenarUnidades(buscadas, orden, sentido);
+  const cambiarOrden = (criterio: CriterioOrden) => {
+    setOrden(criterio);
+    setSentido(SENTIDO_NATURAL[criterio]);
+  };
 
   return (
       <div className="flex-1 min-h-0 overflow-y-auto">
@@ -148,9 +173,81 @@ export const EstadoFlota: React.FC<{ onSeleccionar: (seleccion: SeleccionPanel) 
           ))}
         </section>
 
-        {/* Todas las unidades: lista completa, clicable, filtrable por estado (abre su detalle). */}
-        <section className="px-[12px] pt-[12px] pb-[14px] flex flex-col gap-[8px]">
+        {/* Todas las unidades: lista completa, clicable (abre su detalle), filtrable por estado, ordenable
+            (E13–E15) y con búsqueda por minutos al destino o desde el origen (E06, E07). */}
+        <section className="px-[12px] pt-[12px] pb-[14px] flex flex-col gap-[8px]" aria-label="Todas las unidades">
           <TituloSeccion derecha={`${unidadesFiltradas.length} de ${flota.total}`}>Todas las unidades</TituloSeccion>
+          <div className="flex items-center gap-[6px] text-[12px]">
+            <label htmlFor="orden-unidades" className="font-sans text-[#64748B] whitespace-nowrap">
+              Ordenar por
+            </label>
+            <select
+              id="orden-unidades"
+              value={orden}
+              onChange={(e) => cambiarOrden(e.target.value as CriterioOrden)}
+              className="h-[26px] px-[6px] rounded-[4px] border border-[#CBD5E1] bg-white text-[12px] text-[#0F172A]"
+            >
+              {CRITERIOS_ORDEN.map(({ valor, etiqueta }) => (
+                <option key={valor} value={valor}>
+                  {etiqueta}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              onClick={() => setSentido(sentido === 'ASC' ? 'DESC' : 'ASC')}
+              aria-label={sentido === 'ASC' ? 'Orden ascendente; cambiar a descendente' : 'Orden descendente; cambiar a ascendente'}
+              title={sentido === 'ASC' ? 'Ascendente' : 'Descendente'}
+              className="h-[26px] px-[8px] rounded-[4px] border border-[#CBD5E1] bg-white text-[#0F172A] hover:bg-[#F8FAFC] flex items-center gap-[4px]"
+            >
+              {sentido === 'ASC' ? <ArrowUpNarrowWide className="w-3.5 h-3.5" /> : <ArrowDownWideNarrow className="w-3.5 h-3.5" />}
+              <span className="text-[11px]">{sentido === 'ASC' ? 'Asc.' : 'Desc.'}</span>
+            </button>
+          </div>
+          <fieldset className="flex flex-wrap items-center gap-[6px] text-[12px]">
+            <legend className="sr-only">Buscar por tiempo del tramo en curso</legend>
+            <label htmlFor="minutos-unidades" className="font-sans text-[#64748B] whitespace-nowrap">
+              A ≤
+            </label>
+            <input
+              id="minutos-unidades"
+              type="number"
+              inputMode="numeric"
+              min={0}
+              placeholder="—"
+              value={minutos}
+              onChange={(e) => setMinutos(e.target.value)}
+              aria-label="Minutos como máximo"
+              className="h-[26px] w-[56px] px-[6px] rounded-[4px] border border-[#CBD5E1] bg-white tabular-nums text-[12px] text-[#0F172A]"
+            />
+            <span className="font-sans text-[#64748B]">min de la</span>
+            <div role="radiogroup" aria-label="Referencia de tiempo" className="flex rounded-[4px] border border-[#CBD5E1] overflow-hidden">
+              {(
+                [
+                  ['LLEGADA', 'Llegada al destino'],
+                  ['SALIDA', 'Salida del origen'],
+                ] as const
+              ).map(([valor, etiqueta]) => (
+                <button
+                  key={valor}
+                  type="button"
+                  role="radio"
+                  aria-checked={referencia === valor}
+                  onClick={() => setReferencia(valor)}
+                  className={`h-[24px] px-[8px] text-[11px] font-sans ${
+                    referencia === valor ? 'bg-[#DBEAFE] text-[#1E40AF] font-medium' : 'bg-white text-[#64748B] hover:bg-[#F8FAFC]'
+                  }`}
+                >
+                  {etiqueta}
+                </button>
+              ))}
+            </div>
+            {limite !== null && (
+              <button type="button" onClick={() => setMinutos('')} className="text-[11px] text-[#1E40AF] hover:underline">
+                Quitar
+              </button>
+            )}
+          </fieldset>
           <div className="flex flex-wrap gap-[4px]" role="group" aria-label="Filtrar unidades">
             {FILTROS_UNIDAD.map(({ valor, etiqueta }) => (
               <button
@@ -166,23 +263,64 @@ export const EstadoFlota: React.FC<{ onSeleccionar: (seleccion: SeleccionPanel) 
               </button>
             ))}
           </div>
-          {unidadesFiltradas.length === 0 && <p className="font-sans text-[12px] text-[#64748B]">Ninguna unidad en este estado.</p>}
-          {unidadesFiltradas.map((u) => (
-            <button
-              key={u.codigo}
-              type="button"
-              onClick={() => onSeleccionar({ tipo: 'vehiculo', codigo: u.codigo })}
-              className="h-[26px] flex items-center gap-[8px] text-[12px] hover:bg-[#F8FAFC] -mx-[4px] px-[4px] rounded"
-            >
-              <img src={iconoDeUnidad(u).href} alt="" className="block -my-[4px]" />
-              <span className="font-semibold text-[#0F172A]">{u.codigo}</span>
-              <span className="text-[#64748B]">{ESTADO_UNIDAD[u.estado]}</span>
-              <span className="ml-auto tabular-nums text-[#64748B]">{u.capacidad > 0 ? `${u.carga}/${u.capacidad}` : '—'}</span>
-              <span className="text-[#64748B]" aria-hidden="true">
-                ›
-              </span>
-            </button>
-          ))}
+          {unidadesFiltradas.length === 0 && (
+            <p className="font-sans text-[12px] text-[#64748B]">
+              {limite !== null ? 'Ninguna unidad dentro de ese tiempo.' : 'Ninguna unidad en este estado.'}
+            </p>
+          )}
+          <ul className="flex flex-col">
+            {unidadesFiltradas.map((u) => {
+              const nivel = nivelDeOcupacion(u.carga, u.capacidad);
+              const porcentaje = u.capacidad > 0 ? Math.round((u.carga / u.capacidad) * 100) : null;
+              const paraLlegar = minutosParaLlegar(u, reloj);
+              const desdeSalida = minutosDesdeSalida(u, reloj);
+              return (
+                <li key={u.codigo}>
+                  <button
+                    type="button"
+                    onClick={() => onSeleccionar({ tipo: 'vehiculo', codigo: u.codigo })}
+                    data-unidad={u.codigo}
+                    className="w-full py-[5px] flex flex-col gap-[1px] text-left text-[12px] hover:bg-[#F8FAFC] -mx-[4px] px-[4px] rounded"
+                  >
+                    <span className="flex items-center gap-[8px] w-full">
+                      <img src={iconoDeUnidad(u).href} alt="" className="block -my-[4px]" />
+                      <span className="font-semibold text-[#0F172A]">{u.codigo}</span>
+                      <span className="text-[#64748B] truncate">{ESTADO_UNIDAD[u.estado]}</span>
+                      <span className={`ml-auto flex items-center gap-[5px] tabular-nums whitespace-nowrap ${TEXTO_SEMAFORO[nivel]}`}>
+                        {porcentaje === null ? (
+                          '—'
+                        ) : (
+                          <>
+                            <MarcaSemaforo nivel={nivel} titulo={NOMBRE_CARGA[nivel]} />
+                            {u.carga}/{u.capacidad} · {porcentaje} %
+                          </>
+                        )}
+                      </span>
+                      <span className="text-[#64748B]" aria-hidden="true">
+                        ›
+                      </span>
+                    </span>
+                    <span className="pl-[38px] text-[11px] text-[#64748B] tabular-nums truncate">
+                      {u.tramo && paraLlegar !== null && desdeSalida !== null ? (
+                        <>
+                          → ({Math.round(u.tramo.destino.x)},{Math.round(u.tramo.destino.y)}) ·{' '}
+                          <span className={referencia === 'SALIDA' ? 'text-[#0F172A] font-medium' : undefined}>
+                            salió {formatearHora(u.tramo.salida)} · hace {formatearDuracion(desdeSalida)}
+                          </span>{' '}
+                          ·{' '}
+                          <span className={referencia === 'LLEGADA' ? 'text-[#0F172A] font-medium' : undefined}>
+                            llega {formatearHora(u.tramo.llegada)} · en {formatearDuracion(paraLlegar)}
+                          </span>
+                        </>
+                      ) : (
+                        'Sin tramo en curso'
+                      )}
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
         </section>
       </div>
   );

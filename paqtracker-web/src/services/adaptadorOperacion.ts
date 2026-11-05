@@ -157,6 +157,14 @@ function adaptarUnidad(unidad: UnidadEnMapaApi, pedidos: Record<string, PedidoOp
         }
       : undefined,
     ruta,
+    tramo: unidad.tramoEnCurso
+      ? {
+          origen: coordenada(unidad.tramoEnCurso.origen),
+          destino: coordenada(unidad.tramoEnCurso.destino),
+          salida: new Date(unidad.tramoEnCurso.tiempoSalidaSimulado),
+          llegada: new Date(unidad.tramoEnCurso.tiempoLlegadaEstimado),
+        }
+      : undefined,
     paradas,
     paradaActual: paradas.length > 0 ? 1 : 0,
     totalParadas: paradas.length,

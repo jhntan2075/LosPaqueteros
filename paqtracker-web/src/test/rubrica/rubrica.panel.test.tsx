@@ -265,3 +265,13 @@ describe('Rúbrica · panel · unidades de transporte', () => {
     expect(objetoMapa(container, 'vehiculo:B-01')!.textContent).toContain('vuelve');
   });
 });
+
+describe('Rúbrica 91.EvaSw · E05 · productos que traslada la unidad', () => {
+  it('cada parada del detalle de la unidad muestra cuántos paquetes lleva para ese pedido', () => {
+    const { container } = montarOperacion();
+    tocar(objetoMapa(container, 'vehiculo:A-01')!);
+    fireEvent.click(panel().getByRole('tab', { name: 'Ruta' }));
+    const parada = panel().getByRole('button', { name: /#1001/ });
+    expect(parada.textContent).toContain('3 paq.');
+  });
+});
