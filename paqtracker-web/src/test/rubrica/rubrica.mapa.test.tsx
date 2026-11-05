@@ -10,6 +10,7 @@ import { clienteApi } from '../../services/clienteApi';
 import { construirDatosOperacion } from '../../services/adaptadorOperacion';
 import { INICIO_MS, mensajeEstado } from '../fabricas';
 import {
+  ALTO_MAPA,
   ANCHO_MAPA,
   MIN,
   contrasteSobreBlanco,
@@ -444,5 +445,32 @@ describe('Rúbrica · CIRCUNSTANCIAS · averías en el mapa', () => {
     expect(lleno).toBeGreaterThan(0);
     expect(lleno).toBeLessThanOrEqual(perimetro);
     expect(unidad.textContent).toMatch(/vuelve (hoy|mañana) \d{2}:\d{2}/);
+  });
+});
+
+describe('Rúbrica · MAPA · zoom', () => {
+  const porcentajeZoom = () => Number(screen.getByText(/^\d+%$/).textContent!.replace('%', ''));
+  const mapa = () => screen.getByRole('region', { name: /^Mapa de la malla/ });
+
+  it('C08 · el zoom es continuo: un giro pequeño de la rueda acerca poco, no a saltos fijos', () => {
+    montarOperacion();
+    // jsdom no mide: el mapa toma el tamaño del escenario, igual que con el ResizeObserver falso.
+    vi.spyOn(mapa(), 'getBoundingClientRect').mockReturnValue({ left: 0, top: 0, width: ANCHO_MAPA, height: ALTO_MAPA } as DOMRect);
+    expect(porcentajeZoom()).toBe(100);
+    fireEvent.wheel(mapa(), { deltaY: -10 });
+    expect(porcentajeZoom()).toBeGreaterThan(100);
+    expect(porcentajeZoom()).toBeLessThan(105);
+    fireEvent.wheel(mapa(), { deltaY: -100 });
+    expect(porcentajeZoom()).toBeGreaterThan(110);
+  });
+
+  it('C08 · con el mapa enfocado, + acerca y 0 vuelve a la malla completa (sin animación si se pide menos movimiento)', () => {
+    vi.stubGlobal('matchMedia', () => ({ matches: true }));
+    montarOperacion();
+    mapa().focus();
+    fireEvent.keyDown(mapa(), { key: '+' });
+    expect(porcentajeZoom()).toBe(125);
+    fireEvent.keyDown(mapa(), { key: '0' });
+    expect(porcentajeZoom()).toBe(100);
   });
 });

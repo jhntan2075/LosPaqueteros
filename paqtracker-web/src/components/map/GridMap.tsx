@@ -104,6 +104,27 @@ const FRANJA_CONTROLES_PX = 52;
 const TOLERANCIA_CLIC_PX = 4;
 /** Escala mínima (px/km) al centrar en un objeto. */
 const ESCALA_AL_CENTRAR = 26;
+/** Zoom de los botones y de las teclas + y -. */
+const FACTOR_BOTON = 1.25;
+/** Desplazamiento de las flechas del teclado. */
+const PASO_TECLADO_PX = 80;
+/** Duración de las transiciones de la vista: corta, para que se sienta inmediata pero continua. */
+const DURACION_ANIMACION_MS = 200;
+
+/** Sin animación si el usuario pidió menos movimiento o el entorno no puede animar. */
+const sinAnimacion = () =>
+  typeof requestAnimationFrame !== 'function' ||
+  (typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+
+/**
+ * Zoom de la rueda proporcional al desplazamiento: una muesca del mouse acerca ~15 %, el trackpad y el
+ * pellizco (ctrlKey, deltas pequeños) acercan de forma continua. Se normalizan líneas y páginas a píxeles.
+ */
+const factorDeRueda = (evento: WheelEvent, altoPagina: number) => {
+  const delta = evento.deltaY * (evento.deltaMode === 1 ? 16 : evento.deltaMode === 2 ? altoPagina : 1);
+  const sensibilidad = evento.ctrlKey ? 0.01 : 0.0015;
+  return Math.min(2, Math.max(0.5, Math.exp(-delta * sensibilidad)));
+};
 
 /** Longitudes "redondas" para la barra de escala; se elige la que mide entre 40 y 120 px. */
 const LARGOS_ESCALA_KM = [1, 2, 5, 10, 20, 50];
@@ -200,12 +221,48 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
   const enSimulacion = variante === 'simulacion';
   const [capas, setCapas] = useState<Record<Capa, boolean>>({ rutas: true, unidades: true, destinos: true, bloqueos: true, almacenes: true });
 
+  // Zoom continuo (C08): botones, "ver todo" y centrar animan la vista; rueda y arrastre la cancelan.
+  const animacionRef = useRef<number | null>(null);
+  const cancelarAnimacion = () => {
+    if (animacionRef.current !== null) cancelAnimationFrame(animacionRef.current);
+    animacionRef.current = null;
+  };
+  useEffect(() => cancelarAnimacion, []);
+  const animarA = (destino: Vista, alTerminar?: () => void) => {
+    cancelarAnimacion();
+    if (!vista || sinAnimacion()) {
+      setVistaUsuario(destino);
+      alTerminar?.();
+      return;
+    }
+    const inicio = vista;
+    const t0 = performance.now();
+    // El avance se mide con performance.now(): el sello que entrega requestAnimationFrame puede venir de
+    // otro origen de tiempo según el entorno.
+    const paso = () => {
+      const avance = Math.min(1, Math.max(0, (performance.now() - t0) / DURACION_ANIMACION_MS));
+      const e = 1 - (1 - avance) ** 3; // ease-out cúbico
+      setVistaUsuario({
+        escala: inicio.escala + (destino.escala - inicio.escala) * e,
+        x: inicio.x + (destino.x - inicio.x) * e,
+        y: inicio.y + (destino.y - inicio.y) * e,
+      });
+      if (avance < 1) {
+        animacionRef.current = requestAnimationFrame(paso);
+      } else {
+        animacionRef.current = null;
+        alTerminar?.();
+      }
+    };
+    animacionRef.current = requestAnimationFrame(paso);
+  };
+
   // Centra el nodo en el área libre (descontando el panel derecho).
   const centrarEn = (punto: Coordenada) => {
     if (!vista) return false;
     const escala = Math.max(vista.escala, ESCALA_AL_CENTRAR);
     const centroX = (ancho - anchoPanelDerecho) / 2;
-    setVistaUsuario(limitarVista({ escala, x: centroX - punto.x * escala, y: alto / 2 - punto.y * escala }, lienzo));
+    animarA(limitarVista({ escala, x: centroX - punto.x * escala, y: alto / 2 - punto.y * escala }, lienzo));
     return true;
   };
   useImperativeHandle(ref, () => ({ centrarEn }));
@@ -225,7 +282,9 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
         ...LIENZO_BASE,
         margenDerecho: anchoPanelDerecho > 0 ? anchoPanelDerecho + 24 : LIENZO_BASE.margen,
       };
-      const factor = evento.deltaY < 0 ? 1.15 : 1 / 1.15;
+      if (animacionRef.current !== null) cancelAnimationFrame(animacionRef.current);
+      animacionRef.current = null;
+      const factor = factorDeRueda(evento, rect.height);
       setVistaUsuario((actual) =>
         acercarEn(actual ? limitarVista(actual, l) : vistaCompleta(l), factor, evento.clientX - rect.left, evento.clientY - rect.top, l),
       );
@@ -240,6 +299,7 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     const destino = e.target as HTMLElement;
     if (e.button !== 0 || !vista || destino.closest('button, input, a, [data-sin-zoom]')) return;
+    cancelarAnimacion();
     e.currentTarget.setPointerCapture(e.pointerId);
     setIsDragging(true);
     setHover(null);
@@ -307,7 +367,27 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
   };
 
   const acercarAlCentro = (factor: number) => {
-    if (vista) setVistaUsuario(acercarEn(vista, factor, ancho / 2, alto / 2, lienzo));
+    if (vista) animarA(acercarEn(vista, factor, ancho / 2, alto / 2, lienzo));
+  };
+  const verTodo = () => animarA(vistaCompleta(lienzo), () => setVistaUsuario(null));
+
+  // Teclado con el mapa enfocado: + y - acercan y alejan, 0 encuadra la malla, las flechas desplazan.
+  const alPresionarTecla = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (!vista || e.target !== e.currentTarget || e.ctrlKey || e.metaKey || e.altKey) return;
+    const desplazamientos: Record<string, [number, number]> = {
+      ArrowLeft: [PASO_TECLADO_PX, 0],
+      ArrowRight: [-PASO_TECLADO_PX, 0],
+      ArrowUp: [0, PASO_TECLADO_PX],
+      ArrowDown: [0, -PASO_TECLADO_PX],
+    };
+    if (e.key === '+' || e.key === '=') acercarAlCentro(FACTOR_BOTON);
+    else if (e.key === '-' || e.key === '_') acercarAlCentro(1 / FACTOR_BOTON);
+    else if (e.key === '0') verTodo();
+    else if (desplazamientos[e.key]) {
+      const [dx, dy] = desplazamientos[e.key];
+      animarA(limitarVista({ ...vista, x: vista.x + dx, y: vista.y + dy }, lienzo));
+    } else return;
+    e.preventDefault();
   };
 
   const escalaBase = ancho > 0 ? escalaDeEncuadre(lienzo) : 1;
@@ -356,12 +436,17 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
       onPointerCancel={handlePointerUp}
+      onKeyDown={alPresionarTecla}
+      tabIndex={0}
+      role="region"
+      aria-roledescription="mapa"
+      aria-label="Mapa de la malla. Con el mapa enfocado: + y - acercan y alejan, 0 muestra la malla completa y las flechas desplazan."
       onPointerEnter={() => setCursorEnMapa(true)}
       onPointerLeave={() => {
         setHover(null);
         setCursorEnMapa(false);
       }}
-      className={`relative flex-1 w-full h-full bg-white overflow-hidden select-none touch-none ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+      className={`relative flex-1 w-full h-full bg-white overflow-hidden select-none touch-none outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#1E40AF] ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
     >
       {/* 1. Barra flotante: búsqueda, riesgo, bloqueos y averías a la izquierda; ocupación global a la
           derecha. En pantallas angostas los indicadores bajan a una segunda fila en lugar de tapar las
@@ -461,27 +546,27 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
         style={{ right: derechaControles }}
       >
         <button
-          onClick={() => acercarAlCentro(1.25)}
+          onClick={() => acercarAlCentro(FACTOR_BOTON)}
           className="w-8 h-8 flex items-center justify-center hover:bg-slate-100 rounded-lg text-[#64748B] hover:text-[#0F172A] transition cursor-pointer"
-          title="Acercar"
+          title="Acercar (+)"
           aria-label="Acercar"
         >
           <ZoomIn className="w-4 h-4" />
         </button>
         <button
-          onClick={() => acercarAlCentro(0.8)}
+          onClick={() => acercarAlCentro(1 / FACTOR_BOTON)}
           disabled={enEscalaMinima}
           className="w-8 h-8 flex items-center justify-center hover:bg-slate-100 rounded-lg text-[#64748B] hover:text-[#0F172A] transition cursor-pointer disabled:opacity-40 disabled:cursor-default disabled:hover:bg-transparent"
-          title="Alejar"
+          title="Alejar (-)"
           aria-label="Alejar"
         >
           <ZoomOut className="w-4 h-4" />
         </button>
         <div className="w-full h-[1px] bg-[#E2E8F0] my-0.5"></div>
         <button
-          onClick={() => setVistaUsuario(null)}
+          onClick={verTodo}
           className="w-8 h-8 flex items-center justify-center hover:bg-slate-100 rounded-lg text-[#64748B] hover:text-[#0F172A] transition cursor-pointer"
-          title="Ver la malla completa"
+          title="Ver la malla completa (0)"
           aria-label="Ver la malla completa"
         >
           <Maximize2 className="w-3.5 h-3.5" />

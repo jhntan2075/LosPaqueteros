@@ -45,10 +45,13 @@ function tocar(elemento: Element) {
   fireEvent.pointerUp(elemento, { button: 0, clientX: 50, clientY: 50, pointerId: 1 });
 }
 
-function esperarCentrado(contenedor: HTMLElement, id: string) {
-  const p = posicionEnPantalla(objetoMapa(contenedor, id)!);
-  expect(p.x).toBeCloseTo(CENTRO_LIBRE.x, 0);
-  expect(p.y).toBeCloseTo(CENTRO_LIBRE.y, 0);
+// El centrado se anima (~200 ms): se espera a que la vista llegue a destino.
+async function esperarCentrado(contenedor: HTMLElement, id: string) {
+  await waitFor(() => {
+    const p = posicionEnPantalla(objetoMapa(contenedor, id)!);
+    expect(p.x).toBeCloseTo(CENTRO_LIBRE.x, 0);
+    expect(p.y).toBeCloseTo(CENTRO_LIBRE.y, 0);
+  });
 }
 
 describe('Rúbrica · mapa → panel', () => {
@@ -75,26 +78,26 @@ describe('Rúbrica · mapa → panel', () => {
 });
 
 describe('Rúbrica · panel → mapa', () => {
-  it('C52 · desde el detalle del almacén central, "Centrar en el mapa" lo centra', () => {
+  it('C52 · desde el detalle del almacén central, "Centrar en el mapa" lo centra', async () => {
     const { container } = montarOperacion();
     tocar(objetoMapa(container, 'almacen:CENTRAL')!);
     fireEvent.click(panel().getByRole('button', { name: 'Centrar en el mapa' }));
-    esperarCentrado(container, 'almacen:CENTRAL');
+    await esperarCentrado(container, 'almacen:CENTRAL');
   });
 
-  it('C53 · desde el detalle de un intermedio, "Centrar en el mapa" lo centra', () => {
+  it('C53 · desde el detalle de un intermedio, "Centrar en el mapa" lo centra', async () => {
     const { container } = montarOperacion();
     tocar(objetoMapa(container, 'almacen:INTERMEDIO_2')!);
     fireEvent.click(panel().getByRole('button', { name: 'Centrar en el mapa' }));
-    esperarCentrado(container, 'almacen:INTERMEDIO_2');
+    await esperarCentrado(container, 'almacen:INTERMEDIO_2');
   });
 
-  it('C54 · desde la lista de averías del panel se abre la unidad y se centra en el mapa', () => {
+  it('C54 · desde la lista de averías del panel se abre la unidad y se centra en el mapa', async () => {
     const { container } = montarOperacion({ subvista: 'incidencias' });
     fireEvent.click(panel().getByRole('button', { name: /Bicicleta B-01/ }));
     expect(panel().getByRole('heading', { name: /Bicicleta B-01/ })).toBeTruthy();
     fireEvent.click(panel().getByRole('button', { name: 'Centrar en el mapa' }));
-    esperarCentrado(container, 'vehiculo:B-01');
+    await esperarCentrado(container, 'vehiculo:B-01');
   });
 
   it('C54 · un pedido pedido desde otra pantalla ("Ubicar en el mapa") se abre en el panel', () => {
