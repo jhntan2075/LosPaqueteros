@@ -22,8 +22,6 @@ import { useDatosOperacion } from '../../hooks/useDatosOperacion';
 import { COLOR_HOLGURA } from './estilos';
 import { MarcadorAlmacen, PinDestino, PuntoHolgura, RotuloMapa, UnidadEnMapa } from './iconos';
 
-import holguraAmbarTriangulo from '../../assets/figma/pedidos/holgura-ambar-triangulo.svg';
-
 const FilaResumen: React.FC<{ etiqueta: string; valor: React.ReactNode }> = ({ etiqueta, valor }) => (
   <div className="flex items-center justify-between w-full text-xs py-1">
     <span className="font-sans text-slate-500">{etiqueta}</span>
@@ -209,11 +207,7 @@ export const PedidoRegistrado: React.FC<PedidoRegistradoProps> = ({
               </CeldaKpi>
               <CeldaKpi etiqueta="Holgura">
                 <span className="flex items-center gap-1.5 tabular-nums font-bold text-sm">
-                  {pedido.nivelHolgura === 'AMBAR' ? (
-                    <img src={holguraAmbarTriangulo} alt="" className="block size-3.5" />
-                  ) : (
-                    <PuntoHolgura nivel={pedido.nivelHolgura} />
-                  )}
+                  <PuntoHolgura nivel={pedido.nivelHolgura} />
                   <span className={COLOR_HOLGURA[pedido.nivelHolgura]}>
                     {formatearHolgura(pedido.holguraMinutos)}
                   </span>

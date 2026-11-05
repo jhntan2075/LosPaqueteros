@@ -62,7 +62,7 @@ export const DiagnosticoColapso: React.FC<DiagnosticoColapsoProps> = ({ diaColap
       <div className="h-[36px] px-[12px] flex items-center gap-[8px] border-b border-[#E2E8F0] shrink-0">
         <span className="size-[7px] rounded-full bg-[#B91C1C]" />
         <h2 className="font-sans font-semibold text-[13px] text-[#0F172A]">Diagnóstico del colapso</h2>
-        <button type="button" onClick={onCerrar} aria-label="Cerrar diagnóstico" className="ml-auto size-[22px] rounded text-[#64748B] hover:bg-[#F1F5F9] hover:text-[#0F172A]">
+        <button type="button" onClick={onCerrar} aria-label="Cerrar diagnóstico" className="ml-auto size-[24px] rounded text-[#64748B] hover:bg-[#F1F5F9] hover:text-[#0F172A]">
           ✕
         </button>
       </div>

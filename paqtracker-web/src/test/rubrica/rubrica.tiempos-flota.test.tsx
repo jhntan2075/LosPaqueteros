@@ -1,11 +1,10 @@
 // @vitest-environment jsdom
-import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { act, cleanup, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { TopNavbar } from '../../components/layout/TopNavbar';
 import { EstadoFlota } from '../../components/operacion/EstadoFlota';
-import { RailKpis } from '../../components/operacion/RailKpis';
+import { ResumenOperacion } from '../../components/operacion/ResumenOperacion';
 import { EncabezadoCorrida } from '../../components/simulacion/EncabezadoCorrida';
-import { estadoFlota, resumenRiesgo } from '../../lib/operacion';
 import { datosRubrica } from './escenario';
 import { renderConDatos } from './montaje';
 
@@ -103,24 +102,21 @@ describe('Rúbrica · tiempos de la simulación', () => {
 describe('Rúbrica · nivel de uso de la flota total', () => {
   const datos = datosRubrica();
 
-  it('C40 · el panel de métricas muestra la flota en números y porcentaje (en ruta / total, saturación)', () => {
-    const flota = estadoFlota(datos);
-    render(<RailKpis resumen={datos.resumen} riesgo={resumenRiesgo(datos)} flota={{ ...flota, averiadas: flota.averiadas.length }} />);
-    fireEvent.click(screen.getByRole('button', { name: /Métricas/ }));
-    const panel = within(screen.getByRole('dialog', { name: 'Panel de métricas operativas' }));
-    expect(panel.getByText('Unidades en ruta').parentElement!.parentElement!.textContent).toContain('2 / 4');
-    expect(panel.getByText('Saturación de la flota').parentElement!.parentElement!.textContent).toContain('50 %');
+  it('C40 · el resumen muestra la flota en números y porcentaje (en ruta / total, saturación)', () => {
+    renderConDatos(<ResumenOperacion onSeleccionar={() => {}} />, datos);
+    expect(screen.getByText('Unidades en ruta').parentElement!.parentElement!.textContent).toContain('2 / 4');
+    expect(screen.getByText('Saturación de la flota').parentElement!.parentElement!.textContent).toContain('50 %');
   });
 
   it('C40 · la pestaña Flota muestra el porcentaje en ruta y la carga a bordo por tipo', () => {
-    renderConDatos(<EstadoFlota />, datos);
+    renderConDatos(<EstadoFlota onSeleccionar={() => {}} />, datos);
     expect(screen.getByText(/Estado de la flota · 4 unidades/).parentElement!.textContent).toContain('50 % en ruta');
     expect(screen.getByRole('meter', { name: 'Carga a bordo de auto' }).getAttribute('aria-valuenow')).toBe('83');
     expect(screen.getByRole('meter', { name: 'Carga a bordo de moto' }).getAttribute('aria-valuenow')).toBe('100');
   });
 
   it('C41 · la carga de la flota usa semáforo: ámbar para autos (83 %) y rojo para motos (100 %)', () => {
-    renderConDatos(<EstadoFlota />, datos);
+    renderConDatos(<EstadoFlota onSeleccionar={() => {}} />, datos);
     const relleno = (nombre: string) => screen.getByRole('meter', { name: nombre }).firstElementChild!.className;
     expect(relleno('Carga a bordo de auto')).toContain('bg-[#B45309]');
     expect(relleno('Carga a bordo de moto')).toContain('bg-[#B91C1C]');

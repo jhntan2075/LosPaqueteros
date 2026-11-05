@@ -1,13 +1,14 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { UNIDADES, type TipoUnidad } from '../../config/dominio';
-import { RANGO_OCUPACION } from '../../config/glosario';
+import { ESTADO_UNIDAD, RANGO_OCUPACION } from '../../config/glosario';
 import { capitalizar, formatearMomento } from '../../lib/formato';
 import { useDatosOperacion } from '../../hooks/useDatosOperacion';
 import { estadoFlota, nivelDeOcupacion } from '../../lib/operacion';
+import type { EstadoUnidad, SeleccionPanel } from '../../types/operacion';
 import { COLOR_HOLGURA } from '../pedidos/estilos';
 import { FilaConBarra, TituloSeccion } from './comunes';
 
-import { colorDeCarga, iconoVehiculo } from '../map/iconosVehiculo';
+import { colorDeCarga, colorDeUnidad, iconoVehiculo } from '../map/iconosVehiculo';
 
 // OP-07 · Estado de la flota (Figma 1:5813). Implementado sobre la captura del frame: el contexto de
 // diseño no estuvo disponible (límite de llamadas de Figma), así que medidas y espaciados son aproximados.
@@ -16,6 +17,16 @@ const ETIQUETA: Record<TipoUnidad, string> = { AUTO: 'Auto', MOTO: 'Moto', BICIC
 const FONDO_NIVEL = { ROJO: 'bg-[#B91C1C]', AMBAR: 'bg-[#B45309]', VERDE: 'bg-[#15803D]', CERRADO: 'bg-[#94A3B8]' } as const;
 
 const unidades = (n: number) => `${n} ${n === 1 ? 'unidad' : 'unidades'}`;
+
+type FiltroUnidad = 'TODAS' | EstadoUnidad;
+const FILTROS_UNIDAD: { valor: FiltroUnidad; etiqueta: string }[] = [
+  { valor: 'TODAS', etiqueta: 'Todas' },
+  { valor: 'EN_RUTA', etiqueta: 'En ruta' },
+  { valor: 'DISPONIBLE', etiqueta: 'Disponibles' },
+  { valor: 'EN_REFRIGERIO', etiqueta: 'En refrigerio' },
+  { valor: 'FUERA_DE_TURNO', etiqueta: 'Fuera de turno' },
+  { valor: 'AVERIADA', etiqueta: 'Averiadas' },
+];
 
 const Leyenda: React.FC<{ color: string; etiqueta: string; valor: number }> = ({ color, etiqueta, valor }) => (
   <span className="flex items-center gap-[5px] text-[12px] whitespace-nowrap">
@@ -26,7 +37,7 @@ const Leyenda: React.FC<{ color: string; etiqueta: string; valor: number }> = ({
 );
 
 /** Pestaña "Flota" del panel lateral del mapa (Operación y corrida de simulación). */
-export const EstadoFlota: React.FC = () => {
+export const EstadoFlota: React.FC<{ onSeleccionar: (seleccion: SeleccionPanel) => void }> = ({ onSeleccionar }) => {
   const datos = useDatosOperacion();
   const { reloj } = datos;
   const flota = estadoFlota(datos);
@@ -54,17 +65,16 @@ export const EstadoFlota: React.FC = () => {
       titulo: `${unidades(flota.llenas.length)} al 100 % de carga`,
       detalle: `${flota.llenas.map((u) => u.codigo).join(' ')} · no admiten reasignación`,
     },
-    flota.ociosas.length > 0 && {
-      color: 'ambar' as const,
-      titulo: `${unidades(flota.ociosas.length)} ociosas más de 30 min`,
-      detalle: flota.ociosas.map((u) => u.codigo).join(' '),
-    },
     flota.enRefrigerio.length > 0 && {
       color: 'ambar' as const,
       titulo: `${unidades(flota.enRefrigerio.length)} en refrigerio`,
       detalle: flota.enRefrigerio.map((u) => `${capitalizar(UNIDADES[u.tipo].nombre)} ${u.codigo}`).join(' · '),
     },
   ].filter(Boolean) as { color: 'rojo' | 'ambar'; titulo: string; detalle: string }[];
+
+  const [filtro, setFiltro] = useState<FiltroUnidad>('TODAS');
+  const todasOrdenadas = [...datos.flota].sort((a, b) => a.codigo.localeCompare(b.codigo));
+  const unidadesFiltradas = filtro === 'TODAS' ? todasOrdenadas : todasOrdenadas.filter((u) => u.estado === filtro);
 
   return (
       <div className="flex-1 min-h-0 overflow-y-auto">
@@ -131,11 +141,48 @@ export const EstadoFlota: React.FC = () => {
         </section>
 
         {/* Requiere atención */}
-        <section className="px-[12px] pt-[12px] pb-[14px] flex flex-col gap-[12px]">
+        <section className="px-[12px] pt-[12px] pb-[14px] border-b border-[#E2E8F0] flex flex-col gap-[12px]">
           <TituloSeccion derecha={atencion.length}>Requiere atención</TituloSeccion>
           {atencion.length === 0 && <p className="font-sans text-[12px] text-[#64748B]">Ninguna unidad requiere atención.</p>}
           {atencion.map((item) => (
             <FilaConBarra key={item.titulo} color={item.color} titulo={item.titulo} detalle={item.detalle} detalleMono />
+          ))}
+        </section>
+
+        {/* Todas las unidades: lista completa, clicable, filtrable por estado (abre su detalle). */}
+        <section className="px-[12px] pt-[12px] pb-[14px] flex flex-col gap-[8px]">
+          <TituloSeccion derecha={`${unidadesFiltradas.length} de ${flota.total}`}>Todas las unidades</TituloSeccion>
+          <div className="flex flex-wrap gap-[4px]" role="group" aria-label="Filtrar unidades">
+            {FILTROS_UNIDAD.map(({ valor, etiqueta }) => (
+              <button
+                key={valor}
+                type="button"
+                aria-pressed={filtro === valor}
+                onClick={() => setFiltro(valor)}
+                className={`px-[7px] py-[3px] rounded-[4px] text-[12px] font-sans ${
+                  filtro === valor ? 'bg-[#DBEAFE] text-[#1E40AF] font-medium' : 'bg-white border border-[#E2E8F0] text-[#64748B] hover:border-[#CBD5E1]'
+                }`}
+              >
+                {etiqueta}
+              </button>
+            ))}
+          </div>
+          {unidadesFiltradas.length === 0 && <p className="font-sans text-[12px] text-[#64748B]">Ninguna unidad en este estado.</p>}
+          {unidadesFiltradas.map((u) => (
+            <button
+              key={u.codigo}
+              type="button"
+              onClick={() => onSeleccionar({ tipo: 'vehiculo', codigo: u.codigo })}
+              className="h-[26px] flex items-center gap-[8px] text-[12px] hover:bg-[#F8FAFC] -mx-[4px] px-[4px] rounded"
+            >
+              <img src={iconoVehiculo(u.tipo, colorDeUnidad(u)).href} alt="" className="block -my-[4px]" />
+              <span className="font-semibold text-[#0F172A]">{u.codigo}</span>
+              <span className="text-[#64748B]">{ESTADO_UNIDAD[u.estado]}</span>
+              <span className="ml-auto tabular-nums text-[#64748B]">{u.capacidad > 0 ? `${u.carga}/${u.capacidad}` : '—'}</span>
+              <span className="text-[#64748B]" aria-hidden="true">
+                ›
+              </span>
+            </button>
           ))}
         </section>
       </div>

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { INICIO_MS, datosOperacion, pedidoApi, unidadApi } from '../test/fabricas';
-import { estadoFlota, fueraDelAlmacen, nivelDeOcupacion, pedidosEnRiesgo, resumenRiesgo, unidadPorCodigo } from './operacion';
+import { cantidadBloqueos, estadoFlota, fueraDelAlmacen, nivelDeOcupacion, pedidosEnRiesgo, resumenRiesgo, unidadPorCodigo } from './operacion';
 
 describe('nivelDeOcupacion', () => {
   it('aplica los cortes ámbar (70 %) y rojo (90 %)', () => {
@@ -77,5 +77,19 @@ describe('riesgo de pedidos', () => {
 
   it('sin pedidos en riesgo la holgura mínima es "—"', () => {
     expect(resumenRiesgo(datosOperacion()).holguraMinima).toBe('—');
+  });
+});
+
+describe('cantidadBloqueos', () => {
+  it('cuenta bloqueos distintos, no los tramos en que se parte cada polilínea', () => {
+    const datos = datosOperacion({
+      bloqueos: [
+        // Polilínea de 3 puntos: se parte en 2 tramos, pero es un solo bloqueo.
+        { id: 1, puntos: [{ x: 0, y: 0 }, { x: 0, y: 5 }, { x: 5, y: 5 }], inicioMs: INICIO_MS, finMs: INICIO_MS + 3_600_000 },
+        { id: 2, puntos: [{ x: 10, y: 10 }, { x: 10, y: 15 }], inicioMs: INICIO_MS, finMs: INICIO_MS + 3_600_000 },
+      ],
+    });
+    expect(datos.bloqueos).toHaveLength(3); // 2 tramos del primero + 1 del segundo
+    expect(cantidadBloqueos(datos)).toBe(2);
   });
 });

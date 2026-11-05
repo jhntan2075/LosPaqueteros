@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect, useImperativeHandle, forwardRef } from 'react';
-import { Search, ZoomIn, ZoomOut, Maximize2, Layers, MapIcon } from 'lucide-react';
+import { Search, ZoomIn, ZoomOut, Maximize2, MapIcon } from 'lucide-react';
 import { ALMACENES, MALLA_ALTO_KM, MALLA_ANCHO_KM, UNIDADES } from '../../config/dominio';
 import { NOMBRE_HOLGURA, NOMBRE_INVENTARIO, SITUACION_UNIDAD } from '../../config/glosario';
+import { useCerrarConEscape } from '../../hooks/useCerrarConEscape';
 import { useTamanoElemento } from '../../hooks/useTamanoElemento';
 import { capitalizar, formatearMomento } from '../../lib/formato';
 import { useDatosOperacion } from '../../hooks/useDatosOperacion';
@@ -20,6 +21,7 @@ import {
 } from '../../lib/malla';
 import { fueraDelAlmacen } from '../../lib/operacion';
 import { colorDeUnidad, iconoVehiculo } from './iconosVehiculo';
+import type { Capa } from './capas';
 import { LeyendaMapa } from './LeyendaMapa';
 import { AlmacenCentral, AlmacenIntermedio, CENTRO_CABEZA_PIN, COLOR_EN_ENTREGA, MarcaBloqueo, PinDestino } from './simbolos';
 import haloSeleccion from '../../assets/figma/pedidos/halo.svg';
@@ -36,14 +38,6 @@ export interface DestinoMapa {
   holgura: string;
   unidad: string;
 }
-
-export type PestanaPanel = 'incidencias' | 'flota' | 'bitacora';
-
-const ACCESOS_PANEL: { pestana: PestanaPanel; etiqueta: string }[] = [
-  { pestana: 'incidencias', etiqueta: 'Incidencias' },
-  { pestana: 'flota', etiqueta: 'Flota' },
-  { pestana: 'bitacora', etiqueta: 'Bitácora' },
-];
 
 export type ObjetoMapa =
   | { tipo: 'pedido'; codigo: string }
@@ -74,13 +68,11 @@ interface GridMapProps {
   riesgo: { rojo: number; ambar: number };
   onSeleccionar: (objeto: ObjetoMapa) => void;
   onAbrirIncidencias: () => void;
-  /** Abre el panel lateral en una de sus pestañas; sin valor no se muestran los accesos. */
-  onAbrirPanel?: (pestana: PestanaPanel) => void;
+  /** Píldora de averías: va a la flota, donde se ve el detalle de cada unidad. Sin valor, va a Incidencias. */
+  onAbrirAverias?: () => void;
   onHoverCoordenada?: (coord: Coordenada) => void;
   /** 'simulacion': barra reducida (búsqueda y riesgo); tocar un objeto abre su detalle igual que en Operación. */
   variante?: 'operacion' | 'simulacion';
-  /** Componente de KPIs flotantes para renderizar en la barra de controles del mapa */
-  slotKpis?: React.ReactNode;
   children?: React.ReactNode;
 }
 
@@ -122,15 +114,6 @@ const guardarLeyendaAbierta = (abierta: boolean) => {
 
 const COLOR_NIVEL: Record<NivelHolgura, string> = { ROJO: '#B91C1C', AMBAR: '#B45309', VERDE: '#15803D', CERRADO: '#94A3B8' };
 
-type Capa = 'rutas' | 'unidades' | 'destinos' | 'bloqueos' | 'almacenes';
-const CAPAS: { clave: Capa; etiqueta: string }[] = [
-  { clave: 'rutas', etiqueta: 'Rutas' },
-  { clave: 'unidades', etiqueta: 'Unidades' },
-  { clave: 'destinos', etiqueta: 'Destinos' },
-  { clave: 'bloqueos', etiqueta: 'Bloqueos' },
-  { clave: 'almacenes', etiqueta: 'Almacenes' },
-];
-
 const ESTILO_PILDORA = 'h-[32px] bg-white shadow-[0px_1px_4px_rgba(0,0,0,0.13)] rounded-full border border-[#E2E8F0] flex items-center';
 
 export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
@@ -144,10 +127,9 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
     riesgo,
     onSeleccionar,
     onAbrirIncidencias,
-    onAbrirPanel,
+    onAbrirAverias,
     onHoverCoordenada,
     variante = 'operacion',
-    slotKpis,
     children,
   },
   ref,
@@ -173,12 +155,15 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
   const [nodoActivo, setNodoActivo] = useState<Coordenada>({ x: 19, y: 9 });
   // Hover: se guarda el objeto, no la posición del cursor, así el mapa no se redibuja con cada movimiento.
   const [hover, setHover] = useState<ObjetoHover | null>(null);
-  const [capasAbiertas, setCapasAbiertas] = useState(false);
+  // La retícula del nodo bajo el cursor solo se muestra mientras el cursor está sobre el mapa.
+  const [cursorEnMapa, setCursorEnMapa] = useState(false);
   const [leyendaAbierta, setLeyendaAbierta] = useState(leerLeyendaAbierta);
   const alternarLeyenda = (abierta: boolean) => {
     setLeyendaAbierta(abierta);
     guardarLeyendaAbierta(abierta);
   };
+  // Esc cierra el panel de capas y leyenda, como los demás paneles flotantes.
+  useCerrarConEscape(leyendaAbierta, () => alternarLeyenda(false));
   const enSimulacion = variante === 'simulacion';
   const [capas, setCapas] = useState<Record<Capa, boolean>>({ rutas: true, unidades: true, destinos: true, bloqueos: true, almacenes: true });
 
@@ -296,6 +281,9 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
   const escalaMinima = ancho > 0 ? escalaMinimaPermitida(lienzo) : 1;
   const enEscalaMinima = !vista || vista.escala <= escalaMinima * 1.001;
   const averiadas = unidades.filter((u) => u.estado === 'AVERIADA').length;
+  const abrirAverias = onAbrirAverias ?? onAbrirIncidencias;
+  // Un bloqueo con una polilínea de varios puntos se parte en varios tramos; se cuenta una sola vez.
+  const cantidadBloqueos = new Set(bloqueos.map((b) => b.idOriginal)).size;
   const derechaControles = anchoPanelDerecho > 0 ? anchoPanelDerecho + 24 : 16;
 
   return (
@@ -305,10 +293,14 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
       onPointerCancel={handlePointerUp}
-      onPointerLeave={() => setHover(null)}
+      onPointerEnter={() => setCursorEnMapa(true)}
+      onPointerLeave={() => {
+        setHover(null);
+        setCursorEnMapa(false);
+      }}
       className={`relative flex-1 w-full h-full bg-white overflow-hidden select-none touch-none ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
     >
-      {/* 1. Barra flotante: búsqueda, riesgo, bloqueos y averías, capas */}
+      {/* 1. Barra flotante: búsqueda, riesgo, bloqueos y averías */}
       <div className="absolute left-3 top-3 z-10 flex items-center gap-2">
         <form onSubmit={buscar} className={`${ESTILO_PILDORA} relative w-[206px] px-3 gap-2`} role="search">
           <Search className="w-3.5 h-3.5 text-[#64748B] shrink-0" />
@@ -360,72 +352,31 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
         </button>
 
         {!enSimulacion && (
-        <button type="button" onClick={onAbrirIncidencias} className={`${ESTILO_PILDORA} px-3.5 gap-1.5 hover:bg-slate-50`}>
-          <span className="w-2 h-2 bg-[#B45309] rounded-full"></span>
-          <span className="text-[#B45309] tabular-nums font-medium text-[12px]">{bloqueos.length}</span>
+        <button
+          type="button"
+          onClick={onAbrirIncidencias}
+          aria-label={`${cantidadBloqueos} bloqueos activos. Ver incidencias`}
+          className={`${ESTILO_PILDORA} px-3 gap-1.5 hover:bg-slate-50`}
+        >
+          <span className="w-2 h-2 bg-[#B91C1C] rounded-full"></span>
+          <span className="text-[#B91C1C] tabular-nums font-medium text-[12px]">{cantidadBloqueos}</span>
           <span className="text-[#64748B] font-sans text-[12px]">bloqueos</span>
-          <span className="w-1.5"></span>
+        </button>
+        )}
+
+        {!enSimulacion && (
+        <button
+          type="button"
+          onClick={abrirAverias}
+          aria-label={`${averiadas} unidades averiadas. Ver flota`}
+          className={`${ESTILO_PILDORA} px-3 gap-1.5 hover:bg-slate-50`}
+        >
           <span className="w-2 h-2 bg-[#B91C1C] rounded-full"></span>
           <span className="text-[#B91C1C] tabular-nums font-medium text-[12px]">{averiadas}</span>
           <span className="text-[#64748B] font-sans text-[12px]">averías</span>
         </button>
         )}
-
-        {!enSimulacion && (
-        <div className="relative">
-          <button
-            type="button"
-            aria-expanded={capasAbiertas}
-            onClick={() => setCapasAbiertas(!capasAbiertas)}
-            className={`${ESTILO_PILDORA} px-3.5 gap-1.5 hover:bg-slate-50 ${capasAbiertas ? 'border-[#1E40AF]' : ''}`}
-          >
-            <Layers className="w-3.5 h-3.5 text-[#64748B]" />
-            <span className="text-[#64748B] font-sans text-[12px]">Capas</span>
-          </button>
-          {capasAbiertas && (
-            <fieldset
-              data-sin-zoom
-              className="absolute left-0 top-[38px] w-[170px] bg-white border border-[#E2E8F0] rounded-[8px] shadow-[0px_2px_12px_0px_rgba(0,0,0,0.16)] p-[8px] flex flex-col gap-[2px]"
-            >
-              <legend className="sr-only">Capas visibles</legend>
-              {CAPAS.map(({ clave, etiqueta }) => (
-                <label key={clave} className="flex items-center gap-[8px] px-[6px] py-[4px] rounded hover:bg-[#F8FAFC] text-[12px] font-sans text-[#0F172A] cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={capas[clave]}
-                    onChange={() => setCapas({ ...capas, [clave]: !capas[clave] })}
-                    className="accent-[#1E40AF]"
-                  />
-                  {etiqueta}
-                </label>
-              ))}
-            </fieldset>
-          )}
-        </div>
-        )}
-
-        {/* Slot para KPIs flotantes (Opción A: HUD Popover) */}
-        {slotKpis}
       </div>
-
-      {/* Accesos al panel lateral: aparecen donde se abre y se ocultan mientras está abierto */}
-      {onAbrirPanel && anchoPanelDerecho === 0 && (
-        <nav
-          aria-label="Paneles del mapa"
-          className="absolute right-4 top-3 z-10 h-[32px] bg-white shadow-[0px_1px_4px_rgba(0,0,0,0.13)] rounded-full border border-[#E2E8F0] flex items-center px-1 gap-0.5"
-        >
-          {ACCESOS_PANEL.map(({ pestana, etiqueta }) => (
-            <button
-              key={pestana}
-              type="button"
-              onClick={() => onAbrirPanel(pestana)}
-              className="h-[26px] px-3 rounded-full font-sans text-[12px] text-[#0F172A] hover:bg-slate-100"
-            >
-              {etiqueta}
-            </button>
-          ))}
-        </nav>
-      )}
 
       {/* 2. Controles de zoom (a la izquierda del panel derecho si está abierto) */}
       <div
@@ -463,9 +414,15 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
         </span>
       </div>
 
-      {/* 3. Leyenda (panel flotante, no modal) y barra de escala */}
+      {/* 3. Capas y leyenda (panel flotante, no modal) y barra de escala */}
       <div className="absolute left-4 bottom-4 z-20 flex flex-col items-start gap-2">
-        {leyendaAbierta && <LeyendaMapa onCerrar={() => alternarLeyenda(false)} />}
+        {leyendaAbierta && (
+          <LeyendaMapa
+            onCerrar={() => alternarLeyenda(false)}
+            capas={capas}
+            onCambiarCapa={(clave) => setCapas({ ...capas, [clave]: !capas[clave] })}
+          />
+        )}
         <div className="flex items-end gap-2">
           <button
             type="button"
@@ -474,7 +431,7 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
             className={`${ESTILO_PILDORA} px-3 gap-1.5 hover:bg-slate-50 ${leyendaAbierta ? 'border-[#1E40AF]' : ''}`}
           >
             <MapIcon className="w-3.5 h-3.5 text-[#64748B]" />
-            <span className="text-[#0F172A] font-sans text-[12px]">Leyenda</span>
+            <span className="text-[#0F172A] font-sans text-[12px]">Capas y leyenda</span>
           </button>
           {vista && (
             <div className="bg-white/95 backdrop-blur-xs px-2.5 py-1 rounded-md border border-[#E2E8F0] shadow-xs pointer-events-none flex flex-col gap-[3px]">
@@ -497,6 +454,7 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
           almacenes={almacenes}
           seleccion={seleccion}
           nodoActivo={nodoActivo}
+          mostrarReticula={cursorEnMapa}
         />
       )}
 
@@ -520,6 +478,7 @@ interface CapasMapaProps {
   almacenes: AlmacenOperacion[];
   seleccion: ObjetoMapa | null;
   nodoActivo: Coordenada;
+  mostrarReticula: boolean;
 }
 
 /** Pedidos que se nombran en el tooltip de un almacén; el resto se resume como "+N". */
@@ -658,7 +617,7 @@ function orientacionIcono(unidad: UnidadOperacion): string | undefined {
   return dy > 0 ? 'rotate(90)' : 'rotate(-90)';
 }
 
-const CapasMapa: React.FC<CapasMapaProps> = ({ vista, lienzo, capas, unidades, destinos, bloqueos, almacenes, seleccion, nodoActivo }) => {
+const CapasMapa: React.FC<CapasMapaProps> = ({ vista, lienzo, capas, unidades, destinos, bloqueos, almacenes, seleccion, nodoActivo, mostrarReticula }) => {
   const origen = proyectar(vista, { x: 0, y: 0 });
   const paso = pasoCuadricula(vista.escala);
   const pasoPx = paso * vista.escala;
@@ -677,11 +636,10 @@ const CapasMapa: React.FC<CapasMapaProps> = ({ vista, lienzo, capas, unidades, d
   const xRotulosY = hayEspacioIzquierdo ? origen.x - 6 : Math.max(origen.x + 6, 8);
   const anchorY = hayEspacioIzquierdo ? 'end' : 'start';
 
-  const paso10Px = 10 * vista.escala;
-  const k10MaxX = Math.ceil((lienzo.ancho - origen.x) / paso10Px);
-  const k10MaxY = Math.ceil((lienzo.alto - origen.y) / paso10Px);
-  const totalRotulosX = Math.max(Math.floor(MALLA_ANCHO_KM / 10) + 1, k10MaxX + 1);
-  const totalRotulosY = Math.max(Math.floor(MALLA_ALTO_KM / 10) + 1, k10MaxY + 1);
+  // Los rótulos no pasan del borde real de la malla (70 × 50 km): antes, al alejar o desplazar la
+  // vista, seguían contando más allá (90k, 100k…) aunque ahí ya no hay ciudad.
+  const totalRotulosX = Math.floor(MALLA_ANCHO_KM / 10) + 1;
+  const totalRotulosY = Math.floor(MALLA_ALTO_KM / 10) + 1;
 
   const halo = { stroke: '#FFFFFF', strokeWidth: 3, paintOrder: 'stroke' } as const;
 
@@ -754,13 +712,15 @@ const CapasMapa: React.FC<CapasMapaProps> = ({ vista, lienzo, capas, unidades, d
         );
       })}
 
-      {/* --- RUTAS: tramo recorrido (gris sólido) y pendiente (punteado; azul si está destacada) --- */}
+      {/* --- RUTAS: tramo recorrido (gris sólido) y pendiente (punteado; azul si está destacada).
+          Con algo seleccionado, las demás rutas se atenúan para que la destacada resalte más. --- */}
       {capas.rutas &&
         ordenRutas.map((unidad) => {
           const { recorrido, pendiente } = dividirRuta(unidad);
           const destacada = unidadesDestacadas.has(unidad.codigo);
+          const atenuada = unidadesDestacadas.size > 0 && !destacada;
           return (
-            <g key={`ruta-${unidad.codigo}`}>
+            <g key={`ruta-${unidad.codigo}`} opacity={atenuada ? 0.35 : 1}>
               {recorrido.length > 1 && <path d={trazado(vista, recorrido)} fill="none" stroke="#9EABBA" strokeWidth="2" />}
               <path
                 d={trazado(vista, pendiente)}
@@ -785,29 +745,6 @@ const CapasMapa: React.FC<CapasMapaProps> = ({ vista, lienzo, capas, unidades, d
               <g transform={`translate(${m.x}, ${m.y})`} data-objeto={`bloqueo:${b.id}`}>
                 <MarcaBloqueo />
               </g>
-            </g>
-          );
-        })}
-
-      {/* --- ALMACENES (posiciones de ConfiguracionDominio) --- */}
-      {capas.almacenes &&
-        ALMACENES.map((almacen) => {
-          const { x, y } = proyectar(vista, almacen.ubicacion);
-          const stock = stockDe(almacenes, almacen.id);
-          const nivel = almacenes.find((a) => a.id === almacen.id)?.nivel;
-          const etiqueta = stock === undefined ? almacen.nombre : `${almacen.nombreCorto.replace('Int.', 'Interm.')} / ${stock} %`;
-          // Semáforo de inventario calculado por la API (LE-078).
-          const color = stock === undefined || !nivel ? '#64748B' : COLOR_NIVEL[nivel];
-          const central = almacen.id === 'CENTRAL';
-          return (
-            <g key={almacen.id} transform={`translate(${x}, ${y})`} className="cursor-pointer" data-objeto={`almacen:${almacen.id}`}>
-              {seleccion?.tipo === 'almacen' && seleccion.codigo === almacen.id && (
-                <circle r="21" fill="none" stroke="#1E40AF" strokeWidth="2" />
-              )}
-              {central ? <AlmacenCentral /> : <AlmacenIntermedio color={color} fraccionStock={stock === undefined ? undefined : stock / 100} />}
-              <text x="24" y="5" fill="#64748B" fontSize="13" fontWeight="500" {...halo}>
-                {etiqueta}
-              </text>
             </g>
           );
         })}
@@ -880,11 +817,37 @@ const CapasMapa: React.FC<CapasMapaProps> = ({ vista, lienzo, capas, unidades, d
             );
           })}
 
-      {/* Retícula del nodo bajo el cursor */}
-      <g transform={`translate(${activo.x}, ${activo.y})`} pointerEvents="none">
-        <circle r="6" fill="none" stroke="#1E40AF" strokeWidth="1.5" strokeDasharray="2 2" />
-        <circle r="2.5" fill="#1E40AF" />
-      </g>
+      {/* --- ALMACENES (posiciones de ConfiguracionDominio): al final, para que su símbolo y su rótulo
+          nunca queden tapados por una ruta o una unidad que pase cerca. --- */}
+      {capas.almacenes &&
+        ALMACENES.map((almacen) => {
+          const { x, y } = proyectar(vista, almacen.ubicacion);
+          const stock = stockDe(almacenes, almacen.id);
+          const nivel = almacenes.find((a) => a.id === almacen.id)?.nivel;
+          const etiqueta = stock === undefined ? almacen.nombre : `${almacen.nombreCorto.replace('Int.', 'Interm.')} / ${stock} %`;
+          // Semáforo de inventario calculado por la API (LE-078).
+          const color = stock === undefined || !nivel ? '#64748B' : COLOR_NIVEL[nivel];
+          const central = almacen.id === 'CENTRAL';
+          return (
+            <g key={almacen.id} transform={`translate(${x}, ${y})`} className="cursor-pointer" data-objeto={`almacen:${almacen.id}`}>
+              {seleccion?.tipo === 'almacen' && seleccion.codigo === almacen.id && (
+                <circle r="21" fill="none" stroke="#1E40AF" strokeWidth="2" />
+              )}
+              {central ? <AlmacenCentral /> : <AlmacenIntermedio color={color} fraccionStock={stock === undefined ? undefined : stock / 100} />}
+              <text x="24" y="5" fill="#64748B" fontSize="13" fontWeight="500" {...halo}>
+                {etiqueta}
+              </text>
+            </g>
+          );
+        })}
+
+      {/* Retícula del nodo bajo el cursor: solo mientras el cursor está sobre el mapa. */}
+      {mostrarReticula && (
+        <g transform={`translate(${activo.x}, ${activo.y})`} pointerEvents="none">
+          <circle r="6" fill="none" stroke="#1E40AF" strokeWidth="1.5" strokeDasharray="2 2" />
+          <circle r="2.5" fill="#1E40AF" />
+        </g>
+      )}
     </svg>
   );
 };
