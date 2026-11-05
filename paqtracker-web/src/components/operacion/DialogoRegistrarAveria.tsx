@@ -11,7 +11,7 @@ import { clienteApi } from '../../services/clienteApi';
 import type { EstimacionAveriaApi, RespuestaRegistroAveriaApi } from '../../types/api';
 import type { UnidadOperacion } from '../../types/operacion';
 import { IndicadorRadio } from '../layout/IndicadorRadio';
-import { colorDeUnidad, iconoVehiculo } from '../map/iconosVehiculo';
+import { iconoDeUnidad } from '../map/iconosVehiculo';
 import { SelectorUnidad } from './SelectorUnidad';
 
 // CU-13 Registrar avería. Diálogo modal: la acción saca la unidad de servicio y replanifica sus pedidos,
@@ -151,7 +151,7 @@ export const DialogoRegistrarAveria: React.FC<DialogoRegistrarAveriaProps> = ({ 
             <span className="font-medium text-[12px] text-[#334155]">Unidad</span>
             {unidadInicial && unidad ? (
               <div className="flex items-center gap-[10px] border border-[#E2E8F0] rounded-[6px] bg-[#F8FAFC] px-[10px] py-[8px]">
-                <img src={iconoVehiculo(unidad.tipo, colorDeUnidad(unidad)).href} alt="" className="block -my-[4px]" />
+                <img src={iconoDeUnidad(unidad).href} alt="" className="block -my-[4px]" />
                 <span className="font-semibold text-[#0F172A]">
                   {capitalizar(UNIDADES[unidad.tipo].nombre)} {unidad.codigo}
                 </span>

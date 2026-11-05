@@ -1,20 +1,19 @@
 import React, { useState } from 'react';
 import { UNIDADES, type TipoUnidad } from '../../config/dominio';
-import { ESTADO_UNIDAD, RANGO_OCUPACION } from '../../config/glosario';
+import { ESTADO_UNIDAD, NOMBRE_CARGA, RANGO_OCUPACION } from '../../config/glosario';
 import { capitalizar, formatearMomento } from '../../lib/formato';
 import { useDatosOperacion } from '../../hooks/useDatosOperacion';
-import { estadoFlota, nivelDeOcupacion } from '../../lib/operacion';
+import { estadoFlota } from '../../lib/operacion';
+import { FONDO_SEMAFORO, NIVELES_CARGA, TEXTO_SEMAFORO, nivelDeOcupacion } from '../../lib/semaforo';
 import type { EstadoUnidad, SeleccionPanel } from '../../types/operacion';
-import { COLOR_HOLGURA } from '../pedidos/estilos';
 import { FilaConBarra, TituloSeccion } from './comunes';
 
-import { colorDeCarga, colorDeUnidad, iconoVehiculo } from '../map/iconosVehiculo';
+import { iconoDeCarga, iconoDeUnidad } from '../map/iconosVehiculo';
 
 // OP-07 · Estado de la flota (Figma 1:5813). Implementado sobre la captura del frame: el contexto de
 // diseño no estuvo disponible (límite de llamadas de Figma), así que medidas y espaciados son aproximados.
 
 const ETIQUETA: Record<TipoUnidad, string> = { AUTO: 'Auto', MOTO: 'Moto', BICICLETA: 'Bici' };
-const FONDO_NIVEL = { ROJO: 'bg-[#B91C1C]', AMBAR: 'bg-[#B45309]', VERDE: 'bg-[#15803D]', CERRADO: 'bg-[#94A3B8]' } as const;
 
 const unidades = (n: number) => `${n} ${n === 1 ? 'unidad' : 'unidades'}`;
 
@@ -108,13 +107,13 @@ export const EstadoFlota: React.FC<{ onSeleccionar: (seleccion: SeleccionPanel) 
             return (
               <div key={tipo} className="flex flex-col gap-[5px]">
                 <div className="flex items-center gap-[8px] text-[12px]">
-                  <img src={iconoVehiculo(tipo, colorDeCarga(carga, capacidad)).href} alt="" className="block -my-[4px]" />
+                  <img src={iconoDeCarga(tipo, carga, capacidad).href} alt="" className="block -my-[4px]" />
                   <span className="font-sans font-semibold text-[#0F172A]">{ETIQUETA[tipo]}</span>
                   <span className="tabular-nums text-[#64748B]">
                     {enRuta} / {total} en ruta
                   </span>
                   <span
-                    className={`ml-auto tabular-nums ${nivel ? COLOR_HOLGURA[nivel] : 'text-[#64748B]'}`}
+                    className={`ml-auto tabular-nums ${nivel ? TEXTO_SEMAFORO[nivel] : 'text-[#64748B]'}`}
                     title="Paquetes sin entregar sobre la capacidad de las unidades fuera del almacén. Baja a medida que entregan."
                   >
                     {cargaABordo === null ? 'sin unidades fuera' : `carga ${carga}/${capacidad} · ${Math.round(cargaABordo * 100)} %`}
@@ -129,14 +128,14 @@ export const EstadoFlota: React.FC<{ onSeleccionar: (seleccion: SeleccionPanel) 
                   aria-valuenow={cargaABordo === null ? 0 : Math.round(cargaABordo * 100)}
                 >
                   {nivel && (
-                    <div className={`h-full rounded-full ${FONDO_NIVEL[nivel]}`} style={{ width: `${Math.min(100, (cargaABordo ?? 0) * 100)}%` }} />
+                    <div className={`h-full rounded-full ${FONDO_SEMAFORO[nivel]}`} style={{ width: `${Math.min(100, (cargaABordo ?? 0) * 100)}%` }} />
                   )}
                 </div>
               </div>
             );
           })}
           <p className="text-[11px] text-[#64748B]">
-            Carga: verde {RANGO_OCUPACION.VERDE} · ámbar {RANGO_OCUPACION.AMBAR} · rojo {RANGO_OCUPACION.ROJO}
+            Carga: {NIVELES_CARGA.map((n) => `${NOMBRE_CARGA[n].toLowerCase()} ${RANGO_OCUPACION[n]}`).join(' · ')}
           </p>
         </section>
 
@@ -175,7 +174,7 @@ export const EstadoFlota: React.FC<{ onSeleccionar: (seleccion: SeleccionPanel) 
               onClick={() => onSeleccionar({ tipo: 'vehiculo', codigo: u.codigo })}
               className="h-[26px] flex items-center gap-[8px] text-[12px] hover:bg-[#F8FAFC] -mx-[4px] px-[4px] rounded"
             >
-              <img src={iconoVehiculo(u.tipo, colorDeUnidad(u)).href} alt="" className="block -my-[4px]" />
+              <img src={iconoDeUnidad(u).href} alt="" className="block -my-[4px]" />
               <span className="font-semibold text-[#0F172A]">{u.codigo}</span>
               <span className="text-[#64748B]">{ESTADO_UNIDAD[u.estado]}</span>
               <span className="ml-auto tabular-nums text-[#64748B]">{u.capacidad > 0 ? `${u.carga}/${u.capacidad}` : '—'}</span>

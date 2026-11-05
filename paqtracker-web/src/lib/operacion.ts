@@ -1,20 +1,11 @@
-import { ALMACENES, CORTE_OCUPACION, UNIDADES, type TipoUnidad } from '../config/dominio';
+import { ALMACENES, UNIDADES, type TipoUnidad } from '../config/dominio';
 import { distanciaManhattan } from './factibilidad';
 import type { DatosOperacion, PedidoOperacion, UnidadOperacion } from '../types/operacion';
-import type { NivelHolgura } from '../types/pedidos';
 
 // Derivados puros del estado de operación (antes vivían en los datos de ejemplo).
 
 /** Unidad fuera del almacén (en ruta, en refrigerio o averiada): se dibuja en el mapa y puede llevar carga. */
 export const fueraDelAlmacen = (u: UnidadOperacion) => u.estado !== 'DISPONIBLE' && u.estado !== 'FUERA_DE_TURNO';
-
-/** Semáforo de ocupación de una unidad (CF-02). */
-export const nivelDeOcupacion = (carga: number, capacidad: number): NivelHolgura => {
-  const fraccion = capacidad === 0 ? 0 : carga / capacidad;
-  if (fraccion >= CORTE_OCUPACION.rojo) return 'ROJO';
-  if (fraccion >= CORTE_OCUPACION.ambar) return 'AMBAR';
-  return 'VERDE';
-};
 
 export const unidadPorCodigo = (datos: DatosOperacion, codigo: string): UnidadOperacion | undefined =>
   datos.flota.find((u) => u.codigo === codigo);

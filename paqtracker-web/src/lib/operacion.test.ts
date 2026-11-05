@@ -1,18 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { INICIO_MS, datosOperacion, pedidoApi, unidadApi } from '../test/fabricas';
-import { cantidadBloqueos, estadoFlota, fueraDelAlmacen, nivelDeOcupacion, pedidosEnRiesgo, resumenRiesgo, unidadPorCodigo } from './operacion';
-
-describe('nivelDeOcupacion', () => {
-  it('aplica los cortes ámbar (70 %) y rojo (90 %)', () => {
-    expect(nivelDeOcupacion(6, 10)).toBe('VERDE');
-    expect(nivelDeOcupacion(7, 10)).toBe('AMBAR');
-    expect(nivelDeOcupacion(9, 10)).toBe('ROJO');
-  });
-
-  it('capacidad cero no divide por cero', () => {
-    expect(nivelDeOcupacion(5, 0)).toBe('VERDE');
-  });
-});
+import { cantidadBloqueos, estadoFlota, fueraDelAlmacen, pedidosEnRiesgo, resumenRiesgo, unidadPorCodigo } from './operacion';
 
 describe('estado de la flota', () => {
   const datos = datosOperacion({

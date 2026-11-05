@@ -1,5 +1,6 @@
 import { formatearDiaMesHora, formatearHolgura, formatearHora } from '../lib/formato';
 import { puntoEnRecorrido } from '../lib/malla';
+import { nivelDeStock } from '../lib/semaforo';
 import type {
   BloqueoEnMapaApi,
   CoordenadaApi,
@@ -262,7 +263,8 @@ export function construirDatosOperacion(mensaje: MensajeEstadoApi, ahoraMs: numb
     stock: a.stockActual,
     capacidad: a.capacidadMaxima,
     porcentajeStock: a.stockActual === null || !a.capacidadMaxima ? null : Math.round((a.stockActual / a.capacidadMaxima) * 100),
-    nivel: a.nivelInventario,
+    nivelStock: a.stockActual === null || !a.capacidadMaxima ? null : nivelDeStock(a.stockActual, a.capacidadMaxima),
+    stockBajo: a.nivelInventario === 'ROJO',
   }));
   return {
     ejecucionId: mensaje.ejecucionId,

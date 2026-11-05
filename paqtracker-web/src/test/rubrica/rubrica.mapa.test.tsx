@@ -2,7 +2,8 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { GridMap } from '../../components/map/GridMap';
-import { COLOR_CARGA, colorDeUnidad } from '../../components/map/iconosVehiculo';
+import { colorDeUnidad, iconoDeUnidad } from '../../components/map/iconosVehiculo';
+import { COLOR_SEMAFORO } from '../../lib/semaforo';
 import { LeyendaMapa } from '../../components/map/LeyendaMapa';
 import { clienteApi } from '../../services/clienteApi';
 import { construirDatosOperacion } from '../../services/adaptadorOperacion';
@@ -152,11 +153,16 @@ describe('Rúbrica · MAPA · almacenes intermedios', () => {
     expect(tooltip()).toContain('Stock 40 %');
   });
 
-  it('C15 · el stock del intermedio usa semáforo: ámbar (40 %) y rojo (10 %)', () => {
+  it('C15 · el stock del intermedio usa semáforo + vacío con rojo = lleno, y la alerta de stock bajo va aparte', () => {
     const { container } = montarOperacion();
     const color = (id: string) => objetoMapa(container, `almacen:${id}`)!.querySelector('path')!.getAttribute('stroke');
-    expect(color('INTERMEDIO_1')).toBe('#B45309');
-    expect(color('INTERMEDIO_2')).toBe('#B91C1C');
+    // 40 % y 10 % tienen mucho espacio: verde (glosario de la rúbrica). Los cortes, en semaforo.test.ts.
+    expect(color('INTERMEDIO_1')).toBe(COLOR_SEMAFORO.VERDE);
+    expect(color('INTERMEDIO_2')).toBe(COLOR_SEMAFORO.VERDE);
+    // El 10 % dispara la alerta de stock bajo de la API (LE-078) como insignia, sin cambiar el color.
+    const insignia = (id: string) => objetoMapa(container, `almacen:${id}`)!.querySelector('circle[r="6"]');
+    expect(insignia('INTERMEDIO_1')).toBeNull();
+    expect(insignia('INTERMEDIO_2')).toBeTruthy();
     // La barra interior es proporcional al stock.
     const barra = (id: string) => Number(objetoMapa(container, `almacen:${id}`)!.querySelectorAll('rect')[1].getAttribute('height'));
     expect(barra('INTERMEDIO_1')).toBeCloseTo(12 * 0.4);
@@ -188,9 +194,7 @@ describe('Rúbrica · MAPA · unidades de transporte', () => {
   });
 
   it('C24 · los íconos de unidad usan colores con contraste ≥ 3:1 sobre el mapa (WCAG 1.4.11)', () => {
-    Object.values(COLOR_CARGA)
-      .filter((c) => c !== COLOR_CARGA.CERRADO)
-      .forEach((color) => expect(contrasteSobreBlanco(color)).toBeGreaterThanOrEqual(3));
+    Object.values(COLOR_SEMAFORO).forEach((color) => expect(contrasteSobreBlanco(color)).toBeGreaterThanOrEqual(3));
     const { container } = montarOperacion();
     // Cada tipo tiene su propia silueta (auto, moto, bici) como imagen SVG.
     const href = (codigo: string) => objetoMapa(container, `vehiculo:${codigo}`)!.querySelector('image')!.getAttribute('href')!;
@@ -245,17 +249,23 @@ describe('Rúbrica · MAPA · unidades de transporte', () => {
     expect(tooltip()).toContain('Carga 20/24 · 83 %');
   });
 
-  it('C29 · la carga de la unidad usa semáforo: verde < 70 %, ámbar ≥ 70 %, rojo ≥ 90 %, y rojo si está averiada', () => {
+  it('C29 · la carga de la unidad usa semáforo + vacío: vacío 0, verde < 70 %, ámbar ≥ 70 %, rojo ≥ 90 %, y rojo si está averiada', () => {
     const color = (carga: number, estado: 'EN_RUTA' | 'AVERIADA' = 'EN_RUTA') => colorDeUnidad({ carga, capacidad: 10, estado });
-    expect(color(6)).toBe(COLOR_CARGA.VERDE);
-    expect(color(7)).toBe(COLOR_CARGA.AMBAR);
-    expect(color(9)).toBe(COLOR_CARGA.ROJO);
+    expect(color(0)).toBe(COLOR_SEMAFORO.VACIO);
+    expect(color(6)).toBe(COLOR_SEMAFORO.VERDE);
+    expect(color(7)).toBe(COLOR_SEMAFORO.AMBAR);
+    expect(color(9)).toBe(COLOR_SEMAFORO.ROJO);
     expect(color(0, 'AVERIADA')).toBe('#B91C1C');
     // En el mapa, la barra de carga de A-01 (83 %) es ámbar y la de M-01 (100 %) roja.
     const { container } = montarOperacion();
     const barra = (codigo: string) => objetoMapa(container, `vehiculo:${codigo}`)!.querySelectorAll('rect')[1].getAttribute('fill');
-    expect(barra('A-01')).toBe(COLOR_CARGA.AMBAR);
-    expect(barra('M-01')).toBe(COLOR_CARGA.ROJO);
+    expect(barra('A-01')).toBe(COLOR_SEMAFORO.AMBAR);
+    expect(barra('M-01')).toBe(COLOR_SEMAFORO.ROJO);
+    // Una unidad vacía en ruta lleva el ícono hueco (cuerpo blanco, contorno gris); averiada sigue en rojo.
+    const icono = (estado: 'EN_RUTA' | 'AVERIADA') =>
+      decodeURIComponent(iconoDeUnidad({ tipo: 'BICICLETA', estado, carga: 0, capacidad: 4 }).href);
+    expect(icono('EN_RUTA')).toContain(`fill="#FFFFFF" stroke="${COLOR_SEMAFORO.VACIO}"`);
+    expect(icono('AVERIADA')).not.toContain('fill="#FFFFFF" stroke=');
   });
 });
 

@@ -1,4 +1,5 @@
 import React from 'react';
+import { COLOR_SEMAFORO, type NivelCarga } from '../../lib/semaforo';
 
 // Símbolos del mapa como elementos SVG, con la geometría de los frames de Figma (pin de destino,
 // depósito central e intermedio). Los usan el mapa y su leyenda, para que la leyenda muestre
@@ -54,6 +55,31 @@ export const AlmacenIntermedio: React.FC<{ color: string; fraccionStock?: number
     </>
   );
 };
+
+/**
+ * Marca de 9 px del semáforo + vacío: la forma también distingue el nivel (anillo vacío, cuadrado verde,
+ * triángulo ámbar, círculo rojo), para no depender solo del color (WCAG 1.4.1).
+ */
+export const MarcaSemaforo: React.FC<{ nivel: NivelCarga; titulo?: string }> = ({ nivel, titulo }) => (
+  <svg width="9" height="9" viewBox="0 0 9 9" className="shrink-0" role={titulo ? 'img' : undefined} aria-label={titulo} aria-hidden={titulo ? undefined : true}>
+    {nivel === 'VACIO' && <circle cx="4.5" cy="4.5" r="3.5" fill="#FFFFFF" stroke={COLOR_SEMAFORO.VACIO} strokeWidth="1.5" />}
+    {nivel === 'VERDE' && <rect x="0.5" y="0.5" width="8" height="8" rx="1" fill={COLOR_SEMAFORO.VERDE} />}
+    {nivel === 'AMBAR' && <path d="M4.5 0.5L8.6 8H0.4L4.5 0.5Z" fill={COLOR_SEMAFORO.AMBAR} />}
+    {nivel === 'ROJO' && <circle cx="4.5" cy="4.5" r="4" fill={COLOR_SEMAFORO.ROJO} />}
+  </svg>
+);
+
+/**
+ * Alerta de stock bajo (LE-078) sobre la esquina del almacén intermedio: insignia oscura con "!",
+ * fuera de los colores del semáforo para no confundirse con la ocupación.
+ */
+export const InsigniaStockBajo: React.FC = () => (
+  <g aria-hidden="true">
+    <circle r="6" fill="#0F172A" stroke="#FFFFFF" strokeWidth="1.5" />
+    <path d="M0 -3V0.8" stroke="#FFFFFF" strokeWidth="1.6" strokeLinecap="round" />
+    <circle cy="3" r="0.9" fill="#FFFFFF" />
+  </g>
+);
 
 /** Tramo bloqueado: aspa roja sobre fondo claro, centrada en el punto medio del tramo. */
 export const MarcaBloqueo: React.FC = () => (

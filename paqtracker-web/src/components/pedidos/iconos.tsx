@@ -87,8 +87,14 @@ export const IconoVehiculo: React.FC<{ tipo: TipoUnidad; cx: number; cy: number 
  * Unidad en ruta: halo de 26 px centrado en el nodo, con el ícono ligeramente elevado como en el diseño.
  * El ícono toma el color de la unidad (semáforo de carga, o rojo si está averiada), igual que en el mapa.
  */
-export const UnidadEnMapa: React.FC<{ tipo: TipoUnidad; color: string; cx: number; cy: number }> = ({ tipo, color, cx, cy }) => {
-  const icono = iconoVehiculo(tipo, color);
+export const UnidadEnMapa: React.FC<{ tipo: TipoUnidad; color: string; hueco?: boolean; cx: number; cy: number }> = ({
+  tipo,
+  color,
+  hueco = false,
+  cx,
+  cy,
+}) => {
+  const icono = iconoVehiculo(tipo, color, hueco);
   return (
     <>
       <img src={halo} alt="" className="absolute block max-w-none" style={{ left: cx - 13, top: cy - 13 }} />

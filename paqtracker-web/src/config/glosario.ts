@@ -1,4 +1,5 @@
-import { CORTE_HOLGURA, CORTE_INVENTARIO, CORTE_OCUPACION, esPlazoRegular } from './dominio';
+import { CORTE_HOLGURA, CORTE_INVENTARIO, CORTE_OCUPACION, CORTE_STOCK, esPlazoRegular } from './dominio';
+import type { NivelCarga } from '../lib/semaforo';
 import type { EstadoUnidad, SituacionUnidad } from '../types/operacion';
 import type { NivelHolgura } from '../types/pedidos';
 
@@ -22,26 +23,29 @@ export const RANGO_HOLGURA: Record<Exclude<NivelHolgura, 'CERRADO'>, string> = {
   VERDE: `> ${porcentaje(CORTE_HOLGURA.ambar)} %`,
 };
 
-/** Nivel del semáforo de stock de un almacén intermedio. */
-export const NOMBRE_INVENTARIO: Record<Exclude<NivelHolgura, 'CERRADO'>, string> = {
-  ROJO: 'Stock bajo',
-  AMBAR: 'Stock medio',
-  VERDE: 'Stock suficiente',
+/** Nivel del semáforo + vacío de carga (unidades) y de stock (almacenes). */
+export const NOMBRE_CARGA: Record<NivelCarga, string> = {
+  VACIO: 'Vacío',
+  VERDE: 'Con espacio',
+  AMBAR: 'Ocupación alta',
+  ROJO: 'Casi lleno',
 };
 
-/** Carga de una unidad sobre su capacidad: verde bajo el corte ámbar, rojo desde el corte rojo. */
-export const RANGO_OCUPACION: Record<'VERDE' | 'AMBAR' | 'ROJO', string> = {
-  VERDE: `< ${porcentaje(CORTE_OCUPACION.ambar)} %`,
-  AMBAR: `${porcentaje(CORTE_OCUPACION.ambar)}–${porcentaje(CORTE_OCUPACION.rojo)} %`,
-  ROJO: `≥ ${porcentaje(CORTE_OCUPACION.rojo)} %`,
-};
+const rangos = (cortes: { ambar: number; rojo: number }): Record<NivelCarga, string> => ({
+  VACIO: '0',
+  VERDE: `< ${porcentaje(cortes.ambar)} %`,
+  AMBAR: `${porcentaje(cortes.ambar)}–${porcentaje(cortes.rojo)} %`,
+  ROJO: `≥ ${porcentaje(cortes.rojo)} %`,
+});
+
+/** Carga de una unidad sobre su capacidad. */
+export const RANGO_OCUPACION = rangos(CORTE_OCUPACION);
 
 /** Stock de un almacén intermedio sobre su capacidad. */
-export const RANGO_INVENTARIO: Record<'VERDE' | 'AMBAR' | 'ROJO', string> = {
-  VERDE: `> ${porcentaje(CORTE_INVENTARIO.ambar)} %`,
-  AMBAR: `${porcentaje(CORTE_INVENTARIO.rojo)}–${porcentaje(CORTE_INVENTARIO.ambar)} %`,
-  ROJO: `< ${porcentaje(CORTE_INVENTARIO.rojo)} %`,
-};
+export const RANGO_STOCK = rangos(CORTE_STOCK);
+
+/** Alerta de stock bajo de un intermedio (LE-078), aparte del semáforo de ocupación. */
+export const ALERTA_STOCK_BAJO = `Stock bajo (< ${porcentaje(CORTE_INVENTARIO.rojo)} %)`;
 
 /** "Regular" (36 h) o "Priorizado" (plazos menores). */
 export const tipoDeEntrega = (plazoHoras: number) => (esPlazoRegular(plazoHoras) ? 'Regular' : 'Priorizado');

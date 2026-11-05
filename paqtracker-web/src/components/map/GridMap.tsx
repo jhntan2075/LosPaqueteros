@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useImperativeHandle, forwardRef } from 'react';
 import { Search, ZoomIn, ZoomOut, Maximize2, MapIcon } from 'lucide-react';
 import { ALMACENES, MALLA_ALTO_KM, MALLA_ANCHO_KM, UNIDADES } from '../../config/dominio';
-import { NOMBRE_HOLGURA, NOMBRE_INVENTARIO, SITUACION_UNIDAD } from '../../config/glosario';
+import { ALERTA_STOCK_BAJO, NOMBRE_CARGA, NOMBRE_HOLGURA, SITUACION_UNIDAD } from '../../config/glosario';
 import { useCerrarConEscape } from '../../hooks/useCerrarConEscape';
 import { useTamanoElemento } from '../../hooks/useTamanoElemento';
 import { capitalizar, formatearMomento } from '../../lib/formato';
@@ -20,10 +20,11 @@ import {
   type Vista,
 } from '../../lib/malla';
 import { fueraDelAlmacen } from '../../lib/operacion';
-import { colorDeUnidad, iconoVehiculo } from './iconosVehiculo';
+import { COLOR_SEMAFORO, nivelDeOcupacion } from '../../lib/semaforo';
+import { colorDeUnidad, iconoDeUnidad } from './iconosVehiculo';
 import type { Capa } from './capas';
 import { LeyendaMapa } from './LeyendaMapa';
-import { AlmacenCentral, AlmacenIntermedio, CENTRO_CABEZA_PIN, COLOR_EN_ENTREGA, MarcaBloqueo, PinDestino } from './simbolos';
+import { AlmacenCentral, AlmacenIntermedio, CENTRO_CABEZA_PIN, COLOR_EN_ENTREGA, InsigniaStockBajo, MarcaBloqueo, PinDestino } from './simbolos';
 import haloSeleccion from '../../assets/figma/pedidos/halo.svg';
 import type { Coordenada } from '../../types/domain';
 import type { AlmacenOperacion, BloqueoOperacion, UnidadOperacion } from '../../types/operacion';
@@ -522,7 +523,7 @@ function contenidoTooltip(
         ? u.averia
           ? `Averiada · tipo ${u.averia.tipo} · vuelve ${formatearMomento(u.averia.vuelve, reloj)}`
           : 'Averiada'
-        : `Carga ${u.carga}/${capacidad} · ${capacidad === 0 ? 0 : Math.round((u.carga / capacidad) * 100)} %`,
+        : `Carga ${u.carga}/${capacidad} · ${capacidad === 0 ? 0 : Math.round((u.carga / capacidad) * 100)} % · ${NOMBRE_CARGA[nivelDeOcupacion(u.carga, capacidad)].toLowerCase()}`,
       extra: averiada
         ? undefined
         : u.pedidoEnEntrega
@@ -537,12 +538,13 @@ function contenidoTooltip(
     const a = ALMACENES.find((x) => x.id === objeto.codigo);
     if (!a) return null;
     const estado = datos.almacenes.find((x) => x.id === a.id);
-    const conStock = estado?.porcentajeStock != null && estado.nivel && estado.nivel !== 'CERRADO';
+    const nivel = estado?.porcentajeStock != null ? estado.nivelStock : null;
+    const alerta = estado?.stockBajo ? ` · ${ALERTA_STOCK_BAJO.toLowerCase()}` : '';
     return {
       titulo: `Almacén ${a.nombre}`,
-      detalle: conStock ? `Stock ${estado.porcentajeStock} % · ${NOMBRE_INVENTARIO[estado.nivel as 'ROJO'].toLowerCase()}` : 'Stock ilimitado',
+      detalle: nivel ? `Stock ${estado?.porcentajeStock} % · ${NOMBRE_CARGA[nivel].toLowerCase()}${alerta}` : 'Stock ilimitado',
       extra: pedidosQueSalen(datos.unidades, a.id),
-      color: conStock ? COLOR_NIVEL[estado.nivel as 'ROJO'] : undefined,
+      color: nivel ? COLOR_SEMAFORO[nivel] : undefined,
       punto: a.ubicacion,
       alzaPx: 20,
     };
@@ -787,7 +789,7 @@ const CapasMapa: React.FC<CapasMapaProps> = ({ vista, lienzo, capas, unidades, d
             const averiada = u.estado === 'AVERIADA';
             const color = colorDeUnidad(u);
             const seleccionada = seleccion?.tipo === 'vehiculo' && seleccion.codigo === u.codigo;
-            const icono = iconoVehiculo(u.tipo, color);
+            const icono = iconoDeUnidad(u);
             const rotuloX = icono.medioAnchoVisible + (seleccionada ? 6 : 4);
             return (
               <g key={u.codigo} transform={`translate(${x}, ${y})`} className="cursor-pointer" data-objeto={`vehiculo:${u.codigo}`}>
@@ -823,10 +825,11 @@ const CapasMapa: React.FC<CapasMapaProps> = ({ vista, lienzo, capas, unidades, d
         ALMACENES.map((almacen) => {
           const { x, y } = proyectar(vista, almacen.ubicacion);
           const stock = stockDe(almacenes, almacen.id);
-          const nivel = almacenes.find((a) => a.id === almacen.id)?.nivel;
+          const estado = almacenes.find((a) => a.id === almacen.id);
+          const nivel = estado?.nivelStock;
           const etiqueta = stock === undefined ? almacen.nombre : `${almacen.nombreCorto.replace('Int.', 'Interm.')} / ${stock} %`;
-          // Semáforo de inventario calculado por la API (LE-078).
-          const color = stock === undefined || !nivel ? '#64748B' : COLOR_NIVEL[nivel];
+          // Semáforo + vacío de ocupación (rojo = lleno); vacío deja el depósito hueco y gris.
+          const color = stock === undefined || !nivel ? '#64748B' : COLOR_SEMAFORO[nivel];
           const central = almacen.id === 'CENTRAL';
           return (
             <g key={almacen.id} transform={`translate(${x}, ${y})`} className="cursor-pointer" data-objeto={`almacen:${almacen.id}`}>
@@ -834,6 +837,11 @@ const CapasMapa: React.FC<CapasMapaProps> = ({ vista, lienzo, capas, unidades, d
                 <circle r="21" fill="none" stroke="#1E40AF" strokeWidth="2" />
               )}
               {central ? <AlmacenCentral /> : <AlmacenIntermedio color={color} fraccionStock={stock === undefined ? undefined : stock / 100} />}
+              {estado?.stockBajo && (
+                <g transform="translate(11, -10)">
+                  <InsigniaStockBajo />
+                </g>
+              )}
               <text x="24" y="5" fill="#64748B" fontSize="13" fontWeight="500" {...halo}>
                 {etiqueta}
               </text>

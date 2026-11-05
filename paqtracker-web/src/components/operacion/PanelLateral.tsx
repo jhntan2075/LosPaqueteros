@@ -1,16 +1,18 @@
 import React, { useState } from 'react';
 import { ALMACENES, CORTE_OCUPACION, UNIDADES } from '../../config/dominio';
-import { NOMBRE_HOLGURA, SITUACION_UNIDAD, NOMBRE_INVENTARIO, RANGO_HOLGURA, etiquetaPlazo, nombreAveria } from '../../config/glosario';
+import { ALERTA_STOCK_BAJO, NOMBRE_CARGA, NOMBRE_HOLGURA, RANGO_HOLGURA, SITUACION_UNIDAD, etiquetaPlazo, nombreAveria } from '../../config/glosario';
 import { admisionDeAverias, useAveriaPendiente, useAverias } from '../../hooks/useAverias';
 import { useDatosOperacion } from '../../hooks/useDatosOperacion';
 import { useTrazabilidadPedido } from '../../hooks/useTrazabilidadPedido';
 import { capitalizar, formatearHora, formatearMomento } from '../../lib/formato';
-import { cantidadBloqueos, distanciaDesdeOrigen, fueraDelAlmacen, nivelDeOcupacion, pedidosEnRiesgo, unidadPorCodigo } from '../../lib/operacion';
+import { cantidadBloqueos, distanciaDesdeOrigen, fueraDelAlmacen, pedidosEnRiesgo, unidadPorCodigo } from '../../lib/operacion';
+import { BORDE_SEMAFORO, FONDO_SEMAFORO, TEXTO_SEMAFORO, nivelDeOcupacion } from '../../lib/semaforo';
 import { turnoVigente } from '../../lib/turnos';
 import type { Coordenada } from '../../types/domain';
 import type { HitoTrazabilidad, PedidoOperacion, PestanaPanel, SeleccionPanel, UnidadOperacion } from '../../types/operacion';
 import type { NivelHolgura } from '../../types/pedidos';
-import { colorDeUnidad, iconoVehiculo } from '../map/iconosVehiculo';
+import { iconoDeUnidad } from '../map/iconosVehiculo';
+import { MarcaSemaforo } from '../map/simbolos';
 import { COLOR_HOLGURA } from '../pedidos/estilos';
 import { PuntoHolgura } from '../pedidos/iconos';
 import { BitacoraEventos } from './BitacoraEventos';
@@ -49,12 +51,6 @@ const BORDE_NIVEL: Record<NivelHolgura, string> = {
   AMBAR: 'border-[#B45309]',
   VERDE: 'border-[#15803D]',
   CERRADO: 'border-[#CBD5E1]',
-};
-const FONDO_NIVEL: Record<NivelHolgura, string> = {
-  ROJO: 'bg-[#B91C1C]',
-  AMBAR: 'bg-[#B45309]',
-  VERDE: 'bg-[#15803D]',
-  CERRADO: 'bg-[#94A3B8]',
 };
 
 /** Mismo punto de 7 px para los cuatro niveles: la forma del semáforo no cambia de una pantalla a otra. */
@@ -321,7 +317,7 @@ const DetalleVehiculo: React.FC<
         onCerrar={onCerrar}
         titulo={
           <>
-            <img src={iconoVehiculo(unidad.tipo, colorDeUnidad(unidad)).href} alt="" className="block -my-[6px] -ml-[4px]" />
+            <img src={iconoDeUnidad(unidad).href} alt="" className="block -my-[6px] -ml-[4px]" />
             {nombreUnidad(unidad)}
           </>
         }
@@ -356,25 +352,25 @@ const DetalleVehiculo: React.FC<
                   </button>
                 </div>
               )}
-              <div className={`border rounded-[4px] px-[12px] pt-[8px] pb-[10px] flex flex-col gap-[8px] ${BORDE_NIVEL[nivel]}`}>
+              <div className={`border rounded-[4px] px-[12px] pt-[8px] pb-[10px] flex flex-col gap-[8px] ${BORDE_SEMAFORO[nivel]}`}>
                 <div className="flex items-center justify-between">
                   <div className="flex flex-col">
                     <span className="flex items-center gap-[8px] font-sans text-[12px] text-[#64748B]">
-                      <Semaforo nivel={nivel} /> ocupación
+                      <MarcaSemaforo nivel={nivel} /> ocupación · {NOMBRE_CARGA[nivel].toLowerCase()}
                     </span>
-                    <span className={`tabular-nums font-semibold text-[22px] ${COLOR_HOLGURA[nivel]}`}>
+                    <span className={`tabular-nums font-semibold text-[22px] ${TEXTO_SEMAFORO[nivel]}`}>
                       {unidad.carga}/{unidad.capacidad}
                     </span>
                   </div>
                   <div className="flex flex-col items-end text-[12px]">
-                    <span className={`tabular-nums ${COLOR_HOLGURA[nivel]}`}>{Math.round(fraccion * 100)} % de capacidad</span>
+                    <span className={`tabular-nums ${TEXTO_SEMAFORO[nivel]}`}>{Math.round(fraccion * 100)} % de capacidad</span>
                     <span className="font-sans text-[#64748B]">
                       ámbar desde {CORTE_OCUPACION.ambar * 100} %, rojo desde {CORTE_OCUPACION.rojo * 100} %
                     </span>
                   </div>
                 </div>
                 <div className="h-[4px] bg-[#E2E8F0] rounded-full overflow-hidden">
-                  <div className={`h-full rounded-full ${FONDO_NIVEL[nivel]}`} style={{ width: `${Math.min(100, fraccion * 100)}%` }} />
+                  <div className={`h-full rounded-full ${FONDO_SEMAFORO[nivel]}`} style={{ width: `${Math.min(100, fraccion * 100)}%` }} />
                 </div>
               </div>
             </div>
@@ -429,8 +425,8 @@ const DetalleAlmacen: React.FC<{ codigo: string } & Omit<PanelLateralProps, 'sel
   if (!almacen) return null;
   const estado = datos.almacenes.find((a) => a.id === almacen.id);
   const central = almacen.id === 'CENTRAL';
-  // Los intermedios tienen tope y semáforo; el central no se agota.
-  const nivel = estado?.nivel && estado.nivel !== 'CERRADO' ? estado.nivel : null;
+  // Los intermedios tienen tope y semáforo + vacío de ocupación; el central no se agota.
+  const nivel = estado?.nivelStock ?? null;
   const conStock = !central && estado?.stock != null && estado.capacidad != null && nivel !== null;
   const fraccion = conStock ? (estado.stock as number) / (estado.capacidad as number) : 0;
   const salieron = datos.flota.filter((u) => u.origen === almacen.id && fueraDelAlmacen(u));
@@ -440,24 +436,29 @@ const DetalleAlmacen: React.FC<{ codigo: string } & Omit<PanelLateralProps, 'sel
       <div className="flex-1 min-h-0 overflow-y-auto">
         <div className="p-[12px] border-b border-[#E2E8F0]">
           {conStock && nivel ? (
-            <div className={`border rounded-[4px] px-[12px] pt-[8px] pb-[10px] flex flex-col gap-[8px] ${BORDE_NIVEL[nivel]}`}>
+            <div className={`border rounded-[4px] px-[12px] pt-[8px] pb-[10px] flex flex-col gap-[8px] ${BORDE_SEMAFORO[nivel]}`}>
               <div className="flex items-center justify-between">
                 <div className="flex flex-col">
                   <span className="flex items-center gap-[8px] text-[12px] text-[#64748B]">
-                    <Semaforo nivel={nivel} /> stock
+                    <MarcaSemaforo nivel={nivel} /> stock
                   </span>
-                  <span className={`tabular-nums font-semibold text-[22px] ${COLOR_HOLGURA[nivel]}`}>
+                  <span className={`tabular-nums font-semibold text-[22px] ${TEXTO_SEMAFORO[nivel]}`}>
                     {estado.stock}/{estado.capacidad}
                   </span>
                 </div>
                 <div className="flex flex-col items-end text-[12px]">
-                  <span className={`tabular-nums ${COLOR_HOLGURA[nivel]}`}>{Math.round(fraccion * 100)} % de capacidad</span>
-                  <span className="text-[#64748B]">{NOMBRE_INVENTARIO[nivel]}</span>
+                  <span className={`tabular-nums ${TEXTO_SEMAFORO[nivel]}`}>{Math.round(fraccion * 100)} % de capacidad</span>
+                  <span className="text-[#64748B]">{NOMBRE_CARGA[nivel]}</span>
                 </div>
               </div>
               <div className="h-[4px] bg-[#E2E8F0] rounded-full overflow-hidden">
-                <div className={`h-full rounded-full ${FONDO_NIVEL[nivel]}`} style={{ width: `${Math.min(100, fraccion * 100)}%` }} />
+                <div className={`h-full rounded-full ${FONDO_SEMAFORO[nivel]}`} style={{ width: `${Math.min(100, fraccion * 100)}%` }} />
               </div>
+              {estado.stockBajo && (
+                <p role="status" className="text-[12px] font-medium text-[#0F172A]">
+                  ! {ALERTA_STOCK_BAJO}: se repone a las 23:59.
+                </p>
+              )}
             </div>
           ) : (
             <p className="text-[12px] text-[#64748B]">

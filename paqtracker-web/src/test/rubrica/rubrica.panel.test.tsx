@@ -111,12 +111,14 @@ describe('Rúbrica · panel · almacenes', () => {
     expect(panel().getByText('40 % de capacidad')).toBeTruthy();
   });
 
-  it('C60 · el stock del almacén usa semáforo en el panel (ámbar 40 %, rojo 10 %)', () => {
+  it('C60 · el stock del almacén usa semáforo + vacío en el panel (40 % y 10 % con espacio) y avisa el stock bajo', () => {
     const { container } = montarOperacion();
     tocar(objetoMapa(container, 'almacen:INTERMEDIO_1')!);
-    expect(panel().getByText('40/100').className).toContain('text-[#B45309]');
+    expect(panel().getByText('40/100').className).toContain('text-[#15803D]');
+    expect(panel().queryByText(/Stock bajo/)).toBeNull();
     tocar(objetoMapa(container, 'almacen:INTERMEDIO_2')!);
-    expect(panel().getByText('10/100').className).toContain('text-[#B91C1C]');
+    expect(panel().getByText('10/100').className).toContain('text-[#15803D]');
+    expect(panel().getByText(/Stock bajo/)).toBeTruthy();
   });
 
   it('C61 · se puede buscar un almacén (p. ej. "Central") desde el buscador del mapa', () => {

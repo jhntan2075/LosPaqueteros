@@ -17,7 +17,7 @@ import { proyectar, tramoOrtogonal, trazado } from '../../lib/malla';
 import type { Coordenada } from '../../types/domain';
 import type { PedidoRegistrado as Pedido, VehiculoAsignado } from '../../types/pedidos';
 import { MiniMapaMalla } from '../map/MiniMapaMalla';
-import { COLOR_SIN_DATO, colorDeUnidad } from '../map/iconosVehiculo';
+import { COLOR_SIN_DATO, colorDeUnidad, unidadVacia } from '../map/iconosVehiculo';
 import { useDatosOperacion } from '../../hooks/useDatosOperacion';
 import { COLOR_HOLGURA } from './estilos';
 import { MarcadorAlmacen, PinDestino, PuntoHolgura, RotuloMapa, UnidadEnMapa } from './iconos';
@@ -54,6 +54,7 @@ const MiniMapaRuta: React.FC<{ pedido: Pedido; vehiculo: VehiculoAsignado; unida
   // Color en vivo de la unidad asignada (su carga actual), igual que en el mapa de Operación.
   const actual = useDatosOperacion().flota.find((u) => u.codigo === vehiculo.codigo);
   const color = actual ? colorDeUnidad(actual) : COLOR_SIN_DATO;
+  const hueco = actual ? unidadVacia(actual) : false;
   return (
     <MiniMapaMalla
       alto={160}
@@ -80,7 +81,7 @@ const MiniMapaRuta: React.FC<{ pedido: Pedido; vehiculo: VehiculoAsignado; unida
             <RotuloMapa x={pOrigen.x} y={pOrigen.y + 18} anchoMapa={ancho} className="font-sans font-medium text-slate-500">
               {almacen.nombreCorto}
             </RotuloMapa>
-            <UnidadEnMapa tipo={vehiculo.tipo} color={color} cx={pUnidad.x} cy={pUnidad.y} />
+            <UnidadEnMapa tipo={vehiculo.tipo} color={color} hueco={hueco} cx={pUnidad.x} cy={pUnidad.y} />
             <RotuloMapa x={pUnidad.x} y={pUnidad.y + 14} anchoMapa={ancho} className="tabular-nums font-medium text-blue-700">
               {vehiculo.codigo}
             </RotuloMapa>
