@@ -239,3 +239,63 @@ dice "unidad libre en almacén" y "traspaso instantáneo".
    sistema, en vez de una por ejecución? Ver [decisiones-rangos-semaforo.md](decisiones-rangos-semaforo.md).
 6. En el punto 2, ¿la edición de almacenes debe aplicar solo al iniciar una ejecución, como la flota, o
    también en caliente?
+
+---
+
+## Bloque D — Bloqueos, filtros y averías en el mapa
+
+Revisión del 05-11-2026, **solo leyendo** el código de `main` y los cambios locales del punto 6. Las rutas
+de `paqtracker-web` son relativas a `src/`. El mapa es un SVG propio, sin teselas: fondo `bg-white`
+(#FFFFFF, `GridMap.tsx:450`) con malla #E2E8F0 (`GridMap.tsx:894,909`). Por eso el fondo no varía y los
+contrastes se calculan contra esos dos colores.
+
+**Método del contraste.** Razón WCAG 2.x calculada con luminancia relativa (script en el scratchpad, sin
+tocar el repo). La línea del bloqueo tiene `opacity 0.55`, así que se evalúa su color efectivo sobre blanco,
+#D98282. Ojo: el contraste WCAG mide solo luminancia. Dos colores de tono distinto y luminancia parecida
+(rojo y verde del semáforo, por ejemplo) dan cerca de 1:1 y aun así se distinguen por el tono. Esos casos
+van como "Verificar a ojo".
+
+**Numeración.** Las pruebas de rúbrica del front usan otra numeración. Equivalencias: D5–D7 → `D05`–`D07`;
+D8 → `D10`; D9–D10 → `D11–D12`; y D11 se apoya en `D13` (anillo y hora de regreso) más las pruebas del núcleo.
+
+| N.º | Estado | Evidencia | Qué falta (esfuerzo) |
+|---|---|---|---|
+| D1 | Listo | Capa de bloqueos en `components/map/GridMap.tsx:957-971`. Cada segmento de la polilínea es un tramo (`services/adaptadorOperacion.ts:178-190`) y el contador de la barra cuenta bloqueos únicos (`GridMap.tsx:399-400`). | — |
+| D2 | Listo (corregido 05-11) | `COLOR_BLOQUEO` magenta frambuesa #BE185D, `FONDO_BLOQUEO` #FCE7F3 y `OPACIDAD_LINEA_BLOQUEO` 0,75 (`components/map/simbolos.tsx`). Ya no reutiliza el semáforo: ΔE00 = 19 con su rojo, 32 con el ámbar, 74 con el verde. El chip "bloqueos" de la barra y el tooltip usan el mismo color. Prueba `rubrica.bloque-d.test.tsx` (D2). | Confirmar a ojo en una corrida. |
+| D3 | Listo (corregido 05-11) | Línea translúcida (opacidad 0,75): **4,06:1 sobre blanco** y **3,56:1 sobre la malla** (antes 2,81 y 2,28). Aspa 6,04:1 sobre blanco y 4,90:1 sobre la malla; aspa sobre su disco, 5,14:1. Prueba `rubrica.bloque-d.test.tsx` (D3), que calcula la mezcla con la opacidad. | — |
+| D4 | Listo | La API envía solo los bloqueos vigentes en el **minuto simulado** (`ConstructorInstantanea.java:175-189`, que usa `Bloqueo.estaVigente`, inclusivo en ambos extremos, `Bloqueo.java:77-79`). El front dibuja lo que recibe en cada instantánea (`adaptadorOperacion.ts:293`). Prueba: `MotorEjecucionTest.java:229` (aparece en su ventana, desaparece al terminar, eventos `BLOQUEO_INICIADO`/`LEVANTADO`). | — Límite: el mapa se refresca cada Sc (1 s real), o sea hasta k·Sc = 3 min simulados de desfase con k = 180. |
+| D5 | Listo | Grupo "Tipo de unidad" (`components/map/FiltrosMapa.tsx:96`). Filtra lo pintado: unidades y sus destinos (`GridMap.tsx:412-415`). Prueba `rubrica.mapa.test.tsx` `D05`. | — |
+| D6 | Listo | Grupo "Carga de unidades" con vacío, verde, ámbar y rojo (`FiltrosMapa.tsx:110`, `lib/filtrosMapa.ts:22`). Prueba `D06`. | — Nota: una averiada se filtra por su carga; si la avería liberó la carga, cuenta como "Vacío". |
+| D7 | Listo | Grupo "Stock de almacenes" (`FiltrosMapa.tsx:114`). Oculta los intermedios en el dibujo (`GridMap.tsx:416-422`, que alimenta `GridMap.tsx:1067`). El central siempre se ve. Prueba `D07`. | — |
+| D8 | Listo | Insignia por tipo: número + forma + color. Tipo 1 círculo, tipo 2 rombo, tipo 3 octágono (`simbolos.tsx:93-117`), junto a la unidad averiada (`GridMap.tsx:1031-1045`). Prueba `D10`. | — |
+| D9 | Listo (corregido 05-11) | `COLOR_AVERIA` (`components/map/iconosVehiculo.ts`): 1 azul celeste #0369A1, 2 ciruela #701A75, 3 marrón sombra #5B3A1E, con las mismas formas que antes. El tipo 1 ya no parece verde: ΔE00 = 43 con el verde del semáforo (antes, el verde azulado quedaba a 1,07:1). Entre tipos, ΔE00 = 37–39. La leyenda nombra forma y color (`SIMBOLO_AVERIA` en `config/glosario.ts`). | Confirmar a ojo en una corrida. |
+| D10 | Listo (corregido 05-11) | Sobre blanco: **5,93 / 10,03 / 10,15:1**; sobre la malla: **4,81 / 8,14 / 8,23:1**; número blanco sobre la insignia, igual. El tipo 3 ya no es #0F172A: ΔE00 = 29 con el central (los tipos 1 y 2: 30 y 25). Ninguno coincide con el semáforo, el bloqueo ni el pin "entregando" (ΔE00 ≥ 19). Prueba `rubrica.bloque-d.test.tsx` (D9–D10). | — |
+| D11 | Listo (corregido 05-11) | Los tiempos ya eran correctos en el núcleo (`Averia.java:88-113`, `AveriaTest`, `OrquestadorTest` tipos 2 y 3), y el anillo usa el reloj simulado. Corregido el tapado: una averiada sobre el nodo de un almacén (tipo 2 o 3 tras las 4 h) se dibuja en una capa **después** de los almacenes y **28 px debajo** de su símbolo, una por fila (`GridMap.tsx`, `almacenEn` y la capa "AVERIADAS EN UN ALMACÉN"). Las averiadas en la calle no cambian. Prueba `rubrica.bloque-d.test.tsx` (D11): orden en el DOM, desplazamiento y texto visibles. | — |
+
+**Para decir ante el profesor:**
+- **D1:** "Cada bloqueo vigente se dibuja en su tramo de calle con una línea magenta y un aspa en el punto medio. Si la polilínea tiene varios segmentos, se dibujan todos."
+- **D2:** "El bloqueo usa magenta frambuesa con un aspa, un color que no está en el semáforo, así no se confunde con 'casi lleno' ni con 'crítico'."
+- **D3:** "La línea sigue translúcida para ver lo que hay debajo y aun así contrasta 4,1:1 con el fondo y 3,6:1 con la malla. El aspa contrasta 6:1."
+- **D4:** "La API solo envía los bloqueos vigentes en el minuto simulado actual, de su inicio a su fin inclusive. El mapa los muestra y los quita con el reloj simulado; hay una prueba del motor que lo comprueba."
+- **D5:** "En el botón Filtros, el grupo Tipo de unidad muestra solo autos, motos o bicicletas, y oculta también sus destinos."
+- **D6:** "El grupo Carga de unidades filtra por vacío, verde, ámbar y rojo, con los mismos rangos configurables del semáforo."
+- **D7:** "El grupo Stock de almacenes filtra los intermedios por su semáforo + vacío. El central no tiene tope y siempre se ve."
+- **D8:** "Cada avería se ve junto a la unidad con una insignia que lleva el número del tipo y una forma propia: círculo, rombo u octágono."
+- **D9:** "Cada tipo tiene su color, fuera del semáforo y distinto del almacén central: azul celeste, ciruela y marrón."
+- **D10:** "Los tres colores superan 4,8:1 sobre el fondo y la malla, y el número blanco de la insignia se lee sobre cada uno."
+- **D11:** "La avería se ve todo el tiempo en que la unidad está averiada según el reloj simulado: 2 h el tipo 1; el tipo 2 hasta el fin del turno siguiente, con 4 h en el sitio; el tipo 3 al menos 2 días. Cuando pasa al central, la insignia se dibuja encima y debajo del almacén, así su rótulo no la tapa."
+
+**Colores nuevos (05-11-2026, cambios sin commit).** Contraste WCAG contra el fondo #FFFFFF y la malla #E2E8F0;
+ΔE00 = diferencia perceptual CIEDE2000, donde 20 o más se distingue con claridad:
+- Bloqueo, aspa: #B91C1C → **#BE185D**: 6,04:1 sobre el fondo y 4,90:1 sobre la malla (ΔE00 = 19 con el rojo del semáforo).
+- Bloqueo, línea: #B91C1C al 55 % → **#BE185D al 75 %**: 4,06:1 sobre el fondo y 3,56:1 sobre la malla (antes 2,81 y 2,28).
+- Bloqueo, disco: #FEE2E2 → **#FCE7F3**: el aspa contrasta 5,14:1 sobre él.
+- Avería tipo 1: #0E7490 → **#0369A1** (azul celeste): 5,93:1 sobre el fondo y 4,81:1 sobre la malla (ΔE00 = 43 con el verde).
+- Avería tipo 2: #9D174D → **#701A75** (ciruela): 10,03:1 sobre el fondo y 8,14:1 sobre la malla (ΔE00 = 21 con el bloqueo).
+- Avería tipo 3: #0F172A → **#5B3A1E** (marrón sombra): 10,15:1 sobre el fondo y 8,23:1 sobre la malla (ΔE00 = 29 con el central y 21 con el ámbar).
+
+**Resumen del bloque D.**
+- Conteo: **Listo 11** (D1–D11) · Parcial 0 · Verificar a ojo 0 · Falta 0. D2, D3, D9, D10 y D11 se corrigieron
+  el 05-11-2026. Conviene confirmar los colores a ojo en una corrida antes de la evaluación.
+- Fuera del mapa siguen en rojo: el contador "bloqueos activos" del pie de página (`FooterBar.tsx`) y la lista
+  de incidencias del panel. No se tocaron porque la rúbrica habla del mapa.

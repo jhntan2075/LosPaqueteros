@@ -35,7 +35,9 @@ import {
   COLOR_EN_ENTREGA,
   InsigniaAveria,
   InsigniaStockBajo,
+  COLOR_BLOQUEO,
   MarcaBloqueo,
+  OPACIDAD_LINEA_BLOQUEO,
   PinDestino,
 } from './simbolos';
 import haloSeleccion from '../../assets/figma/pedidos/halo.svg';
@@ -512,8 +514,8 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
           aria-label={`${cantidadBloqueos} bloqueos activos. Ver incidencias`}
           className={`${ESTILO_PILDORA} px-3 gap-1.5 hover:bg-slate-50`}
         >
-          <span className="w-2 h-2 bg-[#B91C1C] rounded-full"></span>
-          <span className="text-[#B91C1C] tabular-nums font-medium text-[12px]">{cantidadBloqueos}</span>
+          <span className="w-2 h-2 rounded-full" style={{ background: COLOR_BLOQUEO }}></span>
+          <span className="tabular-nums font-medium text-[12px]" style={{ color: COLOR_BLOQUEO }}>{cantidadBloqueos}</span>
           <span className="text-[#64748B] font-sans text-[12px]">bloqueos</span>
         </button>
         )}
@@ -679,6 +681,17 @@ interface CapasMapaProps {
 }
 
 /** Fracción de la avería que falta cumplir (1 al empezar, 0 al reincorporarse). */
+/** Separación vertical (px) entre el símbolo de un almacén y cada averiada que está en él. */
+const DESPLAZAMIENTO_EN_ALMACEN_PX = 28;
+/** Tolerancia (km) para decir que una posición, que puede venir fraccionaria, está sobre un almacén. */
+const TOLERANCIA_NODO_KM = 0.01;
+
+/** Almacén sobre cuyo nodo está la posición, si lo hay. */
+const almacenEn = (posicion: { x: number; y: number }) =>
+  ALMACENES.find(
+    (a) => Math.abs(a.ubicacion.x - posicion.x) < TOLERANCIA_NODO_KM && Math.abs(a.ubicacion.y - posicion.y) < TOLERANCIA_NODO_KM,
+  );
+
 const fraccionRestante = (desde: Date, vuelve: Date, ahora: Date) => {
   const total = vuelve.getTime() - desde.getTime();
   return total <= 0 ? 0 : Math.min(1, Math.max(0, (vuelve.getTime() - ahora.getTime()) / total));
@@ -756,7 +769,7 @@ function contenidoTooltip(
   return {
     titulo: 'Tramo bloqueado',
     detalle: `Hasta ${b.fin}`,
-    color: COLOR_NIVEL.ROJO,
+    color: COLOR_BLOQUEO,
     punto: { x: (b.desde.x + b.hasta.x) / 2, y: (b.desde.y + b.hasta.y) / 2 },
     alzaPx: 14,
   };
@@ -878,6 +891,86 @@ const CapasMapa: React.FC<CapasMapaProps> = ({
 
   const activo = proyectar(vista, nodoActivo);
 
+  // Una averiada tipo 2 o 3 pasa al central a las 4 h y sigue averiada ahí. Sobre el nodo del almacén la
+  // taparían su símbolo y su rótulo, así que se dibuja aparte, encima de los almacenes y bajo su símbolo.
+  const visibles = unidades.filter(fueraDelAlmacen);
+  const filasPorAlmacen = new Map<string, number>();
+  const enAlmacen: { unidad: UnidadOperacion; fila: number }[] = [];
+  const enCalle: UnidadOperacion[] = [];
+  for (const u of visibles) {
+    const almacen = u.estado === 'AVERIADA' ? almacenEn(u.posicion) : undefined;
+    if (!almacen) {
+      enCalle.push(u);
+      continue;
+    }
+    const fila = filasPorAlmacen.get(almacen.id) ?? 0;
+    filasPorAlmacen.set(almacen.id, fila + 1);
+    enAlmacen.push({ unidad: u, fila });
+  }
+
+  const dibujarUnidad = (u: UnidadOperacion, desplazamientoY: number) => {
+    const { x, y } = proyectar(vista, u.posicion);
+    const capacidad = u.capacidad;
+    const averiada = u.estado === 'AVERIADA';
+    const color = colorDeUnidad(u);
+    const seleccionada = seleccion?.tipo === 'vehiculo' && seleccion.codigo === u.codigo;
+    const icono = iconoDeUnidad(u);
+    const rotuloX = icono.medioAnchoVisible + (seleccionada ? 6 : 4);
+    return (
+      // El grupo exterior lo mueve useDeslizamientoUnidades (reescribe su transform); el desplazamiento
+      // bajo un almacén va en el grupo interior para no perderse.
+      <g
+        key={u.codigo}
+        transform={`translate(${x}, ${y})`}
+        className="cursor-pointer"
+        data-objeto={`vehiculo:${u.codigo}`}
+        data-mover={u.codigo}
+        data-kx={u.posicion.x}
+        data-ky={u.posicion.y}
+      >
+        <g transform={desplazamientoY === 0 ? undefined : `translate(0, ${desplazamientoY})`} data-en-almacen={desplazamientoY === 0 ? undefined : true}>
+          {seleccionada && <image href={haloSeleccion} x={-13} y={-13} width={26} height={26} />}
+          <image
+            href={icono.href}
+            x={-icono.centroX}
+            y={-icono.centroY}
+            width={icono.ancho}
+            height={icono.alto}
+            transform={averiada ? undefined : orientacionIcono(u)}
+          />
+          {averiada ? (
+            u.averia ? (
+              // Ícono · insignia del tipo con el anillo de lo que falta · código y hora de regreso.
+              <>
+                <g transform={`translate(${rotuloX + 9}, 0)`} data-averia={u.averia.tipo}>
+                  <InsigniaAveria tipo={u.averia.tipo} restante={fraccionRestante(u.averia.desde, u.averia.vuelve, reloj)} />
+                </g>
+                <text x={rotuloX + 23} y="-1" fill={color} fontSize="12" fontWeight="600" {...halo}>
+                  {u.codigo}
+                </text>
+                <text x={rotuloX + 23} y="11" fill="#475569" fontSize="11" {...halo}>
+                  vuelve {formatearMomento(u.averia.vuelve, reloj)}
+                </text>
+              </>
+            ) : (
+              <text x={rotuloX} y="4" fill={color} fontSize="12" fontWeight="600" {...halo}>
+                {u.codigo} · averiada
+              </text>
+            )
+          ) : (
+            <>
+              <text x={rotuloX} y="-1" fill="#64748B" fontSize="12" fontWeight="500" {...halo}>
+                {u.carga}/{capacidad}
+              </text>
+              <rect x={rotuloX} y="4" width="24" height="3" rx="1.5" fill="#CBD5E1" />
+              <rect x={rotuloX} y="4" width={24 * (u.carga / capacidad)} height="3" rx="1.5" fill={color} />
+            </>
+          )}
+        </g>
+      </g>
+    );
+  };
+
   return (
     <svg ref={svgRef} className="absolute inset-0 w-full h-full">
       {/* Cuadrícula continua y uniforme en todo el lienzo */}
@@ -962,7 +1055,7 @@ const CapasMapa: React.FC<CapasMapaProps> = ({
           const m = { x: (a.x + z.x) / 2, y: (a.y + z.y) / 2 };
           return (
             <g key={b.id}>
-              <line x1={a.x} y1={a.y} x2={z.x} y2={z.y} stroke="#B91C1C" strokeWidth="4" strokeLinecap="round" opacity="0.55" />
+              <line x1={a.x} y1={a.y} x2={z.x} y2={z.y} stroke={COLOR_BLOQUEO} strokeWidth="4" strokeLinecap="round" opacity={OPACIDAD_LINEA_BLOQUEO} />
               <g transform={`translate(${m.x}, ${m.y})`} data-objeto={`bloqueo:${b.id}`}>
                 <MarcaBloqueo />
               </g>
@@ -998,68 +1091,8 @@ const CapasMapa: React.FC<CapasMapaProps> = ({
             );
           })}
 
-      {/* --- UNIDADES en ruta (color por ocupación, CF-02) y averiadas --- */}
-      {capas.unidades &&
-        unidades
-          .filter(fueraDelAlmacen)
-          .map((u) => {
-            const { x, y } = proyectar(vista, u.posicion);
-            const capacidad = u.capacidad;
-            const averiada = u.estado === 'AVERIADA';
-            const color = colorDeUnidad(u);
-            const seleccionada = seleccion?.tipo === 'vehiculo' && seleccion.codigo === u.codigo;
-            const icono = iconoDeUnidad(u);
-            const rotuloX = icono.medioAnchoVisible + (seleccionada ? 6 : 4);
-            return (
-              <g
-                key={u.codigo}
-                transform={`translate(${x}, ${y})`}
-                className="cursor-pointer"
-                data-objeto={`vehiculo:${u.codigo}`}
-                data-mover={u.codigo}
-                data-kx={u.posicion.x}
-                data-ky={u.posicion.y}
-              >
-                {seleccionada && <image href={haloSeleccion} x={-13} y={-13} width={26} height={26} />}
-                <image
-                  href={icono.href}
-                  x={-icono.centroX}
-                  y={-icono.centroY}
-                  width={icono.ancho}
-                  height={icono.alto}
-                  transform={averiada ? undefined : orientacionIcono(u)}
-                />
-                {averiada ? (
-                  u.averia ? (
-                    // Ícono · insignia del tipo con el anillo de lo que falta · código y hora de regreso.
-                    <>
-                      <g transform={`translate(${rotuloX + 9}, 0)`} data-averia={u.averia.tipo}>
-                        <InsigniaAveria tipo={u.averia.tipo} restante={fraccionRestante(u.averia.desde, u.averia.vuelve, reloj)} />
-                      </g>
-                      <text x={rotuloX + 23} y="-1" fill={color} fontSize="12" fontWeight="600" {...halo}>
-                        {u.codigo}
-                      </text>
-                      <text x={rotuloX + 23} y="11" fill="#475569" fontSize="11" {...halo}>
-                        vuelve {formatearMomento(u.averia.vuelve, reloj)}
-                      </text>
-                    </>
-                  ) : (
-                    <text x={rotuloX} y="4" fill={color} fontSize="12" fontWeight="600" {...halo}>
-                      {u.codigo} · averiada
-                    </text>
-                  )
-                ) : (
-                  <>
-                    <text x={rotuloX} y="-1" fill="#64748B" fontSize="12" fontWeight="500" {...halo}>
-                      {u.carga}/{capacidad}
-                    </text>
-                    <rect x={rotuloX} y="4" width="24" height="3" rx="1.5" fill="#CBD5E1" />
-                    <rect x={rotuloX} y="4" width={24 * (u.carga / capacidad)} height="3" rx="1.5" fill={color} />
-                  </>
-                )}
-              </g>
-            );
-          })}
+      {/* --- UNIDADES en ruta (color por ocupación, CF-02) y averiadas en el punto de la avería --- */}
+      {capas.unidades && enCalle.map((u) => dibujarUnidad(u, 0))}
 
       {/* --- ALMACENES (posiciones de ConfiguracionDominio): al final, para que su símbolo y su rótulo
           nunca queden tapados por una ruta o una unidad que pase cerca. --- */}
@@ -1090,6 +1123,10 @@ const CapasMapa: React.FC<CapasMapaProps> = ({
             </g>
           );
         })}
+
+      {/* --- AVERIADAS EN UN ALMACÉN (tipo 2 y 3 tras pasar al central): encima de los almacenes y debajo
+          de su símbolo, una por fila, para que el rótulo del almacén no tape la insignia de la avería. --- */}
+      {capas.unidades && enAlmacen.map(({ unidad, fila }) => dibujarUnidad(unidad, DESPLAZAMIENTO_EN_ALMACEN_PX * (fila + 1)))}
 
       {/* Retícula del nodo bajo el cursor: solo mientras el cursor está sobre el mapa. */}
       {mostrarReticula && (

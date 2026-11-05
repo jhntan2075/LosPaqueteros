@@ -1,7 +1,16 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
-import { alertaStockBajo, NOMBRE_CARGA, RANGO_HOLGURA, RANGO_OCUPACION, RANGO_STOCK, nombreAveria } from '../../config/glosario';
+import {
+  alertaStockBajo,
+  NOMBRE_CARGA,
+  RANGO_HOLGURA,
+  RANGO_OCUPACION,
+  RANGO_STOCK,
+  SIMBOLO_AVERIA,
+  SIMBOLO_BLOQUEO,
+  nombreAveria,
+} from '../../config/glosario';
 import { useRangosSemaforo } from '../../hooks/useRangosSemaforo';
 import { NIVELES_CARGA } from '../../lib/semaforo';
 import { CAPAS, type Capa } from './capas';
@@ -13,6 +22,7 @@ import {
   COLOR_EN_ENTREGA,
   InsigniaAveria,
   InsigniaStockBajo,
+  LineaBloqueo,
   MarcaBloqueo,
   MarcaSemaforo,
   PinDestino,
@@ -127,7 +137,7 @@ export const LeyendaMapa: React.FC<LeyendaMapaProps> = ({ onCerrar, capas, onCam
             </Simbolo>
           }
           nombre={`Avería ${nombreAveria(tipo).toLowerCase()}`}
-          detalle={tipo === 1 ? 'anillo = lo que falta' : undefined}
+          detalle={tipo === 1 ? `${SIMBOLO_AVERIA[tipo]}; anillo = lo que falta` : SIMBOLO_AVERIA[tipo]}
         />
       ))}
       <Fila simbolo={<Simbolo caja="-14 -27 28 29"><PinDestino color={VERDE} /></Simbolo>} nombre="Destino" detalle="color = holgura" />
@@ -145,7 +155,16 @@ export const LeyendaMapa: React.FC<LeyendaMapaProps> = ({ onCerrar, capas, onCam
         }
         nombre="Tramo pendiente"
       />
-      <Fila simbolo={<Simbolo caja="-14 -11 28 22"><MarcaBloqueo /></Simbolo>} nombre="Tramo bloqueado" />
+      <Fila
+        simbolo={
+          <Simbolo caja="-14 -11 28 22">
+            <LineaBloqueo />
+            <MarcaBloqueo />
+          </Simbolo>
+        }
+        nombre="Tramo bloqueado"
+        detalle={SIMBOLO_BLOQUEO}
+      />
     </ul>
 
     <div className="px-[12px] pt-[10px] pb-[12px] border-t border-[#E2E8F0] flex flex-col gap-[10px]">

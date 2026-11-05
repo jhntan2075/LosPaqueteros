@@ -32,10 +32,12 @@ const FUENTES: Record<TipoUnidad, FuenteIcono> = {
 export const COLOR_SIN_DATO = '#64748B';
 
 /**
- * Color de cada tipo de avería (D10–D12): fuera de la paleta del semáforo, para que el rojo siga
- * significando "casi lleno". Contraste ≥ 5:1 sobre blanco. La insignia suma número y forma por tipo.
+ * Color de cada tipo de avería (D8–D10): fuera de la paleta del semáforo, distinto del almacén central
+ * (#0F172A), del bloqueo y de los otros tipos (ΔE00 ≥ 19 con todos). Sobre blanco: 5,93 / 10,03 / 10,15:1,
+ * y el número blanco de la insignia, lo mismo. La insignia suma número y forma por tipo.
+ *   1 azul celeste #0369A1 · 2 ciruela #701A75 · 3 marrón sombra #5B3A1E
  */
-export const COLOR_AVERIA: Record<1 | 2 | 3, string> = { 1: '#0E7490', 2: '#9D174D', 3: '#0F172A' };
+export const COLOR_AVERIA: Record<1 | 2 | 3, string> = { 1: '#0369A1', 2: '#701A75', 3: '#5B3A1E' };
 /** Averiada sin detalle de la avería (aún no llegó del servidor). */
 export const COLOR_AVERIADA_SIN_TIPO = '#334155';
 

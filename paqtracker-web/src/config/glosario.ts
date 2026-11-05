@@ -82,6 +82,16 @@ export const TIPO_AVERIA: Record<
   3: { nombre: 'Mayor', ejemplo: 'mantenimiento', duracion: '2 días o más', impacto: REPLANIFICA },
 };
 
+/** Cómo se ve cada tipo de avería en el mapa (forma y color de la insignia, COLOR_AVERIA). */
+export const SIMBOLO_AVERIA: Record<1 | 2 | 3, string> = {
+  1: 'círculo azul celeste',
+  2: 'rombo ciruela',
+  3: 'octágono marrón',
+};
+
+/** Cómo se ve un bloqueo en el mapa (COLOR_BLOQUEO): fuera de los colores del semáforo. */
+export const SIMBOLO_BLOQUEO = 'línea y aspa magenta';
+
 /** "Tipo 2 · Intermedia". */
 export const nombreAveria = (tipo: 1 | 2 | 3) => `Tipo ${tipo} · ${TIPO_AVERIA[tipo].nombre}`;
 
