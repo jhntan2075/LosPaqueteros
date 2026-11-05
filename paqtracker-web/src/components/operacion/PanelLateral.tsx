@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ALMACENES, CORTE_OCUPACION, UNIDADES } from '../../config/dominio';
-import { ALERTA_STOCK_BAJO, NOMBRE_CARGA, NOMBRE_HOLGURA, RANGO_HOLGURA, SITUACION_UNIDAD, etiquetaPlazo, nombreAveria } from '../../config/glosario';
+import { alertaStockBajo, NOMBRE_CARGA, NOMBRE_HOLGURA, RANGO_HOLGURA, SITUACION_UNIDAD, etiquetaPlazo, nombreAveria } from '../../config/glosario';
 import { admisionDeAverias, useAveriaPendiente, useAverias } from '../../hooks/useAverias';
 import { useDatosOperacion } from '../../hooks/useDatosOperacion';
 import { useTrazabilidadPedido } from '../../hooks/useTrazabilidadPedido';
@@ -366,7 +366,8 @@ const DetalleVehiculo: React.FC<
                   <div className="flex flex-col items-end text-[12px]">
                     <span className={`tabular-nums ${TEXTO_SEMAFORO[nivel]}`}>{Math.round(fraccion * 100)} % de capacidad</span>
                     <span className="font-sans text-[#64748B]">
-                      ámbar desde {CORTE_OCUPACION.ambar * 100} %, rojo desde {CORTE_OCUPACION.rojo * 100} %
+                      ámbar desde {Math.round(CORTE_OCUPACION.ambar * 1000) / 10} %, rojo desde{' '}
+                      {Math.round(CORTE_OCUPACION.rojo * 1000) / 10} %
                     </span>
                   </div>
                 </div>
@@ -457,7 +458,7 @@ const DetalleAlmacen: React.FC<{ codigo: string } & Omit<PanelLateralProps, 'sel
               </div>
               {estado.stockBajo && (
                 <p role="status" className="text-[12px] font-medium text-[#0F172A]">
-                  ! {ALERTA_STOCK_BAJO}: se repone a las 23:59.
+                  ! {alertaStockBajo()}: se repone a las 23:59.
                 </p>
               )}
             </div>

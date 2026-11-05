@@ -11,7 +11,8 @@ import { ProveedorAverias } from './components/layout/ProveedorAverias';
 import { useConexionStomp } from './hooks/useConexionStomp';
 import { useParametroUrlCerrado } from './hooks/useParametroUrl';
 import { useSegundosDesde } from './hooks/useSegundosDesde';
-import { ALMACENES, UNIDADES } from './config/dominio';
+import { ALMACENES, CORTE_INVENTARIO, UNIDADES } from './config/dominio';
+import { useRangosSemaforoGlobales } from './hooks/useRangosSemaforo';
 import { capitalizar, formatearFechaNumerica, formatearMiles } from './lib/formato';
 import { turnoVigente } from './lib/turnos';
 import { cantidadBloqueos, estadoFlota, pedidosEnRiesgo } from './lib/operacion';
@@ -43,7 +44,9 @@ const Indicador: React.FC<{ etiqueta: string; valor: string; detalle?: string; c
 
 const NOMBRE_NIVEL: Record<NivelHolgura, string> = { ROJO: 'Crítico', AMBAR: 'Ajustado', VERDE: 'Holgado', CERRADO: 'Resuelto' };
 const COLOR_BARRA_NIVEL: Record<NivelHolgura, string> = { ROJO: 'bg-red-500', AMBAR: 'bg-amber-500', VERDE: 'bg-green-500', CERRADO: 'bg-slate-400' };
-const COLOR_BARRA_STOCK = (porcentaje: number) => (porcentaje < 20 ? 'bg-red-500' : porcentaje < 50 ? 'bg-amber-500' : 'bg-green-500');
+/** Alerta de stock bajo (LE-078) con los cortes de inventario vigentes. */
+const COLOR_BARRA_STOCK = (porcentaje: number) =>
+  porcentaje < CORTE_INVENTARIO.rojo * 100 ? 'bg-red-500' : porcentaje < CORTE_INVENTARIO.ambar * 100 ? 'bg-amber-500' : 'bg-green-500';
 
 const BarraDistribucion: React.FC<{ etiqueta: string; pct: number; detalle: string; color: string }> = ({ etiqueta, pct, detalle, color }) => (
   <div className="flex items-center gap-3 text-xs">
@@ -160,6 +163,8 @@ const PanelMetricas: React.FC<{ datos: DatosOperacion }> = ({ datos }) => {
 };
 
 export default function App() {
+  // Rangos del semáforo guardados en la API: al cambiarlos, toda la pantalla se vuelve a dibujar con ellos.
+  useRangosSemaforoGlobales();
   const [tabActiva, fijarTabActiva] = useParametroUrlCerrado('tab', TABS_VALIDAS, 'operacion');
   // Cambiar de pestaña queda en el historial (atrás vuelve a la pestaña anterior); los parámetros más
   // finos de abajo (panel, vista) se reemplazan en vez de empujar, para no llenar el historial con cada clic.

@@ -1,7 +1,7 @@
 package pe.pucp.paqtracker.modulos.ejecucion.aplicacion.servicio;
 
 import org.junit.jupiter.api.Test;
-import pe.pucp.paqtracker.comun.configuracion.PropiedadesDominio;
+import pe.pucp.paqtracker.modulos.configuracion.dominio.FuenteRangosSemaforo;
 import pe.pucp.paqtracker.comun.excepcion.OperacionNoPermitidaException;
 import pe.pucp.paqtracker.comun.excepcion.RecursoNoEncontradoException;
 import pe.pucp.paqtracker.comun.tiempo.LineaTiempo;
@@ -582,12 +582,12 @@ class MotorEjecucionTest {
 
     private MotorEjecucion crearMotor(List<Pedido> pedidos, List<Bloqueo> bloqueos, ComposicionFlota flota,
                                       boolean detenerEnColapso, TipoEscenario tipoEscenario) {
-        PropiedadesDominio propiedades = PropiedadesPrueba.crear();
+        FuenteRangosSemaforo semaforo = PropiedadesPrueba.rangosSemaforo();
         LineaTiempo lineaTiempo = new LineaTiempo(INICIO);
         SimulacionEnCurso simulacion = new ServicioPlanificacion(new FabricaAlgoritmo()).prepararSimulacion(
                 new SolicitudPreparacionSimulacion(pedidos, bloqueos, AlgoritmoPlanificacion.GA, 1L, SA,
                         detenerEnColapso, flota));
-        SeguimientoPedidos seguimiento = new SeguimientoPedidos(lineaTiempo, propiedades.semaforo(),
+        SeguimientoPedidos seguimiento = new SeguimientoPedidos(lineaTiempo, semaforo,
                 CodigosFlota.de(simulacion.getFlota()), 100);
         ConfiguracionMotor configuracion = new ConfiguracionMotor("prueba", "Prueba",
                 tipoEscenario, AlgoritmoPlanificacion.GA, LocalDate.of(2026, 1, 1), LocalTime.MIDNIGHT, 2,
@@ -622,7 +622,7 @@ class MotorEjecucionTest {
         };
         return new MotorEjecucion(configuracion, lineaTiempo, 0, HORIZONTE, simulacion, seguimiento,
                 new RelojEjecucion(pared, 0, FACTOR), pared,
-                new ServicioDifusion(new ConstructorInstantanea(propiedades), puerto), repositorio,
+                new ServicioDifusion(new ConstructorInstantanea(semaforo), puerto), repositorio,
                 Executors.newSingleThreadScheduledExecutor());
     }
 

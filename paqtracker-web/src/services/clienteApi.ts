@@ -5,6 +5,7 @@ import type {
   ImportacionApi,
   MensajeEstadoApi,
   PedidoApi,
+  RangosSemaforoApi,
   RegistroPedidoApi,
   EstimacionAveriaApi,
   RespuestaRegistroAveriaApi,
@@ -99,6 +100,16 @@ export const clienteApi = {
   /** Cuándo volvería a operar una unidad si ahora se registrara cada tipo de avería. No registra nada. */
   estimarAverias: (ejecucionId: string) =>
     solicitar<EstimacionAveriaApi[]>(`/ejecuciones/${encodeURIComponent(ejecucionId)}/averias/estimacion`),
+
+  /** Rangos vigentes de los semáforos (fracciones 0–1). */
+  consultarRangosSemaforo: () => solicitar<RangosSemaforoApi>('/configuracion/semaforo'),
+  /** Cambia los rangos; la API responde 400 con el motivo si no son coherentes. */
+  guardarRangosSemaforo: (rangos: RangosSemaforoApi) =>
+    solicitar<RangosSemaforoApi>('/configuracion/semaforo', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(rangos),
+    }),
 
   /** Mes en formato YYYYMM. */
   subirVentas: (archivo: File, mes: string) => subirArchivo('/archivos/pedidos', archivo, mes),

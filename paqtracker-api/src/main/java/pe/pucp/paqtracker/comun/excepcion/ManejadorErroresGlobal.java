@@ -4,6 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -55,6 +56,17 @@ public class ManejadorErroresGlobal {
                 .map(error -> error.getField() + ": " + error.getDefaultMessage())
                 .toList();
         return responder(HttpStatus.BAD_REQUEST, "La solicitud tiene campos invalidos", detalles);
+    }
+
+    /**
+     * @param excepcion cuerpo que no es JSON valido o trae un valor del tipo equivocado (p. ej. texto en un
+     *                  campo numerico)
+     * @return 400
+     */
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<RespuestaError> manejarCuerpoIlegible(HttpMessageNotReadableException excepcion) {
+        return responder(HttpStatus.BAD_REQUEST, "El cuerpo de la solicitud no es válido: revise que los valores "
+                + "numéricos sean números", List.of());
     }
 
     /**

@@ -1,8 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
-import { ALERTA_STOCK_BAJO, NOMBRE_CARGA, RANGO_HOLGURA, RANGO_OCUPACION, RANGO_STOCK, nombreAveria } from '../../config/glosario';
+import { alertaStockBajo, NOMBRE_CARGA, RANGO_HOLGURA, RANGO_OCUPACION, RANGO_STOCK, nombreAveria } from '../../config/glosario';
+import { useRangosSemaforo } from '../../hooks/useRangosSemaforo';
 import { NIVELES_CARGA } from '../../lib/semaforo';
 import { CAPAS, type Capa } from './capas';
+import { DialogoRangosSemaforo } from './DialogoRangosSemaforo';
 import { iconoVehiculo } from './iconosVehiculo';
 import {
   AlmacenCentral,
@@ -58,7 +61,11 @@ interface LeyendaMapaProps {
   onCambiarCapa?: (clave: Capa) => void;
 }
 
-export const LeyendaMapa: React.FC<LeyendaMapaProps> = ({ onCerrar, capas, onCambiarCapa }) => (
+export const LeyendaMapa: React.FC<LeyendaMapaProps> = ({ onCerrar, capas, onCambiarCapa }) => {
+  const [configurando, setConfigurando] = useState(false);
+  // Suscrita a los rangos: al guardarlos, la tabla de abajo muestra los nuevos sin esperar a la raíz.
+  useRangosSemaforo();
+  return (
   <section
     aria-label="Capas y leyenda"
     data-sin-zoom
@@ -105,7 +112,7 @@ export const LeyendaMapa: React.FC<LeyendaMapaProps> = ({ onCerrar, capas, onCam
             </g>
           </Simbolo>
         }
-        nombre={ALERTA_STOCK_BAJO}
+        nombre={alertaStockBajo()}
       />
       <Fila simbolo={<IconoUnidad tipo="AUTO" />} nombre="Auto" detalle="color = carga" />
       <Fila simbolo={<IconoUnidad tipo="MOTO" />} nombre="Moto" />
@@ -176,6 +183,16 @@ export const LeyendaMapa: React.FC<LeyendaMapaProps> = ({ onCerrar, capas, onCam
         ))}
       </div>
       <p className="text-[11px] text-[#64748B]">La forma también indica el nivel, no solo el color.</p>
+      <button
+        type="button"
+        onClick={() => setConfigurando(true)}
+        className="self-start h-[28px] px-[10px] rounded-[6px] border border-[#CBD5E1] text-[12px] font-medium text-[#0F172A] hover:bg-[#F8FAFC]"
+      >
+        Configurar rangos
+      </button>
     </div>
+    {/* En un portal: la leyenda tiene scroll propio y el diálogo debe cubrir toda la pantalla. */}
+    {configurando && createPortal(<DialogoRangosSemaforo onCerrar={() => setConfigurando(false)} />, document.body)}
   </section>
-);
+  );
+};

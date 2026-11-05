@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useImperativeHandle, forwardRef } from 'react';
 import { Search, ZoomIn, ZoomOut, Maximize2, MapIcon, ListFilter, X } from 'lucide-react';
 import { ALMACENES, MALLA_ALTO_KM, MALLA_ANCHO_KM, TIPOS_UNIDAD, UNIDADES, type IdAlmacen } from '../../config/dominio';
-import { ALERTA_STOCK_BAJO, NOMBRE_CARGA, NOMBRE_HOLGURA, SITUACION_UNIDAD, nombreAveria } from '../../config/glosario';
+import { alertaStockBajo, NOMBRE_CARGA, NOMBRE_HOLGURA, SITUACION_UNIDAD, nombreAveria } from '../../config/glosario';
 import { useCerrarConEscape } from '../../hooks/useCerrarConEscape';
 import { useTamanoElemento } from '../../hooks/useTamanoElemento';
 import { capitalizar, formatearMomento } from '../../lib/formato';
@@ -741,7 +741,7 @@ function contenidoTooltip(
     if (!a) return null;
     const estado = datos.almacenes.find((x) => x.id === a.id);
     const nivel = estado?.porcentajeStock != null ? estado.nivelStock : null;
-    const alerta = estado?.stockBajo ? ` · ${ALERTA_STOCK_BAJO.toLowerCase()}` : '';
+    const alerta = estado?.stockBajo ? ` · ${alertaStockBajo().toLowerCase()}` : '';
     return {
       titulo: `Almacén ${a.nombre}`,
       detalle: nivel ? `Stock ${estado?.porcentajeStock} % · ${NOMBRE_CARGA[nivel].toLowerCase()}${alerta}` : 'Stock ilimitado',
