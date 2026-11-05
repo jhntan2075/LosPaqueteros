@@ -121,6 +121,22 @@ describe('Rúbrica · nivel de uso de la flota total', () => {
     expect(relleno('Carga a bordo de auto')).toContain('bg-[#B45309]');
     expect(relleno('Carga a bordo de moto')).toContain('bg-[#B91C1C]');
     // La barra segmentada por estado tiene su texto alternativo con las cantidades.
-    expect(screen.getByRole('img').getAttribute('aria-label')).toBe('2 en ruta, 1 disponibles, 1 averiadas');
+    expect(screen.getByRole('img', { name: /en ruta/ }).getAttribute('aria-label')).toBe('2 en ruta, 1 disponibles, 1 averiadas');
+  });
+});
+
+describe('Rúbrica · C16 · presentación de los tiempos', () => {
+  it('los tiempos van en dos pares, simulado y real, con jerarquía: fecha-hora sobre transcurrido sobre etiqueta', () => {
+    montarEncabezado();
+    const simulado = within(screen.getByRole('region', { name: 'Simulado' }));
+    const real = within(screen.getByRole('region', { name: 'Real' }));
+    expect(simulado.getByText('Fecha y hora simulada')).toBeTruthy();
+    expect(simulado.getByText('Tiempo simulado transcurrido')).toBeTruthy();
+    expect(real.getByText('Fecha y hora real')).toBeTruthy();
+    expect(real.getByText('Tiempo real transcurrido / Restante')).toBeTruthy();
+    // Etiquetas 11 px < transcurridos 14 px < fecha-hora real 16 px < fecha-hora simulada 20 px.
+    expect(simulado.getByText('Fecha y hora simulada').className).toContain('text-[11px]');
+    expect(simulado.getByText(/1 d 02 h/).className).toContain('text-[14px]');
+    expect(real.getByText(/\d{4} · \d{2}:\d{2}:\d{2}/).className).toContain('text-[16px]');
   });
 });

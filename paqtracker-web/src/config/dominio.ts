@@ -37,8 +37,14 @@ export const CORTE_OCUPACION = { ambar: 0.7, rojo: 0.9 };
 export const CORTE_HOLGURA = { rojo: 0.15, ambar: 0.4 };
 
 /**
- * Stock de un almacén intermedio sobre su capacidad: rojo bajo 20 %, ámbar hasta 50 %. El nivel lo
- * calcula paqtracker-api (APP_INVENTARIO_ROJO / APP_INVENTARIO_AMBAR); aquí solo se rotula en la leyenda.
+ * Ocupación de un almacén intermedio (semáforo + vacío de la rúbrica, rojo = lleno): ámbar desde 50 %,
+ * rojo desde 80 % de su capacidad.
+ */
+export const CORTE_STOCK = { ambar: 0.5, rojo: 0.8 };
+
+/**
+ * Alerta de stock bajo de un almacén intermedio (LE-078): bajo 20 % de su capacidad. La calcula
+ * paqtracker-api (APP_INVENTARIO_ROJO); es un aviso aparte del semáforo de ocupación.
  */
 export const CORTE_INVENTARIO = { rojo: 0.2, ambar: 0.5 };
 

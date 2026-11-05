@@ -132,6 +132,6 @@ public class ServicioEjecucion {
      */
     public DetallePedido consultarPedido(String id, int idPedido) {
         return registro.obtener(id).consultarPedido(idPedido)
-                .orElseThrow(() -> new RecursoNoEncontradoException("pedido", idPedido + " en la ejecucion " + id));
+                .orElseThrow(() -> new RecursoNoEncontradoException("pedido", idPedido + " en la ejecución " + id));
     }
 }

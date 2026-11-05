@@ -4,7 +4,7 @@ import { UNIDADES } from '../../config/dominio';
 import { ESTADO_UNIDAD } from '../../config/glosario';
 import { capitalizar, formatearMomento } from '../../lib/formato';
 import type { UnidadOperacion } from '../../types/operacion';
-import { colorDeUnidad, iconoVehiculo } from '../map/iconosVehiculo';
+import { iconoDeUnidad } from '../map/iconosVehiculo';
 
 // Combobox para elegir una unidad de una flota larga (hasta 150 en una simulación). Patrón ARIA 1.2
 // "combobox con lista": se escribe para filtrar, flechas para moverse, Enter para elegir y Esc para cerrar.
@@ -128,7 +128,7 @@ export const SelectorUnidad = forwardRef<HTMLInputElement, SelectorUnidadProps>(
         className="h-[36px] px-[10px] flex items-center gap-[8px] border border-[#CBD5E1] rounded-[6px] bg-white cursor-text focus-within:border-[#1E40AF] focus-within:ring-1 focus-within:ring-[#1E40AF]/30"
       >
         {elegida && !abierta ? (
-          <img src={iconoVehiculo(elegida.tipo, colorDeUnidad(elegida)).href} alt="" className="block -my-[4px] -ml-[4px]" />
+          <img src={iconoDeUnidad(elegida).href} alt="" className="block -my-[4px] -ml-[4px]" />
         ) : (
           <Search className="w-3.5 h-3.5 text-[#64748B] shrink-0" aria-hidden="true" />
         )}
@@ -199,7 +199,7 @@ export const SelectorUnidad = forwardRef<HTMLInputElement, SelectorUnidadProps>(
                         grupo.bloqueado ? 'opacity-55 cursor-not-allowed' : 'cursor-pointer'
                       } ${esActiva ? 'bg-[#EAF1FD]' : ''}`}
                     >
-                      <img src={iconoVehiculo(u.tipo, colorDeUnidad(u)).href} alt="" className="block -my-[4px] shrink-0" />
+                      <img src={iconoDeUnidad(u).href} alt="" className="block -my-[4px] shrink-0" />
                       <span className="font-semibold text-[#0F172A] tabular-nums w-[44px] shrink-0">{u.codigo}</span>
                       {/* Espacio para el nombre accesible: sin él, el lector anuncia "A-01En ruta". */}{' '}
                       <span className="text-[12px] text-[#64748B] tabular-nums truncate">{detalle(u)}</span>

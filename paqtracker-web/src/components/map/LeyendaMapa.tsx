@@ -1,20 +1,27 @@
 import React from 'react';
 import { X } from 'lucide-react';
-import { RANGO_HOLGURA, RANGO_INVENTARIO, RANGO_OCUPACION } from '../../config/glosario';
+import { ALERTA_STOCK_BAJO, NOMBRE_CARGA, RANGO_HOLGURA, RANGO_OCUPACION, RANGO_STOCK, nombreAveria } from '../../config/glosario';
+import { NIVELES_CARGA } from '../../lib/semaforo';
 import { CAPAS, type Capa } from './capas';
 import { iconoVehiculo } from './iconosVehiculo';
-import { AlmacenCentral, AlmacenIntermedio, COLOR_EN_ENTREGA, MarcaBloqueo, PinDestino } from './simbolos';
+import {
+  AlmacenCentral,
+  AlmacenIntermedio,
+  COLOR_EN_ENTREGA,
+  InsigniaAveria,
+  InsigniaStockBajo,
+  MarcaBloqueo,
+  MarcaSemaforo,
+  PinDestino,
+} from './simbolos';
 
 // Capas y leyenda del mapa: panel flotante y no modal, para usarlo sin dejar de ver el mapa. Qué capas
 // se dibujan (rutas, unidades, destinos, bloqueos, almacenes) y qué es cada símbolo; el detalle de cada
 // objeto está en su tooltip y en el panel lateral.
 
 const ROJO = '#B91C1C';
-const AMBAR = '#B45309';
 const VERDE = '#15803D';
 const GRIS = '#64748B';
-
-type Nivel = 'ROJO' | 'AMBAR' | 'VERDE';
 
 /**
  * Símbolo SVG en una caja fija de 28 × 22: `caja` es el rectángulo del símbolo (con su sombra) y se
@@ -26,8 +33,8 @@ const Simbolo: React.FC<{ caja: string; children: React.ReactNode }> = ({ caja, 
   </svg>
 );
 
-const IconoUnidad: React.FC<{ tipo: 'AUTO' | 'MOTO' | 'BICICLETA' }> = ({ tipo }) => {
-  const icono = iconoVehiculo(tipo, GRIS);
+const IconoUnidad: React.FC<{ tipo: 'AUTO' | 'MOTO' | 'BICICLETA'; hueco?: boolean }> = ({ tipo, hueco = false }) => {
+  const icono = iconoVehiculo(tipo, GRIS, hueco);
   return <img src={icono.href} alt="" width={icono.ancho} height={icono.alto} className="block max-w-none" />;
 };
 
@@ -42,22 +49,7 @@ const Fila: React.FC<{ simbolo: React.ReactNode; nombre: string; detalle?: strin
   </li>
 );
 
-/** Marca del semáforo: la forma también distingue el nivel (círculo, triángulo, cuadrado). */
-const Marca: React.FC<{ nivel: Nivel }> = ({ nivel }) => (
-  <svg width="9" height="9" viewBox="0 0 9 9" className="shrink-0" aria-hidden="true">
-    {nivel === 'ROJO' && <circle cx="4.5" cy="4.5" r="4" fill={ROJO} />}
-    {nivel === 'AMBAR' && <path d="M4.5 0.5L8.6 8H0.4L4.5 0.5Z" fill={AMBAR} />}
-    {nivel === 'VERDE' && <rect x="0.5" y="0.5" width="8" height="8" rx="1" fill={VERDE} />}
-  </svg>
-);
-
-/** Columnas en el mismo orden en las tres filas (rojo, ámbar, verde): cada forma queda alineada. */
-const NIVELES: Nivel[] = ['ROJO', 'AMBAR', 'VERDE'];
-const SEMAFOROS: { titulo: string; rangos: Record<Nivel, string> }[] = [
-  { titulo: 'Holgura', rangos: RANGO_HOLGURA },
-  { titulo: 'Carga', rangos: RANGO_OCUPACION },
-  { titulo: 'Stock', rangos: RANGO_INVENTARIO },
-];
+const NIVELES_HOLGURA: ('ROJO' | 'AMBAR' | 'VERDE')[] = ['ROJO', 'AMBAR', 'VERDE'];
 
 interface LeyendaMapaProps {
   onCerrar: () => void;
@@ -104,9 +96,33 @@ export const LeyendaMapa: React.FC<LeyendaMapaProps> = ({ onCerrar, capas, onCam
         nombre="Almacén intermedio"
         detalle="barra = stock"
       />
+      <Fila
+        simbolo={
+          <Simbolo caja="-14 -14 28 28">
+            <AlmacenIntermedio color={GRIS} fraccionStock={0.1} />
+            <g transform="translate(11, -10)">
+              <InsigniaStockBajo />
+            </g>
+          </Simbolo>
+        }
+        nombre={ALERTA_STOCK_BAJO}
+      />
       <Fila simbolo={<IconoUnidad tipo="AUTO" />} nombre="Auto" detalle="color = carga" />
       <Fila simbolo={<IconoUnidad tipo="MOTO" />} nombre="Moto" />
       <Fila simbolo={<IconoUnidad tipo="BICICLETA" />} nombre="Bicicleta" />
+      <Fila simbolo={<IconoUnidad tipo="AUTO" hueco />} nombre="Unidad vacía" detalle="ícono hueco" />
+      {([1, 2, 3] as const).map((tipo) => (
+        <Fila
+          key={tipo}
+          simbolo={
+            <Simbolo caja="-12 -12 24 24">
+              <InsigniaAveria tipo={tipo} restante={0.65} />
+            </Simbolo>
+          }
+          nombre={`Avería ${nombreAveria(tipo).toLowerCase()}`}
+          detalle={tipo === 1 ? 'anillo = lo que falta' : undefined}
+        />
+      ))}
       <Fila simbolo={<Simbolo caja="-14 -27 28 29"><PinDestino color={VERDE} /></Simbolo>} nombre="Destino" detalle="color = holgura" />
       <Fila simbolo={<Simbolo caja="-14 -27 28 29"><PinDestino color={ROJO} critico /></Simbolo>} nombre="Destino crítico" />
       <Fila simbolo={<Simbolo caja="-14 -27 28 29"><PinDestino color={COLOR_EN_ENTREGA} /></Simbolo>} nombre="Entregando ahora" detalle="la unidad está en el destino" />
@@ -125,21 +141,41 @@ export const LeyendaMapa: React.FC<LeyendaMapaProps> = ({ onCerrar, capas, onCam
       <Fila simbolo={<Simbolo caja="-14 -11 28 22"><MarcaBloqueo /></Simbolo>} nombre="Tramo bloqueado" />
     </ul>
 
-    <div className="px-[12px] pt-[10px] pb-[12px] border-t border-[#E2E8F0]">
-      <div className="grid grid-cols-[52px_repeat(3,minmax(0,1fr))] gap-x-[8px] gap-y-[6px] items-center text-[12px]">
-        {SEMAFOROS.map(({ titulo, rangos }) => (
-          <React.Fragment key={titulo}>
-            <span className="text-[#64748B]">{titulo}</span>
-            {NIVELES.map((nivel) => (
-              <span key={nivel} className="flex items-center gap-[4px] whitespace-nowrap tabular-nums text-[#0F172A]">
-                <Marca nivel={nivel} />
-                {rangos[nivel]}
-              </span>
-            ))}
-          </React.Fragment>
+    <div className="px-[12px] pt-[10px] pb-[12px] border-t border-[#E2E8F0] flex flex-col gap-[10px]">
+      <table className="w-full text-[12px] tabular-nums">
+        <caption className="text-left font-semibold text-[12px] text-[#0F172A] pb-[4px]">Semáforo de carga y stock</caption>
+        <thead>
+          <tr className="text-[11px] text-[#64748B]">
+            <th scope="col" className="text-left font-normal pb-[2px]">Nivel</th>
+            <th scope="col" className="text-right font-normal pb-[2px]">Unidad</th>
+            <th scope="col" className="text-right font-normal pb-[2px]">Almacén</th>
+          </tr>
+        </thead>
+        <tbody>
+          {NIVELES_CARGA.map((nivel) => (
+            <tr key={nivel} className="h-[20px] text-[#0F172A]">
+              <th scope="row" className="text-left font-normal">
+                <span className="flex items-center gap-[6px] whitespace-nowrap">
+                  <MarcaSemaforo nivel={nivel} />
+                  {NOMBRE_CARGA[nivel]}
+                </span>
+              </th>
+              <td className="text-right whitespace-nowrap">{RANGO_OCUPACION[nivel]}</td>
+              <td className="text-right whitespace-nowrap">{RANGO_STOCK[nivel]}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <div className="grid grid-cols-[52px_repeat(3,minmax(0,1fr))] gap-x-[8px] items-center text-[12px]">
+        <span className="text-[#64748B]">Holgura</span>
+        {NIVELES_HOLGURA.map((nivel) => (
+          <span key={nivel} className="flex items-center gap-[4px] whitespace-nowrap tabular-nums text-[#0F172A]">
+            <MarcaSemaforo nivel={nivel} />
+            {RANGO_HOLGURA[nivel]}
+          </span>
         ))}
       </div>
-      <p className="mt-[8px] text-[11px] text-[#64748B]">La forma también indica el nivel, no solo el color.</p>
+      <p className="text-[11px] text-[#64748B]">La forma también indica el nivel, no solo el color.</p>
     </div>
   </section>
 );

@@ -34,7 +34,7 @@ public class CasoUsoEjecutarDiaADia {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(CasoUsoEjecutarDiaADia.class);
     private static final double TIEMPO_REAL = 1.0;
-    private static final String NOMBRE = "Operacion dia a dia";
+    private static final String NOMBRE = "Operación día a día";
 
     private final CargadorDatosEscenario cargadorDatos;
     private final CreadorEjecucion creador;

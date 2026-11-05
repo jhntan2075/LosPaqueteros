@@ -1,5 +1,6 @@
 import type { Coordenada } from './domain';
 import type { IdAlmacen, TipoUnidad } from '../config/dominio';
+import type { NivelCarga } from '../lib/semaforo';
 import type { NivelHolgura } from './pedidos';
 import type { EstadoEjecucionApi, IndicadoresApi, TipoEscenarioApi } from './api';
 
@@ -78,6 +79,16 @@ export interface UnidadOperacion {
   minutosOciosa?: number;
   /** Avería vigente, solo si la unidad está averiada. */
   averia?: AveriaUnidad;
+  /** Tramo que recorre ahora (viaje, servicio, retorno…); sin valor si está detenida en un almacén. */
+  tramo?: TramoUnidad;
+}
+
+export interface TramoUnidad {
+  origen: Coordenada;
+  /** Destino inmediato: el final del tramo en curso. */
+  destino: Coordenada;
+  salida: Date;
+  llegada: Date;
 }
 
 export interface AveriaUnidad {
@@ -157,7 +168,10 @@ export interface AlmacenOperacion {
   capacidad: number | null;
   /** Stock como porcentaje de la capacidad; null en el almacén central (sin tope). */
   porcentajeStock: number | null;
-  nivel: NivelHolgura | null;
+  /** Semáforo + vacío de ocupación (rojo = lleno); null en el central. */
+  nivelStock: NivelCarga | null;
+  /** Alerta de stock bajo calculada por la API (LE-078): true bajo su corte rojo. */
+  stockBajo: boolean;
 }
 
 /** Estado de una ejecución listo para la vista: lo produce el adaptador a partir de la API. */

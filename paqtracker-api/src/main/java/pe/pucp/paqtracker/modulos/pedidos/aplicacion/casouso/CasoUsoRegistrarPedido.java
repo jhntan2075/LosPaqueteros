@@ -65,7 +65,7 @@ public class CasoUsoRegistrarPedido {
                     + ConfiguracionDominio.MALLA_ALTO + " km");
         }
         if (solicitud.plazoHoras() * MINUTOS_POR_HORA > ConfiguracionDominio.PLAZO_MAXIMO_MINUTOS) {
-            throw new SolicitudInvalidaException("El plazo maximo es de "
+            throw new SolicitudInvalidaException("El plazo máximo es de "
                     + ConfiguracionDominio.PLAZO_MAXIMO_MINUTOS / MINUTOS_POR_HORA + " h: " + solicitud.plazoHoras());
         }
     }

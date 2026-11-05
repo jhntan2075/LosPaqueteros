@@ -1,5 +1,6 @@
 import { formatearDiaMesHora, formatearHolgura, formatearHora } from '../lib/formato';
 import { puntoEnRecorrido } from '../lib/malla';
+import { nivelDeStock } from '../lib/semaforo';
 import type {
   BloqueoEnMapaApi,
   CoordenadaApi,
@@ -156,6 +157,14 @@ function adaptarUnidad(unidad: UnidadEnMapaApi, pedidos: Record<string, PedidoOp
         }
       : undefined,
     ruta,
+    tramo: unidad.tramoEnCurso
+      ? {
+          origen: coordenada(unidad.tramoEnCurso.origen),
+          destino: coordenada(unidad.tramoEnCurso.destino),
+          salida: new Date(unidad.tramoEnCurso.tiempoSalidaSimulado),
+          llegada: new Date(unidad.tramoEnCurso.tiempoLlegadaEstimado),
+        }
+      : undefined,
     paradas,
     paradaActual: paradas.length > 0 ? 1 : 0,
     totalParadas: paradas.length,
@@ -262,7 +271,8 @@ export function construirDatosOperacion(mensaje: MensajeEstadoApi, ahoraMs: numb
     stock: a.stockActual,
     capacidad: a.capacidadMaxima,
     porcentajeStock: a.stockActual === null || !a.capacidadMaxima ? null : Math.round((a.stockActual / a.capacidadMaxima) * 100),
-    nivel: a.nivelInventario,
+    nivelStock: a.stockActual === null || !a.capacidadMaxima ? null : nivelDeStock(a.stockActual, a.capacidadMaxima),
+    stockBajo: a.nivelInventario === 'ROJO',
   }));
   return {
     ejecucionId: mensaje.ejecucionId,

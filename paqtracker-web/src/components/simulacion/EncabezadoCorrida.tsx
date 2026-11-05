@@ -36,13 +36,28 @@ interface EncabezadoCorridaProps {
 }
 
 const Bloque: React.FC<{ etiqueta: string; children: React.ReactNode }> = ({ etiqueta, children }) => (
-  <div className="flex flex-col gap-[2px] whitespace-nowrap">
-    <span className="font-sans text-[12px] text-[#64748B]">{etiqueta}</span>
+  <div className="flex flex-col gap-[1px] whitespace-nowrap">
+    <span className="font-sans font-medium text-[11px] text-[#64748B]">{etiqueta}</span>
     {children}
   </div>
 );
 
 const Separador = () => <div className="bg-[#E2E8F0] h-[36px] w-px shrink-0" />;
+
+/**
+ * Par de tiempos (C12–C16): fecha-hora y transcurrido juntos, del momento simulado o del real. Las dos
+ * tarjetas tienen la misma estructura para leerse como pares; la simulada va más destacada.
+ */
+const TarjetaTiempo: React.FC<{ titulo: string; children: React.ReactNode }> = ({ titulo, children }) => (
+  <section
+    aria-label={titulo}
+    className="flex items-center gap-x-[16px] rounded-[8px] border border-[#E2E8F0] bg-[#F8FAFC] px-[12px] py-[5px]"
+  >
+    {children}
+  </section>
+);
+
+const VALOR_TRANSCURRIDO = 'tabular-nums font-medium text-[14px] text-[#0F172A]';
 
 export const EncabezadoCorrida: React.FC<EncabezadoCorridaProps> = ({
   escenario,
@@ -102,30 +117,36 @@ export const EncabezadoCorrida: React.FC<EncabezadoCorridaProps> = ({
       {/* Encabezado de corrida. flex-wrap: a lo ancho justo (~1366 px con "Detener simulación" visible)
           pasa a una segunda línea en vez de cortar los botones de la derecha. */}
       <header className="min-h-[56px] bg-white border-b border-[#E2E8F0] px-[16px] py-[10px] flex flex-wrap items-center gap-x-[20px] gap-y-[10px]">
-        <Bloque etiqueta={colapso ? 'Instante del colapso' : 'Fecha y hora simulada'}>
-          <span className={`tabular-nums font-semibold text-[20px] ${colapso ? 'text-[#B91C1C]' : 'text-[#0F172A]'}`}>{formatearFechaLarga(relojSimulado)}</span>
-        </Bloque>
-        <span
-          className={`rounded-[4px] px-[8px] py-[4px] tabular-nums font-medium text-[12px] whitespace-nowrap ${
-            colapso ? 'border border-[#B91C1C] text-[#B91C1C]' : 'bg-[#DBEAFE] text-[#1E40AF]'
-          }`}
-        >
-          {colapso ? `Día simulado ${dia}` : `Día ${dia} de ${diasTotales}`}
-        </span>
-        <Separador />
-        <Bloque etiqueta="Tiempo simulado transcurrido">
-          <span className="tabular-nums text-[12px] text-[#0F172A]">{formatearDiasHoras(simuladoMs, true)}</span>
-        </Bloque>
-        <Separador />
-        <Bloque etiqueta={colapso || terminada ? 'Tiempo real / Estado' : 'Tiempo real transcurrido / Restante'}>
-          <span className="tabular-nums text-[12px] text-[#0F172A]">
-            {formatearCronometro(transcurridoRealMs)} · {colapso || terminada ? 'terminada' : `~${formatearCronometro(restanteRealMs)}`}
-          </span>
-        </Bloque>
-        <Separador />
-        <Bloque etiqueta="Fecha y hora real">
-          <RelojReal className="tabular-nums text-[12px] text-[#0F172A]" />
-        </Bloque>
+        <TarjetaTiempo titulo="Simulado">
+          <Bloque etiqueta={colapso ? 'Instante del colapso' : 'Fecha y hora simulada'}>
+            <span className="flex items-center gap-[8px]">
+              <span className={`tabular-nums font-semibold text-[20px] leading-[24px] ${colapso ? 'text-[#B91C1C]' : 'text-[#0F172A]'}`}>
+                {formatearFechaLarga(relojSimulado)}
+              </span>
+              <span
+                className={`rounded-[4px] px-[6px] py-[2px] tabular-nums font-medium text-[11px] whitespace-nowrap ${
+                  colapso ? 'border border-[#B91C1C] text-[#B91C1C]' : 'bg-[#DBEAFE] text-[#1E40AF]'
+                }`}
+              >
+                {colapso ? `Día simulado ${dia}` : `Día ${dia} de ${diasTotales}`}
+              </span>
+            </span>
+          </Bloque>
+          <Bloque etiqueta="Tiempo simulado transcurrido">
+            <span className={VALOR_TRANSCURRIDO}>{formatearDiasHoras(simuladoMs, true)}</span>
+          </Bloque>
+        </TarjetaTiempo>
+        <TarjetaTiempo titulo="Real">
+          <Bloque etiqueta="Fecha y hora real">
+            <RelojReal className="tabular-nums font-semibold text-[16px] leading-[24px] text-[#0F172A]" />
+          </Bloque>
+          <Bloque etiqueta={colapso || terminada ? 'Tiempo real / Estado' : 'Tiempo real transcurrido / Restante'}>
+            <span className={VALOR_TRANSCURRIDO}>
+              {formatearCronometro(transcurridoRealMs)}
+              <span className="font-normal text-[#64748B]"> · {colapso || terminada ? 'terminada' : `~${formatearCronometro(restanteRealMs)} restante`}</span>
+            </span>
+          </Bloque>
+        </TarjetaTiempo>
         {escenario === 'SIMULACION_PERIODO' && !colapso && (
           <>
             <Separador />

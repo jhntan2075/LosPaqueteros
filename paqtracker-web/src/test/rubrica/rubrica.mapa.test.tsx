@@ -1,13 +1,16 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { GridMap } from '../../components/map/GridMap';
-import { COLOR_CARGA, colorDeUnidad } from '../../components/map/iconosVehiculo';
+import { COLOR_AVERIA, COLOR_AVERIADA_SIN_TIPO, colorDeUnidad, iconoDeUnidad } from '../../components/map/iconosVehiculo';
+import { COLOR_SEMAFORO } from '../../lib/semaforo';
 import { LeyendaMapa } from '../../components/map/LeyendaMapa';
+import { InsigniaAveria } from '../../components/map/simbolos';
 import { clienteApi } from '../../services/clienteApi';
 import { construirDatosOperacion } from '../../services/adaptadorOperacion';
 import { INICIO_MS, mensajeEstado } from '../fabricas';
 import {
+  ALTO_MAPA,
   ANCHO_MAPA,
   MIN,
   contrasteSobreBlanco,
@@ -152,11 +155,16 @@ describe('Rúbrica · MAPA · almacenes intermedios', () => {
     expect(tooltip()).toContain('Stock 40 %');
   });
 
-  it('C15 · el stock del intermedio usa semáforo: ámbar (40 %) y rojo (10 %)', () => {
+  it('C15 · el stock del intermedio usa semáforo + vacío con rojo = lleno, y la alerta de stock bajo va aparte', () => {
     const { container } = montarOperacion();
     const color = (id: string) => objetoMapa(container, `almacen:${id}`)!.querySelector('path')!.getAttribute('stroke');
-    expect(color('INTERMEDIO_1')).toBe('#B45309');
-    expect(color('INTERMEDIO_2')).toBe('#B91C1C');
+    // 40 % y 10 % tienen mucho espacio: verde (glosario de la rúbrica). Los cortes, en semaforo.test.ts.
+    expect(color('INTERMEDIO_1')).toBe(COLOR_SEMAFORO.VERDE);
+    expect(color('INTERMEDIO_2')).toBe(COLOR_SEMAFORO.VERDE);
+    // El 10 % dispara la alerta de stock bajo de la API (LE-078) como insignia, sin cambiar el color.
+    const insignia = (id: string) => objetoMapa(container, `almacen:${id}`)!.querySelector('circle[r="6"]');
+    expect(insignia('INTERMEDIO_1')).toBeNull();
+    expect(insignia('INTERMEDIO_2')).toBeTruthy();
     // La barra interior es proporcional al stock.
     const barra = (id: string) => Number(objetoMapa(container, `almacen:${id}`)!.querySelectorAll('rect')[1].getAttribute('height'));
     expect(barra('INTERMEDIO_1')).toBeCloseTo(12 * 0.4);
@@ -188,9 +196,7 @@ describe('Rúbrica · MAPA · unidades de transporte', () => {
   });
 
   it('C24 · los íconos de unidad usan colores con contraste ≥ 3:1 sobre el mapa (WCAG 1.4.11)', () => {
-    Object.values(COLOR_CARGA)
-      .filter((c) => c !== COLOR_CARGA.CERRADO)
-      .forEach((color) => expect(contrasteSobreBlanco(color)).toBeGreaterThanOrEqual(3));
+    Object.values(COLOR_SEMAFORO).forEach((color) => expect(contrasteSobreBlanco(color)).toBeGreaterThanOrEqual(3));
     const { container } = montarOperacion();
     // Cada tipo tiene su propia silueta (auto, moto, bici) como imagen SVG.
     const href = (codigo: string) => objetoMapa(container, `vehiculo:${codigo}`)!.querySelector('image')!.getAttribute('href')!;
@@ -245,17 +251,23 @@ describe('Rúbrica · MAPA · unidades de transporte', () => {
     expect(tooltip()).toContain('Carga 20/24 · 83 %');
   });
 
-  it('C29 · la carga de la unidad usa semáforo: verde < 70 %, ámbar ≥ 70 %, rojo ≥ 90 %, y rojo si está averiada', () => {
+  it('C29 · la carga de la unidad usa semáforo + vacío: vacío 0, verde < 70 %, ámbar ≥ 70 %, rojo ≥ 90 %; la averiada usa el color de su avería', () => {
     const color = (carga: number, estado: 'EN_RUTA' | 'AVERIADA' = 'EN_RUTA') => colorDeUnidad({ carga, capacidad: 10, estado });
-    expect(color(6)).toBe(COLOR_CARGA.VERDE);
-    expect(color(7)).toBe(COLOR_CARGA.AMBAR);
-    expect(color(9)).toBe(COLOR_CARGA.ROJO);
-    expect(color(0, 'AVERIADA')).toBe('#B91C1C');
+    expect(color(0)).toBe(COLOR_SEMAFORO.VACIO);
+    expect(color(6)).toBe(COLOR_SEMAFORO.VERDE);
+    expect(color(7)).toBe(COLOR_SEMAFORO.AMBAR);
+    expect(color(9)).toBe(COLOR_SEMAFORO.ROJO);
+    expect(color(0, 'AVERIADA')).toBe(COLOR_AVERIADA_SIN_TIPO);
     // En el mapa, la barra de carga de A-01 (83 %) es ámbar y la de M-01 (100 %) roja.
     const { container } = montarOperacion();
     const barra = (codigo: string) => objetoMapa(container, `vehiculo:${codigo}`)!.querySelectorAll('rect')[1].getAttribute('fill');
-    expect(barra('A-01')).toBe(COLOR_CARGA.AMBAR);
-    expect(barra('M-01')).toBe(COLOR_CARGA.ROJO);
+    expect(barra('A-01')).toBe(COLOR_SEMAFORO.AMBAR);
+    expect(barra('M-01')).toBe(COLOR_SEMAFORO.ROJO);
+    // Una unidad vacía en ruta lleva el ícono hueco (cuerpo blanco, contorno gris); averiada sigue en rojo.
+    const icono = (estado: 'EN_RUTA' | 'AVERIADA') =>
+      decodeURIComponent(iconoDeUnidad({ tipo: 'BICICLETA', estado, carga: 0, capacidad: 4 }).href);
+    expect(icono('EN_RUTA')).toContain(`fill="#FFFFFF" stroke="${COLOR_SEMAFORO.VACIO}"`);
+    expect(icono('AVERIADA')).not.toContain('fill="#FFFFFF" stroke=');
   });
 });
 
@@ -317,5 +329,148 @@ describe('Rúbrica · MAPA · GridMap aislado', () => {
     const { container } = renderConDatos(<GridMap unidades={[]} destinos={[]} bloqueos={[]} seleccion={null} riesgo={{ rojo: 0, ambar: 0 }} onSeleccionar={() => {}} onAbrirIncidencias={() => {}} />, datosRubrica({ unidades: [], pedidos: [] }));
     expect(objetoMapa(container, 'almacen:CENTRAL')).toBeTruthy();
     expect(objetoMapa(container, 'almacen:INTERMEDIO_1')).toBeTruthy();
+  });
+});
+
+describe('Rúbrica · CIRCUNSTANCIAS · filtros globales del mapa', () => {
+  afterEach(() => localStorage.clear());
+
+  const abrirFiltros = () => fireEvent.click(screen.getByRole('button', { name: 'Filtros' }));
+  const grupo = (nombre: string) => within(screen.getByRole('group', { name: nombre }));
+
+  it('D05 · se filtran las unidades por tipo; también se ocultan sus destinos', () => {
+    const { container } = montarOperacion();
+    abrirFiltros();
+    fireEvent.click(grupo('Tipo de unidad').getByRole('button', { name: /^Moto/ }));
+    expect(objetoMapa(container, 'vehiculo:M-01')).toBeTruthy();
+    expect(objetoMapa(container, 'vehiculo:A-01')).toBeNull();
+    expect(objetoMapa(container, 'vehiculo:B-01')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Filtros, 1 activo' })).toBeTruthy();
+  });
+
+  it('D06 · se filtran las unidades por semáforo + vacío de su carga', () => {
+    const { container } = montarOperacion();
+    abrirFiltros();
+    fireEvent.click(grupo('Carga de unidades').getByRole('button', { name: /^Vacío/ }));
+    expect(objetoMapa(container, 'vehiculo:B-01')).toBeTruthy();
+    expect(objetoMapa(container, 'vehiculo:A-01')).toBeNull();
+    fireEvent.click(grupo('Carga de unidades').getByRole('button', { name: /^Casi lleno/ }));
+    expect(objetoMapa(container, 'vehiculo:M-01')).toBeTruthy();
+    // Quitar los filtros vuelve a mostrar todo.
+    fireEvent.click(screen.getByRole('button', { name: 'Quitar los filtros' }));
+    expect(objetoMapa(container, 'vehiculo:A-01')).toBeTruthy();
+  });
+
+  it('D07 · se filtran los almacenes por semáforo + vacío de su stock; el central siempre se ve', () => {
+    const { container } = montarOperacion();
+    abrirFiltros();
+    fireEvent.click(grupo('Stock de almacenes').getByRole('button', { name: /^Ocupación alta/ }));
+    expect(objetoMapa(container, 'almacen:INTERMEDIO_1')).toBeNull();
+    expect(objetoMapa(container, 'almacen:INTERMEDIO_2')).toBeNull();
+    expect(objetoMapa(container, 'almacen:CENTRAL')).toBeTruthy();
+    fireEvent.click(grupo('Stock de almacenes').getByRole('button', { name: /^Con espacio/ }));
+    expect(objetoMapa(container, 'almacen:INTERMEDIO_1')).toBeTruthy();
+  });
+
+  it('lo seleccionado no se oculta al filtrar', () => {
+    const { container } = montarOperacion();
+    fireEvent.pointerDown(objetoMapa(container, 'vehiculo:A-01')!, { button: 0, clientX: 5, clientY: 5, pointerId: 1 });
+    fireEvent.pointerUp(objetoMapa(container, 'vehiculo:A-01')!, { button: 0, clientX: 5, clientY: 5, pointerId: 1 });
+    abrirFiltros();
+    fireEvent.click(grupo('Tipo de unidad').getByRole('button', { name: /^Moto/ }));
+    expect(objetoMapa(container, 'vehiculo:A-01')).toBeTruthy();
+  });
+});
+
+describe('Rúbrica · CIERRE · indicadores globales', () => {
+  const indicadores = () => within(screen.getByRole('region', { name: 'Ocupación global' }));
+
+  it('G01–G02 · la ocupación de la flota en conjunto se ve en % y con semáforo', () => {
+    montarOperacion();
+    // Fuera del almacén: A-01 20/24, M-01 8/8 y B-01 0/4 → 28/36 = 78 %, ámbar.
+    const flota = indicadores().getByRole('button', { name: /^Flota: 78 %, ocupación alta \(28 de 36\)/ });
+    expect(flota.textContent).toContain('78 %');
+    expect(flota.innerHTML).toContain('text-[#B45309]');
+  });
+
+  it('G03–G04 · la ocupación de los almacenes en conjunto se ve en % y con semáforo', () => {
+    montarOperacion();
+    // Intermedios: 40/100 y 10/100 → 50/200 = 25 %, verde.
+    const almacenes = indicadores().getByRole('group', { name: /^Almacenes: 25 %, con espacio \(50 de 200\)/ });
+    expect(almacenes.innerHTML).toContain('text-[#15803D]');
+  });
+
+  it('los filtros del mapa no cambian los indicadores globales', () => {
+    montarOperacion();
+    fireEvent.click(screen.getByRole('button', { name: 'Filtros' }));
+    fireEvent.click(within(screen.getByRole('group', { name: 'Tipo de unidad' })).getByRole('button', { name: /^Moto/ }));
+    expect(indicadores().getByRole('button', { name: /^Flota: 78 %/ })).toBeTruthy();
+    localStorage.clear();
+  });
+});
+
+describe('Rúbrica · CIRCUNSTANCIAS · averías en el mapa', () => {
+  it('D10 · cada tipo de avería se distingue en el mapa: número, forma y color propios', () => {
+    const { container } = montarOperacion();
+    const insignia = objetoMapa(container, 'vehiculo:B-01')!.querySelector('[data-averia="1"]')!;
+    expect(insignia.textContent).toBe('1');
+    // Los tres tipos usan formas distintas (círculo, rombo, octágono) además del color.
+    const formas = ([1, 2, 3] as const).map((tipo) => {
+      const { container: c } = render(
+        <svg>
+          <InsigniaAveria tipo={tipo} />
+        </svg>,
+      );
+      return c.querySelector('circle, path')!.outerHTML.split(' ')[0] + (c.querySelector('path')?.getAttribute('d')?.length ?? 0);
+    });
+    expect(new Set(formas).size).toBe(3);
+  });
+
+  it('D11–D12 · los colores de avería son distintos entre sí y del semáforo, y contrastan con el mapa', () => {
+    const colores = Object.values(COLOR_AVERIA);
+    expect(new Set(colores).size).toBe(3);
+    colores.forEach((c) => {
+      expect(Object.values(COLOR_SEMAFORO)).not.toContain(c);
+      expect(contrasteSobreBlanco(c)).toBeGreaterThanOrEqual(4.5);
+    });
+    const { container } = montarOperacion();
+    expect(objetoMapa(container, 'vehiculo:B-01')!.querySelector('[data-averia="1"] circle[r="6.5"]')!.getAttribute('fill')).toBe(COLOR_AVERIA[1]);
+  });
+
+  it('D13 · la avería muestra cuánto falta: anillo de progreso y hora de regreso', () => {
+    const { container } = montarOperacion();
+    const unidad = objetoMapa(container, 'vehiculo:B-01')!;
+    const anillo = unidad.querySelector('[data-averia="1"] circle[stroke-dasharray]')!;
+    const [lleno, perimetro] = anillo.getAttribute('stroke-dasharray')!.split(' ').map(Number);
+    expect(lleno).toBeGreaterThan(0);
+    expect(lleno).toBeLessThanOrEqual(perimetro);
+    expect(unidad.textContent).toMatch(/vuelve (hoy|mañana) \d{2}:\d{2}/);
+  });
+});
+
+describe('Rúbrica · MAPA · zoom', () => {
+  const porcentajeZoom = () => Number(screen.getByText(/^\d+%$/).textContent!.replace('%', ''));
+  const mapa = () => screen.getByRole('region', { name: /^Mapa de la malla/ });
+
+  it('C08 · el zoom es continuo: un giro pequeño de la rueda acerca poco, no a saltos fijos', () => {
+    montarOperacion();
+    // jsdom no mide: el mapa toma el tamaño del escenario, igual que con el ResizeObserver falso.
+    vi.spyOn(mapa(), 'getBoundingClientRect').mockReturnValue({ left: 0, top: 0, width: ANCHO_MAPA, height: ALTO_MAPA } as DOMRect);
+    expect(porcentajeZoom()).toBe(100);
+    fireEvent.wheel(mapa(), { deltaY: -10 });
+    expect(porcentajeZoom()).toBeGreaterThan(100);
+    expect(porcentajeZoom()).toBeLessThan(105);
+    fireEvent.wheel(mapa(), { deltaY: -100 });
+    expect(porcentajeZoom()).toBeGreaterThan(110);
+  });
+
+  it('C08 · con el mapa enfocado, + acerca y 0 vuelve a la malla completa (sin animación si se pide menos movimiento)', () => {
+    vi.stubGlobal('matchMedia', () => ({ matches: true }));
+    montarOperacion();
+    mapa().focus();
+    fireEvent.keyDown(mapa(), { key: '+' });
+    expect(porcentajeZoom()).toBe(125);
+    fireEvent.keyDown(mapa(), { key: '0' });
+    expect(porcentajeZoom()).toBe(100);
   });
 });

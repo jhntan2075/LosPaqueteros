@@ -1,11 +1,12 @@
 import React, { useState, useRef, useEffect, useImperativeHandle, forwardRef } from 'react';
-import { Search, ZoomIn, ZoomOut, Maximize2, MapIcon } from 'lucide-react';
-import { ALMACENES, MALLA_ALTO_KM, MALLA_ANCHO_KM, UNIDADES } from '../../config/dominio';
-import { NOMBRE_HOLGURA, NOMBRE_INVENTARIO, SITUACION_UNIDAD } from '../../config/glosario';
+import { Search, ZoomIn, ZoomOut, Maximize2, MapIcon, ListFilter, X } from 'lucide-react';
+import { ALMACENES, MALLA_ALTO_KM, MALLA_ANCHO_KM, TIPOS_UNIDAD, UNIDADES, type IdAlmacen } from '../../config/dominio';
+import { ALERTA_STOCK_BAJO, NOMBRE_CARGA, NOMBRE_HOLGURA, SITUACION_UNIDAD, nombreAveria } from '../../config/glosario';
 import { useCerrarConEscape } from '../../hooks/useCerrarConEscape';
 import { useTamanoElemento } from '../../hooks/useTamanoElemento';
 import { capitalizar, formatearMomento } from '../../lib/formato';
 import { useDatosOperacion } from '../../hooks/useDatosOperacion';
+import { useDeslizamientoUnidades } from '../../hooks/useDeslizamientoUnidades';
 import {
   acercarEn,
   escalaDeEncuadre,
@@ -19,11 +20,24 @@ import {
   type Lienzo,
   type Vista,
 } from '../../lib/malla';
-import { fueraDelAlmacen } from '../../lib/operacion';
-import { colorDeUnidad, iconoVehiculo } from './iconosVehiculo';
+import { fueraDelAlmacen, ocupacionAlmacenes, ocupacionFlota } from '../../lib/operacion';
+import { almacenPasaFiltros, cantidadFiltros, guardarFiltros, leerFiltros, SIN_FILTROS, unidadPasaFiltros, type FiltrosMapa as Filtros } from '../../lib/filtrosMapa';
+import { COLOR_SEMAFORO, NIVELES_CARGA, nivelDeOcupacion, type NivelCarga } from '../../lib/semaforo';
+import { colorDeUnidad, iconoDeUnidad } from './iconosVehiculo';
 import type { Capa } from './capas';
+import { FiltrosMapa, type ConteosFiltros } from './FiltrosMapa';
+import { IndicadoresGlobales } from './IndicadoresGlobales';
 import { LeyendaMapa } from './LeyendaMapa';
-import { AlmacenCentral, AlmacenIntermedio, CENTRO_CABEZA_PIN, COLOR_EN_ENTREGA, MarcaBloqueo, PinDestino } from './simbolos';
+import {
+  AlmacenCentral,
+  AlmacenIntermedio,
+  CENTRO_CABEZA_PIN,
+  COLOR_EN_ENTREGA,
+  InsigniaAveria,
+  InsigniaStockBajo,
+  MarcaBloqueo,
+  PinDestino,
+} from './simbolos';
 import haloSeleccion from '../../assets/figma/pedidos/halo.svg';
 import type { Coordenada } from '../../types/domain';
 import type { AlmacenOperacion, BloqueoOperacion, UnidadOperacion } from '../../types/operacion';
@@ -70,6 +84,10 @@ interface GridMapProps {
   onAbrirIncidencias: () => void;
   /** Píldora de averías: va a la flota, donde se ve el detalle de cada unidad. Sin valor, va a Incidencias. */
   onAbrirAverias?: () => void;
+  /** Indicador de ocupación de la flota; sin valor, va adonde va la píldora de averías. */
+  onAbrirFlota?: () => void;
+  /** Indicador de ocupación de los almacenes; sin valor, el indicador solo informa. */
+  onAbrirAlmacenes?: () => void;
   onHoverCoordenada?: (coord: Coordenada) => void;
   /** 'simulacion': barra reducida (búsqueda y riesgo); tocar un objeto abre su detalle igual que en Operación. */
   variante?: 'operacion' | 'simulacion';
@@ -87,6 +105,27 @@ const FRANJA_CONTROLES_PX = 52;
 const TOLERANCIA_CLIC_PX = 4;
 /** Escala mínima (px/km) al centrar en un objeto. */
 const ESCALA_AL_CENTRAR = 26;
+/** Zoom de los botones y de las teclas + y -. */
+const FACTOR_BOTON = 1.25;
+/** Desplazamiento de las flechas del teclado. */
+const PASO_TECLADO_PX = 80;
+/** Duración de las transiciones de la vista: corta, para que se sienta inmediata pero continua. */
+const DURACION_ANIMACION_MS = 200;
+
+/** Sin animación si el usuario pidió menos movimiento o el entorno no puede animar. */
+const sinAnimacion = () =>
+  typeof requestAnimationFrame !== 'function' ||
+  (typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+
+/**
+ * Zoom de la rueda proporcional al desplazamiento: una muesca del mouse acerca ~15 %, el trackpad y el
+ * pellizco (ctrlKey, deltas pequeños) acercan de forma continua. Se normalizan líneas y páginas a píxeles.
+ */
+const factorDeRueda = (evento: WheelEvent, altoPagina: number) => {
+  const delta = evento.deltaY * (evento.deltaMode === 1 ? 16 : evento.deltaMode === 2 ? altoPagina : 1);
+  const sensibilidad = evento.ctrlKey ? 0.01 : 0.0015;
+  return Math.min(2, Math.max(0.5, Math.exp(-delta * sensibilidad)));
+};
 
 /** Longitudes "redondas" para la barra de escala; se elige la que mide entre 40 y 120 px. */
 const LARGOS_ESCALA_KM = [1, 2, 5, 10, 20, 50];
@@ -128,6 +167,8 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
     onSeleccionar,
     onAbrirIncidencias,
     onAbrirAverias,
+    onAbrirFlota,
+    onAbrirAlmacenes,
     onHoverCoordenada,
     variante = 'operacion',
     children,
@@ -158,21 +199,71 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
   // La retícula del nodo bajo el cursor solo se muestra mientras el cursor está sobre el mapa.
   const [cursorEnMapa, setCursorEnMapa] = useState(false);
   const [leyendaAbierta, setLeyendaAbierta] = useState(leerLeyendaAbierta);
+  const [filtrosAbiertos, setFiltrosAbiertos] = useState(false);
+  // Capas y leyenda y Filtros comparten la esquina: abrir uno cierra el otro.
   const alternarLeyenda = (abierta: boolean) => {
     setLeyendaAbierta(abierta);
     guardarLeyendaAbierta(abierta);
+    if (abierta) setFiltrosAbiertos(false);
   };
-  // Esc cierra el panel de capas y leyenda, como los demás paneles flotantes.
+  const alternarFiltros = (abiertos: boolean) => {
+    setFiltrosAbiertos(abiertos);
+    if (abiertos) alternarLeyenda(false);
+  };
+  // Esc cierra el panel abierto, como los demás paneles flotantes.
   useCerrarConEscape(leyendaAbierta, () => alternarLeyenda(false));
+  useCerrarConEscape(filtrosAbiertos, () => setFiltrosAbiertos(false));
+  const [filtros, setFiltros] = useState<Filtros>(leerFiltros);
+  const cambiarFiltros = (nuevos: Filtros) => {
+    setFiltros(nuevos);
+    guardarFiltros(nuevos);
+  };
+  const filtrosActivos = cantidadFiltros(filtros);
   const enSimulacion = variante === 'simulacion';
   const [capas, setCapas] = useState<Record<Capa, boolean>>({ rutas: true, unidades: true, destinos: true, bloqueos: true, almacenes: true });
+
+  // Zoom continuo (C08): botones, "ver todo" y centrar animan la vista; rueda y arrastre la cancelan.
+  const animacionRef = useRef<number | null>(null);
+  const cancelarAnimacion = () => {
+    if (animacionRef.current !== null) cancelAnimationFrame(animacionRef.current);
+    animacionRef.current = null;
+  };
+  useEffect(() => cancelarAnimacion, []);
+  const animarA = (destino: Vista, alTerminar?: () => void) => {
+    cancelarAnimacion();
+    if (!vista || sinAnimacion()) {
+      setVistaUsuario(destino);
+      alTerminar?.();
+      return;
+    }
+    const inicio = vista;
+    const t0 = performance.now();
+    // El avance se mide con performance.now(): el sello que entrega requestAnimationFrame puede venir de
+    // otro origen de tiempo según el entorno.
+    const paso = () => {
+      const avance = Math.min(1, Math.max(0, (performance.now() - t0) / DURACION_ANIMACION_MS));
+      const e = 1 - (1 - avance) ** 3; // ease-out cúbico
+      setVistaUsuario({
+        escala: inicio.escala + (destino.escala - inicio.escala) * e,
+        x: inicio.x + (destino.x - inicio.x) * e,
+        y: inicio.y + (destino.y - inicio.y) * e,
+      });
+      if (avance < 1) {
+        animacionRef.current = requestAnimationFrame(paso);
+      } else {
+        animacionRef.current = null;
+        alTerminar?.();
+      }
+    };
+    animacionRef.current = requestAnimationFrame(paso);
+  };
 
   // Centra el nodo en el área libre (descontando el panel derecho).
   const centrarEn = (punto: Coordenada) => {
     if (!vista) return false;
     const escala = Math.max(vista.escala, ESCALA_AL_CENTRAR);
     const centroX = (ancho - anchoPanelDerecho) / 2;
-    setVistaUsuario(limitarVista({ escala, x: centroX - punto.x * escala, y: alto / 2 - punto.y * escala }, lienzo));
+    animarA(limitarVista({ escala, x: centroX - punto.x * escala, y: alto / 2 - punto.y * escala }, lienzo));
     return true;
   };
   useImperativeHandle(ref, () => ({ centrarEn }));
@@ -192,7 +283,9 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
         ...LIENZO_BASE,
         margenDerecho: anchoPanelDerecho > 0 ? anchoPanelDerecho + 24 : LIENZO_BASE.margen,
       };
-      const factor = evento.deltaY < 0 ? 1.15 : 1 / 1.15;
+      if (animacionRef.current !== null) cancelAnimationFrame(animacionRef.current);
+      animacionRef.current = null;
+      const factor = factorDeRueda(evento, rect.height);
       setVistaUsuario((actual) =>
         acercarEn(actual ? limitarVista(actual, l) : vistaCompleta(l), factor, evento.clientX - rect.left, evento.clientY - rect.top, l),
       );
@@ -207,6 +300,7 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     const destino = e.target as HTMLElement;
     if (e.button !== 0 || !vista || destino.closest('button, input, a, [data-sin-zoom]')) return;
+    cancelarAnimacion();
     e.currentTarget.setPointerCapture(e.pointerId);
     setIsDragging(true);
     setHover(null);
@@ -274,7 +368,27 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
   };
 
   const acercarAlCentro = (factor: number) => {
-    if (vista) setVistaUsuario(acercarEn(vista, factor, ancho / 2, alto / 2, lienzo));
+    if (vista) animarA(acercarEn(vista, factor, ancho / 2, alto / 2, lienzo));
+  };
+  const verTodo = () => animarA(vistaCompleta(lienzo), () => setVistaUsuario(null));
+
+  // Teclado con el mapa enfocado: + y - acercan y alejan, 0 encuadra la malla, las flechas desplazan.
+  const alPresionarTecla = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (!vista || e.target !== e.currentTarget || e.ctrlKey || e.metaKey || e.altKey) return;
+    const desplazamientos: Record<string, [number, number]> = {
+      ArrowLeft: [PASO_TECLADO_PX, 0],
+      ArrowRight: [-PASO_TECLADO_PX, 0],
+      ArrowUp: [0, PASO_TECLADO_PX],
+      ArrowDown: [0, -PASO_TECLADO_PX],
+    };
+    if (e.key === '+' || e.key === '=') acercarAlCentro(FACTOR_BOTON);
+    else if (e.key === '-' || e.key === '_') acercarAlCentro(1 / FACTOR_BOTON);
+    else if (e.key === '0') verTodo();
+    else if (desplazamientos[e.key]) {
+      const [dx, dy] = desplazamientos[e.key];
+      animarA(limitarVista({ ...vista, x: vista.x + dx, y: vista.y + dy }, lienzo));
+    } else return;
+    e.preventDefault();
   };
 
   const escalaBase = ancho > 0 ? escalaDeEncuadre(lienzo) : 1;
@@ -286,6 +400,36 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
   const cantidadBloqueos = new Set(bloqueos.map((b) => b.idOriginal)).size;
   const derechaControles = anchoPanelDerecho > 0 ? anchoPanelDerecho + 24 : 16;
 
+  // Filtros globales: lo seleccionado nunca se oculta, para no perder el contexto de lo que se mira.
+  const enMapa = unidades.filter(fueraDelAlmacen);
+  const codigosSeleccionados = new Set(
+    seleccion?.tipo === 'vehiculo'
+      ? [seleccion.codigo]
+      : seleccion?.tipo === 'pedido'
+        ? destinos.filter((d) => d.pedido === seleccion.codigo).map((d) => d.unidad)
+        : [],
+  );
+  const unidadesVisibles =
+    filtrosActivos === 0 ? unidades : unidades.filter((u) => codigosSeleccionados.has(u.codigo) || unidadPasaFiltros(filtros, u));
+  const codigosVisibles = new Set(unidadesVisibles.map((u) => u.codigo));
+  const destinosVisibles = filtrosActivos === 0 ? destinos : destinos.filter((d) => codigosVisibles.has(d.unidad));
+  const almacenesOcultos = new Set<IdAlmacen>(
+    ALMACENES.filter(
+      (a) =>
+        !(seleccion?.tipo === 'almacen' && seleccion.codigo === a.id) &&
+        !almacenPasaFiltros(filtros, a.id, almacenes.find((x) => x.id === a.id)),
+    ).map((a) => a.id),
+  );
+  const contarNiveles = (niveles: NivelCarga[]) =>
+    Object.fromEntries(NIVELES_CARGA.map((n) => [n, niveles.filter((x) => x === n).length])) as Record<NivelCarga, number>;
+  const conteosFiltros: ConteosFiltros = {
+    tipos: Object.fromEntries(TIPOS_UNIDAD.map((t) => [t, enMapa.filter((u) => u.tipo === t).length])) as ConteosFiltros['tipos'],
+    carga: contarNiveles(enMapa.map((u) => nivelDeOcupacion(u.carga, u.capacidad))),
+    stock: contarNiveles(almacenes.flatMap((a) => (a.nivelStock ? [a.nivelStock] : []))),
+    unidades: { visibles: unidadesVisibles.filter(fueraDelAlmacen).length, total: enMapa.length },
+    almacenes: { visibles: ALMACENES.length - almacenesOcultos.size, total: ALMACENES.length },
+  };
+
   return (
     <div
       ref={containerRef}
@@ -293,15 +437,25 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
       onPointerCancel={handlePointerUp}
+      onKeyDown={alPresionarTecla}
+      tabIndex={0}
+      role="region"
+      aria-roledescription="mapa"
+      aria-label="Mapa de la malla. Con el mapa enfocado: + y - acercan y alejan, 0 muestra la malla completa y las flechas desplazan."
       onPointerEnter={() => setCursorEnMapa(true)}
       onPointerLeave={() => {
         setHover(null);
         setCursorEnMapa(false);
       }}
-      className={`relative flex-1 w-full h-full bg-white overflow-hidden select-none touch-none ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+      className={`relative flex-1 w-full h-full bg-white overflow-hidden select-none touch-none outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#1E40AF] ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
     >
-      {/* 1. Barra flotante: búsqueda, riesgo, bloqueos y averías */}
-      <div className="absolute left-3 top-3 z-10 flex items-center gap-2">
+      {/* 1. Barra flotante: búsqueda, riesgo, bloqueos y averías a la izquierda; ocupación global a la
+          derecha. En pantallas angostas los indicadores bajan a una segunda fila en lugar de tapar las
+          píldoras. Los huecos de la barra dejan pasar el arrastre del mapa. */}
+      <div
+        className="absolute left-3 top-3 z-10 flex flex-wrap items-center gap-2 pointer-events-none [&>*]:pointer-events-auto"
+        style={{ right: derechaControles }}
+      >
         <form onSubmit={buscar} className={`${ESTILO_PILDORA} relative w-[206px] px-3 gap-2`} role="search">
           <Search className="w-3.5 h-3.5 text-[#64748B] shrink-0" />
           <input
@@ -376,6 +530,15 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
           <span className="text-[#64748B] font-sans text-[12px]">averías</span>
         </button>
         )}
+
+        <div className="ml-auto">
+          <IndicadoresGlobales
+            flota={ocupacionFlota(unidades)}
+            almacenes={ocupacionAlmacenes(almacenes)}
+            onAbrirFlota={onAbrirFlota ?? onAbrirAverias}
+            onAbrirAlmacenes={onAbrirAlmacenes}
+          />
+        </div>
       </div>
 
       {/* 2. Controles de zoom (a la izquierda del panel derecho si está abierto) */}
@@ -384,27 +547,27 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
         style={{ right: derechaControles }}
       >
         <button
-          onClick={() => acercarAlCentro(1.25)}
+          onClick={() => acercarAlCentro(FACTOR_BOTON)}
           className="w-8 h-8 flex items-center justify-center hover:bg-slate-100 rounded-lg text-[#64748B] hover:text-[#0F172A] transition cursor-pointer"
-          title="Acercar"
+          title="Acercar (+)"
           aria-label="Acercar"
         >
           <ZoomIn className="w-4 h-4" />
         </button>
         <button
-          onClick={() => acercarAlCentro(0.8)}
+          onClick={() => acercarAlCentro(1 / FACTOR_BOTON)}
           disabled={enEscalaMinima}
           className="w-8 h-8 flex items-center justify-center hover:bg-slate-100 rounded-lg text-[#64748B] hover:text-[#0F172A] transition cursor-pointer disabled:opacity-40 disabled:cursor-default disabled:hover:bg-transparent"
-          title="Alejar"
+          title="Alejar (-)"
           aria-label="Alejar"
         >
           <ZoomOut className="w-4 h-4" />
         </button>
         <div className="w-full h-[1px] bg-[#E2E8F0] my-0.5"></div>
         <button
-          onClick={() => setVistaUsuario(null)}
+          onClick={verTodo}
           className="w-8 h-8 flex items-center justify-center hover:bg-slate-100 rounded-lg text-[#64748B] hover:text-[#0F172A] transition cursor-pointer"
-          title="Ver la malla completa"
+          title="Ver la malla completa (0)"
           aria-label="Ver la malla completa"
         >
           <Maximize2 className="w-3.5 h-3.5" />
@@ -416,6 +579,9 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
 
       {/* 3. Capas y leyenda (panel flotante, no modal) y barra de escala */}
       <div className="absolute left-4 bottom-4 z-20 flex flex-col items-start gap-2">
+        {filtrosAbiertos && (
+          <FiltrosMapa filtros={filtros} conteos={conteosFiltros} onCambiar={cambiarFiltros} onCerrar={() => setFiltrosAbiertos(false)} />
+        )}
         {leyendaAbierta && (
           <LeyendaMapa
             onCerrar={() => alternarLeyenda(false)}
@@ -433,6 +599,34 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
             <MapIcon className="w-3.5 h-3.5 text-[#64748B]" />
             <span className="text-[#0F172A] font-sans text-[12px]">Capas y leyenda</span>
           </button>
+          <div className={`${ESTILO_PILDORA} ${filtrosActivos > 0 || filtrosAbiertos ? 'border-[#1E40AF]' : ''}`}>
+            <button
+              type="button"
+              onClick={() => alternarFiltros(!filtrosAbiertos)}
+              aria-expanded={filtrosAbiertos}
+              aria-label={filtrosActivos > 0 ? `Filtros, ${filtrosActivos} ${filtrosActivos === 1 ? 'activo' : 'activos'}` : 'Filtros'}
+              className={`h-full pl-3 gap-1.5 flex items-center rounded-full hover:bg-slate-50 ${filtrosActivos > 0 ? 'pr-2' : 'pr-3'}`}
+            >
+              <ListFilter className={`w-3.5 h-3.5 ${filtrosActivos > 0 ? 'text-[#1E40AF]' : 'text-[#64748B]'}`} />
+              <span className="text-[#0F172A] font-sans text-[12px]">Filtros</span>
+              {filtrosActivos > 0 && (
+                <span className="min-w-[18px] h-[18px] px-[5px] rounded-full bg-[#1E40AF] text-white text-[11px] font-semibold tabular-nums flex items-center justify-center">
+                  {filtrosActivos}
+                </span>
+              )}
+            </button>
+            {filtrosActivos > 0 && (
+              <button
+                type="button"
+                onClick={() => cambiarFiltros(SIN_FILTROS)}
+                aria-label="Quitar los filtros"
+                title="Quitar los filtros"
+                className="h-full pl-1 pr-2.5 flex items-center rounded-r-full text-[#64748B] hover:text-[#0F172A] hover:bg-slate-50"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
           {vista && (
             <div className="bg-white/95 backdrop-blur-xs px-2.5 py-1 rounded-md border border-[#E2E8F0] shadow-xs pointer-events-none flex flex-col gap-[3px]">
               <span className="tabular-nums text-[11px] text-[#475569]">{barraEscala(vista.escala).km} km</span>
@@ -448,10 +642,11 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
           vista={vista}
           lienzo={lienzo}
           capas={capas}
-          unidades={unidades}
-          destinos={destinos}
+          unidades={unidadesVisibles}
+          destinos={destinosVisibles}
           bloqueos={bloqueos}
           almacenes={almacenes}
+          almacenesOcultos={almacenesOcultos}
           seleccion={seleccion}
           nodoActivo={nodoActivo}
           mostrarReticula={cursorEnMapa}
@@ -476,10 +671,18 @@ interface CapasMapaProps {
   destinos: DestinoMapa[];
   bloqueos: BloqueoOperacion[];
   almacenes: AlmacenOperacion[];
+  /** Almacenes ocultos por el filtro de stock. */
+  almacenesOcultos: Set<IdAlmacen>;
   seleccion: ObjetoMapa | null;
   nodoActivo: Coordenada;
   mostrarReticula: boolean;
 }
+
+/** Fracción de la avería que falta cumplir (1 al empezar, 0 al reincorporarse). */
+const fraccionRestante = (desde: Date, vuelve: Date, ahora: Date) => {
+  const total = vuelve.getTime() - desde.getTime();
+  return total <= 0 ? 0 : Math.min(1, Math.max(0, (vuelve.getTime() - ahora.getTime()) / total));
+};
 
 /** Pedidos que se nombran en el tooltip de un almacén; el resto se resume como "+N". */
 const MAX_PEDIDOS_TOOLTIP = 3;
@@ -520,9 +723,9 @@ function contenidoTooltip(
       titulo: `${capitalizar(UNIDADES[u.tipo].nombre)} ${u.codigo}`,
       detalle: averiada
         ? u.averia
-          ? `Averiada · tipo ${u.averia.tipo} · vuelve ${formatearMomento(u.averia.vuelve, reloj)}`
+          ? `Averiada · ${nombreAveria(u.averia.tipo).toLowerCase()} · vuelve ${formatearMomento(u.averia.vuelve, reloj)}`
           : 'Averiada'
-        : `Carga ${u.carga}/${capacidad} · ${capacidad === 0 ? 0 : Math.round((u.carga / capacidad) * 100)} %`,
+        : `Carga ${u.carga}/${capacidad} · ${capacidad === 0 ? 0 : Math.round((u.carga / capacidad) * 100)} % · ${NOMBRE_CARGA[nivelDeOcupacion(u.carga, capacidad)].toLowerCase()}`,
       extra: averiada
         ? undefined
         : u.pedidoEnEntrega
@@ -537,12 +740,13 @@ function contenidoTooltip(
     const a = ALMACENES.find((x) => x.id === objeto.codigo);
     if (!a) return null;
     const estado = datos.almacenes.find((x) => x.id === a.id);
-    const conStock = estado?.porcentajeStock != null && estado.nivel && estado.nivel !== 'CERRADO';
+    const nivel = estado?.porcentajeStock != null ? estado.nivelStock : null;
+    const alerta = estado?.stockBajo ? ` · ${ALERTA_STOCK_BAJO.toLowerCase()}` : '';
     return {
       titulo: `Almacén ${a.nombre}`,
-      detalle: conStock ? `Stock ${estado.porcentajeStock} % · ${NOMBRE_INVENTARIO[estado.nivel as 'ROJO'].toLowerCase()}` : 'Stock ilimitado',
+      detalle: nivel ? `Stock ${estado?.porcentajeStock} % · ${NOMBRE_CARGA[nivel].toLowerCase()}${alerta}` : 'Stock ilimitado',
       extra: pedidosQueSalen(datos.unidades, a.id),
-      color: conStock ? COLOR_NIVEL[estado.nivel as 'ROJO'] : undefined,
+      color: nivel ? COLOR_SEMAFORO[nivel] : undefined,
       punto: a.ubicacion,
       alzaPx: 20,
     };
@@ -617,7 +821,24 @@ function orientacionIcono(unidad: UnidadOperacion): string | undefined {
   return dy > 0 ? 'rotate(90)' : 'rotate(-90)';
 }
 
-const CapasMapa: React.FC<CapasMapaProps> = ({ vista, lienzo, capas, unidades, destinos, bloqueos, almacenes, seleccion, nodoActivo, mostrarReticula }) => {
+const CapasMapa: React.FC<CapasMapaProps> = ({
+  vista,
+  lienzo,
+  capas,
+  unidades,
+  destinos,
+  bloqueos,
+  almacenes,
+  almacenesOcultos,
+  seleccion,
+  nodoActivo,
+  mostrarReticula,
+}) => {
+  // Reloj simulado de la ejecución: mide cuánto le falta a cada avería.
+  const { reloj } = useDatosOperacion();
+  // Movimiento fluido (C29): las unidades se deslizan entre dos tics del reloj.
+  const svgRef = useRef<SVGSVGElement>(null);
+  useDeslizamientoUnidades(svgRef, vista);
   const origen = proyectar(vista, { x: 0, y: 0 });
   const paso = pasoCuadricula(vista.escala);
   const pasoPx = paso * vista.escala;
@@ -658,7 +879,7 @@ const CapasMapa: React.FC<CapasMapaProps> = ({ vista, lienzo, capas, unidades, d
   const activo = proyectar(vista, nodoActivo);
 
   return (
-    <svg className="absolute inset-0 w-full h-full">
+    <svg ref={svgRef} className="absolute inset-0 w-full h-full">
       {/* Cuadrícula continua y uniforme en todo el lienzo */}
       {Array.from({ length: Math.max(0, iMax - iMin + 1) }, (_, idx) => {
         const i = iMin + idx;
@@ -787,10 +1008,18 @@ const CapasMapa: React.FC<CapasMapaProps> = ({ vista, lienzo, capas, unidades, d
             const averiada = u.estado === 'AVERIADA';
             const color = colorDeUnidad(u);
             const seleccionada = seleccion?.tipo === 'vehiculo' && seleccion.codigo === u.codigo;
-            const icono = iconoVehiculo(u.tipo, color);
+            const icono = iconoDeUnidad(u);
             const rotuloX = icono.medioAnchoVisible + (seleccionada ? 6 : 4);
             return (
-              <g key={u.codigo} transform={`translate(${x}, ${y})`} className="cursor-pointer" data-objeto={`vehiculo:${u.codigo}`}>
+              <g
+                key={u.codigo}
+                transform={`translate(${x}, ${y})`}
+                className="cursor-pointer"
+                data-objeto={`vehiculo:${u.codigo}`}
+                data-mover={u.codigo}
+                data-kx={u.posicion.x}
+                data-ky={u.posicion.y}
+              >
                 {seleccionada && <image href={haloSeleccion} x={-13} y={-13} width={26} height={26} />}
                 <image
                   href={icono.href}
@@ -801,9 +1030,24 @@ const CapasMapa: React.FC<CapasMapaProps> = ({ vista, lienzo, capas, unidades, d
                   transform={averiada ? undefined : orientacionIcono(u)}
                 />
                 {averiada ? (
-                  <text x={rotuloX} y="4" fill="#B91C1C" fontSize="12" fontWeight="600" {...halo}>
-                    ✕ {u.codigo}
-                  </text>
+                  u.averia ? (
+                    // Ícono · insignia del tipo con el anillo de lo que falta · código y hora de regreso.
+                    <>
+                      <g transform={`translate(${rotuloX + 9}, 0)`} data-averia={u.averia.tipo}>
+                        <InsigniaAveria tipo={u.averia.tipo} restante={fraccionRestante(u.averia.desde, u.averia.vuelve, reloj)} />
+                      </g>
+                      <text x={rotuloX + 23} y="-1" fill={color} fontSize="12" fontWeight="600" {...halo}>
+                        {u.codigo}
+                      </text>
+                      <text x={rotuloX + 23} y="11" fill="#475569" fontSize="11" {...halo}>
+                        vuelve {formatearMomento(u.averia.vuelve, reloj)}
+                      </text>
+                    </>
+                  ) : (
+                    <text x={rotuloX} y="4" fill={color} fontSize="12" fontWeight="600" {...halo}>
+                      {u.codigo} · averiada
+                    </text>
+                  )
                 ) : (
                   <>
                     <text x={rotuloX} y="-1" fill="#64748B" fontSize="12" fontWeight="500" {...halo}>
@@ -820,13 +1064,14 @@ const CapasMapa: React.FC<CapasMapaProps> = ({ vista, lienzo, capas, unidades, d
       {/* --- ALMACENES (posiciones de ConfiguracionDominio): al final, para que su símbolo y su rótulo
           nunca queden tapados por una ruta o una unidad que pase cerca. --- */}
       {capas.almacenes &&
-        ALMACENES.map((almacen) => {
+        ALMACENES.filter((almacen) => !almacenesOcultos.has(almacen.id)).map((almacen) => {
           const { x, y } = proyectar(vista, almacen.ubicacion);
           const stock = stockDe(almacenes, almacen.id);
-          const nivel = almacenes.find((a) => a.id === almacen.id)?.nivel;
+          const estado = almacenes.find((a) => a.id === almacen.id);
+          const nivel = estado?.nivelStock;
           const etiqueta = stock === undefined ? almacen.nombre : `${almacen.nombreCorto.replace('Int.', 'Interm.')} / ${stock} %`;
-          // Semáforo de inventario calculado por la API (LE-078).
-          const color = stock === undefined || !nivel ? '#64748B' : COLOR_NIVEL[nivel];
+          // Semáforo + vacío de ocupación (rojo = lleno); vacío deja el depósito hueco y gris.
+          const color = stock === undefined || !nivel ? '#64748B' : COLOR_SEMAFORO[nivel];
           const central = almacen.id === 'CENTRAL';
           return (
             <g key={almacen.id} transform={`translate(${x}, ${y})`} className="cursor-pointer" data-objeto={`almacen:${almacen.id}`}>
@@ -834,6 +1079,11 @@ const CapasMapa: React.FC<CapasMapaProps> = ({ vista, lienzo, capas, unidades, d
                 <circle r="21" fill="none" stroke="#1E40AF" strokeWidth="2" />
               )}
               {central ? <AlmacenCentral /> : <AlmacenIntermedio color={color} fraccionStock={stock === undefined ? undefined : stock / 100} />}
+              {estado?.stockBajo && (
+                <g transform="translate(11, -10)">
+                  <InsigniaStockBajo />
+                </g>
+              )}
               <text x="24" y="5" fill="#64748B" fontSize="13" fontWeight="500" {...halo}>
                 {etiqueta}
               </text>

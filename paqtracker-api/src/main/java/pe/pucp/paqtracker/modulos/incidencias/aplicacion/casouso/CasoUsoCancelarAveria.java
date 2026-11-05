@@ -41,10 +41,10 @@ public class CasoUsoCancelarAveria {
     public void ejecutar(String ejecucionId, long averiaId) {
         AveriaRegistrada averia = repositorio.buscar(averiaId)
                 .filter(registrada -> registrada.ejecucionId().equals(ejecucionId))
-                .orElseThrow(() -> new RecursoNoEncontradoException("averia", averiaId + " en la ejecucion "
+                .orElseThrow(() -> new RecursoNoEncontradoException("avería", averiaId + " en la ejecución "
                         + ejecucionId));
         if (averia.canceladaEn() != null) {
-            throw new OperacionNoPermitidaException("La averia de " + averia.codigoUnidad() + " ya estaba cancelada");
+            throw new OperacionNoPermitidaException("La avería de " + averia.codigoUnidad() + " ya estaba cancelada");
         }
         servicioEjecucion.cancelarAveria(ejecucionId, averia.codigoUnidad());
         repositorio.marcarCancelada(averiaId, relojPared.instant());

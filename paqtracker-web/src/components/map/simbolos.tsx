@@ -1,4 +1,6 @@
 import React from 'react';
+import { COLOR_SEMAFORO, type NivelCarga } from '../../lib/semaforo';
+import { COLOR_AVERIA } from './iconosVehiculo';
 
 // Símbolos del mapa como elementos SVG, con la geometría de los frames de Figma (pin de destino,
 // depósito central e intermedio). Los usan el mapa y su leyenda, para que la leyenda muestre
@@ -52,6 +54,67 @@ export const AlmacenIntermedio: React.FC<{ color: string; fraccionStock?: number
       <rect x="-10" y="-2" width="20" height="12" rx="1" fill="#E2E8F0" />
       {fraccionStock !== undefined && <rect x="-10" y={10 - alto} width="20" height={alto} rx="1" fill={color} />}
     </>
+  );
+};
+
+/**
+ * Marca de 9 px del semáforo + vacío: la forma también distingue el nivel (anillo vacío, cuadrado verde,
+ * triángulo ámbar, círculo rojo), para no depender solo del color (WCAG 1.4.1).
+ */
+export const MarcaSemaforo: React.FC<{ nivel: NivelCarga; titulo?: string }> = ({ nivel, titulo }) => (
+  <svg width="9" height="9" viewBox="0 0 9 9" className="shrink-0" role={titulo ? 'img' : undefined} aria-label={titulo} aria-hidden={titulo ? undefined : true}>
+    {nivel === 'VACIO' && <circle cx="4.5" cy="4.5" r="3.5" fill="#FFFFFF" stroke={COLOR_SEMAFORO.VACIO} strokeWidth="1.5" />}
+    {nivel === 'VERDE' && <rect x="0.5" y="0.5" width="8" height="8" rx="1" fill={COLOR_SEMAFORO.VERDE} />}
+    {nivel === 'AMBAR' && <path d="M4.5 0.5L8.6 8H0.4L4.5 0.5Z" fill={COLOR_SEMAFORO.AMBAR} />}
+    {nivel === 'ROJO' && <circle cx="4.5" cy="4.5" r="4" fill={COLOR_SEMAFORO.ROJO} />}
+  </svg>
+);
+
+/**
+ * Alerta de stock bajo (LE-078) sobre la esquina del almacén intermedio: insignia oscura con "!",
+ * fuera de los colores del semáforo para no confundirse con la ocupación.
+ */
+export const InsigniaStockBajo: React.FC = () => (
+  <g aria-hidden="true">
+    <circle r="6" fill="#0F172A" stroke="#FFFFFF" strokeWidth="1.5" />
+    <path d="M0 -3V0.8" stroke="#FFFFFF" strokeWidth="1.6" strokeLinecap="round" />
+    <circle cy="3" r="0.9" fill="#FFFFFF" />
+  </g>
+);
+
+const OCTAGONO = 'M-2.9 -7L2.9 -7L7 -2.9L7 2.9L2.9 7L-2.9 7L-7 2.9L-7 -2.9Z';
+const RADIO_ANILLO = 10;
+
+/**
+ * Insignia de avería (D10–D13) centrada en (0, 0): número del tipo sobre una forma propia de cada tipo
+ * (1 círculo, 2 rombo, 3 octágono) y con su color. Con `restante` (0–1), un anillo alrededor se vacía a
+ * medida que se acerca la reincorporación.
+ */
+export const InsigniaAveria: React.FC<{ tipo: 1 | 2 | 3; restante?: number }> = ({ tipo, restante }) => {
+  const color = COLOR_AVERIA[tipo];
+  const perimetro = 2 * Math.PI * RADIO_ANILLO;
+  return (
+    <g>
+      {restante !== undefined && (
+        <>
+          <circle r={RADIO_ANILLO} fill="#FFFFFF" stroke="#E2E8F0" strokeWidth="2.5" filter={SOMBRA} />
+          <circle
+            r={RADIO_ANILLO}
+            fill="none"
+            stroke={color}
+            strokeWidth="2.5"
+            strokeDasharray={`${perimetro * Math.min(1, Math.max(0, restante))} ${perimetro}`}
+            transform="rotate(-90)"
+          />
+        </>
+      )}
+      {tipo === 1 && <circle r="6.5" fill={color} />}
+      {tipo === 2 && <path d="M0 -7.5L7.5 0L0 7.5L-7.5 0Z" fill={color} />}
+      {tipo === 3 && <path d={OCTAGONO} fill={color} />}
+      <text y="3.2" textAnchor="middle" fontSize="9" fontWeight="700" fill="#FFFFFF">
+        {tipo}
+      </text>
+    </g>
   );
 };
 

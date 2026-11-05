@@ -71,7 +71,7 @@ public class ControladorEjecuciones {
             case SIMULACION_PERIODO -> casoUsoPeriodo.ejecutar(solicitud);
             case COLAPSO_LOGISTICO -> casoUsoColapso.ejecutar(solicitud);
             case DIA_A_DIA -> throw new SolicitudInvalidaException(
-                    "La operacion dia a dia ya esta en curso con id " + ServicioEjecucion.ID_DIA_A_DIA);
+                    "La operación día a día ya está en curso con id " + ServicioEjecucion.ID_DIA_A_DIA);
         };
     }
 

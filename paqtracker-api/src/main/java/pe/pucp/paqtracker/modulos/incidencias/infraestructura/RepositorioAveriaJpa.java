@@ -46,7 +46,7 @@ public class RepositorioAveriaJpa implements RepositorioAveria {
     @Override
     public AveriaRegistrada marcarCancelada(long id, Instant canceladaEn) {
         EntidadAveria entidad = springData.findById(id)
-                .orElseThrow(() -> new IllegalStateException("La averia " + id + " no existe"));
+                .orElseThrow(() -> new IllegalStateException("La avería " + id + " no existe"));
         entidad.marcarCancelada(LocalDateTime.ofInstant(canceladaEn, ZoneOffset.UTC));
         return aDominio(springData.save(entidad));
     }

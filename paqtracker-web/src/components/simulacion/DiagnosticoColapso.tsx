@@ -114,11 +114,11 @@ export const DiagnosticoColapso: React.FC<DiagnosticoColapsoProps> = ({ diaColap
             const fraccion = (a.stock as number) / (a.capacidad as number);
             return (
               <div key={a.id} className="flex flex-col gap-[4px]">
-                <span className={`tabular-nums text-[12px] truncate ${a.nivel === 'ROJO' ? 'text-[#B91C1C]' : 'text-[#0F172A]'}`}>
+                <span className={`tabular-nums text-[12px] truncate ${a.stockBajo ? 'text-[#B91C1C]' : 'text-[#0F172A]'}`}>
                   {ALMACENES.find((x) => x.id === a.id)?.nombre} · {a.stock}/{a.capacidad} u · {Math.round(fraccion * 100)} %
                 </span>
                 <div className="h-[4px] bg-[#E2E8F0] rounded-full overflow-hidden">
-                  <div className={`h-full ${a.nivel === 'ROJO' ? 'bg-[#B91C1C]' : 'bg-[#1E40AF]'}`} style={{ width: `${fraccion * 100}%` }} />
+                  <div className={`h-full ${a.stockBajo ? 'bg-[#B91C1C]' : 'bg-[#1E40AF]'}`} style={{ width: `${fraccion * 100}%` }} />
                 </div>
               </div>
             );

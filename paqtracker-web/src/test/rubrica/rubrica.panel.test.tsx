@@ -45,10 +45,13 @@ function tocar(elemento: Element) {
   fireEvent.pointerUp(elemento, { button: 0, clientX: 50, clientY: 50, pointerId: 1 });
 }
 
-function esperarCentrado(contenedor: HTMLElement, id: string) {
-  const p = posicionEnPantalla(objetoMapa(contenedor, id)!);
-  expect(p.x).toBeCloseTo(CENTRO_LIBRE.x, 0);
-  expect(p.y).toBeCloseTo(CENTRO_LIBRE.y, 0);
+// El centrado se anima (~200 ms): se espera a que la vista llegue a destino.
+async function esperarCentrado(contenedor: HTMLElement, id: string) {
+  await waitFor(() => {
+    const p = posicionEnPantalla(objetoMapa(contenedor, id)!);
+    expect(p.x).toBeCloseTo(CENTRO_LIBRE.x, 0);
+    expect(p.y).toBeCloseTo(CENTRO_LIBRE.y, 0);
+  });
 }
 
 describe('Rúbrica · mapa → panel', () => {
@@ -75,26 +78,26 @@ describe('Rúbrica · mapa → panel', () => {
 });
 
 describe('Rúbrica · panel → mapa', () => {
-  it('C52 · desde el detalle del almacén central, "Centrar en el mapa" lo centra', () => {
+  it('C52 · desde el detalle del almacén central, "Centrar en el mapa" lo centra', async () => {
     const { container } = montarOperacion();
     tocar(objetoMapa(container, 'almacen:CENTRAL')!);
     fireEvent.click(panel().getByRole('button', { name: 'Centrar en el mapa' }));
-    esperarCentrado(container, 'almacen:CENTRAL');
+    await esperarCentrado(container, 'almacen:CENTRAL');
   });
 
-  it('C53 · desde el detalle de un intermedio, "Centrar en el mapa" lo centra', () => {
+  it('C53 · desde el detalle de un intermedio, "Centrar en el mapa" lo centra', async () => {
     const { container } = montarOperacion();
     tocar(objetoMapa(container, 'almacen:INTERMEDIO_2')!);
     fireEvent.click(panel().getByRole('button', { name: 'Centrar en el mapa' }));
-    esperarCentrado(container, 'almacen:INTERMEDIO_2');
+    await esperarCentrado(container, 'almacen:INTERMEDIO_2');
   });
 
-  it('C54 · desde la lista de averías del panel se abre la unidad y se centra en el mapa', () => {
+  it('C54 · desde la lista de averías del panel se abre la unidad y se centra en el mapa', async () => {
     const { container } = montarOperacion({ subvista: 'incidencias' });
     fireEvent.click(panel().getByRole('button', { name: /Bicicleta B-01/ }));
     expect(panel().getByRole('heading', { name: /Bicicleta B-01/ })).toBeTruthy();
     fireEvent.click(panel().getByRole('button', { name: 'Centrar en el mapa' }));
-    esperarCentrado(container, 'vehiculo:B-01');
+    await esperarCentrado(container, 'vehiculo:B-01');
   });
 
   it('C54 · un pedido pedido desde otra pantalla ("Ubicar en el mapa") se abre en el panel', () => {
@@ -111,12 +114,14 @@ describe('Rúbrica · panel · almacenes', () => {
     expect(panel().getByText('40 % de capacidad')).toBeTruthy();
   });
 
-  it('C60 · el stock del almacén usa semáforo en el panel (ámbar 40 %, rojo 10 %)', () => {
+  it('C60 · el stock del almacén usa semáforo + vacío en el panel (40 % y 10 % con espacio) y avisa el stock bajo', () => {
     const { container } = montarOperacion();
     tocar(objetoMapa(container, 'almacen:INTERMEDIO_1')!);
-    expect(panel().getByText('40/100').className).toContain('text-[#B45309]');
+    expect(panel().getByText('40/100').className).toContain('text-[#15803D]');
+    expect(panel().queryByText(/Stock bajo/)).toBeNull();
     tocar(objetoMapa(container, 'almacen:INTERMEDIO_2')!);
-    expect(panel().getByText('10/100').className).toContain('text-[#B91C1C]');
+    expect(panel().getByText('10/100').className).toContain('text-[#15803D]');
+    expect(panel().getByText(/Stock bajo/)).toBeTruthy();
   });
 
   it('C61 · se puede buscar un almacén (p. ej. "Central") desde el buscador del mapa', () => {
@@ -255,7 +260,18 @@ describe('Rúbrica · panel · unidades de transporte', () => {
     expect(estadoA01).not.toEqual(estadoB01);
     expect(estadoB01).toMatch(/Averiada/i);
     expect(panel().getByText(/Averiada · /)).toBeTruthy();
-    // En el mapa, la averiada lleva una marca ✕ junto a su código.
-    expect(objetoMapa(container, 'vehiculo:B-01')!.textContent).toContain('✕ B-01');
+    // En el mapa, la averiada lleva la insignia de su tipo y la hora a la que vuelve.
+    expect(objetoMapa(container, 'vehiculo:B-01')!.querySelector('[data-averia="1"]')).toBeTruthy();
+    expect(objetoMapa(container, 'vehiculo:B-01')!.textContent).toContain('vuelve');
+  });
+});
+
+describe('Rúbrica 91.EvaSw · E05 · productos que traslada la unidad', () => {
+  it('cada parada del detalle de la unidad muestra cuántos paquetes lleva para ese pedido', () => {
+    const { container } = montarOperacion();
+    tocar(objetoMapa(container, 'vehiculo:A-01')!);
+    fireEvent.click(panel().getByRole('tab', { name: 'Ruta' }));
+    const parada = panel().getByRole('button', { name: /#1001/ });
+    expect(parada.textContent).toContain('3 paq.');
   });
 });

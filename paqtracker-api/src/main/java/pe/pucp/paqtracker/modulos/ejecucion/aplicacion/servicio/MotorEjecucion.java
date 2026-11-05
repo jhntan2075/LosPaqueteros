@@ -141,7 +141,7 @@ public final class MotorEjecucion {
     public void iniciar() {
         enHiloMotor(() -> {
             if (estado != EstadoEjecucion.CONFIGURADA && estado != EstadoEjecucion.PAUSADA) {
-                throw new OperacionNoPermitidaException("No se puede iniciar la ejecucion "
+                throw new OperacionNoPermitidaException("No se puede iniciar la ejecución "
                         + configuracion.id() + " en estado " + estado);
             }
             if (estado == EstadoEjecucion.CONFIGURADA) {
@@ -162,7 +162,7 @@ public final class MotorEjecucion {
     public void pausar() {
         enHiloMotor(() -> {
             if (estado != EstadoEjecucion.EN_CURSO) {
-                throw new OperacionNoPermitidaException("No se puede pausar la ejecucion "
+                throw new OperacionNoPermitidaException("No se puede pausar la ejecución "
                         + configuracion.id() + " en estado " + estado);
             }
             reloj.pausar();
@@ -179,7 +179,7 @@ public final class MotorEjecucion {
     public void detener() {
         enHiloMotor(() -> {
             if (estado.esTerminal()) {
-                throw new OperacionNoPermitidaException("La ejecucion " + configuracion.id() + " ya termino");
+                throw new OperacionNoPermitidaException("La ejecución " + configuracion.id() + " ya terminó");
             }
             terminar(EstadoEjecucion.FINALIZADA);
             return null;
@@ -197,7 +197,7 @@ public final class MotorEjecucion {
     public ResultadoRegistroPedido registrarPedido(SolicitudPedidoEnVivo solicitud) {
         return enHiloMotor(() -> {
             if (estado.esTerminal()) {
-                throw new OperacionNoPermitidaException("La ejecucion " + configuracion.id() + " ya termino");
+                throw new OperacionNoPermitidaException("La ejecución " + configuracion.id() + " ya terminó");
             }
             int instante = (int) Math.floor(minutoVisible());
             Pedido pedido = new Pedido(seguimiento.reservarId(), new Nodo(solicitud.x(), solicitud.y()),
@@ -237,13 +237,13 @@ public final class MotorEjecucion {
         return enHiloMotor(() -> {
             validarQueAdmiteAverias();
             int idVehiculo = codigosFlota.idDe(solicitud.codigoUnidad()).orElseThrow(() ->
-                    new RecursoNoEncontradoException("unidad", solicitud.codigoUnidad() + " en la ejecucion "
+                    new RecursoNoEncontradoException("unidad", solicitud.codigoUnidad() + " en la ejecución "
                             + configuracion.id()));
             Vehiculo vehiculo = buscarVehiculo(idVehiculo);
             String codigo = codigosFlota.codigo(vehiculo);
             if (vehiculo.getEstado() == EstadoVehiculo.AVERIADA || agenda.tieneAveriaPendiente(idVehiculo)
                     || simulacion.tieneAveriaPendiente(idVehiculo)) {
-                throw new OperacionNoPermitidaException("La unidad " + codigo + " ya esta averiada");
+                throw new OperacionNoPermitidaException("La unidad " + codigo + " ya está averiada");
             }
             int instante = instanteParaAveria();
             agenda.encolar(new GestorEventos.EventoAveria(idVehiculo, solicitud.tipo(), instante));
@@ -265,9 +265,9 @@ public final class MotorEjecucion {
     public void cancelarAveria(String codigoUnidad) {
         enHiloMotor(() -> {
             int idVehiculo = codigosFlota.idDe(codigoUnidad).orElseThrow(() ->
-                    new RecursoNoEncontradoException("unidad", codigoUnidad + " en la ejecucion " + configuracion.id()));
+                    new RecursoNoEncontradoException("unidad", codigoUnidad + " en la ejecución " + configuracion.id()));
             if (!agenda.cancelar(idVehiculo)) {
-                throw new OperacionNoPermitidaException("La averia de " + codigoUnidad
+                throw new OperacionNoPermitidaException("La avería de " + codigoUnidad
                         + " ya se aplico: no se puede deshacer");
             }
             return null;
@@ -330,19 +330,19 @@ public final class MotorEjecucion {
      */
     private void validarQueAdmiteAverias() {
         if (configuracion.tipoEscenario() == TipoEscenario.COLAPSO_LOGISTICO) {
-            throw new OperacionNoPermitidaException("La ejecucion " + configuracion.id()
-                    + " es una simulacion hasta el colapso: las averias se registran solo en la operacion dia a"
-                    + " dia y en la simulacion de periodo");
+            throw new OperacionNoPermitidaException("La ejecución " + configuracion.id()
+                    + " es una simulación hasta el colapso: las averías se registran solo en la operación día a"
+                    + " día y en la simulación de periodo");
         }
         if (estado != EstadoEjecucion.EN_CURSO && estado != EstadoEjecucion.PAUSADA) {
-            throw new OperacionNoPermitidaException("La ejecucion " + configuracion.id()
-                    + " no esta activa (estado " + estado + "): solo admite averias en curso o pausada");
+            throw new OperacionNoPermitidaException("La ejecución " + configuracion.id()
+                    + " no está activa (estado " + estado + "): solo admite averías en curso o pausada");
         }
     }
 
     private Vehiculo buscarVehiculo(int idVehiculo) {
         return simulacion.getFlota().stream().filter(vehiculo -> vehiculo.getId() == idVehiculo).findFirst()
-                .orElseThrow(() -> new IllegalStateException("La unidad " + idVehiculo + " no esta en la flota"));
+                .orElseThrow(() -> new IllegalStateException("La unidad " + idVehiculo + " no está en la flota"));
     }
 
     /**
@@ -450,11 +450,11 @@ public final class MotorEjecucion {
         for (Vehiculo vehiculo : paso.getUnidadesReincorporadas()) {
             averiasEnCurso.remove(vehiculo.getId());
             String codigo = codigosFlota.codigo(vehiculo);
-            evento("UNIDAD_REINCORPORADA", "Unidad " + codigo + " reincorporada tras su averia", instanteMs,
+            evento("UNIDAD_REINCORPORADA", "Unidad " + codigo + " reincorporada tras su avería", instanteMs,
                     Map.of("unidad", codigo, "estado", vehiculo.getEstado().name()));
         }
         if (paso.huboPlanificacion()) {
-            evento("PLAN_ACTUALIZADO", "Planificacion en " + paso.getTiempoComputoMs() + " ms: "
+            evento("PLAN_ACTUALIZADO", "Planificación en " + paso.getTiempoComputoMs() + " ms: "
                     + paso.getUnidadesDespachadas().size() + " unidades despachadas", instanteMs,
                     Map.of("tiempoComputoMs", paso.getTiempoComputoMs(),
                             "unidadesDespachadas", paso.getUnidadesDespachadas().size()));
@@ -468,7 +468,7 @@ public final class MotorEjecucion {
         if (paso.isColapsoDeclarado()) {
             ColapsoLogistico colapso = simulacion.getResultado().getColapso().orElseThrow();
             String codigo = NomenclaturaOperacion.codigoPedido(colapso.getIdPedido());
-            evento("ALERTA_COLAPSO", "Colapso logistico: el pedido " + codigo + " no se puede entregar a tiempo",
+            evento("ALERTA_COLAPSO", "Colapso logístico: el pedido " + codigo + " no se puede entregar a tiempo",
                     instanteMs, detalleColapso(colapso, codigo));
         }
     }
@@ -523,7 +523,7 @@ public final class MotorEjecucion {
         detalle.put("pedidos", pedidos);
         detalle.put("ubicacion", RecorridoCamino.coordenada(trasbordo.punto()));
         detalle.put("recojoMs", lineaTiempo.aMilisegundos(trasbordo.getRecojo()));
-        evento("TRASBORDO", "Unidad " + receptora + " se desvia y recoge " + pedidos.size() + " pedidos de "
+        evento("TRASBORDO", "Unidad " + receptora + " se desvía y recoge " + pedidos.size() + " pedidos de "
                 + codigoAveriada, lineaTiempo.aMilisegundos(averia.getInstante()), detalle);
     }
 
@@ -548,7 +548,7 @@ public final class MotorEjecucion {
     private void terminar(EstadoEjecucion estadoFinal) {
         reloj.pausar();
         cambiarEstado(estadoFinal);
-        evento("EJECUCION_FINALIZADA", "Ejecucion " + estadoFinal.name().toLowerCase(),
+        evento("EJECUCION_FINALIZADA", "Ejecución " + estadoFinal.name().toLowerCase(),
                 lineaTiempo.aMilisegundos(minutoVisible()), Map.of("estado", estadoFinal.name()));
         guardar(relojPared.instant());
         ejecutor.shutdown();

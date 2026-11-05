@@ -88,7 +88,7 @@ class RubricaCriteriosGeneralesTest {
             }
             TimeUnit.MILLISECONDS.sleep(200);
         }
-        throw new AssertionError("No hubo ninguna planificacion en " + ESPERA_MS + " ms");
+        throw new AssertionError("No hubo ninguna planificación en " + ESPERA_MS + " ms");
     }
 
     private RestClient cliente() {

@@ -1,18 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import { INICIO_MS, datosOperacion, pedidoApi, unidadApi } from '../test/fabricas';
-import { cantidadBloqueos, estadoFlota, fueraDelAlmacen, nivelDeOcupacion, pedidosEnRiesgo, resumenRiesgo, unidadPorCodigo } from './operacion';
-
-describe('nivelDeOcupacion', () => {
-  it('aplica los cortes ámbar (70 %) y rojo (90 %)', () => {
-    expect(nivelDeOcupacion(6, 10)).toBe('VERDE');
-    expect(nivelDeOcupacion(7, 10)).toBe('AMBAR');
-    expect(nivelDeOcupacion(9, 10)).toBe('ROJO');
-  });
-
-  it('capacidad cero no divide por cero', () => {
-    expect(nivelDeOcupacion(5, 0)).toBe('VERDE');
-  });
-});
+import {
+  cantidadBloqueos,
+  estadoFlota,
+  fueraDelAlmacen,
+  ocupacionAlmacenes,
+  ocupacionFlota,
+  pedidosEnRiesgo,
+  resumenRiesgo,
+  unidadPorCodigo,
+} from './operacion';
 
 describe('estado de la flota', () => {
   const datos = datosOperacion({
@@ -91,5 +88,27 @@ describe('cantidadBloqueos', () => {
     });
     expect(datos.bloqueos).toHaveLength(3); // 2 tramos del primero + 1 del segundo
     expect(cantidadBloqueos(datos)).toBe(2);
+  });
+});
+
+describe('ocupación global', () => {
+  it('flota: carga a bordo sobre la capacidad de las unidades fuera del almacén', () => {
+    const o = ocupacionFlota([
+      { estado: 'EN_RUTA', carga: 20, capacidad: 24 },
+      { estado: 'AVERIADA', carga: 0, capacidad: 4 },
+      { estado: 'DISPONIBLE', carga: 0, capacidad: 24 },
+    ]);
+    expect(o).toMatchObject({ cantidad: 20, capacidad: 28, nivel: 'AMBAR' });
+  });
+
+  it('flota sin unidades fuera: sin dato', () => {
+    expect(ocupacionFlota([{ estado: 'DISPONIBLE', carga: 0, capacidad: 24 }])).toMatchObject({ fraccion: null, nivel: null });
+  });
+
+  it('almacenes: stock de los intermedios sobre su capacidad; el central no cuenta', () => {
+    const almacen = (stock: number | null, capacidad: number | null) =>
+      ({ id: 'INTERMEDIO_1', stock, capacidad, porcentajeStock: null, nivelStock: null, stockBajo: false }) as const;
+    expect(ocupacionAlmacenes([almacen(null, null), almacen(0, 100), almacen(0, 100)])).toMatchObject({ cantidad: 0, capacidad: 200, nivel: 'VACIO' });
+    expect(ocupacionAlmacenes([almacen(90, 100), almacen(80, 100)])).toMatchObject({ nivel: 'ROJO' });
   });
 });
