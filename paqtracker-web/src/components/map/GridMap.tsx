@@ -19,12 +19,13 @@ import {
   type Lienzo,
   type Vista,
 } from '../../lib/malla';
-import { fueraDelAlmacen } from '../../lib/operacion';
+import { fueraDelAlmacen, ocupacionAlmacenes, ocupacionFlota } from '../../lib/operacion';
 import { almacenPasaFiltros, cantidadFiltros, guardarFiltros, leerFiltros, SIN_FILTROS, unidadPasaFiltros, type FiltrosMapa as Filtros } from '../../lib/filtrosMapa';
 import { COLOR_SEMAFORO, NIVELES_CARGA, nivelDeOcupacion, type NivelCarga } from '../../lib/semaforo';
 import { colorDeUnidad, iconoDeUnidad } from './iconosVehiculo';
 import type { Capa } from './capas';
 import { FiltrosMapa, type ConteosFiltros } from './FiltrosMapa';
+import { IndicadoresGlobales } from './IndicadoresGlobales';
 import { LeyendaMapa } from './LeyendaMapa';
 import { AlmacenCentral, AlmacenIntermedio, CENTRO_CABEZA_PIN, COLOR_EN_ENTREGA, InsigniaStockBajo, MarcaBloqueo, PinDestino } from './simbolos';
 import haloSeleccion from '../../assets/figma/pedidos/halo.svg';
@@ -73,6 +74,10 @@ interface GridMapProps {
   onAbrirIncidencias: () => void;
   /** Píldora de averías: va a la flota, donde se ve el detalle de cada unidad. Sin valor, va a Incidencias. */
   onAbrirAverias?: () => void;
+  /** Indicador de ocupación de la flota; sin valor, va adonde va la píldora de averías. */
+  onAbrirFlota?: () => void;
+  /** Indicador de ocupación de los almacenes; sin valor, el indicador solo informa. */
+  onAbrirAlmacenes?: () => void;
   onHoverCoordenada?: (coord: Coordenada) => void;
   /** 'simulacion': barra reducida (búsqueda y riesgo); tocar un objeto abre su detalle igual que en Operación. */
   variante?: 'operacion' | 'simulacion';
@@ -131,6 +136,8 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
     onSeleccionar,
     onAbrirIncidencias,
     onAbrirAverias,
+    onAbrirFlota,
+    onAbrirAlmacenes,
     onHoverCoordenada,
     variante = 'operacion',
     children,
@@ -347,8 +354,13 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
       }}
       className={`relative flex-1 w-full h-full bg-white overflow-hidden select-none touch-none ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
     >
-      {/* 1. Barra flotante: búsqueda, riesgo, bloqueos y averías */}
-      <div className="absolute left-3 top-3 z-10 flex items-center gap-2">
+      {/* 1. Barra flotante: búsqueda, riesgo, bloqueos y averías a la izquierda; ocupación global a la
+          derecha. En pantallas angostas los indicadores bajan a una segunda fila en lugar de tapar las
+          píldoras. Los huecos de la barra dejan pasar el arrastre del mapa. */}
+      <div
+        className="absolute left-3 top-3 z-10 flex flex-wrap items-center gap-2 pointer-events-none [&>*]:pointer-events-auto"
+        style={{ right: derechaControles }}
+      >
         <form onSubmit={buscar} className={`${ESTILO_PILDORA} relative w-[206px] px-3 gap-2`} role="search">
           <Search className="w-3.5 h-3.5 text-[#64748B] shrink-0" />
           <input
@@ -423,6 +435,15 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
           <span className="text-[#64748B] font-sans text-[12px]">averías</span>
         </button>
         )}
+
+        <div className="ml-auto">
+          <IndicadoresGlobales
+            flota={ocupacionFlota(unidades)}
+            almacenes={ocupacionAlmacenes(almacenes)}
+            onAbrirFlota={onAbrirFlota ?? onAbrirAverias}
+            onAbrirAlmacenes={onAbrirAlmacenes}
+          />
+        </div>
       </div>
 
       {/* 2. Controles de zoom (a la izquierda del panel derecho si está abierto) */}

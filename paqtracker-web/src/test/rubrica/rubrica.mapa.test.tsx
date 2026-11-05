@@ -379,3 +379,30 @@ describe('Rúbrica · CIRCUNSTANCIAS · filtros globales del mapa', () => {
     expect(objetoMapa(container, 'vehiculo:A-01')).toBeTruthy();
   });
 });
+
+describe('Rúbrica · CIERRE · indicadores globales', () => {
+  const indicadores = () => within(screen.getByRole('region', { name: 'Ocupación global' }));
+
+  it('G01–G02 · la ocupación de la flota en conjunto se ve en % y con semáforo', () => {
+    montarOperacion();
+    // Fuera del almacén: A-01 20/24, M-01 8/8 y B-01 0/4 → 28/36 = 78 %, ámbar.
+    const flota = indicadores().getByRole('button', { name: /^Flota: 78 %, ocupación alta \(28 de 36\)/ });
+    expect(flota.textContent).toContain('78 %');
+    expect(flota.innerHTML).toContain('text-[#B45309]');
+  });
+
+  it('G03–G04 · la ocupación de los almacenes en conjunto se ve en % y con semáforo', () => {
+    montarOperacion();
+    // Intermedios: 40/100 y 10/100 → 50/200 = 25 %, verde.
+    const almacenes = indicadores().getByRole('group', { name: /^Almacenes: 25 %, con espacio \(50 de 200\)/ });
+    expect(almacenes.innerHTML).toContain('text-[#15803D]');
+  });
+
+  it('los filtros del mapa no cambian los indicadores globales', () => {
+    montarOperacion();
+    fireEvent.click(screen.getByRole('button', { name: 'Filtros' }));
+    fireEvent.click(within(screen.getByRole('group', { name: 'Tipo de unidad' })).getByRole('button', { name: /^Moto/ }));
+    expect(indicadores().getByRole('button', { name: /^Flota: 78 %/ })).toBeTruthy();
+    localStorage.clear();
+  });
+});

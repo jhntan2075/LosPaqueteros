@@ -1,11 +1,12 @@
 import { ALMACENES, UNIDADES, type TipoUnidad } from '../config/dominio';
 import { distanciaManhattan } from './factibilidad';
-import type { DatosOperacion, PedidoOperacion, UnidadOperacion } from '../types/operacion';
+import { nivelDeOcupacion, nivelDeStock, type NivelCarga } from './semaforo';
+import type { AlmacenOperacion, DatosOperacion, PedidoOperacion, UnidadOperacion } from '../types/operacion';
 
 // Derivados puros del estado de operación (antes vivían en los datos de ejemplo).
 
 /** Unidad fuera del almacén (en ruta, en refrigerio o averiada): se dibuja en el mapa y puede llevar carga. */
-export const fueraDelAlmacen = (u: UnidadOperacion) => u.estado !== 'DISPONIBLE' && u.estado !== 'FUERA_DE_TURNO';
+export const fueraDelAlmacen = (u: Pick<UnidadOperacion, 'estado'>) => u.estado !== 'DISPONIBLE' && u.estado !== 'FUERA_DE_TURNO';
 
 export const unidadPorCodigo = (datos: DatosOperacion, codigo: string): UnidadOperacion | undefined =>
   datos.flota.find((u) => u.codigo === codigo);
@@ -22,6 +23,41 @@ export function distanciaDesdeOrigen(datos: DatosOperacion, pedido: PedidoOperac
   if (!unidad) return null;
   const origen = ALMACENES.find((a) => a.id === unidad.origen);
   return origen ? distanciaManhattan(origen.ubicacion, pedido.destino) : null;
+}
+
+/** Ocupación de un conjunto: cantidad sobre capacidad, con su semáforo; null si no hay capacidad. */
+export interface OcupacionGlobal {
+  cantidad: number;
+  capacidad: number;
+  fraccion: number | null;
+  nivel: NivelCarga | null;
+}
+
+const ocupacion = (cantidad: number, capacidad: number, nivelDe: (c: number, cap: number) => NivelCarga): OcupacionGlobal => ({
+  cantidad,
+  capacidad,
+  fraccion: capacidad === 0 ? null : cantidad / capacidad,
+  nivel: capacidad === 0 ? null : nivelDe(cantidad, capacidad),
+});
+
+/** Flota en conjunto (G01): paquetes a bordo sobre la capacidad de las unidades fuera del almacén. */
+export function ocupacionFlota(flota: Pick<UnidadOperacion, 'estado' | 'carga' | 'capacidad'>[]): OcupacionGlobal {
+  const fuera = flota.filter(fueraDelAlmacen);
+  return ocupacion(
+    fuera.reduce((s, u) => s + u.carga, 0),
+    fuera.reduce((s, u) => s + u.capacidad, 0),
+    nivelDeOcupacion,
+  );
+}
+
+/** Almacenes en conjunto (G03): stock total de los intermedios sobre su capacidad total; el central no tiene tope. */
+export function ocupacionAlmacenes(almacenes: AlmacenOperacion[]): OcupacionGlobal {
+  const conTope = almacenes.filter((a) => a.stock !== null && a.capacidad);
+  return ocupacion(
+    conTope.reduce((s, a) => s + (a.stock as number), 0),
+    conTope.reduce((s, a) => s + (a.capacidad as number), 0),
+    nivelDeStock,
+  );
 }
 
 export function estadoFlota(datos: DatosOperacion) {
