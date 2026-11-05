@@ -10,6 +10,8 @@ export type NivelCarga = 'VACIO' | 'VERDE' | 'AMBAR' | 'ROJO';
 export const NIVELES_CARGA: NivelCarga[] = ['VACIO', 'VERDE', 'AMBAR', 'ROJO'];
 
 interface Cortes {
+  /** Fracción hasta la que se considera vacío (0 = solo sin carga). */
+  vacio: number;
   ambar: number;
   rojo: number;
 }
@@ -17,6 +19,7 @@ interface Cortes {
 function nivelSegun(cantidad: number, capacidad: number, cortes: Cortes): NivelCarga {
   if (cantidad <= 0 || capacidad <= 0) return 'VACIO';
   const fraccion = cantidad / capacidad;
+  if (fraccion <= cortes.vacio) return 'VACIO';
   if (fraccion >= cortes.rojo) return 'ROJO';
   if (fraccion >= cortes.ambar) return 'AMBAR';
   return 'VERDE';

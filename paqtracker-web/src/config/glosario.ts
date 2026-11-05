@@ -6,7 +6,9 @@ import type { NivelHolgura } from '../types/pedidos';
 // Glosario de la interfaz: un solo nombre por concepto en todas las pantallas. Si un término cambia,
 // cambia aquí.
 
-const porcentaje = (fraccion: number) => Math.round(fraccion * 100);
+const porcentaje = (fraccion: number) => Math.round(fraccion * 1000) / 10;
+
+// Los rangos son getters: se arman al leerlos con los cortes vigentes, que el operador puede cambiar.
 
 /** Nivel del semáforo de holgura. */
 export const NOMBRE_HOLGURA: Record<NivelHolgura, string> = {
@@ -18,9 +20,9 @@ export const NOMBRE_HOLGURA: Record<NivelHolgura, string> = {
 
 /** Rango de holgura restante (fracción del plazo) de cada nivel, p. ej. "15–40 %". */
 export const RANGO_HOLGURA: Record<Exclude<NivelHolgura, 'CERRADO'>, string> = {
-  ROJO: `< ${porcentaje(CORTE_HOLGURA.rojo)} %`,
-  AMBAR: `${porcentaje(CORTE_HOLGURA.rojo)}–${porcentaje(CORTE_HOLGURA.ambar)} %`,
-  VERDE: `> ${porcentaje(CORTE_HOLGURA.ambar)} %`,
+  get ROJO() { return `< ${porcentaje(CORTE_HOLGURA.rojo)} %`; },
+  get AMBAR() { return `${porcentaje(CORTE_HOLGURA.rojo)}–${porcentaje(CORTE_HOLGURA.ambar)} %`; },
+  get VERDE() { return `> ${porcentaje(CORTE_HOLGURA.ambar)} %`; },
 };
 
 /** Nivel del semáforo + vacío de carga (unidades) y de stock (almacenes). */
@@ -31,11 +33,16 @@ export const NOMBRE_CARGA: Record<NivelCarga, string> = {
   ROJO: 'Casi lleno',
 };
 
-const rangos = (cortes: { ambar: number; rojo: number }): Record<NivelCarga, string> => ({
-  VACIO: '0',
-  VERDE: `< ${porcentaje(cortes.ambar)} %`,
-  AMBAR: `${porcentaje(cortes.ambar)}–${porcentaje(cortes.rojo)} %`,
-  ROJO: `≥ ${porcentaje(cortes.rojo)} %`,
+/** Con vacío en 0 (solo sin carga) se lee "0"; si el operador lo sube, "≤ 5 %" y el verde parte de ahí. */
+const rangos = (cortes: { vacio: number; ambar: number; rojo: number }): Record<NivelCarga, string> => ({
+  get VACIO() { return cortes.vacio === 0 ? '0' : `≤ ${porcentaje(cortes.vacio)} %`; },
+  get VERDE() {
+    return cortes.vacio === 0
+      ? `< ${porcentaje(cortes.ambar)} %`
+      : `${porcentaje(cortes.vacio)}–${porcentaje(cortes.ambar)} %`;
+  },
+  get AMBAR() { return `${porcentaje(cortes.ambar)}–${porcentaje(cortes.rojo)} %`; },
+  get ROJO() { return `≥ ${porcentaje(cortes.rojo)} %`; },
 });
 
 /** Carga de una unidad sobre su capacidad. */
@@ -45,7 +52,7 @@ export const RANGO_OCUPACION = rangos(CORTE_OCUPACION);
 export const RANGO_STOCK = rangos(CORTE_STOCK);
 
 /** Alerta de stock bajo de un intermedio (LE-078), aparte del semáforo de ocupación. */
-export const ALERTA_STOCK_BAJO = `Stock bajo (< ${porcentaje(CORTE_INVENTARIO.rojo)} %)`;
+export const alertaStockBajo = () => `Stock bajo (< ${porcentaje(CORTE_INVENTARIO.rojo)} %)`;
 
 /** "Regular" (36 h) o "Priorizado" (plazos menores). */
 export const tipoDeEntrega = (plazoHoras: number) => (esPlazoRegular(plazoHoras) ? 'Regular' : 'Priorizado');
@@ -74,6 +81,16 @@ export const TIPO_AVERIA: Record<
   2: { nombre: 'Intermedia', ejemplo: 'falla de transmisión', duracion: 'Hasta el fin del siguiente turno', impacto: REPLANIFICA },
   3: { nombre: 'Mayor', ejemplo: 'mantenimiento', duracion: '2 días o más', impacto: REPLANIFICA },
 };
+
+/** Cómo se ve cada tipo de avería en el mapa (forma y color de la insignia, COLOR_AVERIA). */
+export const SIMBOLO_AVERIA: Record<1 | 2 | 3, string> = {
+  1: 'círculo azul celeste',
+  2: 'rombo ciruela',
+  3: 'octágono marrón',
+};
+
+/** Cómo se ve un bloqueo en el mapa (COLOR_BLOQUEO): fuera de los colores del semáforo. */
+export const SIMBOLO_BLOQUEO = 'línea y aspa magenta';
 
 /** "Tipo 2 · Intermedia". */
 export const nombreAveria = (tipo: 1 | 2 | 3) => `Tipo ${tipo} · ${TIPO_AVERIA[tipo].nombre}`;

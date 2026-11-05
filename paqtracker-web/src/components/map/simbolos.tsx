@@ -20,6 +20,16 @@ export const CENTRO_CABEZA_PIN = -15;
 /** Pin del pedido que una unidad está entregando en este momento: distinto de los colores de holgura. */
 export const COLOR_EN_ENTREGA = '#7C3AED';
 
+/**
+ * Bloqueo (D2–D3): magenta frambuesa, fuera de la paleta del semáforo (ΔE00 ≥ 19 con su rojo). Aspa
+ * 6,04:1 sobre el fondo y 4,90:1 sobre la malla. La línea del tramo es translúcida, para ver lo que
+ * pasa debajo; con OPACIDAD_LINEA_BLOQUEO queda en 4,06:1 sobre blanco y 3,56:1 sobre la malla (≥ 3:1).
+ */
+export const COLOR_BLOQUEO = '#BE185D';
+/** Fondo del aspa: claro del mismo tono; el aspa contrasta 5,14:1 sobre él. */
+export const FONDO_BLOQUEO = '#FCE7F3';
+export const OPACIDAD_LINEA_BLOQUEO = 0.75;
+
 export const PinDestino: React.FC<{ color: string; critico?: boolean }> = ({ color, critico = false }) => (
   <>
     <path d={PIN_PATH} fill={color} stroke="#FFFFFF" strokeWidth="1.5" strokeLinejoin="round" filter={SOMBRA} />
@@ -118,10 +128,15 @@ export const InsigniaAveria: React.FC<{ tipo: 1 | 2 | 3; restante?: number }> = 
   );
 };
 
-/** Tramo bloqueado: aspa roja sobre fondo claro, centrada en el punto medio del tramo. */
+/** Tramo bloqueado: aspa magenta sobre fondo claro, centrada en el punto medio del tramo. */
 export const MarcaBloqueo: React.FC = () => (
   <>
-    <circle r="10" fill="#FEE2E2" />
-    <path d="M -6 -6 L 6 6 M -6 6 L 6 -6" stroke="#B91C1C" strokeWidth="2.5" />
+    <circle r="10" fill={FONDO_BLOQUEO} />
+    <path d="M -6 -6 L 6 6 M -6 6 L 6 -6" stroke={COLOR_BLOQUEO} strokeWidth="2.5" />
   </>
+);
+
+/** Línea del tramo bloqueado, como en el mapa, para la leyenda. */
+export const LineaBloqueo: React.FC = () => (
+  <line x1="-12" y1="0" x2="12" y2="0" stroke={COLOR_BLOQUEO} strokeWidth="4" strokeLinecap="round" opacity={OPACIDAD_LINEA_BLOQUEO} />
 );

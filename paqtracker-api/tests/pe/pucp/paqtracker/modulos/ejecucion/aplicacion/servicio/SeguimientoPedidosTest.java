@@ -1,7 +1,8 @@
 package pe.pucp.paqtracker.modulos.ejecucion.aplicacion.servicio;
 
 import org.junit.jupiter.api.Test;
-import pe.pucp.paqtracker.comun.configuracion.PropiedadesDominio;
+import pe.pucp.paqtracker.modulos.configuracion.dominio.FuenteRangosSemaforo;
+import pe.pucp.paqtracker.modulos.configuracion.dominio.RangosSemaforo;
 import pe.pucp.paqtracker.comun.tiempo.LineaTiempo;
 import pe.pucp.paqtracker.modelo.Averia;
 import pe.pucp.paqtracker.modelo.ConfiguracionDominio;
@@ -25,6 +26,7 @@ import java.time.Duration;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
@@ -33,7 +35,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 class SeguimientoPedidosTest {
 
     private static final LineaTiempo LINEA = new LineaTiempo(ZonedDateTime.of(2026, 1, 1, 0, 0, 0, 0, ZoneOffset.UTC));
-    private static final PropiedadesDominio.Semaforo SEMAFORO = PropiedadesPrueba.crear().semaforo();
+    private static final FuenteRangosSemaforo SEMAFORO = PropiedadesPrueba.rangosSemaforo();
     private static final int SA = 30;
 
     @Test
@@ -64,6 +66,21 @@ class SeguimientoPedidosTest {
         assertEquals("VERDE", seguimiento.pedidosActivos(10).get(0).nivelHolgura());
         assertEquals("AMBAR", seguimiento.pedidosActivos(70).get(0).nivelHolgura());
         assertEquals("ROJO", seguimiento.pedidosActivos(90).get(0).nivelHolgura());
+    }
+
+    @Test
+    void pedidosActivos_rangosCambiadosEnVivo_usaLosNuevosSinRecrearElSeguimiento() {
+        AtomicReference<RangosSemaforo> vigentes = new AtomicReference<>(SEMAFORO.vigentes());
+        SeguimientoPedidos seguimiento = new SeguimientoPedidos(LINEA, vigentes::get, CodigosFlota.de(List.of()), 10);
+        seguimiento.registrar(new Pedido(1, new Nodo(30, 18), 3, 0, 100));
+        assertEquals("AMBAR", seguimiento.pedidosActivos(70).get(0).nivelHolgura());
+
+        RangosSemaforo actuales = vigentes.get();
+        vigentes.set(new RangosSemaforo(new RangosSemaforo.CortesPorDebajo(0.10, 0.25), actuales.inventario(),
+                actuales.ocupacionUnidad(), actuales.ocupacionAlmacen()));
+
+        assertEquals("VERDE", seguimiento.pedidosActivos(70).get(0).nivelHolgura());
+        assertEquals("ROJO", seguimiento.pedidosActivos(95).get(0).nivelHolgura());
     }
 
     @Test

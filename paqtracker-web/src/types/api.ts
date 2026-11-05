@@ -256,3 +256,24 @@ export interface ErrorApi {
   mensaje: string;
   detalles: string[];
 }
+
+/** Semáforo donde menos es peor (holgura, stock bajo): rojo bajo `rojo`, ámbar bajo `ambar`. Fracciones 0–1. */
+export interface CortesPorDebajoApi {
+  rojo: number;
+  ambar: number;
+}
+
+/** Semáforo de carga con vacío: vacío hasta `vacio`, ámbar desde `ambar`, rojo desde `rojo`. Fracciones 0–1. */
+export interface CortesCargaApi {
+  vacio: number;
+  ambar: number;
+  rojo: number;
+}
+
+/** Cuerpo de GET y PUT /api/configuracion/semaforo. */
+export interface RangosSemaforoApi {
+  holgura: CortesPorDebajoApi;
+  inventario: CortesPorDebajoApi;
+  ocupacionUnidad: CortesCargaApi;
+  ocupacionAlmacen: CortesCargaApi;
+}

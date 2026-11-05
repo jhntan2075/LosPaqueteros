@@ -3,6 +3,7 @@ package pe.pucp.paqtracker.modulos.ejecucion.aplicacion.servicio;
 import org.springframework.stereotype.Component;
 import pe.pucp.paqtracker.comun.configuracion.PropiedadesDominio;
 import pe.pucp.paqtracker.modelo.Pedido;
+import pe.pucp.paqtracker.modulos.configuracion.dominio.FuenteRangosSemaforo;
 import pe.pucp.paqtracker.modulos.difusion.aplicacion.servicio.CodigosFlota;
 import pe.pucp.paqtracker.modulos.difusion.aplicacion.servicio.ServicioDifusion;
 import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.dto.DatosEscenario;
@@ -25,6 +26,7 @@ public class FabricaMotorEjecucion {
     private final ServicioDifusion servicioDifusion;
     private final RepositorioEjecucion repositorio;
     private final PropiedadesDominio propiedades;
+    private final FuenteRangosSemaforo semaforo;
     private final Clock relojPared;
 
     /**
@@ -32,15 +34,17 @@ public class FabricaMotorEjecucion {
      * @param servicioDifusion      fachada de difusion
      * @param repositorio           persistencia de ejecuciones
      * @param propiedades           parametros de la operacion
+     * @param semaforo              rangos del semaforo vigentes, que cada motor consulta en vivo
      * @param relojPared            reloj real
      */
     public FabricaMotorEjecucion(ServicioPlanificacion servicioPlanificacion, ServicioDifusion servicioDifusion,
                                  RepositorioEjecucion repositorio, PropiedadesDominio propiedades,
-                                 Clock relojPared) {
+                                 FuenteRangosSemaforo semaforo, Clock relojPared) {
         this.servicioPlanificacion = servicioPlanificacion;
         this.servicioDifusion = servicioDifusion;
         this.repositorio = repositorio;
         this.propiedades = propiedades;
+        this.semaforo = semaforo;
         this.relojPared = relojPared;
     }
 
@@ -56,7 +60,7 @@ public class FabricaMotorEjecucion {
                 configuracion.saMinutos(), detenerEnColapso, configuracion.flota()));
         int primerIdLibre = Math.max(datos.idMinimoLibre(),
                 datos.pedidos().stream().mapToInt(Pedido::getId).max().orElse(-1) + 1);
-        SeguimientoPedidos seguimiento = new SeguimientoPedidos(datos.lineaTiempo(), propiedades.semaforo(),
+        SeguimientoPedidos seguimiento = new SeguimientoPedidos(datos.lineaTiempo(), semaforo,
                 CodigosFlota.de(simulacion.getFlota()), primerIdLibre);
         RelojEjecucion reloj = new RelojEjecucion(relojPared, datos.minutoInicial(),
                 configuracion.factorAceleracion());

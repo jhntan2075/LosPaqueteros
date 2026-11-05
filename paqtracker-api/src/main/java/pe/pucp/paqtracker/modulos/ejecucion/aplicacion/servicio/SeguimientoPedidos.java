@@ -1,12 +1,12 @@
 package pe.pucp.paqtracker.modulos.ejecucion.aplicacion.servicio;
 
-import pe.pucp.paqtracker.comun.configuracion.PropiedadesDominio;
 import pe.pucp.paqtracker.comun.tiempo.LineaTiempo;
 import pe.pucp.paqtracker.modelo.Entrega;
 import pe.pucp.paqtracker.modelo.EstadoVehiculo;
 import pe.pucp.paqtracker.modelo.Pedido;
 import pe.pucp.paqtracker.modelo.Tramo;
 import pe.pucp.paqtracker.modelo.Vehiculo;
+import pe.pucp.paqtracker.modulos.configuracion.dominio.FuenteRangosSemaforo;
 import pe.pucp.paqtracker.modulos.difusion.aplicacion.dto.Coordenada;
 import pe.pucp.paqtracker.modulos.difusion.aplicacion.dto.IndicadoresOperacion;
 import pe.pucp.paqtracker.modulos.difusion.aplicacion.dto.PedidoEnMapa;
@@ -44,7 +44,7 @@ public final class SeguimientoPedidos {
     private static final int MINUTOS_POR_HORA = 60;
 
     private final LineaTiempo lineaTiempo;
-    private final PropiedadesDominio.Semaforo semaforo;
+    private final FuenteRangosSemaforo semaforo;
     private final CodigosFlota codigosFlota;
     private final Map<Integer, Seguimiento> pedidos = new LinkedHashMap<>();
     private int siguienteId;
@@ -52,11 +52,11 @@ public final class SeguimientoPedidos {
 
     /**
      * @param lineaTiempo   relacion entre minutos simulados y fechas
-     * @param semaforo      cortes del semaforo
+     * @param semaforo      rangos del semaforo vigentes; se consultan en cada calculo de nivel
      * @param codigosFlota  codigos visibles de las unidades de la ejecucion
      * @param primerIdLibre primer identificador que no usa ningun pedido cargado
      */
-    public SeguimientoPedidos(LineaTiempo lineaTiempo, PropiedadesDominio.Semaforo semaforo,
+    public SeguimientoPedidos(LineaTiempo lineaTiempo, FuenteRangosSemaforo semaforo,
                               CodigosFlota codigosFlota, int primerIdLibre) {
         this.lineaTiempo = lineaTiempo;
         this.semaforo = semaforo;
@@ -340,11 +340,7 @@ public final class SeguimientoPedidos {
     private String nivel(Seguimiento seguimiento, double minuto) {
         double referencia = seguimiento.estado == EstadoPedido.EN_TRANSITO ? seguimiento.eta : minuto;
         double holgura = seguimiento.pedido.getHoraLimite() - referencia;
-        double fraccion = holgura / seguimiento.pedido.getPlazo();
-        if (fraccion < semaforo.fraccionRojo()) {
-            return NIVEL_ROJO;
-        }
-        return fraccion < semaforo.fraccionAmbar() ? NIVEL_AMBAR : NIVEL_VERDE;
+        return semaforo.vigentes().holgura().nivel(holgura / seguimiento.pedido.getPlazo());
     }
 
     private static String peor(String actual, String candidato) {

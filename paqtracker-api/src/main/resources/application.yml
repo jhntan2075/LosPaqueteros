@@ -56,7 +56,8 @@ paqtracker:
     algoritmo: ${PLANIFICADOR_ALGORITMO:GA}
     semilla: ${PLANIFICADOR_SEMILLA:1}
   semaforo:
-    # Holgura restante como fraccion del plazo del pedido
+    # Valores iniciales: solo si la tabla rangos_semaforo aun no tiene fila; luego se editan desde la interfaz
+    # (GET/PUT /api/configuracion/semaforo). Holgura restante como fraccion del plazo del pedido
     fraccion-rojo: ${APP_SEMAFORO_ROJO:0.15}
     fraccion-ambar: ${APP_SEMAFORO_AMBAR:0.40}
     # Stock de un almacen intermedio como fraccion de su capacidad

@@ -1,8 +1,8 @@
 package pe.pucp.paqtracker.modulos.difusion.aplicacion.servicio;
 
 import org.springframework.stereotype.Component;
-import pe.pucp.paqtracker.comun.configuracion.PropiedadesDominio;
 import pe.pucp.paqtracker.comun.tiempo.LineaTiempo;
+import pe.pucp.paqtracker.modulos.configuracion.dominio.FuenteRangosSemaforo;
 import pe.pucp.paqtracker.modelo.Almacen;
 import pe.pucp.paqtracker.modelo.Bloqueo;
 import pe.pucp.paqtracker.modelo.EstadoVehiculo;
@@ -32,17 +32,13 @@ import java.util.Map;
 public class ConstructorInstantanea {
 
     private static final double MILISEGUNDOS_POR_MINUTO = 60_000.0;
-    private static final String NIVEL_VERDE = "VERDE";
-    private static final String NIVEL_AMBAR = "AMBAR";
-    private static final String NIVEL_ROJO = "ROJO";
-
-    private final PropiedadesDominio.Semaforo semaforo;
+    private final FuenteRangosSemaforo semaforo;
 
     /**
-     * @param propiedades parametros de la operacion, con los cortes del semaforo de inventario
+     * @param semaforo rangos del semaforo vigentes, con los cortes de inventario; se consultan en cada instantanea
      */
-    public ConstructorInstantanea(PropiedadesDominio propiedades) {
-        this.semaforo = propiedades.semaforo();
+    public ConstructorInstantanea(FuenteRangosSemaforo semaforo) {
+        this.semaforo = semaforo;
     }
 
     /**
@@ -173,10 +169,7 @@ public class ConstructorInstantanea {
      */
     private String nivelInventario(Almacen almacen) {
         double fraccion = (double) almacen.getStockDisponible() / almacen.getCapacidadMaxima();
-        if (fraccion < semaforo.inventarioRojo()) {
-            return NIVEL_ROJO;
-        }
-        return fraccion < semaforo.inventarioAmbar() ? NIVEL_AMBAR : NIVEL_VERDE;
+        return semaforo.vigentes().inventario().nivel(fraccion);
     }
 
     private static List<BloqueoEnMapa> bloqueosVigentes(List<Bloqueo> bloqueos, double minuto,

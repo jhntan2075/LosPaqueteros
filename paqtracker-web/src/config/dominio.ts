@@ -1,4 +1,5 @@
 import type { Coordenada } from '../types/domain';
+import { obtenerRangos } from './rangosSemaforo';
 
 // Parámetros de negocio del dominio. Replican pe.pucp.paqtracker.modelo.ConfiguracionDominio
 // del planificador: si cambian allá, deben cambiar aquí hasta que paqtracker-api los exponga.
@@ -30,23 +31,38 @@ export const UNIDADES: Record<TipoUnidad, ParametrosUnidad> = {
 /** Turnos de 8 h (LE-023), en minutos del día. */
 export const INICIOS_TURNO_MINUTOS = [7 * 60, 15 * 60, 23 * 60];
 
-/** Ocupación de una unidad (CF-02): ámbar desde 70 %, rojo desde 90 %. */
-export const CORTE_OCUPACION = { ambar: 0.7, rojo: 0.9 };
+// Cortes de los semáforos. Los configura el operador (leyenda del mapa → "Configurar rangos") y los guarda
+// paqtracker-api; cada lectura toma el valor vigente de config/rangosSemaforo.ts, así un cambio rige en
+// el siguiente dibujo. Los valores por defecto son los de RANGOS_POR_DEFECTO.
 
-/** Holgura restante (CF-02): rojo bajo 15 % del plazo, ámbar hasta 40 %. */
-export const CORTE_HOLGURA = { rojo: 0.15, ambar: 0.4 };
+/** Ocupación de una unidad (CF-02): vacío hasta `vacio`, ámbar desde `ambar`, rojo desde `rojo`. */
+export const CORTE_OCUPACION = {
+  get vacio() { return obtenerRangos().ocupacionUnidad.vacio; },
+  get ambar() { return obtenerRangos().ocupacionUnidad.ambar; },
+  get rojo() { return obtenerRangos().ocupacionUnidad.rojo; },
+};
+
+/** Holgura restante (CF-02): rojo bajo `rojo` del plazo, ámbar bajo `ambar`. La calcula paqtracker-api. */
+export const CORTE_HOLGURA = {
+  get rojo() { return obtenerRangos().holgura.rojo; },
+  get ambar() { return obtenerRangos().holgura.ambar; },
+};
+
+/** Ocupación de un almacén intermedio (semáforo + vacío de la rúbrica, rojo = lleno). */
+export const CORTE_STOCK = {
+  get vacio() { return obtenerRangos().ocupacionAlmacen.vacio; },
+  get ambar() { return obtenerRangos().ocupacionAlmacen.ambar; },
+  get rojo() { return obtenerRangos().ocupacionAlmacen.rojo; },
+};
 
 /**
- * Ocupación de un almacén intermedio (semáforo + vacío de la rúbrica, rojo = lleno): ámbar desde 50 %,
- * rojo desde 80 % de su capacidad.
+ * Alerta de stock bajo de un almacén intermedio (LE-078), aparte del semáforo de ocupación. La calcula
+ * paqtracker-api con los mismos cortes.
  */
-export const CORTE_STOCK = { ambar: 0.5, rojo: 0.8 };
-
-/**
- * Alerta de stock bajo de un almacén intermedio (LE-078): bajo 20 % de su capacidad. La calcula
- * paqtracker-api (APP_INVENTARIO_ROJO); es un aviso aparte del semáforo de ocupación.
- */
-export const CORTE_INVENTARIO = { rojo: 0.2, ambar: 0.5 };
+export const CORTE_INVENTARIO = {
+  get rojo() { return obtenerRangos().inventario.rojo; },
+  get ambar() { return obtenerRangos().inventario.ambar; },
+};
 
 /** Orden de evaluación: de la unidad más lenta a la más rápida. */
 export const TIPOS_UNIDAD: TipoUnidad[] = ['BICICLETA', 'MOTO', 'AUTO'];
