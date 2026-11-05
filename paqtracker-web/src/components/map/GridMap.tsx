@@ -6,6 +6,7 @@ import { useCerrarConEscape } from '../../hooks/useCerrarConEscape';
 import { useTamanoElemento } from '../../hooks/useTamanoElemento';
 import { capitalizar, formatearMomento } from '../../lib/formato';
 import { useDatosOperacion } from '../../hooks/useDatosOperacion';
+import { useDeslizamientoUnidades } from '../../hooks/useDeslizamientoUnidades';
 import {
   acercarEn,
   escalaDeEncuadre,
@@ -835,6 +836,9 @@ const CapasMapa: React.FC<CapasMapaProps> = ({
 }) => {
   // Reloj simulado de la ejecución: mide cuánto le falta a cada avería.
   const { reloj } = useDatosOperacion();
+  // Movimiento fluido (C29): las unidades se deslizan entre dos tics del reloj.
+  const svgRef = useRef<SVGSVGElement>(null);
+  useDeslizamientoUnidades(svgRef, vista);
   const origen = proyectar(vista, { x: 0, y: 0 });
   const paso = pasoCuadricula(vista.escala);
   const pasoPx = paso * vista.escala;
@@ -875,7 +879,7 @@ const CapasMapa: React.FC<CapasMapaProps> = ({
   const activo = proyectar(vista, nodoActivo);
 
   return (
-    <svg className="absolute inset-0 w-full h-full">
+    <svg ref={svgRef} className="absolute inset-0 w-full h-full">
       {/* Cuadrícula continua y uniforme en todo el lienzo */}
       {Array.from({ length: Math.max(0, iMax - iMin + 1) }, (_, idx) => {
         const i = iMin + idx;
@@ -1007,7 +1011,15 @@ const CapasMapa: React.FC<CapasMapaProps> = ({
             const icono = iconoDeUnidad(u);
             const rotuloX = icono.medioAnchoVisible + (seleccionada ? 6 : 4);
             return (
-              <g key={u.codigo} transform={`translate(${x}, ${y})`} className="cursor-pointer" data-objeto={`vehiculo:${u.codigo}`}>
+              <g
+                key={u.codigo}
+                transform={`translate(${x}, ${y})`}
+                className="cursor-pointer"
+                data-objeto={`vehiculo:${u.codigo}`}
+                data-mover={u.codigo}
+                data-kx={u.posicion.x}
+                data-ky={u.posicion.y}
+              >
                 {seleccionada && <image href={haloSeleccion} x={-13} y={-13} width={26} height={26} />}
                 <image
                   href={icono.href}
