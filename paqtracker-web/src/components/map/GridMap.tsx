@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useImperativeHandle, forwardRef } from 'react';
-import { Search, ZoomIn, ZoomOut, Maximize2, MapIcon } from 'lucide-react';
-import { ALMACENES, MALLA_ALTO_KM, MALLA_ANCHO_KM, UNIDADES } from '../../config/dominio';
+import { Search, ZoomIn, ZoomOut, Maximize2, MapIcon, ListFilter, X } from 'lucide-react';
+import { ALMACENES, MALLA_ALTO_KM, MALLA_ANCHO_KM, TIPOS_UNIDAD, UNIDADES, type IdAlmacen } from '../../config/dominio';
 import { ALERTA_STOCK_BAJO, NOMBRE_CARGA, NOMBRE_HOLGURA, SITUACION_UNIDAD } from '../../config/glosario';
 import { useCerrarConEscape } from '../../hooks/useCerrarConEscape';
 import { useTamanoElemento } from '../../hooks/useTamanoElemento';
@@ -20,9 +20,11 @@ import {
   type Vista,
 } from '../../lib/malla';
 import { fueraDelAlmacen } from '../../lib/operacion';
-import { COLOR_SEMAFORO, nivelDeOcupacion } from '../../lib/semaforo';
+import { almacenPasaFiltros, cantidadFiltros, guardarFiltros, leerFiltros, SIN_FILTROS, unidadPasaFiltros, type FiltrosMapa as Filtros } from '../../lib/filtrosMapa';
+import { COLOR_SEMAFORO, NIVELES_CARGA, nivelDeOcupacion, type NivelCarga } from '../../lib/semaforo';
 import { colorDeUnidad, iconoDeUnidad } from './iconosVehiculo';
 import type { Capa } from './capas';
+import { FiltrosMapa, type ConteosFiltros } from './FiltrosMapa';
 import { LeyendaMapa } from './LeyendaMapa';
 import { AlmacenCentral, AlmacenIntermedio, CENTRO_CABEZA_PIN, COLOR_EN_ENTREGA, InsigniaStockBajo, MarcaBloqueo, PinDestino } from './simbolos';
 import haloSeleccion from '../../assets/figma/pedidos/halo.svg';
@@ -159,12 +161,26 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
   // La retícula del nodo bajo el cursor solo se muestra mientras el cursor está sobre el mapa.
   const [cursorEnMapa, setCursorEnMapa] = useState(false);
   const [leyendaAbierta, setLeyendaAbierta] = useState(leerLeyendaAbierta);
+  const [filtrosAbiertos, setFiltrosAbiertos] = useState(false);
+  // Capas y leyenda y Filtros comparten la esquina: abrir uno cierra el otro.
   const alternarLeyenda = (abierta: boolean) => {
     setLeyendaAbierta(abierta);
     guardarLeyendaAbierta(abierta);
+    if (abierta) setFiltrosAbiertos(false);
   };
-  // Esc cierra el panel de capas y leyenda, como los demás paneles flotantes.
+  const alternarFiltros = (abiertos: boolean) => {
+    setFiltrosAbiertos(abiertos);
+    if (abiertos) alternarLeyenda(false);
+  };
+  // Esc cierra el panel abierto, como los demás paneles flotantes.
   useCerrarConEscape(leyendaAbierta, () => alternarLeyenda(false));
+  useCerrarConEscape(filtrosAbiertos, () => setFiltrosAbiertos(false));
+  const [filtros, setFiltros] = useState<Filtros>(leerFiltros);
+  const cambiarFiltros = (nuevos: Filtros) => {
+    setFiltros(nuevos);
+    guardarFiltros(nuevos);
+  };
+  const filtrosActivos = cantidadFiltros(filtros);
   const enSimulacion = variante === 'simulacion';
   const [capas, setCapas] = useState<Record<Capa, boolean>>({ rutas: true, unidades: true, destinos: true, bloqueos: true, almacenes: true });
 
@@ -286,6 +302,36 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
   // Un bloqueo con una polilínea de varios puntos se parte en varios tramos; se cuenta una sola vez.
   const cantidadBloqueos = new Set(bloqueos.map((b) => b.idOriginal)).size;
   const derechaControles = anchoPanelDerecho > 0 ? anchoPanelDerecho + 24 : 16;
+
+  // Filtros globales: lo seleccionado nunca se oculta, para no perder el contexto de lo que se mira.
+  const enMapa = unidades.filter(fueraDelAlmacen);
+  const codigosSeleccionados = new Set(
+    seleccion?.tipo === 'vehiculo'
+      ? [seleccion.codigo]
+      : seleccion?.tipo === 'pedido'
+        ? destinos.filter((d) => d.pedido === seleccion.codigo).map((d) => d.unidad)
+        : [],
+  );
+  const unidadesVisibles =
+    filtrosActivos === 0 ? unidades : unidades.filter((u) => codigosSeleccionados.has(u.codigo) || unidadPasaFiltros(filtros, u));
+  const codigosVisibles = new Set(unidadesVisibles.map((u) => u.codigo));
+  const destinosVisibles = filtrosActivos === 0 ? destinos : destinos.filter((d) => codigosVisibles.has(d.unidad));
+  const almacenesOcultos = new Set<IdAlmacen>(
+    ALMACENES.filter(
+      (a) =>
+        !(seleccion?.tipo === 'almacen' && seleccion.codigo === a.id) &&
+        !almacenPasaFiltros(filtros, a.id, almacenes.find((x) => x.id === a.id)),
+    ).map((a) => a.id),
+  );
+  const contarNiveles = (niveles: NivelCarga[]) =>
+    Object.fromEntries(NIVELES_CARGA.map((n) => [n, niveles.filter((x) => x === n).length])) as Record<NivelCarga, number>;
+  const conteosFiltros: ConteosFiltros = {
+    tipos: Object.fromEntries(TIPOS_UNIDAD.map((t) => [t, enMapa.filter((u) => u.tipo === t).length])) as ConteosFiltros['tipos'],
+    carga: contarNiveles(enMapa.map((u) => nivelDeOcupacion(u.carga, u.capacidad))),
+    stock: contarNiveles(almacenes.flatMap((a) => (a.nivelStock ? [a.nivelStock] : []))),
+    unidades: { visibles: unidadesVisibles.filter(fueraDelAlmacen).length, total: enMapa.length },
+    almacenes: { visibles: ALMACENES.length - almacenesOcultos.size, total: ALMACENES.length },
+  };
 
   return (
     <div
@@ -417,6 +463,9 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
 
       {/* 3. Capas y leyenda (panel flotante, no modal) y barra de escala */}
       <div className="absolute left-4 bottom-4 z-20 flex flex-col items-start gap-2">
+        {filtrosAbiertos && (
+          <FiltrosMapa filtros={filtros} conteos={conteosFiltros} onCambiar={cambiarFiltros} onCerrar={() => setFiltrosAbiertos(false)} />
+        )}
         {leyendaAbierta && (
           <LeyendaMapa
             onCerrar={() => alternarLeyenda(false)}
@@ -434,6 +483,34 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
             <MapIcon className="w-3.5 h-3.5 text-[#64748B]" />
             <span className="text-[#0F172A] font-sans text-[12px]">Capas y leyenda</span>
           </button>
+          <div className={`${ESTILO_PILDORA} ${filtrosActivos > 0 || filtrosAbiertos ? 'border-[#1E40AF]' : ''}`}>
+            <button
+              type="button"
+              onClick={() => alternarFiltros(!filtrosAbiertos)}
+              aria-expanded={filtrosAbiertos}
+              aria-label={filtrosActivos > 0 ? `Filtros, ${filtrosActivos} ${filtrosActivos === 1 ? 'activo' : 'activos'}` : 'Filtros'}
+              className={`h-full pl-3 gap-1.5 flex items-center rounded-full hover:bg-slate-50 ${filtrosActivos > 0 ? 'pr-2' : 'pr-3'}`}
+            >
+              <ListFilter className={`w-3.5 h-3.5 ${filtrosActivos > 0 ? 'text-[#1E40AF]' : 'text-[#64748B]'}`} />
+              <span className="text-[#0F172A] font-sans text-[12px]">Filtros</span>
+              {filtrosActivos > 0 && (
+                <span className="min-w-[18px] h-[18px] px-[5px] rounded-full bg-[#1E40AF] text-white text-[11px] font-semibold tabular-nums flex items-center justify-center">
+                  {filtrosActivos}
+                </span>
+              )}
+            </button>
+            {filtrosActivos > 0 && (
+              <button
+                type="button"
+                onClick={() => cambiarFiltros(SIN_FILTROS)}
+                aria-label="Quitar los filtros"
+                title="Quitar los filtros"
+                className="h-full pl-1 pr-2.5 flex items-center rounded-r-full text-[#64748B] hover:text-[#0F172A] hover:bg-slate-50"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
           {vista && (
             <div className="bg-white/95 backdrop-blur-xs px-2.5 py-1 rounded-md border border-[#E2E8F0] shadow-xs pointer-events-none flex flex-col gap-[3px]">
               <span className="tabular-nums text-[11px] text-[#475569]">{barraEscala(vista.escala).km} km</span>
@@ -449,10 +526,11 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
           vista={vista}
           lienzo={lienzo}
           capas={capas}
-          unidades={unidades}
-          destinos={destinos}
+          unidades={unidadesVisibles}
+          destinos={destinosVisibles}
           bloqueos={bloqueos}
           almacenes={almacenes}
+          almacenesOcultos={almacenesOcultos}
           seleccion={seleccion}
           nodoActivo={nodoActivo}
           mostrarReticula={cursorEnMapa}
@@ -477,6 +555,8 @@ interface CapasMapaProps {
   destinos: DestinoMapa[];
   bloqueos: BloqueoOperacion[];
   almacenes: AlmacenOperacion[];
+  /** Almacenes ocultos por el filtro de stock. */
+  almacenesOcultos: Set<IdAlmacen>;
   seleccion: ObjetoMapa | null;
   nodoActivo: Coordenada;
   mostrarReticula: boolean;
@@ -619,7 +699,19 @@ function orientacionIcono(unidad: UnidadOperacion): string | undefined {
   return dy > 0 ? 'rotate(90)' : 'rotate(-90)';
 }
 
-const CapasMapa: React.FC<CapasMapaProps> = ({ vista, lienzo, capas, unidades, destinos, bloqueos, almacenes, seleccion, nodoActivo, mostrarReticula }) => {
+const CapasMapa: React.FC<CapasMapaProps> = ({
+  vista,
+  lienzo,
+  capas,
+  unidades,
+  destinos,
+  bloqueos,
+  almacenes,
+  almacenesOcultos,
+  seleccion,
+  nodoActivo,
+  mostrarReticula,
+}) => {
   const origen = proyectar(vista, { x: 0, y: 0 });
   const paso = pasoCuadricula(vista.escala);
   const pasoPx = paso * vista.escala;
@@ -822,7 +914,7 @@ const CapasMapa: React.FC<CapasMapaProps> = ({ vista, lienzo, capas, unidades, d
       {/* --- ALMACENES (posiciones de ConfiguracionDominio): al final, para que su símbolo y su rótulo
           nunca queden tapados por una ruta o una unidad que pase cerca. --- */}
       {capas.almacenes &&
-        ALMACENES.map((almacen) => {
+        ALMACENES.filter((almacen) => !almacenesOcultos.has(almacen.id)).map((almacen) => {
           const { x, y } = proyectar(vista, almacen.ubicacion);
           const stock = stockDe(almacenes, almacen.id);
           const estado = almacenes.find((a) => a.id === almacen.id);

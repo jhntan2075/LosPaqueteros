@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { GridMap } from '../../components/map/GridMap';
 import { colorDeUnidad, iconoDeUnidad } from '../../components/map/iconosVehiculo';
@@ -327,5 +327,55 @@ describe('Rúbrica · MAPA · GridMap aislado', () => {
     const { container } = renderConDatos(<GridMap unidades={[]} destinos={[]} bloqueos={[]} seleccion={null} riesgo={{ rojo: 0, ambar: 0 }} onSeleccionar={() => {}} onAbrirIncidencias={() => {}} />, datosRubrica({ unidades: [], pedidos: [] }));
     expect(objetoMapa(container, 'almacen:CENTRAL')).toBeTruthy();
     expect(objetoMapa(container, 'almacen:INTERMEDIO_1')).toBeTruthy();
+  });
+});
+
+describe('Rúbrica · CIRCUNSTANCIAS · filtros globales del mapa', () => {
+  afterEach(() => localStorage.clear());
+
+  const abrirFiltros = () => fireEvent.click(screen.getByRole('button', { name: 'Filtros' }));
+  const grupo = (nombre: string) => within(screen.getByRole('group', { name: nombre }));
+
+  it('D05 · se filtran las unidades por tipo; también se ocultan sus destinos', () => {
+    const { container } = montarOperacion();
+    abrirFiltros();
+    fireEvent.click(grupo('Tipo de unidad').getByRole('button', { name: /^Moto/ }));
+    expect(objetoMapa(container, 'vehiculo:M-01')).toBeTruthy();
+    expect(objetoMapa(container, 'vehiculo:A-01')).toBeNull();
+    expect(objetoMapa(container, 'vehiculo:B-01')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Filtros, 1 activo' })).toBeTruthy();
+  });
+
+  it('D06 · se filtran las unidades por semáforo + vacío de su carga', () => {
+    const { container } = montarOperacion();
+    abrirFiltros();
+    fireEvent.click(grupo('Carga de unidades').getByRole('button', { name: /^Vacío/ }));
+    expect(objetoMapa(container, 'vehiculo:B-01')).toBeTruthy();
+    expect(objetoMapa(container, 'vehiculo:A-01')).toBeNull();
+    fireEvent.click(grupo('Carga de unidades').getByRole('button', { name: /^Casi lleno/ }));
+    expect(objetoMapa(container, 'vehiculo:M-01')).toBeTruthy();
+    // Quitar los filtros vuelve a mostrar todo.
+    fireEvent.click(screen.getByRole('button', { name: 'Quitar los filtros' }));
+    expect(objetoMapa(container, 'vehiculo:A-01')).toBeTruthy();
+  });
+
+  it('D07 · se filtran los almacenes por semáforo + vacío de su stock; el central siempre se ve', () => {
+    const { container } = montarOperacion();
+    abrirFiltros();
+    fireEvent.click(grupo('Stock de almacenes').getByRole('button', { name: /^Ocupación alta/ }));
+    expect(objetoMapa(container, 'almacen:INTERMEDIO_1')).toBeNull();
+    expect(objetoMapa(container, 'almacen:INTERMEDIO_2')).toBeNull();
+    expect(objetoMapa(container, 'almacen:CENTRAL')).toBeTruthy();
+    fireEvent.click(grupo('Stock de almacenes').getByRole('button', { name: /^Con espacio/ }));
+    expect(objetoMapa(container, 'almacen:INTERMEDIO_1')).toBeTruthy();
+  });
+
+  it('lo seleccionado no se oculta al filtrar', () => {
+    const { container } = montarOperacion();
+    fireEvent.pointerDown(objetoMapa(container, 'vehiculo:A-01')!, { button: 0, clientX: 5, clientY: 5, pointerId: 1 });
+    fireEvent.pointerUp(objetoMapa(container, 'vehiculo:A-01')!, { button: 0, clientX: 5, clientY: 5, pointerId: 1 });
+    abrirFiltros();
+    fireEvent.click(grupo('Tipo de unidad').getByRole('button', { name: /^Moto/ }));
+    expect(objetoMapa(container, 'vehiculo:A-01')).toBeTruthy();
   });
 });
