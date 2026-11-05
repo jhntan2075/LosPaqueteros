@@ -51,13 +51,13 @@ public class CasoUsoEjecutarSimulacionPeriodo {
         int dias = solicitud.dias() == null ? DIAS_POR_DEFECTO : solicitud.dias();
         int maximo = propiedades.ejecucion().diasPeriodoMax();
         if (dias > maximo) {
-            throw new SolicitudInvalidaException("El periodo admite hasta " + maximo + " dias: " + dias);
+            throw new SolicitudInvalidaException("El periodo admite hasta " + maximo + " días: " + dias);
         }
         cargadorDatos.exigirVentasDelRango(solicitud.fechaInicio(), solicitud.horaInicioOMedianoche(), dias);
         AlgoritmoPlanificacion algoritmo = AlgoritmoPlanificacion.desde(solicitud.algoritmo() == null
                 ? propiedades.planificador().algoritmo() : solicitud.algoritmo());
         String id = "periodo-" + UUID.randomUUID().toString().substring(0, LONGITUD_ID);
-        MotorEjecucion motor = creador.crear(id, "Simulacion de " + dias + " dias desde " + solicitud.descripcionInicio(),
+        MotorEjecucion motor = creador.crear(id, "Simulación de " + dias + " días desde " + solicitud.descripcionInicio(),
                 TipoEscenario.SIMULACION_PERIODO, algoritmo, solicitud.fechaInicio(),
                 solicitud.horaInicioOMedianoche(), dias,
                 propiedades.ejecucion().factorPeriodo(), cargadorDatos.cargarRango(solicitud.fechaInicio(), solicitud.horaInicioOMedianoche(), dias),

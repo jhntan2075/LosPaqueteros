@@ -123,7 +123,7 @@ class MotorEjecucionTest {
         List<Long> planificaciones = eventos.stream().filter(evento -> evento.tipo().equals("PLAN_ACTUALIZADO"))
                 .map(evento -> (evento.timestampSimuladoMs() - inicioMs) / 60_000).toList();
         assertFalse(planificaciones.isEmpty());
-        planificaciones.forEach(minuto -> assertEquals(0, minuto % SA, "Planificacion fuera de un salto Sa: minuto " + minuto));
+        planificaciones.forEach(minuto -> assertEquals(0, minuto % SA, "Planificación fuera de un salto Sa: minuto " + minuto));
         // Nunca dos planificaciones en el mismo bloque.
         assertEquals(planificaciones.size(), planificaciones.stream().distinct().count());
         // Cada planificacion informa su Ta.
@@ -393,7 +393,7 @@ class MotorEjecucionTest {
         assertEquals("VIAJE_A_ENTREGA", unidad(motor, respaldo).tramoEnCurso().tipo());
         DetallePedido pedido = motor.consultarPedido(1).orElseThrow();
         assertEquals(respaldo, pedido.pedido().unidad());
-        assertEquals(List.of("Respaldo por averia", "Despachado"), pedido.hitos().subList(pedido.hitos().size() - 2,
+        assertEquals(List.of("Respaldo por avería", "Despachado"), pedido.hitos().subList(pedido.hitos().size() - 2,
                 pedido.hitos().size()).stream().map(HitoPedido::titulo).toList());
     }
 

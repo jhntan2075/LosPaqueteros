@@ -223,14 +223,14 @@ public final class SeguimientoPedidos {
     private void registrarAveria(AveriaAplicada averia) {
         String codigo = codigosFlota.codigo(averia.vehiculo());
         int instante = averia.averia().getInstante();
-        String causa = "la unidad " + codigo + " tuvo una averia tipo " + averia.averia().getTipo().getNumero();
+        String causa = "la unidad " + codigo + " tuvo una avería tipo " + averia.averia().getTipo().getNumero();
         for (Entrega entrega : averia.entregasLiberadas()) {
-            retirarParte(entrega, instante, "Liberado por averia", entrega.getCantidad()
+            retirarParte(entrega, instante, "Liberado por avería", entrega.getCantidad()
                     + " paquetes vuelven a planificarse en el siguiente ciclo: " + causa);
         }
         for (Entrega entrega : averia.entregasRespaldadas()) {
-            retirarParte(entrega, instante, "Respaldo por averia", entrega.getCantidad()
-                    + " paquetes salen en otra unidad desde un almacen: " + causa);
+            retirarParte(entrega, instante, "Respaldo por avería", entrega.getCantidad()
+                    + " paquetes salen en otra unidad desde un almacén: " + causa);
         }
         if (averia.transitoReanudado() != null) {
             registrarRetraso(averia.transitoReanudado(), instante, codigo);
@@ -248,8 +248,8 @@ public final class SeguimientoPedidos {
                 continue;
             }
             seguimiento.actualizarEta(tramo.getLlegada());
-            seguimiento.hito(instante, "Retrasado por averia", "La unidad " + codigo
-                    + " se detuvo por una averia tipo 1 con la carga a bordo, nueva llegada estimada "
+            seguimiento.hito(instante, "Retrasado por avería", "La unidad " + codigo
+                    + " se detuvo por una avería tipo 1 con la carga a bordo, nueva llegada estimada "
                     + lineaTiempo.formatear(tramo.getLlegada()));
         }
     }
@@ -285,7 +285,7 @@ public final class SeguimientoPedidos {
             }
             seguimiento.actualizarEta(tramo.getLlegada());
             if (!trasvasados.contains(tramo.getIdPedido())) {
-                seguimiento.hito(instante, "Desvio por trasvase", "La unidad " + receptora + " se desvia a recoger "
+                seguimiento.hito(instante, "Desvío por trasvase", "La unidad " + receptora + " se desvía a recoger "
                         + "carga de " + codigoAveriada + "; nueva llegada estimada "
                         + lineaTiempo.formatear(tramo.getLlegada()));
                 continue;

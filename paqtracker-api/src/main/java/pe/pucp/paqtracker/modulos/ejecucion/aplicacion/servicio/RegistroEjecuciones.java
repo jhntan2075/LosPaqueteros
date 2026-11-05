@@ -33,7 +33,7 @@ public class RegistroEjecuciones {
     public MotorEjecucion obtener(String id) {
         MotorEjecucion motor = motores.get(id);
         if (motor == null) {
-            throw new RecursoNoEncontradoException("ejecucion", id);
+            throw new RecursoNoEncontradoException("ejecución", id);
         }
         return motor;
     }

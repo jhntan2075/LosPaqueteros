@@ -13,8 +13,8 @@ import java.util.regex.Pattern;
 public final class NomenclaturaOperacion {
 
     private static final String[] CODIGOS_ALMACEN = {"CENTRAL", "INTERMEDIO_1", "INTERMEDIO_2"};
-    private static final String[] NOMBRES_ALMACEN = {"Almacen central", "Almacen intermedio 1",
-        "Almacen intermedio 2"};
+    private static final String[] NOMBRES_ALMACEN = {"Almacén central", "Almacén intermedio 1",
+        "Almacén intermedio 2"};
     private static final Pattern PATRON_PEDIDO = Pattern.compile("P-(\\d+)");
 
     /**
@@ -41,7 +41,7 @@ public final class NomenclaturaOperacion {
     public static int idDePedido(String codigo) {
         Matcher matcher = codigo == null ? null : PATRON_PEDIDO.matcher(codigo.trim());
         if (matcher == null || !matcher.matches()) {
-            throw new IllegalArgumentException("Codigo de pedido invalido: " + codigo);
+            throw new IllegalArgumentException("Código de pedido inválido: " + codigo);
         }
         return Integer.parseInt(matcher.group(1));
     }

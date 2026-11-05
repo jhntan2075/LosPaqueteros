@@ -116,8 +116,8 @@ public class CargadorDatosEscenario {
              mes = mes.plusMonths(1)) {
             String archivo = "ventas." + mes.format(FORMATO_MES) + ".txt";
             if (!Files.isRegularFile(carpeta.resolve(archivo))) {
-                throw new SolicitudInvalidaException("Falta el archivo de ventas " + archivo + ": la simulacion de "
-                        + dias + " dias desde " + fechaInicio + " " + horaInicio + " llega hasta " + rango.getFin()
+                throw new SolicitudInvalidaException("Falta el archivo de ventas " + archivo + ": la simulación de "
+                        + dias + " días desde " + fechaInicio + " " + horaInicio + " llega hasta " + rango.getFin()
                         + "; cargue ese archivo o elija otra fecha u hora de inicio");
             }
         }

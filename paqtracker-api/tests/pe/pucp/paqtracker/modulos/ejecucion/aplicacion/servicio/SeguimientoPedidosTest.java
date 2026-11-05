@@ -88,7 +88,7 @@ class SeguimientoPedidosTest {
 
         DetallePedido detalle = seguimiento.detalle(1, 5).orElseThrow();
         assertEquals("EN_TRANSITO", detalle.pedido().estado());
-        assertEquals(List.of("Registrado", "Despachado", "Respaldo por averia", "Despachado"),
+        assertEquals(List.of("Registrado", "Despachado", "Respaldo por avería", "Despachado"),
                 detalle.hitos().stream().map(HitoPedido::titulo).toList());
         assertEquals(1, seguimiento.indicadores(simulacion, 5).unidadesAveriadas());
     }
@@ -117,7 +117,7 @@ class SeguimientoPedidosTest {
         assertEquals("Trasvasado", trasvasado.hitos().get(trasvasado.hitos().size() - 1).titulo());
         DetallePedido propio = seguimiento.detalle(2, 5).orElseThrow();
         assertEquals(receptora, propio.pedido().unidad());
-        assertEquals("Desvio por trasvase", propio.hitos().get(propio.hitos().size() - 1).titulo());
+        assertEquals("Desvío por trasvase", propio.hitos().get(propio.hitos().size() - 1).titulo());
     }
 
     @Test
@@ -137,7 +137,7 @@ class SeguimientoPedidosTest {
         assertEquals("EN_TRANSITO", pedido.estado());
         assertEquals(etaOriginal + Duration.ofMinutes(ConfiguracionDominio.AVERIA_TIPO1_MINUTOS).toMillis(),
                 pedido.etaMs());
-        assertEquals("Retrasado por averia", seguimiento.detalle(1, 5).orElseThrow().hitos().get(2).titulo());
+        assertEquals("Retrasado por avería", seguimiento.detalle(1, 5).orElseThrow().hitos().get(2).titulo());
     }
 
     private static SimulacionEnCurso simulacion(List<Pedido> pedidos) {

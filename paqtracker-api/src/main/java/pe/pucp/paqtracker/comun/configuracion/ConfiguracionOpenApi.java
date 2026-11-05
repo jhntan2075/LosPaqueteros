@@ -20,8 +20,8 @@ public class ConfiguracionOpenApi {
         return new OpenAPI().info(new Info()
                 .title("PaqTracker API")
                 .version("v1")
-                .description("API de operacion de PaqTracker: registro de pedidos, carga de archivos de entrada, "
-                        + "ejecuciones (dia a dia, simulacion de periodo y colapso) y configuracion del dominio. "
-                        + "El estado en vivo de cada ejecucion se difunde por STOMP en /ws."));
+                .description("API de operación de PaqTracker: registro de pedidos, carga de archivos de entrada, "
+                        + "ejecuciones (día a día, simulación de periodo y colapso) y configuración del dominio. "
+                        + "El estado en vivo de cada ejecución se difunde por STOMP en /ws."));
     }
 }
