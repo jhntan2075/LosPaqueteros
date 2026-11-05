@@ -30,13 +30,22 @@ const FUENTES: Record<TipoUnidad, FuenteIcono> = {
 
 /** Gris sólido cuando no hay dato; distinto del "vacío", que se dibuja hueco. */
 export const COLOR_SIN_DATO = '#64748B';
-const COLOR_AVERIADA = '#B91C1C';
 
-type UnidadConCarga = Pick<UnidadOperacion, 'tipo' | 'estado' | 'carga' | 'capacidad'>;
+/**
+ * Color de cada tipo de avería (D10–D12): fuera de la paleta del semáforo, para que el rojo siga
+ * significando "casi lleno". Contraste ≥ 5:1 sobre blanco. La insignia suma número y forma por tipo.
+ */
+export const COLOR_AVERIA: Record<1 | 2 | 3, string> = { 1: '#0E7490', 2: '#9D174D', 3: '#0F172A' };
+/** Averiada sin detalle de la avería (aún no llegó del servidor). */
+export const COLOR_AVERIADA_SIN_TIPO = '#334155';
 
-/** Color de una unidad en toda la interfaz: rojo si está averiada; si no, el semáforo + vacío de su carga. */
-export const colorDeUnidad = (u: Omit<UnidadConCarga, 'tipo'>) =>
-  u.estado === 'AVERIADA' ? COLOR_AVERIADA : COLOR_SEMAFORO[nivelDeOcupacion(u.carga, u.capacidad)];
+type UnidadConCarga = Pick<UnidadOperacion, 'tipo' | 'estado' | 'carga' | 'capacidad'> & Partial<Pick<UnidadOperacion, 'averia'>>;
+
+/** Color de una unidad en toda la interfaz: el de su tipo de avería si está averiada; si no, el semáforo + vacío de su carga. */
+export const colorDeUnidad = (u: Omit<UnidadConCarga, 'tipo'>) => {
+  if (u.estado === 'AVERIADA') return u.averia ? COLOR_AVERIA[u.averia.tipo] : COLOR_AVERIADA_SIN_TIPO;
+  return COLOR_SEMAFORO[nivelDeOcupacion(u.carga, u.capacidad)];
+};
 
 /** Unidad sin carga (y no averiada): su ícono va hueco. */
 export const unidadVacia = (u: Omit<UnidadConCarga, 'tipo'>) =>

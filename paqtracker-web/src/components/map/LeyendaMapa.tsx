@@ -1,6 +1,6 @@
 import React from 'react';
 import { X } from 'lucide-react';
-import { ALERTA_STOCK_BAJO, NOMBRE_CARGA, RANGO_HOLGURA, RANGO_OCUPACION, RANGO_STOCK } from '../../config/glosario';
+import { ALERTA_STOCK_BAJO, NOMBRE_CARGA, RANGO_HOLGURA, RANGO_OCUPACION, RANGO_STOCK, nombreAveria } from '../../config/glosario';
 import { NIVELES_CARGA } from '../../lib/semaforo';
 import { CAPAS, type Capa } from './capas';
 import { iconoVehiculo } from './iconosVehiculo';
@@ -8,6 +8,7 @@ import {
   AlmacenCentral,
   AlmacenIntermedio,
   COLOR_EN_ENTREGA,
+  InsigniaAveria,
   InsigniaStockBajo,
   MarcaBloqueo,
   MarcaSemaforo,
@@ -110,6 +111,18 @@ export const LeyendaMapa: React.FC<LeyendaMapaProps> = ({ onCerrar, capas, onCam
       <Fila simbolo={<IconoUnidad tipo="MOTO" />} nombre="Moto" />
       <Fila simbolo={<IconoUnidad tipo="BICICLETA" />} nombre="Bicicleta" />
       <Fila simbolo={<IconoUnidad tipo="AUTO" hueco />} nombre="Unidad vacía" detalle="ícono hueco" />
+      {([1, 2, 3] as const).map((tipo) => (
+        <Fila
+          key={tipo}
+          simbolo={
+            <Simbolo caja="-12 -12 24 24">
+              <InsigniaAveria tipo={tipo} restante={0.65} />
+            </Simbolo>
+          }
+          nombre={`Avería ${nombreAveria(tipo).toLowerCase()}`}
+          detalle={tipo === 1 ? 'anillo = lo que falta' : undefined}
+        />
+      ))}
       <Fila simbolo={<Simbolo caja="-14 -27 28 29"><PinDestino color={VERDE} /></Simbolo>} nombre="Destino" detalle="color = holgura" />
       <Fila simbolo={<Simbolo caja="-14 -27 28 29"><PinDestino color={ROJO} critico /></Simbolo>} nombre="Destino crítico" />
       <Fila simbolo={<Simbolo caja="-14 -27 28 29"><PinDestino color={COLOR_EN_ENTREGA} /></Simbolo>} nombre="Entregando ahora" detalle="la unidad está en el destino" />

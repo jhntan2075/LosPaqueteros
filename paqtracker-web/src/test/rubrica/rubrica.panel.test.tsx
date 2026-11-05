@@ -257,7 +257,8 @@ describe('Rúbrica · panel · unidades de transporte', () => {
     expect(estadoA01).not.toEqual(estadoB01);
     expect(estadoB01).toMatch(/Averiada/i);
     expect(panel().getByText(/Averiada · /)).toBeTruthy();
-    // En el mapa, la averiada lleva una marca ✕ junto a su código.
-    expect(objetoMapa(container, 'vehiculo:B-01')!.textContent).toContain('✕ B-01');
+    // En el mapa, la averiada lleva la insignia de su tipo y la hora a la que vuelve.
+    expect(objetoMapa(container, 'vehiculo:B-01')!.querySelector('[data-averia="1"]')).toBeTruthy();
+    expect(objetoMapa(container, 'vehiculo:B-01')!.textContent).toContain('vuelve');
   });
 });

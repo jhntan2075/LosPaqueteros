@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useImperativeHandle, forwardRef } from 'react';
 import { Search, ZoomIn, ZoomOut, Maximize2, MapIcon, ListFilter, X } from 'lucide-react';
 import { ALMACENES, MALLA_ALTO_KM, MALLA_ANCHO_KM, TIPOS_UNIDAD, UNIDADES, type IdAlmacen } from '../../config/dominio';
-import { ALERTA_STOCK_BAJO, NOMBRE_CARGA, NOMBRE_HOLGURA, SITUACION_UNIDAD } from '../../config/glosario';
+import { ALERTA_STOCK_BAJO, NOMBRE_CARGA, NOMBRE_HOLGURA, SITUACION_UNIDAD, nombreAveria } from '../../config/glosario';
 import { useCerrarConEscape } from '../../hooks/useCerrarConEscape';
 import { useTamanoElemento } from '../../hooks/useTamanoElemento';
 import { capitalizar, formatearMomento } from '../../lib/formato';
@@ -27,7 +27,16 @@ import type { Capa } from './capas';
 import { FiltrosMapa, type ConteosFiltros } from './FiltrosMapa';
 import { IndicadoresGlobales } from './IndicadoresGlobales';
 import { LeyendaMapa } from './LeyendaMapa';
-import { AlmacenCentral, AlmacenIntermedio, CENTRO_CABEZA_PIN, COLOR_EN_ENTREGA, InsigniaStockBajo, MarcaBloqueo, PinDestino } from './simbolos';
+import {
+  AlmacenCentral,
+  AlmacenIntermedio,
+  CENTRO_CABEZA_PIN,
+  COLOR_EN_ENTREGA,
+  InsigniaAveria,
+  InsigniaStockBajo,
+  MarcaBloqueo,
+  PinDestino,
+} from './simbolos';
 import haloSeleccion from '../../assets/figma/pedidos/halo.svg';
 import type { Coordenada } from '../../types/domain';
 import type { AlmacenOperacion, BloqueoOperacion, UnidadOperacion } from '../../types/operacion';
@@ -583,6 +592,12 @@ interface CapasMapaProps {
   mostrarReticula: boolean;
 }
 
+/** Fracción de la avería que falta cumplir (1 al empezar, 0 al reincorporarse). */
+const fraccionRestante = (desde: Date, vuelve: Date, ahora: Date) => {
+  const total = vuelve.getTime() - desde.getTime();
+  return total <= 0 ? 0 : Math.min(1, Math.max(0, (vuelve.getTime() - ahora.getTime()) / total));
+};
+
 /** Pedidos que se nombran en el tooltip de un almacén; el resto se resume como "+N". */
 const MAX_PEDIDOS_TOOLTIP = 3;
 
@@ -622,7 +637,7 @@ function contenidoTooltip(
       titulo: `${capitalizar(UNIDADES[u.tipo].nombre)} ${u.codigo}`,
       detalle: averiada
         ? u.averia
-          ? `Averiada · tipo ${u.averia.tipo} · vuelve ${formatearMomento(u.averia.vuelve, reloj)}`
+          ? `Averiada · ${nombreAveria(u.averia.tipo).toLowerCase()} · vuelve ${formatearMomento(u.averia.vuelve, reloj)}`
           : 'Averiada'
         : `Carga ${u.carga}/${capacidad} · ${capacidad === 0 ? 0 : Math.round((u.carga / capacidad) * 100)} % · ${NOMBRE_CARGA[nivelDeOcupacion(u.carga, capacidad)].toLowerCase()}`,
       extra: averiada
@@ -733,6 +748,8 @@ const CapasMapa: React.FC<CapasMapaProps> = ({
   nodoActivo,
   mostrarReticula,
 }) => {
+  // Reloj simulado de la ejecución: mide cuánto le falta a cada avería.
+  const { reloj } = useDatosOperacion();
   const origen = proyectar(vista, { x: 0, y: 0 });
   const paso = pasoCuadricula(vista.escala);
   const pasoPx = paso * vista.escala;
@@ -916,9 +933,24 @@ const CapasMapa: React.FC<CapasMapaProps> = ({
                   transform={averiada ? undefined : orientacionIcono(u)}
                 />
                 {averiada ? (
-                  <text x={rotuloX} y="4" fill="#B91C1C" fontSize="12" fontWeight="600" {...halo}>
-                    ✕ {u.codigo}
-                  </text>
+                  u.averia ? (
+                    // Ícono · insignia del tipo con el anillo de lo que falta · código y hora de regreso.
+                    <>
+                      <g transform={`translate(${rotuloX + 9}, 0)`} data-averia={u.averia.tipo}>
+                        <InsigniaAveria tipo={u.averia.tipo} restante={fraccionRestante(u.averia.desde, u.averia.vuelve, reloj)} />
+                      </g>
+                      <text x={rotuloX + 23} y="-1" fill={color} fontSize="12" fontWeight="600" {...halo}>
+                        {u.codigo}
+                      </text>
+                      <text x={rotuloX + 23} y="11" fill="#475569" fontSize="11" {...halo}>
+                        vuelve {formatearMomento(u.averia.vuelve, reloj)}
+                      </text>
+                    </>
+                  ) : (
+                    <text x={rotuloX} y="4" fill={color} fontSize="12" fontWeight="600" {...halo}>
+                      {u.codigo} · averiada
+                    </text>
+                  )
                 ) : (
                   <>
                     <text x={rotuloX} y="-1" fill="#64748B" fontSize="12" fontWeight="500" {...halo}>

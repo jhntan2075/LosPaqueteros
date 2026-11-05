@@ -1,5 +1,6 @@
 import React from 'react';
 import { COLOR_SEMAFORO, type NivelCarga } from '../../lib/semaforo';
+import { COLOR_AVERIA } from './iconosVehiculo';
 
 // Símbolos del mapa como elementos SVG, con la geometría de los frames de Figma (pin de destino,
 // depósito central e intermedio). Los usan el mapa y su leyenda, para que la leyenda muestre
@@ -80,6 +81,42 @@ export const InsigniaStockBajo: React.FC = () => (
     <circle cy="3" r="0.9" fill="#FFFFFF" />
   </g>
 );
+
+const OCTAGONO = 'M-2.9 -7L2.9 -7L7 -2.9L7 2.9L2.9 7L-2.9 7L-7 2.9L-7 -2.9Z';
+const RADIO_ANILLO = 10;
+
+/**
+ * Insignia de avería (D10–D13) centrada en (0, 0): número del tipo sobre una forma propia de cada tipo
+ * (1 círculo, 2 rombo, 3 octágono) y con su color. Con `restante` (0–1), un anillo alrededor se vacía a
+ * medida que se acerca la reincorporación.
+ */
+export const InsigniaAveria: React.FC<{ tipo: 1 | 2 | 3; restante?: number }> = ({ tipo, restante }) => {
+  const color = COLOR_AVERIA[tipo];
+  const perimetro = 2 * Math.PI * RADIO_ANILLO;
+  return (
+    <g>
+      {restante !== undefined && (
+        <>
+          <circle r={RADIO_ANILLO} fill="#FFFFFF" stroke="#E2E8F0" strokeWidth="2.5" filter={SOMBRA} />
+          <circle
+            r={RADIO_ANILLO}
+            fill="none"
+            stroke={color}
+            strokeWidth="2.5"
+            strokeDasharray={`${perimetro * Math.min(1, Math.max(0, restante))} ${perimetro}`}
+            transform="rotate(-90)"
+          />
+        </>
+      )}
+      {tipo === 1 && <circle r="6.5" fill={color} />}
+      {tipo === 2 && <path d="M0 -7.5L7.5 0L0 7.5L-7.5 0Z" fill={color} />}
+      {tipo === 3 && <path d={OCTAGONO} fill={color} />}
+      <text y="3.2" textAnchor="middle" fontSize="9" fontWeight="700" fill="#FFFFFF">
+        {tipo}
+      </text>
+    </g>
+  );
+};
 
 /** Tramo bloqueado: aspa roja sobre fondo claro, centrada en el punto medio del tramo. */
 export const MarcaBloqueo: React.FC = () => (

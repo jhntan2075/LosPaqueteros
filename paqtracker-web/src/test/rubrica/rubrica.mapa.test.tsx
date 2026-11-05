@@ -2,9 +2,10 @@
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { GridMap } from '../../components/map/GridMap';
-import { colorDeUnidad, iconoDeUnidad } from '../../components/map/iconosVehiculo';
+import { COLOR_AVERIA, COLOR_AVERIADA_SIN_TIPO, colorDeUnidad, iconoDeUnidad } from '../../components/map/iconosVehiculo';
 import { COLOR_SEMAFORO } from '../../lib/semaforo';
 import { LeyendaMapa } from '../../components/map/LeyendaMapa';
+import { InsigniaAveria } from '../../components/map/simbolos';
 import { clienteApi } from '../../services/clienteApi';
 import { construirDatosOperacion } from '../../services/adaptadorOperacion';
 import { INICIO_MS, mensajeEstado } from '../fabricas';
@@ -249,13 +250,13 @@ describe('Rúbrica · MAPA · unidades de transporte', () => {
     expect(tooltip()).toContain('Carga 20/24 · 83 %');
   });
 
-  it('C29 · la carga de la unidad usa semáforo + vacío: vacío 0, verde < 70 %, ámbar ≥ 70 %, rojo ≥ 90 %, y rojo si está averiada', () => {
+  it('C29 · la carga de la unidad usa semáforo + vacío: vacío 0, verde < 70 %, ámbar ≥ 70 %, rojo ≥ 90 %; la averiada usa el color de su avería', () => {
     const color = (carga: number, estado: 'EN_RUTA' | 'AVERIADA' = 'EN_RUTA') => colorDeUnidad({ carga, capacidad: 10, estado });
     expect(color(0)).toBe(COLOR_SEMAFORO.VACIO);
     expect(color(6)).toBe(COLOR_SEMAFORO.VERDE);
     expect(color(7)).toBe(COLOR_SEMAFORO.AMBAR);
     expect(color(9)).toBe(COLOR_SEMAFORO.ROJO);
-    expect(color(0, 'AVERIADA')).toBe('#B91C1C');
+    expect(color(0, 'AVERIADA')).toBe(COLOR_AVERIADA_SIN_TIPO);
     // En el mapa, la barra de carga de A-01 (83 %) es ámbar y la de M-01 (100 %) roja.
     const { container } = montarOperacion();
     const barra = (codigo: string) => objetoMapa(container, `vehiculo:${codigo}`)!.querySelectorAll('rect')[1].getAttribute('fill');
@@ -404,5 +405,44 @@ describe('Rúbrica · CIERRE · indicadores globales', () => {
     fireEvent.click(within(screen.getByRole('group', { name: 'Tipo de unidad' })).getByRole('button', { name: /^Moto/ }));
     expect(indicadores().getByRole('button', { name: /^Flota: 78 %/ })).toBeTruthy();
     localStorage.clear();
+  });
+});
+
+describe('Rúbrica · CIRCUNSTANCIAS · averías en el mapa', () => {
+  it('D10 · cada tipo de avería se distingue en el mapa: número, forma y color propios', () => {
+    const { container } = montarOperacion();
+    const insignia = objetoMapa(container, 'vehiculo:B-01')!.querySelector('[data-averia="1"]')!;
+    expect(insignia.textContent).toBe('1');
+    // Los tres tipos usan formas distintas (círculo, rombo, octágono) además del color.
+    const formas = ([1, 2, 3] as const).map((tipo) => {
+      const { container: c } = render(
+        <svg>
+          <InsigniaAveria tipo={tipo} />
+        </svg>,
+      );
+      return c.querySelector('circle, path')!.outerHTML.split(' ')[0] + (c.querySelector('path')?.getAttribute('d')?.length ?? 0);
+    });
+    expect(new Set(formas).size).toBe(3);
+  });
+
+  it('D11–D12 · los colores de avería son distintos entre sí y del semáforo, y contrastan con el mapa', () => {
+    const colores = Object.values(COLOR_AVERIA);
+    expect(new Set(colores).size).toBe(3);
+    colores.forEach((c) => {
+      expect(Object.values(COLOR_SEMAFORO)).not.toContain(c);
+      expect(contrasteSobreBlanco(c)).toBeGreaterThanOrEqual(4.5);
+    });
+    const { container } = montarOperacion();
+    expect(objetoMapa(container, 'vehiculo:B-01')!.querySelector('[data-averia="1"] circle[r="6.5"]')!.getAttribute('fill')).toBe(COLOR_AVERIA[1]);
+  });
+
+  it('D13 · la avería muestra cuánto falta: anillo de progreso y hora de regreso', () => {
+    const { container } = montarOperacion();
+    const unidad = objetoMapa(container, 'vehiculo:B-01')!;
+    const anillo = unidad.querySelector('[data-averia="1"] circle[stroke-dasharray]')!;
+    const [lleno, perimetro] = anillo.getAttribute('stroke-dasharray')!.split(' ').map(Number);
+    expect(lleno).toBeGreaterThan(0);
+    expect(lleno).toBeLessThanOrEqual(perimetro);
+    expect(unidad.textContent).toMatch(/vuelve (hoy|mañana) \d{2}:\d{2}/);
   });
 });
