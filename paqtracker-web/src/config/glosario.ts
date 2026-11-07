@@ -1,4 +1,4 @@
-import { CORTE_HOLGURA, CORTE_INVENTARIO, CORTE_OCUPACION, CORTE_STOCK, esPlazoRegular } from './dominio';
+import { CORTE_HOLGURA, CORTE_INVENTARIO, CORTE_OCUPACION, CORTE_STOCK, DURACIONES_AVERIA, esPlazoRegular, formatearDuracion } from './dominio';
 import type { NivelCarga } from '../lib/semaforo';
 import type { EstadoFraccion, EstadoUnidad, SituacionUnidad } from '../types/operacion';
 import type { NivelHolgura } from '../types/pedidos';
@@ -74,12 +74,22 @@ export const TIPO_AVERIA: Record<
   1: {
     nombre: 'Menor',
     ejemplo: 'llanta desinflada',
-    duracion: '2 h detenida en el lugar',
+    // Duración vigente (configurable): se lee al pintar, no al cargar el módulo.
+    get duracion() {
+      return `${formatearDuracion(DURACIONES_AVERIA.tipo1Minutos)} detenida en el lugar`;
+    },
     impacto: (varios) =>
       varios ? 'se quedan en la unidad; otra unidad en ruta puede recogerlos.' : 'se queda en la unidad; otra unidad en ruta puede recogerlo.',
   },
   2: { nombre: 'Intermedia', ejemplo: 'falla de transmisión', duracion: 'Hasta el fin del siguiente turno', impacto: REPLANIFICA },
-  3: { nombre: 'Mayor', ejemplo: 'mantenimiento', duracion: '2 días o más', impacto: REPLANIFICA },
+  3: {
+    nombre: 'Mayor',
+    ejemplo: 'mantenimiento',
+    get duracion() {
+      return `${formatearDuracion(DURACIONES_AVERIA.tipo3MinimoMinutos)} o más`;
+    },
+    impacto: REPLANIFICA,
+  },
 };
 
 /** Cómo se ve cada tipo de avería en el mapa (forma y color de la insignia, COLOR_AVERIA). */

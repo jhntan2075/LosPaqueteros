@@ -9,6 +9,8 @@ function mensajeDeError(error: unknown, unidad: string): string {
     return 'No se pudo registrar la avería. Revisa la conexión e inténtalo de nuevo.';
   }
   if (error.estado === 404) return `No se encontró la unidad ${unidad} en esta ejecución.`;
+  // 400 por el instante (ya pasó o después del fin): el mensaje de la API dice qué corregir.
+  if (error.estado === 400 && /instante/i.test(error.message)) return error.message;
   if (error.estado === 409) {
     if (/averiada/i.test(error.message)) return `${unidad} ya está averiada.`;
     if (/colapso/i.test(error.message)) return 'Esta simulación no admite averías.';
@@ -20,10 +22,10 @@ function mensajeDeError(error: unknown, unidad: string): string {
 export const ProveedorAverias: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [pendientes, setPendientes] = useState<Record<string, RespuestaRegistroAveriaApi>>({});
 
-  const registrar = useCallback(async (ejecucionId: string, unidad: string, tipo: 1 | 2 | 3) => {
+  const registrar = useCallback(async (ejecucionId: string, unidad: string, tipo: 1 | 2 | 3, instanteMs?: number) => {
     let respuesta: RespuestaRegistroAveriaApi;
     try {
-      respuesta = await clienteApi.registrarAveria(ejecucionId, unidad, tipo);
+      respuesta = await clienteApi.registrarAveria(ejecucionId, unidad, tipo, instanteMs);
     } catch (error) {
       throw new Error(mensajeDeError(error, unidad));
     }

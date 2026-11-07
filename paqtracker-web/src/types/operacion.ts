@@ -75,11 +75,14 @@ export interface UnidadOperacion {
   carga: number;
   /** Capacidad de la unidad según el servidor (capacidadMaxima). */
   capacidad: number;
-  /** Recorrido completo desde el almacén de origen; el tramo hasta `posicion` ya se recorrió. */
+  /** Ruta que le falta recorrer: desde `posicion` hasta el almacén de retorno (lo recorrido ya no está). */
   ruta: Coordenada[];
+  /** Km que le faltan de toda la ruta en curso, hasta el almacén de retorno (E16). */
+  kmPorRecorrer: number;
   paradas: Parada[];
   paradaActual: number; // 1-based, de `totalParadas`
   totalParadas: number;
+  /** Km recorridos de la ruta en curso desde que salió de su almacén (E17); 0 fuera de ruta. */
   distanciaRecorridaKm: number;
   conductor: string;
   alimentacion: { hora: string; cumplida: boolean };
@@ -96,6 +99,10 @@ export interface TramoUnidad {
   destino: Coordenada;
   salida: Date;
   llegada: Date;
+  /** Km recorridos del tramo desde su origen inmediato (E09). */
+  kmDesdeOrigen: number;
+  /** Km que faltan para llegar al destino inmediato (E08). */
+  kmAlDestino: number;
 }
 
 export interface AveriaUnidad {

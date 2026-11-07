@@ -4,6 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import pe.pucp.paqtracker.comun.excepcion.OperacionNoPermitidaException;
 import pe.pucp.paqtracker.comun.excepcion.RecursoNoEncontradoException;
+import pe.pucp.paqtracker.comun.excepcion.SolicitudInvalidaException;
 import pe.pucp.paqtracker.comun.tiempo.LineaTiempo;
 import pe.pucp.paqtracker.modelo.Averia;
 import pe.pucp.paqtracker.modelo.Bloqueo;
@@ -229,11 +230,12 @@ public final class MotorEjecucion {
     }
 
     /**
-     * Registra una averia en el instante actual del reloj (CU-13). Valida la averia contra el estado de
-     * la ejecucion y la encola en la agenda, sin tocar la simulacion: el motor la aplica al inicio de su
-     * siguiente salto Sc y en ese momento repara su carga (trasvase o respaldo), sin replanificar la cola.
+     * Registra una averia en el instante actual del reloj o en uno futuro (CU-13, B07-B09). Valida la
+     * averia contra el estado de la ejecucion y la encola en la agenda, sin tocar la simulacion: el motor la
+     * aplica en el primer salto Sc que alcanza su instante y en ese momento repara su carga (trasvase o
+     * respaldo), sin replanificar la cola. Mientras no se aplica, se puede cancelar.
      *
-     * @param solicitud unidad y tipo de la averia
+     * @param solicitud unidad, tipo e instante opcional de la averia
      * @return averia programada, con su instante y su reincorporacion estimada
      * @throws OperacionNoPermitidaException si el escenario no admite averias, la ejecucion no esta en
      *                                       curso ni pausada, o la unidad ya esta averiada
@@ -251,9 +253,9 @@ public final class MotorEjecucion {
                     || simulacion.tieneAveriaPendiente(idVehiculo)) {
                 throw new OperacionNoPermitidaException("La unidad " + codigo + " ya está averiada");
             }
-            int instante = instanteParaAveria();
+            int instante = instanteSolicitado(solicitud.instanteMs());
             agenda.encolar(new GestorEventos.EventoAveria(idVehiculo, solicitud.tipo(), instante));
-            Averia averia = new Averia(instante, idVehiculo, solicitud.tipo());
+            Averia averia = new Averia(instante, idVehiculo, solicitud.tipo(), simulacion.getDuracionesAveria());
             return new AveriaProgramada(configuracion.id(), codigo, solicitud.tipo().getNumero(),
                     lineaTiempo.aMilisegundos(instante),
                     lineaTiempo.aMilisegundos(averia.getInstanteReincorporacion()),
@@ -290,12 +292,38 @@ public final class MotorEjecucion {
         return enHiloMotor(() -> {
             int instante = instanteParaAveria();
             return Arrays.stream(TipoAveria.values()).map(tipo -> {
-                Averia averia = new Averia(instante, -1, tipo);
+                Averia averia = new Averia(instante, -1, tipo, simulacion.getDuracionesAveria());
                 return new EstimacionAveria(tipo.getNumero(), lineaTiempo.aMilisegundos(instante),
                         lineaTiempo.aMilisegundos(averia.getInstanteReincorporacion()),
                         averia.tieneTraslado() ? lineaTiempo.aMilisegundos(averia.getInstanteTraslado()) : null);
             }).toList();
         });
+    }
+
+    /**
+     * Minuto en que ocurre una averia pedida para el instante dado. Un instante que ya paso por menos de un
+     * minuto (la demora entre el formulario y la API) se toma como "ahora".
+     *
+     * @param instanteMs instante simulado pedido, en epoch ms; null para "ahora"
+     * @return minuto de la averia
+     * @throws SolicitudInvalidaException si el instante ya paso o cae despues del fin de la ejecucion
+     */
+    private int instanteSolicitado(Long instanteMs) {
+        int minimo = instanteParaAveria();
+        if (instanteMs == null) {
+            return minimo;
+        }
+        ZonedDateTime fecha = Instant.ofEpochMilli(instanteMs).atZone(lineaTiempo.getMinutoCero().getZone());
+        int pedido = (int) Math.ceil(lineaTiempo.aMinuto(fecha));
+        if (pedido < Math.floor(minutoVisible()) - 1) {
+            throw new SolicitudInvalidaException("El instante de la avería (" + LineaTiempo.formatear(fecha)
+                    + ") ya pasó: elija ahora o un instante futuro del reloj simulado");
+        }
+        if (pedido > horizonte) {
+            throw new SolicitudInvalidaException("El instante de la avería (" + LineaTiempo.formatear(fecha)
+                    + ") es posterior al fin de la ejecución (" + lineaTiempo.formatear(horizonte) + ")");
+        }
+        return Math.max(pedido, minimo);
     }
 
     /** Primer minuto en que el motor puede aplicar una averia registrada ahora. */
@@ -383,7 +411,8 @@ public final class MotorEjecucion {
         int instantePaso = simulacion.getUltimoInstante() + 1;
         for (GestorEventos.EventoAveria evento : eventos) {
             int instante = Math.max(evento.instante(), simulacion.getUltimoInstante() + 1);
-            simulacion.agregarAveria(new Averia(instante, evento.idVehiculo(), evento.tipo()));
+            simulacion.agregarAveria(new Averia(instante, evento.idVehiculo(), evento.tipo(),
+                    simulacion.getDuracionesAveria()));
             instantePaso = Math.max(instantePaso, instante);
         }
         ejecutarPaso(instantePaso, false);

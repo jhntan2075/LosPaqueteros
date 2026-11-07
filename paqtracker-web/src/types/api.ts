@@ -74,6 +74,8 @@ export interface UnidadEnMapaApi {
   paradas: ParadaPendienteApi[];
   /** Avería vigente si la unidad está averiada; null en los demás estados. */
   averia: AveriaEnCursoApi | null;
+  /** Longitud total de la ruta en curso, del almacén de origen al de retorno; 0 fuera de ruta (E17). */
+  distanciaRutaKm?: number;
 }
 
 export interface AlmacenEnMapaApi {
@@ -329,6 +331,38 @@ export interface CortesCargaApi {
   vacio: number;
   ambar: number;
   rojo: number;
+}
+
+/** Almacén en GET/PUT /api/configuracion/parametros; capacidad null en el central (ilimitado). */
+export interface ParametrosAlmacenApi {
+  codigo: 'CENTRAL' | 'INTERMEDIO_1' | 'INTERMEDIO_2';
+  nombre?: string;
+  x: number;
+  y: number;
+  capacidad: number | null;
+}
+
+/** Tipo de unidad en GET/PUT /api/configuracion/parametros. */
+export interface ParametrosUnidadApi {
+  tipo: 'AUTO' | 'MOTO' | 'BICICLETA';
+  capacidad: number;
+  velocidadKmH: number;
+  costoPorKm: number;
+}
+
+/** Duraciones de las averías, en minutos. */
+export interface ParametrosAveriaApi {
+  tipo1Minutos: number;
+  permanenciaSitioMinutos: number;
+  tipo3MinimoMinutos: number;
+  trasvaseMinutos: number;
+}
+
+/** Cuerpo de GET y PUT /api/configuracion/parametros (B02, B04, B07-B09). */
+export interface ParametrosDominioApi {
+  almacenes: ParametrosAlmacenApi[];
+  unidades: ParametrosUnidadApi[];
+  averias: ParametrosAveriaApi;
 }
 
 /** Cuerpo de GET y PUT /api/configuracion/semaforo. */

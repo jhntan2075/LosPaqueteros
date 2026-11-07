@@ -127,6 +127,29 @@ class IntegracionIncidenciasTest {
         detener(cliente, id);
     }
 
+    @Test
+    void registrarAveria_conInstanteFuturo_quedaProgramadaParaEseInstante() {
+        RestClient cliente = cliente();
+        String id = crear(cliente, "SIMULACION_PERIODO");
+        cliente.post().uri("/api/ejecuciones/{id}/iniciar", id).retrieve().toBodilessEntity();
+        Map<?, ?> ahora = (Map<?, ?>) cliente.get().uri("/api/ejecuciones/{id}/averias/estimacion", id).retrieve()
+                .body(List.class).get(0);
+        long instanteAhora = ((Number) ahora.get("instanteMs")).longValue();
+        long enDosHoras = instanteAhora + 2 * 60 * 60_000L;
+
+        Map<?, ?> respuesta = cliente.post().uri("/api/ejecuciones/{id}/averias", id)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(Map.of("unidad", "B-01", "tipo", 1, "instanteMs", enDosHoras)).retrieve().body(Map.class);
+
+        assertEquals(enDosHoras, ((Number) respuesta.get("instanteMs")).longValue());
+        assertEquals(enDosHoras + 120 * 60_000L, ((Number) respuesta.get("reincorporacionMs")).longValue());
+        assertEquals(SOLICITUD_INVALIDA, registrar(cliente, id,
+                Map.of("unidad", "B-02", "tipo", 1, "instanteMs", instanteAhora - 10 * 60 * 60_000L)));
+        assertEquals(SOLICITUD_INVALIDA, registrar(cliente, id,
+                Map.of("unidad", "B-02", "tipo", 1, "instanteMs", instanteAhora + 30L * 24 * 60 * 60_000L)));
+        detener(cliente, id);
+    }
+
     private static int cancelar(RestClient cliente, String id, long averiaId) {
         return estado(cliente.delete().uri("/api/ejecuciones/{id}/averias/{averiaId}", id, averiaId));
     }

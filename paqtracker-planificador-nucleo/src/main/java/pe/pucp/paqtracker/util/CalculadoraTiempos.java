@@ -76,7 +76,22 @@ public final class CalculadoraTiempos {
      * @return minutos de viaje, redondeados hacia arriba
      */
     public static int minutosDeViaje(int distanciaKilometros, TipoVehiculo tipo) {
-        return (int) Math.ceil(distanciaKilometros * 60.0 / tipo.getVelocidad());
+        return minutosDeViaje(distanciaKilometros, tipo.getVelocidad());
+    }
+
+    /**
+     * Minutos de viaje de un tramo con la velocidad configurada de la unidad (B04).
+     *
+     * @param distanciaKilometros distancia del tramo
+     * @param vehiculo            unidad que lo recorre
+     * @return minutos de viaje, redondeados hacia arriba
+     */
+    public static int minutosDeViaje(int distanciaKilometros, Vehiculo vehiculo) {
+        return minutosDeViaje(distanciaKilometros, vehiculo.getVelocidad());
+    }
+
+    private static int minutosDeViaje(int distanciaKilometros, int velocidadKmH) {
+        return (int) Math.ceil(distanciaKilometros * 60.0 / velocidadKmH);
     }
 
     /**
@@ -108,7 +123,7 @@ public final class CalculadoraTiempos {
             int tramo = distancia(escenario, actual, entrega.getDestino(), reloj, ruta.getVehiculo());
             distanciaTotal += tramo;
             reloj = CalendarioTurnos.avanzarConPausa(idVehiculo, reloj,
-                    minutosDeViaje(tramo, ruta.getVehiculo().getTipo()));
+                    minutosDeViaje(tramo, ruta.getVehiculo()));
             int holgura = entrega.getHoraLimite() - reloj;
             if (holgura < 0) {
                 incumplimientos++;
@@ -124,7 +139,7 @@ public final class CalculadoraTiempos {
                     ruta.getVehiculo());
             distanciaTotal += tramoFinal;
             reloj = CalendarioTurnos.avanzarConPausa(idVehiculo, reloj,
-                    minutosDeViaje(tramoFinal, ruta.getVehiculo().getTipo()));
+                    minutosDeViaje(tramoFinal, ruta.getVehiculo()));
         }
         int holgura = holguraMinima == Integer.MAX_VALUE ? 0 : holguraMinima;
         return new int[]{distanciaTotal, reloj, incumplimientos, holgura};
@@ -167,7 +182,7 @@ public final class CalculadoraTiempos {
                                     TipoTramo tipo, int salida) {
         int distancia = distancia(escenario, origen, destino, salida, vehiculo);
         int llegada = CalendarioTurnos.avanzarConPausa(vehiculo.getId(), salida,
-                minutosDeViaje(distancia, vehiculo.getTipo()));
+                minutosDeViaje(distancia, vehiculo));
         return new Tramo(tipo, origen, destino, salida, llegada, distancia, Tramo.SIN_PEDIDO, 0,
                 camino(escenario, origen, destino, salida, vehiculo));
     }
@@ -190,11 +205,10 @@ public final class CalculadoraTiempos {
         List<Tramo> tramos = new ArrayList<>();
         int reloj = salida;
         int idVehiculo = vehiculo.getId();
-        TipoVehiculo tipo = vehiculo.getTipo();
         Nodo actual = inicio;
         for (Entrega entrega : secuencia) {
             int distancia = distancia(escenario, actual, entrega.getDestino(), reloj, vehiculo);
-            int llegada = CalendarioTurnos.avanzarConPausa(idVehiculo, reloj, minutosDeViaje(distancia, tipo));
+            int llegada = CalendarioTurnos.avanzarConPausa(idVehiculo, reloj, minutosDeViaje(distancia, vehiculo));
             tramos.add(new Tramo(TipoTramo.VIAJE_A_ENTREGA, actual, entrega.getDestino(), reloj, llegada,
                     distancia, entrega.getIdPedido(), entrega.getCantidad(),
                     camino(escenario, actual, entrega.getDestino(), reloj, vehiculo)));

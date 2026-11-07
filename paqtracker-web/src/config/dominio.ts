@@ -1,8 +1,11 @@
 import type { Coordenada } from '../types/domain';
+import type { ParametrosAveriaApi, ParametrosDominioApi } from '../types/api';
 import { obtenerRangos } from './rangosSemaforo';
 
-// Parámetros de negocio del dominio. Replican pe.pucp.paqtracker.modelo.ConfiguracionDominio
-// del planificador: si cambian allá, deben cambiar aquí hasta que paqtracker-api los exponga.
+// Parámetros de negocio del dominio. Los valores de abajo son los por defecto de
+// pe.pucp.paqtracker.modelo.ConfiguracionDominio; los que el operador configura (ubicación de almacenes,
+// capacidad, velocidad y costo de las unidades, duraciones de las averías) llegan de paqtracker-api al
+// arrancar y con cada cambio (aplicarParametrosDominio), y se escriben sobre estos mismos objetos.
 
 export const MALLA_ANCHO_KM = 70;
 export const MALLA_ALTO_KM = 50;
@@ -81,6 +84,57 @@ export const ALMACENES: AlmacenDominio[] = [
   { id: 'INTERMEDIO_1', nombre: 'Intermedio 1', nombreCorto: 'Int. 1', ubicacion: { x: 12, y: 38 } },
   { id: 'INTERMEDIO_2', nombre: 'Intermedio 2', nombreCorto: 'Int. 2', ubicacion: { x: 57, y: 27 } },
 ];
+
+/** Duraciones de las averías vigentes (B07-B09), en minutos. */
+export const DURACIONES_AVERIA: ParametrosAveriaApi = {
+  tipo1Minutos: 120,
+  permanenciaSitioMinutos: 240,
+  tipo3MinimoMinutos: 2 * 1440,
+  trasvaseMinutos: 30,
+};
+
+let versionParametros = 0;
+const oyentesParametros = new Set<() => void>();
+
+/** Cambia cada vez que llegan parámetros nuevos de la API; lo usa useParametrosDominio. */
+export const obtenerVersionParametros = () => versionParametros;
+
+export function suscribirParametros(oyente: () => void): () => void {
+  oyentesParametros.add(oyente);
+  return () => {
+    oyentesParametros.delete(oyente);
+  };
+}
+
+/**
+ * Escribe los parámetros vigentes de la API sobre ALMACENES, UNIDADES y DURACIONES_AVERIA (se mutan en el
+ * lugar, así cada lectura toma el valor nuevo) y avisa a los suscriptores para volver a dibujar.
+ */
+export function aplicarParametrosDominio(parametros: ParametrosDominioApi): void {
+  for (const almacen of parametros.almacenes) {
+    const destino = ALMACENES.find((a) => a.id === almacen.codigo);
+    if (destino) destino.ubicacion = { x: almacen.x, y: almacen.y };
+  }
+  for (const unidad of parametros.unidades) {
+    const destino = UNIDADES[unidad.tipo];
+    if (!destino) continue;
+    destino.capacidad = unidad.capacidad;
+    destino.velocidadKmH = unidad.velocidadKmH;
+    destino.costoKm = unidad.costoPorKm;
+  }
+  Object.assign(DURACIONES_AVERIA, parametros.averias);
+  versionParametros += 1;
+  oyentesParametros.forEach((oyente) => oyente());
+}
+
+/** "2 h", "90 min", "1 h 30 min", "2 días". */
+export function formatearDuracion(minutos: number): string {
+  if (minutos >= 1440 && minutos % 1440 === 0) return `${minutos / 1440} ${minutos === 1440 ? 'día' : 'días'}`;
+  const horas = Math.floor(minutos / 60);
+  const resto = minutos % 60;
+  if (horas === 0) return `${resto} min`;
+  return resto === 0 ? `${horas} h` : `${horas} h ${resto} min`;
+}
 
 /** Plazos de entrega del catálogo, en horas. 36 h es la entrega regular; el resto son priorizadas. */
 export const PLAZOS_HORAS = [36, 18, 12, 8, 4] as const;

@@ -236,6 +236,13 @@ public final class SimulacionEnCurso {
     }
 
     /**
+     * @return duraciones configuradas con que se crean las averias de esta simulacion (B07-B09)
+     */
+    public pe.pucp.paqtracker.modelo.ParametrosDominio.ParametrosAveria getDuracionesAveria() {
+        return orquestador.getDuracionesAveria();
+    }
+
+    /**
      * @return almacenes de la simulacion, con su stock vigente
      */
     public List<Almacen> getAlmacenes() {

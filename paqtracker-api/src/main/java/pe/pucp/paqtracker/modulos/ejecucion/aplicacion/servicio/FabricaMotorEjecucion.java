@@ -3,6 +3,7 @@ package pe.pucp.paqtracker.modulos.ejecucion.aplicacion.servicio;
 import org.springframework.stereotype.Component;
 import pe.pucp.paqtracker.comun.configuracion.PropiedadesDominio;
 import pe.pucp.paqtracker.modelo.Pedido;
+import pe.pucp.paqtracker.modulos.configuracion.dominio.FuenteParametrosDominio;
 import pe.pucp.paqtracker.modulos.configuracion.dominio.FuenteRangosSemaforo;
 import pe.pucp.paqtracker.modulos.difusion.aplicacion.servicio.CodigosFlota;
 import pe.pucp.paqtracker.modulos.difusion.aplicacion.servicio.ServicioDifusion;
@@ -27,6 +28,7 @@ public class FabricaMotorEjecucion {
     private final RepositorioEjecucion repositorio;
     private final PropiedadesDominio propiedades;
     private final FuenteRangosSemaforo semaforo;
+    private final FuenteParametrosDominio parametros;
     private final Clock relojPared;
 
     /**
@@ -35,16 +37,19 @@ public class FabricaMotorEjecucion {
      * @param repositorio           persistencia de ejecuciones
      * @param propiedades           parametros de la operacion
      * @param semaforo              rangos del semaforo vigentes, que cada motor consulta en vivo
+     * @param parametros            parametros del dominio vigentes, que cada ejecucion copia al crearse
      * @param relojPared            reloj real
      */
     public FabricaMotorEjecucion(ServicioPlanificacion servicioPlanificacion, ServicioDifusion servicioDifusion,
                                  RepositorioEjecucion repositorio, PropiedadesDominio propiedades,
-                                 FuenteRangosSemaforo semaforo, Clock relojPared) {
+                                 FuenteRangosSemaforo semaforo, FuenteParametrosDominio parametros,
+                                 Clock relojPared) {
         this.servicioPlanificacion = servicioPlanificacion;
         this.servicioDifusion = servicioDifusion;
         this.repositorio = repositorio;
         this.propiedades = propiedades;
         this.semaforo = semaforo;
+        this.parametros = parametros;
         this.relojPared = relojPared;
     }
 
@@ -57,7 +62,7 @@ public class FabricaMotorEjecucion {
     public MotorEjecucion crear(ConfiguracionMotor configuracion, DatosEscenario datos, boolean detenerEnColapso) {
         SimulacionEnCurso simulacion = servicioPlanificacion.prepararSimulacion(new SolicitudPreparacionSimulacion(
                 datos.pedidos(), datos.bloqueos(), configuracion.algoritmo(), propiedades.planificador().semilla(),
-                configuracion.saMinutos(), detenerEnColapso, configuracion.flota()));
+                configuracion.saMinutos(), detenerEnColapso, configuracion.flota(), parametros.vigentes()));
         int primerIdLibre = Math.max(datos.idMinimoLibre(),
                 datos.pedidos().stream().mapToInt(Pedido::getId).max().orElse(-1) + 1);
         SeguimientoPedidos seguimiento = new SeguimientoPedidos(datos.lineaTiempo(), semaforo,

@@ -61,7 +61,11 @@ public final class RecorridoCamino {
         return new Coordenada(nodo.getX(), nodo.getY());
     }
 
-    private static double longitud(List<Nodo> camino) {
+    /**
+     * @param camino nodos del camino, en orden
+     * @return longitud del camino en km (la malla es Manhattan: cada nodo esta a 1 km del siguiente)
+     */
+    public static double longitud(List<Nodo> camino) {
         double total = 0.0;
         for (int i = 1; i < camino.size(); i++) {
             total += camino.get(i - 1).distanciaManhattan(camino.get(i));

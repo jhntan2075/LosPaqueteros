@@ -31,6 +31,20 @@ interface DialogoRegistrarAveriaProps {
   onRegistrada: (respuesta: RespuestaRegistroAveriaApi) => void;
 }
 
+/** Valor de un <input type="datetime-local"> (hora local, al minuto). */
+const aValorFechaHora = (fecha: Date) => {
+  const dos = (n: number) => String(n).padStart(2, '0');
+  return `${fecha.getFullYear()}-${dos(fecha.getMonth() + 1)}-${dos(fecha.getDate())}T${dos(fecha.getHours())}:${dos(fecha.getMinutes())}`;
+};
+
+/** Por defecto, una avería programada ocurre una hora después del reloj, al minuto. */
+const MINUTOS_PROGRAMADA_POR_DEFECTO = 60;
+const instantePorDefecto = (reloj: Date) => {
+  const fecha = new Date(reloj.getTime() + MINUTOS_PROGRAMADA_POR_DEFECTO * 60_000);
+  fecha.setSeconds(0, 0);
+  return aValorFechaHora(fecha);
+};
+
 /** "P-01 P-02 P-03 y 7 más". */
 const listarPedidos = (pedidos: string[]) =>
   pedidos.length <= PEDIDOS_NOMBRADOS
@@ -42,6 +56,9 @@ export const DialogoRegistrarAveria: React.FC<DialogoRegistrarAveriaProps> = ({ 
   const { registrar, pendientes } = useAverias();
   const [codigo, setCodigo] = useState(unidadInicial ?? '');
   const [tipo, setTipo] = useState<1 | 2 | 3 | null>(null);
+  // Instante (B07-B09): ahora o un instante futuro del reloj de la ejecución, al minuto.
+  const [cuando, setCuando] = useState<'ahora' | 'programar'>('ahora');
+  const [instanteTexto, setInstanteTexto] = useState(() => instantePorDefecto(datos.reloj));
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [estimaciones, setEstimaciones] = useState<Partial<Record<1 | 2 | 3, EstimacionAveriaApi>>>({});
@@ -85,7 +102,16 @@ export const DialogoRegistrarAveria: React.FC<DialogoRegistrarAveriaProps> = ({ 
   const esBloqueada = (u: UnidadOperacion) => u.estado === 'AVERIADA' || averiaPendiente(datos, pendientes, u.codigo) !== null;
   const enSimulacion = datos.tipoEscenario !== 'DIA_A_DIA';
   const corriendo = datos.estadoEjecucion === 'EN_CURSO';
-  const faltantes = [!unidad && 'la unidad', tipo === null && 'el tipo de avería'].filter(Boolean) as string[];
+  const instanteMs = cuando === 'programar' ? new Date(instanteTexto).getTime() : undefined;
+  const errorInstante =
+    instanteMs === undefined
+      ? null
+      : Number.isNaN(instanteMs)
+        ? 'Ingresa la fecha y la hora.'
+        : instanteMs <= datos.reloj.getTime()
+          ? `Debe ser posterior a la hora del reloj (${formatearHora(datos.reloj)}).`
+          : null;
+  const faltantes = [!unidad && 'la unidad', tipo === null && 'el tipo de avería', errorInstante && 'un instante futuro'].filter(Boolean) as string[];
   const listo = faltantes.length === 0 && !enviando;
   const pedidos = unidad?.paradas.map((p) => p.pedido) ?? [];
   const firmaPedidos = pedidos.join(' ');
@@ -101,7 +127,7 @@ export const DialogoRegistrarAveria: React.FC<DialogoRegistrarAveriaProps> = ({ 
     setEnviando(true);
     setError(null);
     try {
-      onRegistrada(await registrar(datos.ejecucionId, unidad.codigo, tipo));
+      onRegistrada(await registrar(datos.ejecucionId, unidad.codigo, tipo, instanteMs));
     } catch (e) {
       setError(e instanceof Error ? e.message : 'No se pudo registrar la avería. Inténtalo de nuevo.');
       setEnviando(false);
@@ -225,9 +251,49 @@ export const DialogoRegistrarAveria: React.FC<DialogoRegistrarAveriaProps> = ({ 
             </div>
           )}
 
+          {/* Instante de la avería: ahora (por defecto) o programada para más tarde */}
+          <fieldset className="flex flex-col gap-[6px]">
+            <legend className="font-medium text-[12px] text-[#334155] mb-[6px]">Cuándo ocurre</legend>
+            <div className="flex flex-wrap items-center gap-x-[16px] gap-y-[6px]">
+              {(['ahora', 'programar'] as const).map((opcion) => (
+                <label key={opcion} className="flex items-center gap-[6px] cursor-pointer text-[13px] text-[#0F172A] has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[#1E40AF]/40 rounded">
+                  <input type="radio" name="cuando-averia" value={opcion} checked={cuando === opcion} onChange={() => setCuando(opcion)} className="sr-only" />
+                  <IndicadorRadio marcado={cuando === opcion} />
+                  {opcion === 'ahora' ? 'Ahora' : 'Programar para'}
+                </label>
+              ))}
+              {cuando === 'programar' && (
+                <input
+                  type="datetime-local"
+                  aria-label="Fecha y hora de la avería"
+                  value={instanteTexto}
+                  min={aValorFechaHora(datos.reloj)}
+                  onChange={(e) => setInstanteTexto(e.target.value)}
+                  aria-invalid={errorInstante ? true : undefined}
+                  aria-describedby={errorInstante ? 'instante-averia-error' : undefined}
+                  className={`h-[32px] rounded-[6px] border px-[8px] text-[13px] tabular-nums ${errorInstante ? 'border-[#B91C1C]' : 'border-[#CBD5E1]'}`}
+                />
+              )}
+            </div>
+            {errorInstante && (
+              <span id="instante-averia-error" className="text-[12px] text-[#B91C1C]">
+                {errorInstante}
+              </span>
+            )}
+          </fieldset>
+
           <p className="text-[12px] text-[#64748B]">
-            Se registra a las <span className="tabular-nums">{formatearHora(datos.reloj)}</span>
-            {enSimulacion ? ' del reloj de la simulación y se aplica en unos segundos.' : ' y se aplica en los próximos minutos.'}
+            {instanteMs !== undefined && !errorInstante ? (
+              <>
+                Ocurrirá {formatearMomento(new Date(instanteMs), datos.reloj)} del reloj {enSimulacion ? 'de la simulación' : 'de la operación'}. Hasta entonces se
+                puede deshacer desde Incidencias.
+              </>
+            ) : (
+              <>
+                Se registra a las <span className="tabular-nums">{formatearHora(datos.reloj)}</span>
+                {enSimulacion ? ' del reloj de la simulación y se aplica en unos segundos.' : ' y se aplica en los próximos minutos.'}
+              </>
+            )}
           </p>
         </div>
 

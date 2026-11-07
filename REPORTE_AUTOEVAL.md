@@ -10,6 +10,59 @@ brechas de `docs/encargo-brechas-rubrica.md` ya están cerradas). No se levantó
 > **envío** = pedido; **producto** = paquete del producto único P (no tienen ID individual).
 > Rutas del front relativas a `paqtracker-web/src/`.
 
+## Actualización 3 · 07-11-2026 · nivel 5 (distancias en km)
+
+Con E08, E09, E11, E16 y E17, **el sistema cumple todo lo obligatorio también para un equipo de 5**: no queda
+ningún ítem en 🟡 ni en ❌. Quedan solo los 📝 (se responden en la exposición) y los ❓ (se miden en la VM).
+Pruebas: núcleo 133, API 111 y front 318, todas en verde.
+
+| Equipo | Ítems | ✅ | 🟡 | ❌ | 📝 | ❓ |
+|---|---|---|---|---|---|---|
+| 3 (solo Sí3) | 106 | 82 | 0 | 0 | 20 | 4 |
+| 4 (Sí3 + Sí4) | 114 | 90 | 0 | 0 | 20 | 4 |
+| **5 (todo)** | **122** | **98** | **0** | **0** | **20** | **4** |
+
+Todo está en la pestaña **Flota → Todas las unidades** (`components/operacion/EstadoFlota.tsx`). La lógica está
+en `lib/listaUnidades.ts` y las pruebas en `test/rubrica/rubrica.lista-unidades.test.tsx`.
+
+| Ítem | Antes | Ahora | Evidencia |
+|---|---|---|---|
+| E08 | ❌ | ✅ | La búsqueda "A ≤ N **min / km** de la Llegada al destino" con **km** filtra por los km que faltan al destino inmediato (`dentroDeKm`, `TramoUnidad.kmAlDestino`). La fila muestra los km |
+| E09 | ❌ | ✅ | La misma búsqueda con "Salida del origen" filtra por los km recorridos desde el origen inmediato (`kmDesdeOrigen`) |
+| E11 | ❌ | ✅ | Chips **Al destino: 0–10 · 10–20 · 20–40 · 40–200 km** (rangos [desde, hasta[, se pueden combinar). Es un filtro permanente: se recuerda al cerrar el panel y al recargar. La búsqueda opera sobre su resultado |
+| E16 | ❌ | ✅ | Orden **Km por recorrer**: lo que falta de toda la ruta hasta el almacén de retorno (`kmPorRecorrer`) |
+| E17 | ❌ | ✅ | Orden **Km recorridos**. La API manda `distanciaRutaKm`, la longitud de la ruta en curso (`ConstructorInstantanea`). Lo recorrido es esa longitud menos lo que falta, así avanza suave entre instantáneas |
+
+La distancia se mide sobre el camino real (con los desvíos por bloqueos), no en línea recta: la malla es
+Manhattan y cada nodo está a 1 km.
+
+## Actualización 2 · 07-11-2026 · fase 5 (configuración del dominio)
+
+Con la fase 5 de [`docs/plan-rubrica-equipo4.md`](docs/plan-rubrica-equipo4.md), **no queda ningún ítem
+obligatorio del equipo de 4 en 🟡 ni en ❌**. Quedan solo los 📝 (se responden en la exposición) y los ❓ (se
+miden en la VM). Pruebas: núcleo 133, API 110 y front 313, todas en verde.
+
+| Equipo | Ítems | ✅ | 🟡 | ❌ | 📝 | ❓ |
+|---|---|---|---|---|---|---|
+| 3 (solo Sí3) | 106 | 82 | 0 | 0 | 20 | 4 |
+| **4 (Sí3 + Sí4) ← equipo** | **114** | **90** | **0** | **0** | **20** | **4** |
+| 5 (todo) | 122 | 93 | 0 | 5 | 20 | 4 |
+
+| Ítem | Antes | Ahora | Evidencia |
+|---|---|---|---|
+| B02 | 🟡 | ✅ | Pestaña **Configuración → Almacenes**: X, Y y capacidad, con vista previa en la malla (`components/configuracion/ModuloConfiguracion.tsx`). API `GET/PUT/DELETE /api/configuracion/parametros`, tabla `parametros_dominio` (V7), validación en `ParametrosDominio.java` del núcleo |
+| B04 | 🟡 | ✅ | **Configuración → Unidades**: capacidad, velocidad y costo por km de cada tipo. `Vehiculo` lleva sus propios valores; la cantidad por tipo se sigue eligiendo al crear la simulación |
+| B07 | 🟡 | ✅ | Detención del tipo 1 y trasvase configurables; instante elegible ("Cuándo ocurre: ahora o programada") en `DialogoRegistrarAveria.tsx` (`instanteMs` en `POST …/averias`) |
+| B08 | 🟡 | ✅ | Permanencia en el sitio configurable; la vuelta sigue la regla del fin del turno siguiente |
+| B09 | 🟡 | ✅ | Mínimo fuera de servicio configurable; la vuelta sigue la regla del turno de las 15:00 |
+
+**Cómo rige un cambio:** cada ejecución nueva copia los parámetros vigentes al crearse, así que una simulación
+en curso no cambia a la mitad. La operación día a día los toma con **"Aplicar a la operación día a día"**
+(`POST /api/ejecuciones/dia-a-dia/reiniciar`). Esa acción la reinicia desde el minuto actual, recupera los
+pedidos registrados a mano y los replanifica.
+
+Del nivel 5 seguían faltando **E08, E09, E11, E16 y E17** (distancias en km): ver la actualización 3.
+
 ## Actualización · 07-11-2026 · rama `feature/rubrica-equipo4` (v0.6.0)
 
 Se implementaron las fases 0–4 de [`docs/plan-rubrica-equipo4.md`](docs/plan-rubrica-equipo4.md). Estado
@@ -337,15 +390,15 @@ flowchart LR
 
 ### B · Cómo se configura cada cosa
 - **B01 Mapa:** malla fija de 70 × 50 km, en el núcleo y en el front; se encuadra al tamaño de la pantalla.
-- **B02 Almacenes:** constantes en `ConfiguracionDominio` (Central 27,14 ilimitado; intermedios 12,38 y 57,27 con
-  1000). Hoy no se editan.
+- **B02 Almacenes:** se editan en **Configuración → Almacenes** (ubicación y capacidad de los intermedios; el
+  central no tiene tope). Por defecto: Central 27,14; intermedios 12,38 y 57,27 con 1000.
 - **B04 UT:** la cantidad por tipo se fija al crear la simulación (hasta 50 por tipo). Capacidad, velocidad y
-  costo/km son constantes de `TipoVehiculo`.
+  costo por km se editan en **Configuración → Unidades** (actualización 2).
 - **B05 Bloqueos:** se sube `bloqueo.AAMM.txt` desde la GUI; se valida línea por línea y se guarda por mes.
 - **B06 Semáforo:** "Capas y leyenda → Configurar rangos". Se valida, se guarda en `rangos_semaforo` y rige al
   instante. El vacío es configurable.
-- **B07–B09 Averías:** el operador elige la unidad y el tipo; el sistema estima la reincorporación antes de
-  confirmar. Duraciones: T1 2 h + 30 min de trasvase; T2 4 h en el sitio y luego al central hasta el fin del
+- **B07–B09 Averías:** el operador elige la unidad, el tipo y el instante (ahora o programada). El sistema
+  estima la reincorporación antes de confirmar. Las duraciones se editan en **Configuración → Averías**. Duraciones: T1 2 h + 30 min de trasvase; T2 4 h en el sitio y luego al central hasta el fin del
   turno siguiente; T3 4 h en el sitio y vuelve al turno de las 15:00 cumplidos 2 días.
 - **B13:** `ventas.AAAAMM.txt` y `bloqueo.AAMM.txt` se suben por la interfaz y quedan en la carpeta de datos.
   MySQL guarda el estado operativo.

@@ -32,6 +32,12 @@ class RecorridoCaminoTest {
     }
 
     @Test
+    void longitud_caminoConDesvio_sumaCadaSegmento() {
+        assertEquals(20.0, RecorridoCamino.longitud(CAMINO));
+        assertEquals(0.0, RecorridoCamino.longitud(List.of(new Nodo(3, 3))));
+    }
+
+    @Test
     void restante_caminoDeUnSoloNodo_devuelveEseNodo() {
         assertEquals(List.of(new Coordenada(3, 3)), RecorridoCamino.restante(List.of(new Nodo(3, 3)), 0.4));
     }

@@ -276,6 +276,11 @@ nada más al núcleo.
 
 ### Fase 5 · Configuración del dominio (B02, B04, B07–B09) · L · back + núcleo + front
 
+> **Hecha (07-11-2026).** Diferencias con el diseño de abajo: una sola tabla `parametros_dominio` con el JSON
+> en lugar de tres (V7), endpoint único `/api/configuracion/parametros`, y "Aplicar a la operación" como
+> `POST /api/ejecuciones/dia-a-dia/reiniciar`. Los almacenes siguen siendo tres (central + dos intermedios);
+> se editan su ubicación y su capacidad. Los turnos no son configurables.
+
 Es lo más costoso: conviene confirmar el alcance con el profesor antes (ver §5). Diseño:
 
 - **Patrón:** *configuración versionada por ejecución*. Los parámetros se editan en una pantalla, se guardan

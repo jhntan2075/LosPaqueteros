@@ -29,21 +29,23 @@ public class ServicioPlanificacion {
     }
 
     /**
-     * Prepara una simulacion lista para su primer paso. Cada llamada crea almacenes, flota y malla
+     * Prepara una simulacion lista para su primer paso, con los parametros del dominio que la ejecucion
+     * copio al crearse. Cada llamada crea almacenes, flota y malla
      * nuevos: las ejecuciones corren en hilos distintos y no deben compartir estado mutable.
      *
      * @param solicitud datos de la simulacion
      * @return simulacion que el motor de ejecucion avanza paso a paso
      */
     public SimulacionEnCurso prepararSimulacion(SolicitudPreparacionSimulacion solicitud) {
-        List<Almacen> almacenes = ConfiguracionDominio.crearAlmacenes();
+        List<Almacen> almacenes = ConfiguracionDominio.crearAlmacenes(solicitud.parametros());
         List<Vehiculo> flota = ConfiguracionDominio.crearFlota(almacenes.get(0), solicitud.flota().autos(),
-                solicitud.flota().motos(), solicitud.flota().bicicletas());
+                solicitud.flota().motos(), solicitud.flota().bicicletas(), solicitud.parametros());
         Orquestador orquestador = new Orquestador(almacenes, flota, solicitud.pedidos(), List.of(),
                 new Malla(solicitud.bloqueos()), solicitud.saMinutos(),
                 ConfiguracionDominio.TIEMPO_SERVICIO_MINUTOS, ConfiguracionDominio.PLAZO_MAXIMO_MINUTOS,
                 ConfiguracionDominio.PLAZO_DESPACHO_DIRECTO_MINUTOS, solicitud.semilla(),
-                fabricaAlgoritmo.crear(solicitud.algoritmo(), new ContadorEvaluaciones()));
+                fabricaAlgoritmo.crear(solicitud.algoritmo(), new ContadorEvaluaciones()),
+                solicitud.parametros().averias());
         return orquestador.iniciar(solicitud.detenerEnColapso());
     }
 }

@@ -5,6 +5,7 @@ import type {
   ImportacionApi,
   MensajeEstadoApi,
   PedidoApi,
+  ParametrosDominioApi,
   PlanEstableApi,
   RangosSemaforoApi,
   RegistroPedidoApi,
@@ -94,9 +95,12 @@ export const clienteApi = {
   registrarPedido: (pedido: { cliente: string; x: number; y: number; cantidad: number; plazoHoras: number }) =>
     enviarJson<RegistroPedidoApi>('/pedidos', pedido),
 
-  /** CU-13: registra una avería en el instante actual del reloj de la ejecución. */
-  registrarAveria: (ejecucionId: string, unidad: string, tipo: 1 | 2 | 3) =>
-    enviarJson<RespuestaRegistroAveriaApi>(`/ejecuciones/${encodeURIComponent(ejecucionId)}/averias`, { unidad, tipo }),
+  /** CU-13: registra una avería ahora o, con `instanteMs`, en un instante futuro del reloj de la ejecución. */
+  registrarAveria: (ejecucionId: string, unidad: string, tipo: 1 | 2 | 3, instanteMs?: number) =>
+    enviarJson<RespuestaRegistroAveriaApi>(
+      `/ejecuciones/${encodeURIComponent(ejecucionId)}/averias`,
+      instanteMs === undefined ? { unidad, tipo } : { unidad, tipo, instanteMs },
+    ),
   /** Deshace una avería mientras sigue programada; 409 si el motor ya la aplicó. */
   cancelarAveria: (ejecucionId: string, averiaId: number) =>
     eliminar(`/ejecuciones/${encodeURIComponent(ejecucionId)}/averias/${averiaId}`),
@@ -113,6 +117,20 @@ export const clienteApi = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(rangos),
     }),
+
+  /** Almacenes, unidades y averías vigentes (B02, B04, B07-B09). */
+  consultarParametros: () => solicitar<ParametrosDominioApi>('/configuracion/parametros'),
+  /** Cambia los parámetros; rigen para las ejecuciones nuevas. 400 con el motivo si no son coherentes. */
+  guardarParametros: (parametros: ParametrosDominioApi) =>
+    solicitar<ParametrosDominioApi>('/configuracion/parametros', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(parametros),
+    }),
+  /** Vuelve a los valores por defecto. */
+  restablecerParametros: () => solicitar<ParametrosDominioApi>('/configuracion/parametros', { method: 'DELETE' }),
+  /** Reinicia la operación día a día desde ahora con los parámetros vigentes; conserva y replanifica sus pedidos. */
+  reiniciarDiaADia: () => enviarJson<EjecucionApi>(`/ejecuciones/${ID_DIA_A_DIA}/reiniciar`),
 
   /** Mes en formato YYYYMM. */
   subirVentas: (archivo: File, mes: string) => subirArchivo('/archivos/pedidos', archivo, mes),

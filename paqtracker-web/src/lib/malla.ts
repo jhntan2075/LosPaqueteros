@@ -130,6 +130,15 @@ export const pasoCuadricula = (escala: number) => (escala >= 8 ? 1 : escala >= 2
 export const tramoOrtogonal = (desde: Coordenada, hasta: Coordenada): Coordenada[] => [desde, { x: hasta.x, y: desde.y }, hasta];
 
 /** Punto a una fracción [0, 1] de la longitud de un recorrido ortogonal. */
+/** Longitud en km de una polilínea de la malla (Manhattan: cada segmento suma |dx| + |dy|). */
+export function longitudRecorrido(puntos: Coordenada[]): number {
+  let total = 0;
+  for (let i = 1; i < puntos.length; i++) {
+    total += Math.abs(puntos[i].x - puntos[i - 1].x) + Math.abs(puntos[i].y - puntos[i - 1].y);
+  }
+  return total;
+}
+
 export function puntoEnRecorrido(puntos: Coordenada[], fraccion: number): { punto: Coordenada; tramo: number } {
   const largos = puntos.slice(1).map((p, i) => Math.abs(p.x - puntos[i].x) + Math.abs(p.y - puntos[i].y));
   let restante = largos.reduce((a, b) => a + b, 0) * Math.min(1, Math.max(0, fraccion));

@@ -119,7 +119,11 @@ public class ConstructorInstantanea {
         List<Coordenada> rutaRestante = List.of();
         List<ParadaPendiente> paradas = new ArrayList<>();
         int carga = 0;
+        double distanciaRuta = 0.0;
         if (transito != null) {
+            for (Tramo parte : transito.getTramos()) {
+                distanciaRuta += RecorridoCamino.longitud(parte.getCamino());
+            }
             Tramo tramo = transito.tramoEnCurso((int) Math.floor(minuto)).orElse(null);
             ubicacion = tramo == null ? RecorridoCamino.coordenada(transito.getDestino().getUbicacion())
                     : interpolar(tramo, minuto);
@@ -139,9 +143,9 @@ public class ConstructorInstantanea {
                 ? contexto.averias().get(vehiculo.getId()) : null;
         return new UnidadEnMapa(vehiculo.getId(), contexto.codigosFlota().codigo(vehiculo),
                 NomenclaturaOperacion.tipoUnidad(vehiculo.getTipo()), vehiculo.getCapacidad(), carga,
-                (double) carga / vehiculo.getCapacidad(), vehiculo.getTipo().getVelocidad(),
+                (double) carga / vehiculo.getCapacidad(), vehiculo.getVelocidad(),
                 vehiculo.getEstado().name(), NomenclaturaOperacion.codigoAlmacen(origen), ubicacion, tramoEnCurso,
-                rutaRestante, paradas, averia);
+                rutaRestante, paradas, averia, distanciaRuta);
     }
 
     private TramoEnCurso construirTramo(Tramo tramo, LineaTiempo lineaTiempo) {

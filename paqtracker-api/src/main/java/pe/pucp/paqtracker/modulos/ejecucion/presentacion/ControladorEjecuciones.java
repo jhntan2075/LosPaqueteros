@@ -13,6 +13,7 @@ import pe.pucp.paqtracker.comun.excepcion.SolicitudInvalidaException;
 import pe.pucp.paqtracker.modulos.difusion.aplicacion.dto.MensajeEstadoEjecucion;
 import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.casouso.CasoUsoControlarEjecucion;
 import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.casouso.CasoUsoEjecutarColapso;
+import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.casouso.CasoUsoEjecutarDiaADia;
 import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.casouso.CasoUsoEjecutarSimulacionPeriodo;
 import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.dto.PlanEstable;
 import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.dto.RespuestaEjecucion;
@@ -33,20 +34,35 @@ public class ControladorEjecuciones {
     private final CasoUsoEjecutarColapso casoUsoColapso;
     private final CasoUsoControlarEjecucion casoUsoControlar;
     private final ServicioEjecucion servicioEjecucion;
+    private final CasoUsoEjecutarDiaADia casoUsoDiaADia;
 
     /**
-     * @param casoUsoPeriodo   CU-16
-     * @param casoUsoColapso   CU-17
-     * @param casoUsoControlar control del reloj
+     * @param casoUsoPeriodo    CU-16
+     * @param casoUsoColapso    CU-17
+     * @param casoUsoControlar  control del reloj
      * @param servicioEjecucion consultas
+     * @param casoUsoDiaADia    CU-15, para reiniciar la operacion con los parametros vigentes
      */
     public ControladorEjecuciones(CasoUsoEjecutarSimulacionPeriodo casoUsoPeriodo,
                                   CasoUsoEjecutarColapso casoUsoColapso,
-                                  CasoUsoControlarEjecucion casoUsoControlar, ServicioEjecucion servicioEjecucion) {
+                                  CasoUsoControlarEjecucion casoUsoControlar, ServicioEjecucion servicioEjecucion,
+                                  CasoUsoEjecutarDiaADia casoUsoDiaADia) {
         this.casoUsoPeriodo = casoUsoPeriodo;
         this.casoUsoColapso = casoUsoColapso;
         this.casoUsoControlar = casoUsoControlar;
         this.servicioEjecucion = servicioEjecucion;
+        this.casoUsoDiaADia = casoUsoDiaADia;
+    }
+
+    /**
+     * Reinicia la operacion dia a dia desde el instante actual con los parametros del dominio vigentes.
+     * Los pedidos registrados a mano se conservan y se replanifican.
+     *
+     * @return la ejecucion dia a dia nueva
+     */
+    @PostMapping("/" + ServicioEjecucion.ID_DIA_A_DIA + "/reiniciar")
+    public RespuestaEjecucion reiniciarDiaADia() {
+        return casoUsoDiaADia.reiniciar();
     }
 
     /**

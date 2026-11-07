@@ -1,5 +1,5 @@
 import { formatearDiaMesHora, formatearHolgura, formatearHora } from '../lib/formato';
-import { puntoEnRecorrido } from '../lib/malla';
+import { longitudRecorrido, puntoEnRecorrido } from '../lib/malla';
 import { nivelDeStock } from '../lib/semaforo';
 import type {
   BloqueoEnMapaApi,
@@ -135,10 +135,21 @@ export function adaptarPedido(pedido: PedidoEnMapaApi, ahoraMs: number): PedidoO
  * Posición y ruta pendiente de una unidad en el instante simulado: se interpola sobre el camino del
  * tramo en curso y se le añade lo que la API indica que queda después de ese tramo.
  */
-function moverUnidad(unidad: UnidadEnMapaApi, ahoraMs: number): { posicion: Coordenada; ruta: Coordenada[] } {
+function moverUnidad(
+  unidad: UnidadEnMapaApi,
+  ahoraMs: number,
+): { posicion: Coordenada; ruta: Coordenada[]; kmTramo: { desdeOrigen: number; alDestino: number } | null } {
   const tramo = unidad.tramoEnCurso;
   if (!tramo || tramo.camino.length < 2) {
-    return { posicion: coordenada(unidad.ubicacionActual), ruta: unidad.rutaRestante.map(coordenada) };
+    const posicion = coordenada(unidad.ubicacionActual);
+    // Tramo sin camino (servicio, detención): está sobre su destino o va en línea recta hacia él.
+    const kmTramo = tramo
+      ? {
+          desdeOrigen: longitudRecorrido([coordenada(tramo.origen), posicion]),
+          alDestino: longitudRecorrido([posicion, coordenada(tramo.destino)]),
+        }
+      : null;
+    return { posicion, ruta: unidad.rutaRestante.map(coordenada), kmTramo };
   }
   const duracion = tramo.tiempoLlegadaEstimado - tramo.tiempoSalidaSimulado;
   const fraccion = duracion <= 0 ? 1 : (ahoraMs - tramo.tiempoSalidaSimulado) / duracion;
@@ -147,11 +158,17 @@ function moverUnidad(unidad: UnidadEnMapaApi, ahoraMs: number): { posicion: Coor
   // tramo en curso: lo que sigue a ese destino son los tramos posteriores.
   const finTramo = unidad.rutaRestante.findIndex((p, i) => i > 0 && p.x === tramo.destino.x && p.y === tramo.destino.y);
   const posteriores = finTramo < 0 ? [] : unidad.rutaRestante.slice(finTramo + 1);
-  return { posicion: punto, ruta: [punto, ...tramo.camino.slice(segmento + 1), ...posteriores].map(coordenada) };
+  const alDestino = longitudRecorrido([punto, ...tramo.camino.slice(segmento + 1)]);
+  return {
+    posicion: punto,
+    ruta: [punto, ...tramo.camino.slice(segmento + 1), ...posteriores].map(coordenada),
+    kmTramo: { desdeOrigen: Math.max(0, longitudRecorrido(tramo.camino) - alDestino), alDestino },
+  };
 }
 
 function adaptarUnidad(unidad: UnidadEnMapaApi, pedidos: Record<string, PedidoOperacion>, ahoraMs: number): UnidadOperacion {
-  const { posicion, ruta } = moverUnidad(unidad, ahoraMs);
+  const { posicion, ruta, kmTramo } = moverUnidad(unidad, ahoraMs);
+  const kmPorRecorrer = longitudRecorrido(ruta);
   const paradas: Parada[] = unidad.paradas.map((parada) => {
     const pedido = pedidos[parada.codigoPedido];
     return {
@@ -190,12 +207,16 @@ function adaptarUnidad(unidad: UnidadEnMapaApi, pedidos: Record<string, PedidoOp
           destino: coordenada(unidad.tramoEnCurso.destino),
           salida: new Date(unidad.tramoEnCurso.tiempoSalidaSimulado),
           llegada: new Date(unidad.tramoEnCurso.tiempoLlegadaEstimado),
+          kmDesdeOrigen: kmTramo?.desdeOrigen ?? 0,
+          kmAlDestino: kmTramo?.alDestino ?? 0,
         }
       : undefined,
     paradas,
     paradaActual: paradas.length > 0 ? 1 : 0,
     totalParadas: paradas.length,
-    distanciaRecorridaKm: 0,
+    kmPorRecorrer,
+    // Lo recorrido es la ruta total menos lo que falta: avanza suave entre instantáneas, como la posición.
+    distanciaRecorridaKm: Math.max(0, (unidad.distanciaRutaKm ?? 0) - kmPorRecorrer),
     conductor: '—',
     alimentacion: { hora: unidad.estado === 'EN_REFRIGERIO' ? 'ahora' : '—', cumplida: unidad.estado !== 'EN_REFRIGERIO' },
   };

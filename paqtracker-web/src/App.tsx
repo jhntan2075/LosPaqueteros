@@ -6,6 +6,7 @@ import { FooterBar } from './components/layout/FooterBar';
 import { ModuloOperacion } from './components/operacion/ModuloOperacion';
 import { ModuloPedidos } from './components/pedidos/ModuloPedidos';
 import { ModuloSimulacion } from './components/simulacion/ModuloSimulacion';
+import { ModuloConfiguracion } from './components/configuracion/ModuloConfiguracion';
 import { ContextoDatosOperacion, useEjecucionEnVivo } from './hooks/useDatosOperacion';
 import { ProveedorAverias } from './components/layout/ProveedorAverias';
 import { useConexionStomp } from './hooks/useConexionStomp';
@@ -13,6 +14,7 @@ import { useParametroUrlCerrado } from './hooks/useParametroUrl';
 import { useSegundosDesde } from './hooks/useSegundosDesde';
 import { ALMACENES, CORTE_INVENTARIO, UNIDADES } from './config/dominio';
 import { useRangosSemaforoGlobales } from './hooks/useRangosSemaforo';
+import { useParametrosDominioGlobales } from './hooks/useParametrosDominio';
 import { capitalizar, formatearFechaNumerica, formatearMiles } from './lib/formato';
 import { turnoVigente } from './lib/turnos';
 import { cantidadBloqueos, estadoFlota, pedidosEnRiesgo } from './lib/operacion';
@@ -25,7 +27,7 @@ const formatoPorcentaje = (valor: number) => `${valor.toFixed(1).replace('.', ',
 // Qué pantalla se ve se refleja en la URL (?tab=…&panel=…&vista=…): se puede recargar, compartir o
 // deshacer con el botón atrás. Un valor fuera de este conjunto (enlace viejo, URL escrita a mano) cae
 // al valor por defecto en vez de romper la pantalla.
-const TABS_VALIDAS: TabModulo[] = ['operacion', 'pedidos', 'simulacion', 'metricas'];
+const TABS_VALIDAS: TabModulo[] = ['operacion', 'pedidos', 'simulacion', 'metricas', 'configuracion'];
 const SUBVISTAS_VALIDAS: SubvistaOperacion[] = ['vivo', 'resumen', 'incidencias', 'pedidos', 'flota', 'almacenes', 'bitacora'];
 const VISTAS_PEDIDOS_VALIDAS: VistaPedidos[] = ['cola', 'registrar', 'registrado'];
 
@@ -165,6 +167,8 @@ const PanelMetricas: React.FC<{ datos: DatosOperacion }> = ({ datos }) => {
 export default function App() {
   // Rangos del semáforo guardados en la API: al cambiarlos, toda la pantalla se vuelve a dibujar con ellos.
   useRangosSemaforoGlobales();
+  // Almacenes, unidades y averías configurados (B02, B04, B07-B09): al cambiarlos se vuelve a dibujar todo.
+  useParametrosDominioGlobales();
   const [tabActiva, fijarTabActiva] = useParametroUrlCerrado('tab', TABS_VALIDAS, 'operacion');
   // Cambiar de pestaña queda en el historial (atrás vuelve a la pestaña anterior); los parámetros más
   // finos de abajo (panel, vista) se reemplazan en vez de empujar, para no llenar el historial con cada clic.
@@ -253,9 +257,11 @@ export default function App() {
                 </div>
 
                 {tabActiva === 'metricas' && (datos ? <PanelMetricas datos={datos} /> : sinDatos)}
+
+                {tabActiva === 'configuracion' && <ModuloConfiguracion />}
               </main>
 
-              {datos && !pantallaCompleta && tabActiva !== 'simulacion' && (
+              {datos && !pantallaCompleta && tabActiva !== 'simulacion' && tabActiva !== 'configuracion' && (
                 <FooterBar
                   nodoSeleccionado={enLienzo ? nodoHover : undefined}
                   totalPedidos={datos.resumen.total}
