@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { ArrowDownWideNarrow, ArrowUpNarrowWide } from 'lucide-react';
 import { UNIDADES, type TipoUnidad } from '../../config/dominio';
 import { ESTADO_UNIDAD, NOMBRE_CARGA, RANGO_OCUPACION } from '../../config/glosario';
@@ -18,6 +18,9 @@ import { estadoFlota } from '../../lib/operacion';
 import { MarcaSemaforo } from '../map/simbolos';
 import { FONDO_SEMAFORO, NIVELES_CARGA, TEXTO_SEMAFORO, nivelDeOcupacion } from '../../lib/semaforo';
 import type { EstadoUnidad, SeleccionPanel } from '../../types/operacion';
+import type { Coordenada } from '../../types/domain';
+import { useDesplazarAResaltado } from '../../hooks/useDesplazarAResaltado';
+import type { SeleccionResaltable } from '../../lib/envios';
 import { FilaConBarra, TituloSeccion } from './comunes';
 
 import { iconoDeCarga, iconoDeUnidad } from '../map/iconosVehiculo';
@@ -51,8 +54,20 @@ const Leyenda: React.FC<{ color: string; etiqueta: string; valor: number }> = ({
 );
 
 /** Pestaña "Flota" del panel lateral del mapa (Operación y corrida de simulación). */
-export const EstadoFlota: React.FC<{ onSeleccionar: (seleccion: SeleccionPanel) => void }> = ({ onSeleccionar }) => {
+interface EstadoFlotaProps {
+  onSeleccionar: (seleccion: SeleccionPanel) => void;
+  /** Objeto resaltado en el mapa; si es una unidad, su fila se marca y se lleva a la vista (F01). */
+  resaltado?: SeleccionResaltable | null;
+  /** Clic en una fila: la marca en la lista y en el mapa. Sin valor, la fila abre el detalle (como antes). */
+  onResaltar?: (objeto: SeleccionResaltable) => void;
+  onCentrar?: (punto: Coordenada) => void;
+}
+
+export const EstadoFlota: React.FC<EstadoFlotaProps> = ({ onSeleccionar, resaltado = null, onResaltar, onCentrar }) => {
   const datos = useDatosOperacion();
+  const listaRef = useRef<HTMLUListElement>(null);
+  const unidadResaltada = resaltado?.tipo === 'vehiculo' ? resaltado.codigo : null;
+  useDesplazarAResaltado(listaRef, unidadResaltada ? `[data-fila-unidad="${unidadResaltada}"]` : null);
   const { reloj } = datos;
   const flota = estadoFlota(datos);
   const utilizacion = flota.total === 0 ? 0 : Math.round((flota.enRuta / flota.total) * 100);
@@ -268,19 +283,35 @@ export const EstadoFlota: React.FC<{ onSeleccionar: (seleccion: SeleccionPanel) 
               {limite !== null ? 'Ninguna unidad dentro de ese tiempo.' : 'Ninguna unidad en este estado.'}
             </p>
           )}
-          <ul className="flex flex-col">
+          <ul ref={listaRef} className="flex flex-col">
             {unidadesFiltradas.map((u) => {
               const nivel = nivelDeOcupacion(u.carga, u.capacidad);
               const porcentaje = u.capacidad > 0 ? Math.round((u.carga / u.capacidad) * 100) : null;
               const paraLlegar = minutosParaLlegar(u, reloj);
               const desdeSalida = minutosDesdeSalida(u, reloj);
+              const seleccionada = unidadResaltada === u.codigo;
+              const objeto: SeleccionResaltable = { tipo: 'vehiculo', codigo: u.codigo };
+              // Primer clic: la marca en la lista y en el mapa, y la centra; con la fila ya marcada, abre su detalle.
+              const elegir = () => {
+                if (!onResaltar || seleccionada) {
+                  onSeleccionar(objeto);
+                  return;
+                }
+                onResaltar(objeto);
+                onCentrar?.(u.posicion);
+              };
               return (
-                <li key={u.codigo}>
+                <li
+                  key={u.codigo}
+                  data-fila-unidad={u.codigo}
+                  aria-current={seleccionada ? 'true' : undefined}
+                  className={`flex items-stretch -mx-[4px] rounded ${seleccionada ? 'bg-[#EFF6FF] ring-1 ring-[#1E40AF]' : ''}`}
+                >
                   <button
                     type="button"
-                    onClick={() => onSeleccionar({ tipo: 'vehiculo', codigo: u.codigo })}
+                    onClick={elegir}
                     data-unidad={u.codigo}
-                    className="w-full py-[5px] flex flex-col gap-[1px] text-left text-[12px] hover:bg-[#F8FAFC] -mx-[4px] px-[4px] rounded"
+                    className="flex-1 min-w-0 py-[5px] flex flex-col gap-[1px] text-left text-[12px] hover:bg-[#F8FAFC] px-[4px] rounded"
                   >
                     <span className="flex items-center gap-[8px] w-full">
                       <img src={iconoDeUnidad(u).href} alt="" className="block -my-[4px]" />
@@ -295,9 +326,6 @@ export const EstadoFlota: React.FC<{ onSeleccionar: (seleccion: SeleccionPanel) 
                             {u.carga}/{u.capacidad} · {porcentaje} %
                           </>
                         )}
-                      </span>
-                      <span className="text-[#64748B]" aria-hidden="true">
-                        ›
                       </span>
                     </span>
                     <span className="pl-[38px] text-[11px] text-[#64748B] tabular-nums truncate">
@@ -316,6 +344,14 @@ export const EstadoFlota: React.FC<{ onSeleccionar: (seleccion: SeleccionPanel) 
                         'Sin tramo en curso'
                       )}
                     </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onSeleccionar(objeto)}
+                    aria-label={`Ver detalle de ${u.codigo}`}
+                    className="w-[24px] shrink-0 text-[#64748B] hover:text-[#0F172A]"
+                  >
+                    ›
                   </button>
                 </li>
               );

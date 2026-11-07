@@ -4,6 +4,41 @@ Formato basado en Keep a Changelog; versionado semántico (MAJOR.MINOR.PATCH).
 
 ## [Sin publicar]
 
+## [0.6.0] — 2026-11-07
+
+Rúbrica de autoevaluación 91.EvaSw para un equipo de 4 (plan en `docs/plan-rubrica-equipo4.md`).
+
+### Fracciones de pedido y ventanas de 4 h (API)
+- `SeguimientoPedidos` lleva las **fracciones** de cada pedido: la parte que lleva una unidad, con su almacén de
+  origen, salida (puede ser futura), llegada y estado (`PROGRAMADA`, `EN_CAMINO`, `ENTREGADA`, `LIBERADA`). Se
+  actualizan en los despachos, las entregas, las averías (liberación y respaldo) y los trasvases.
+- `PedidoEnMapa` y `RespuestaPedido` agregan `entregaMs` y `fracciones`.
+- La instantánea agrega `entregadosRecientes`: pedidos entregados en las últimas 4 h simuladas.
+
+### Última planificación estable (API, G08–G10)
+- El motor guarda una copia inmutable del plan después de cada planificación que termina sin colapso.
+- `GET /api/ejecuciones/{id}/plan-estable`: rutas por unidad con sus paradas pendientes y pedidos sin asignar;
+  si la ejecución colapsó después, trae el instante y el pedido del colapso. 404 si aún no planificó.
+
+### Panel del mapa (web)
+- Pestañas nuevas **Pedidos** (E31, con filtros de 4 h E32/E33) y **Almacenes** (E18, E19). El indicador
+  global "Almacenes" abre la lista; "Flota" abre la Flota.
+- Detalle del almacén: **En camino**, **Por salir · 4 h** y **Entregados · 4 h** (E20–E22).
+- Selección compartida mapa ↔ listas (F01, F05): con una lista abierta, tocar el objeto en el mapa marca su
+  fila; un clic en la fila lo resalta y centra en el mapa, y otro clic (o ›) abre el detalle.
+- Una **fracción** se puede elegir: resalta solo la ruta de su unidad (F02); el pedido entero resalta todas
+  (F03). "‹ Volver" dice adónde vuelve y recorre los detalles anteriores.
+- Cola de pedidos: columnas **Salida** y todas las unidades de un pedido fraccionado (también en el CSV).
+
+### Reportes (web)
+- "Última planificación estable" en el informe de la simulación (G08) y del colapso (G10).
+- "Generar reporte de cierre" en Resumen de la operación día a día, sin detenerla (G09). Exportar CSV e
+  imprimir.
+
+### Versión
+- La versión del front y el commit del build se ven en el pie de página (A01).
+- `docs/diagramas.md`: consumo Sc/Sa, varios navegadores y componentes (A22, A23).
+
 ### Registro de averías en el front (CU-13)
 - Diálogo "Registrar avería" desde el detalle del vehículo o desde Incidencias:
   - tipo sin valor por defecto, con ejemplo, duración y la reincorporación que estima el

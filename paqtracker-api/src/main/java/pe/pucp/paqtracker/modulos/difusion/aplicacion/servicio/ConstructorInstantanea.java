@@ -67,7 +67,8 @@ public class ConstructorInstantanea {
                 Math.round((minuto - contexto.minutoInicial()) * MILISEGUNDOS_POR_MINUTO),
                 LineaTiempo.formatear(contexto.relojReal()), inicioReal, transcurridoReal,
                 contexto.factorAceleracion(), unidades, almacenes, contexto.pedidos(),
-                bloqueosVigentes(simulacion.getBloqueos(), minuto, lineaTiempo), contexto.indicadores());
+                bloqueosVigentes(simulacion.getBloqueos(), minuto, lineaTiempo), contexto.indicadores(),
+                contexto.entregadosRecientes());
     }
 
     /**

@@ -1,5 +1,6 @@
-import React from 'react';
-import { ArrowRight } from 'lucide-react';
+import React, { useState } from 'react';
+import { ArrowRight, ClipboardList } from 'lucide-react';
+import { DialogoReporteCierre } from '../reporte/DialogoReporteCierre';
 import { useDatosOperacion } from '../../hooks/useDatosOperacion';
 import { formatearMiles } from '../../lib/formato';
 import { estadoFlota, resumenRiesgo } from '../../lib/operacion';
@@ -56,9 +57,27 @@ export const ResumenOperacion: React.FC<{ onSeleccionar: (seleccion: SeleccionPa
   const alertaCarga = resumen.saturacion >= 0.7;
   const porcentaje = (resumen.total === 0 ? 0 : (resumen.entregados / resumen.total) * 100).toFixed(1).replace('.', ',');
   const enRutaDe = (tipo: string) => flota.porTipo.find((t) => t.tipo === tipo)?.enRuta ?? 0;
+  const diaADia = datos.tipoEscenario === 'DIA_A_DIA';
+  // Instante del reloj en que se generó el reporte; null con el diálogo cerrado.
+  const [generadoEn, setGeneradoEn] = useState<Date | null>(null);
 
   return (
     <div className="flex-1 min-h-0 overflow-y-auto">
+      {/* G09: la última planificación estable como reporte de cierre; no detiene la operación. */}
+      <div className="px-[12px] pt-[12px]">
+        <button
+          type="button"
+          onClick={() => setGeneradoEn(datos.reloj)}
+          className="w-full h-[32px] rounded-[6px] border border-[#1E40AF] text-[#1E40AF] hover:bg-[#EFF6FF] text-[12px] font-semibold flex items-center justify-center gap-[6px]"
+        >
+          <ClipboardList className="w-[14px] h-[14px]" />
+          {diaADia ? 'Generar reporte de cierre' : 'Ver la última planificación'}
+        </button>
+        <p className="mt-[4px] text-[11px] text-[#64748B]">
+          Rutas y paradas de la última planificación estable. {diaADia ? 'No detiene la operación.' : 'No detiene la simulación.'}
+        </p>
+      </div>
+      {generadoEn && <DialogoReporteCierre ejecucionId={datos.ejecucionId} diaADia={diaADia} reloj={generadoEn} onCerrar={() => setGeneradoEn(null)} />}
       <section className="p-[12px] flex flex-col gap-[8px]">
         <TituloSeccion>Entregas</TituloSeccion>
         <Ficha

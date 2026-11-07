@@ -21,6 +21,7 @@ import java.util.List;
  * @param unidades                     estado de toda la flota
  * @param almacenes                    estado de los almacenes
  * @param pedidos                      pedidos aun no entregados
+ * @param entregadosRecientes          pedidos entregados en las ultimas 4 h simuladas, los mas recientes primero
  * @param bloqueos                     bloqueos vigentes
  * @param indicadores                  KPI y semaforo
  */
@@ -31,5 +32,5 @@ public record MensajeEstadoEjecucion(String ejecucionId, String tipoEscenario, S
                                      long tiempoRealTranscurridoMs, double factorAceleracion,
                                      List<UnidadEnMapa> unidades, List<AlmacenEnMapa> almacenes,
                                      List<PedidoEnMapa> pedidos, List<BloqueoEnMapa> bloqueos,
-                                     IndicadoresOperacion indicadores) {
+                                     IndicadoresOperacion indicadores, List<PedidoEnMapa> entregadosRecientes) {
 }

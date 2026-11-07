@@ -133,6 +133,12 @@ export const FooterBar: React.FC<FooterBarProps> = ({
         ) : (
           <div className="flex items-center gap-1.5">{actualizacion}</div>
         )}
+
+        <div className="w-[1px] h-[14px] bg-[#E2E8F0]"></div>
+        {/* Versión del front y commit del build (A01): permite comprobar qué versión se está evaluando. */}
+        <span className="text-[#64748B] font-sans text-[12px] tabular-nums" title={`Commit ${__APP_COMMIT__}`}>
+          v{__APP_VERSION__} · {__APP_COMMIT__}
+        </span>
       </div>
     </footer>
   );

@@ -393,11 +393,13 @@ describe('Rúbrica · CIERRE · indicadores globales', () => {
     expect(flota.innerHTML).toContain('text-[#B45309]');
   });
 
-  it('G03–G04 · la ocupación de los almacenes en conjunto se ve en % y con semáforo', () => {
+  it('G03–G04 · la ocupación de los almacenes en conjunto se ve en % y con semáforo, y abre la lista de almacenes', () => {
     montarOperacion();
     // Intermedios: 40/100 y 10/100 → 50/200 = 25 %, verde.
-    const almacenes = indicadores().getByRole('group', { name: /^Almacenes: 25 %, con espacio \(50 de 200\)/ });
+    const almacenes = indicadores().getByRole('button', { name: /^Almacenes: 25 %, con espacio \(50 de 200\)/ });
     expect(almacenes.innerHTML).toContain('text-[#15803D]');
+    fireEvent.click(almacenes);
+    expect(screen.getByRole('region', { name: 'Lista de almacenes' })).toBeTruthy();
   });
 
   it('los filtros del mapa no cambian los indicadores globales', () => {

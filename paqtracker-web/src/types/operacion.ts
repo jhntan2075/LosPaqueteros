@@ -2,12 +2,12 @@ import type { Coordenada } from './domain';
 import type { IdAlmacen, TipoUnidad } from '../config/dominio';
 import type { NivelCarga } from '../lib/semaforo';
 import type { NivelHolgura } from './pedidos';
-import type { EstadoEjecucionApi, IndicadoresApi, TipoEscenarioApi } from './api';
+import type { EstadoEjecucionApi, EstadoFraccionApi, IndicadoresApi, TipoEscenarioApi } from './api';
 
 // Modelos de vista del módulo Operación (lienzo en vivo, OP-07 flota, OP-09 bitácora).
 
 /** Mapa de Operación: 'vivo' sin panel, o la pestaña abierta del panel lateral. */
-export type SubvistaOperacion = 'vivo' | 'resumen' | 'incidencias' | 'flota' | 'bitacora';
+export type SubvistaOperacion = 'vivo' | 'resumen' | 'incidencias' | 'pedidos' | 'flota' | 'almacenes' | 'bitacora';
 
 /** Pestaña del panel lateral, tal como las muestra la barra vertical de paneles. */
 export type PestanaPanel = Exclude<SubvistaOperacion, 'vivo'>;
@@ -16,11 +16,18 @@ export type PestanaPanel = Exclude<SubvistaOperacion, 'vivo'>;
 export type SeleccionPanel =
   | { tipo: 'resumen' }
   | { tipo: 'incidencias' }
+  | { tipo: 'pedidos' }
   | { tipo: 'flota' }
+  | { tipo: 'almacenes' }
   | { tipo: 'bitacora' }
   | { tipo: 'pedido'; codigo: string }
+  /** Una fracción del pedido: la parte que lleva una sola unidad (el "producto" de la rúbrica). */
+  | { tipo: 'fraccion'; codigo: string; pedido: string; unidad: string }
   | { tipo: 'vehiculo'; codigo: string }
   | { tipo: 'almacen'; codigo: string };
+
+/** Pestañas que son listas: al elegir en el mapa un objeto de su tipo, se resalta su fila en vez de abrir el detalle. */
+export type PestanaLista = Extract<PestanaPanel, 'pedidos' | 'flota' | 'almacenes'>;
 
 /**
  * Estado de una unidad, a partir de EstadoVehiculo del planificador. EN_RUTA agrupa EN_RUTA y EN_ENTREGA
@@ -107,6 +114,24 @@ export interface HitoTrazabilidad {
   reciente?: boolean;
 }
 
+export type EstadoFraccion = EstadoFraccionApi;
+
+/** Parte de un pedido que lleva una sola unidad (FraccionEnvio de la API). */
+export interface Fraccion {
+  /** Código visible: el del pedido y su correlativo, "P-00042·2". */
+  codigo: string;
+  pedido: string;
+  indice: number;
+  unidad: string;
+  origen: IdAlmacen;
+  cantidad: number;
+  salida: Date;
+  /** Llegada estimada, o real si ya se entregó. */
+  llegada: Date;
+  /** PROGRAMADA y EN_CAMINO se recalculan con el reloj interpolado del cliente. */
+  estado: EstadoFraccion;
+}
+
 export interface PedidoOperacion {
   codigo: string;
   cliente: string;
@@ -123,6 +148,11 @@ export interface PedidoOperacion {
   destino: Coordenada;
   unidad: string; // código de la unidad asignada
   trazabilidad: HitoTrazabilidad[];
+  /** Hora límite y entrega real como fechas, para las ventanas de tiempo del panel. */
+  horaLimiteFecha: Date;
+  entrega: Date | null;
+  /** Partes del pedido por unidad, en el orden en que salieron; vacío si aún no sale. */
+  fracciones: Fraccion[];
 }
 
 export interface BloqueoOperacion {
@@ -192,4 +222,6 @@ export interface DatosOperacion {
   resumen: ResumenPedidos;
   almacenes: AlmacenOperacion[];
   indicadores: IndicadoresApi;
+  /** Pedidos entregados en las últimas 4 h simuladas (no están en `pedidos`, que solo trae los activos). */
+  entregadosRecientes: PedidoOperacion[];
 }

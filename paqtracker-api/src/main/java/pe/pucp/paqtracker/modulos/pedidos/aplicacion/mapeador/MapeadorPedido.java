@@ -17,6 +17,7 @@ public class MapeadorPedido {
      */
     public RespuestaPedido aRespuesta(PedidoEnMapa pedido, String cliente) {
         return new RespuestaPedido(pedido.codigo(), cliente != null ? cliente : pedido.cliente(), pedido.destino(), pedido.cantidad(), pedido.registroMs(),
-                pedido.horaLimiteMs(), pedido.etaMs(), pedido.estado(), pedido.nivelHolgura(), pedido.unidad());
+                pedido.horaLimiteMs(), pedido.etaMs(), pedido.estado(), pedido.nivelHolgura(), pedido.unidad(),
+                pedido.entregaMs(), pedido.fracciones());
     }
 }

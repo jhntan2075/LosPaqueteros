@@ -26,7 +26,7 @@ const formatoPorcentaje = (valor: number) => `${valor.toFixed(1).replace('.', ',
 // deshacer con el botón atrás. Un valor fuera de este conjunto (enlace viejo, URL escrita a mano) cae
 // al valor por defecto en vez de romper la pantalla.
 const TABS_VALIDAS: TabModulo[] = ['operacion', 'pedidos', 'simulacion', 'metricas'];
-const SUBVISTAS_VALIDAS: SubvistaOperacion[] = ['vivo', 'resumen', 'incidencias', 'flota', 'bitacora'];
+const SUBVISTAS_VALIDAS: SubvistaOperacion[] = ['vivo', 'resumen', 'incidencias', 'pedidos', 'flota', 'almacenes', 'bitacora'];
 const VISTAS_PEDIDOS_VALIDAS: VistaPedidos[] = ['cola', 'registrar', 'registrado'];
 
 const Indicador: React.FC<{ etiqueta: string; valor: string; detalle?: string; color?: string }> = ({

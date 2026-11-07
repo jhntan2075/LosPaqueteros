@@ -154,9 +154,22 @@ describe('Volver desde un detalle', () => {
   it('regresa a la pestaña desde la que se abrió el detalle, no siempre a Incidencias', () => {
     montarOperacion({ subvista: 'flota' });
     expect(panel().getByText(/Estado de la flota/)).toBeTruthy();
+    // Con la Flota abierta, tocar la unidad en el mapa la marca en la lista; "Ver detalle" la abre.
     tocar(objetoMapa(document.body, 'vehiculo:A-01')!);
+    fireEvent.click(panel().getByRole('button', { name: 'Ver detalle de A-01' }));
     expect(panel().getByRole('heading', { name: /A-01/ })).toBeTruthy();
-    fireEvent.click(panel().getByRole('button', { name: '‹ Volver' }));
+    fireEvent.click(panel().getByRole('button', { name: 'Volver a Flota' }));
     expect(panel().getByText(/Estado de la flota/)).toBeTruthy();
+    // Al volver, la fila sigue marcada.
+    expect(document.querySelector('[data-fila-unidad="A-01"]')!.getAttribute('aria-current')).toBe('true');
+  });
+
+  it('desde un detalle abierto desde otro detalle, vuelve al detalle anterior', () => {
+    montarOperacion();
+    tocar(objetoMapa(document.body, 'almacen:CENTRAL')!);
+    fireEvent.click(panel().getByRole('button', { name: /Auto A-01/ }));
+    expect(panel().getByRole('heading', { name: /A-01/ })).toBeTruthy();
+    fireEvent.click(panel().getByRole('button', { name: 'Volver a Almacén Central' }));
+    expect(panel().getByRole('heading', { name: 'Almacén Central' })).toBeTruthy();
   });
 });

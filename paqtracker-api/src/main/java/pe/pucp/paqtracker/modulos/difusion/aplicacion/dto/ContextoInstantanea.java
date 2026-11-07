@@ -22,6 +22,7 @@ import java.util.Map;
  * @param factorAceleracion factor k
  * @param codigosFlota      codigos visibles de las unidades de la ejecucion
  * @param pedidos           pedidos aun no entregados
+ * @param entregadosRecientes pedidos entregados en las ultimas 4 h simuladas
  * @param indicadores       KPI calculados por el seguimiento de la ejecucion
  * @param averias           averias vigentes por identificador de unidad
  */
@@ -29,5 +30,6 @@ public record ContextoInstantanea(String ejecucionId, String tipoEscenario, Stri
                                   double minutoInicial, double minutoSimulado, LineaTiempo lineaTiempo,
                                   ZonedDateTime relojReal, Instant relojRealInicio, double factorAceleracion,
                                   CodigosFlota codigosFlota, List<PedidoEnMapa> pedidos,
+                                  List<PedidoEnMapa> entregadosRecientes,
                                   IndicadoresOperacion indicadores, Map<Integer, AveriaEnCurso> averias) {
 }

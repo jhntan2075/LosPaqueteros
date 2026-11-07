@@ -4,6 +4,7 @@ import { nivelDeStock } from '../lib/semaforo';
 import type {
   BloqueoEnMapaApi,
   CoordenadaApi,
+  FraccionEnvioApi,
   MensajeEstadoApi,
   MensajeEventoApi,
   PedidoEnMapaApi,
@@ -17,6 +18,7 @@ import type {
   CategoriaEvento,
   DatosOperacion,
   EventoBitacora,
+  Fraccion,
   Parada,
   PedidoOperacion,
   ResumenPedidos,
@@ -83,7 +85,29 @@ const horaConSegundos = (fecha: Date) => `${formatearHora(fecha)}:${dosDigitos(f
 const coordenada = ({ x, y }: CoordenadaApi): Coordenada => ({ x, y });
 const fechaYHora = (ms: number) => formatearDiaMesHora(new Date(ms));
 
-function adaptarPedido(pedido: PedidoEnMapaApi, ahoraMs: number): PedidoOperacion {
+/** Separador del código de una fracción: "P-00042·2". */
+export const SEPARADOR_FRACCION = '·';
+
+/**
+ * Fracción de la API como modelo de vista. Si sigue activa, su estado se recalcula con el reloj interpolado
+ * del cliente: entre dos instantáneas (3 min simulados con k = 180) una unidad puede haber salido.
+ */
+export function adaptarFraccion(pedido: string, fraccion: FraccionEnvioApi, ahoraMs: number): Fraccion {
+  const activa = fraccion.estado === 'PROGRAMADA' || fraccion.estado === 'EN_CAMINO';
+  return {
+    codigo: `${pedido}${SEPARADOR_FRACCION}${fraccion.indice}`,
+    pedido,
+    indice: fraccion.indice,
+    unidad: fraccion.unidad,
+    origen: fraccion.almacenOrigen,
+    cantidad: fraccion.cantidad,
+    salida: new Date(fraccion.salidaMs),
+    llegada: new Date(fraccion.llegadaMs),
+    estado: activa ? (fraccion.salidaMs > ahoraMs ? 'PROGRAMADA' : 'EN_CAMINO') : fraccion.estado,
+  };
+}
+
+export function adaptarPedido(pedido: PedidoEnMapaApi, ahoraMs: number): PedidoOperacion {
   const referencia = pedido.etaMs ?? ahoraMs;
   const holguraMinutos = Math.round((pedido.horaLimiteMs - referencia) / MS_POR_MINUTO);
   return {
@@ -101,6 +125,9 @@ function adaptarPedido(pedido: PedidoEnMapaApi, ahoraMs: number): PedidoOperacio
     destino: coordenada(pedido.destino),
     unidad: pedido.unidad ?? '—',
     trazabilidad: [],
+    horaLimiteFecha: new Date(pedido.horaLimiteMs),
+    entrega: pedido.entregaMs == null ? null : new Date(pedido.entregaMs),
+    fracciones: (pedido.fracciones ?? []).map((f) => adaptarFraccion(pedido.codigo, f, ahoraMs)),
   };
 }
 
@@ -295,5 +322,6 @@ export function construirDatosOperacion(mensaje: MensajeEstadoApi, ahoraMs: numb
     resumen: resumir(mensaje, mensaje.pedidos, ahoraMs),
     almacenes,
     indicadores: mensaje.indicadores,
+    entregadosRecientes: (mensaje.entregadosRecientes ?? []).map((p) => adaptarPedido(p, ahoraMs)),
   };
 }

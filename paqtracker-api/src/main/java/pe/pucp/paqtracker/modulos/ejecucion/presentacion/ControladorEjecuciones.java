@@ -14,6 +14,7 @@ import pe.pucp.paqtracker.modulos.difusion.aplicacion.dto.MensajeEstadoEjecucion
 import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.casouso.CasoUsoControlarEjecucion;
 import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.casouso.CasoUsoEjecutarColapso;
 import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.casouso.CasoUsoEjecutarSimulacionPeriodo;
+import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.dto.PlanEstable;
 import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.dto.RespuestaEjecucion;
 import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.dto.SolicitudCreacionEjecucion;
 import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.servicio.ServicioEjecucion;
@@ -91,6 +92,18 @@ public class ControladorEjecuciones {
     @GetMapping("/{id}/estado")
     public MensajeEstadoEjecucion estado(@PathVariable String id) {
         return servicioEjecucion.instantanea(id);
+    }
+
+    /**
+     * Ultima planificacion estable (G08-G10): rutas vigentes por unidad tras la ultima planificacion que termino
+     * sin colapso. Sirve para el reporte al terminar la simulacion, al colapsar y al cerrar el dia a dia.
+     *
+     * @param id identificador de la ejecucion
+     * @return plan estable; 404 si la ejecucion aun no planifico
+     */
+    @GetMapping("/{id}/plan-estable")
+    public PlanEstable planEstable(@PathVariable String id) {
+        return servicioEjecucion.planEstable(id);
     }
 
     /**

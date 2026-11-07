@@ -24,6 +24,8 @@ import pe.pucp.paqtracker.modulos.difusion.aplicacion.servicio.ServicioDifusion;
 import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.dto.AveriaProgramada;
 import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.dto.DetallePedido;
 import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.dto.EstimacionAveria;
+import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.dto.PlanEstable;
+import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.dto.RutaPlanificada;
 import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.dto.ResultadoRegistroPedido;
 import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.dto.SolicitudAveriaEnVivo;
 import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.dto.SolicitudPedidoEnVivo;
@@ -37,6 +39,8 @@ import pe.pucp.paqtracker.simulacion.ResultadoPaso;
 import pe.pucp.paqtracker.simulacion.ResultadoSimulacion;
 import pe.pucp.paqtracker.simulacion.SimulacionEnCurso;
 import pe.pucp.paqtracker.simulacion.Trasbordo;
+import pe.pucp.paqtracker.simulacion.UnidadEnTransito;
+import java.util.ArrayList;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZonedDateTime;
@@ -87,6 +91,8 @@ public final class MotorEjecucion {
     private final Map<Integer, AveriaEnCurso> averiasEnCurso = new HashMap<>();
     private volatile EstadoEjecucion estado = EstadoEjecucion.CONFIGURADA;
     private volatile MensajeEstadoEjecucion ultimaInstantanea;
+    /** Plan vigente tras la ultima planificacion que termino sin colapso; null hasta la primera. */
+    private volatile PlanEstable planEstable;
     private int siguientePaso;
     private long pasoSc;
 
@@ -313,6 +319,22 @@ public final class MotorEjecucion {
     }
 
     /**
+     * @return la ultima planificacion estable (G08-G10); si la ejecucion colapso despues, lleva los datos del
+     *         colapso. Vacio si todavia no hubo ninguna planificacion
+     */
+    public Optional<PlanEstable> consultarPlanEstable() {
+        return enHiloMotor(() -> {
+            if (planEstable == null) {
+                return Optional.<PlanEstable>empty();
+            }
+            Optional<ColapsoLogistico> colapso = simulacion.getResultado().getColapso();
+            return Optional.of(colapso.map(c -> planEstable.conColapso(new PlanEstable.ColapsoPlan(
+                    lineaTiempo.aMilisegundos(c.getInstante()), NomenclaturaOperacion.codigoPedido(c.getIdPedido()),
+                    c.getCausa().name()))).orElse(planEstable));
+        });
+    }
+
+    /**
      * Procesa un tick en el hilo del motor y espera a que termine. Permite a las pruebas avanzar el
      * motor de forma determinista sin competir con el tick programado.
      */
@@ -435,8 +457,53 @@ public final class MotorEjecucion {
     private ResultadoPaso ejecutarPaso(int instante, boolean planificar) {
         ResultadoPaso paso = simulacion.avanzar(instante, planificar);
         List<Tramo> completados = seguimiento.aplicar(paso);
+        if (paso.huboPlanificacion() && !paso.isColapsoDeclarado()) {
+            planEstable = construirPlanEstable(paso);
+        }
         difundirEventos(paso, completados);
         return paso;
+    }
+
+    /**
+     * Copia el plan vigente tras un paso que planifico: cada unidad en transito con entregas pendientes, en el
+     * orden de su ruta, y los pedidos que quedaron en la cola.
+     */
+    private PlanEstable construirPlanEstable(ResultadoPaso paso) {
+        int instante = paso.getInstante();
+        List<RutaPlanificada> rutas = new ArrayList<>();
+        for (UnidadEnTransito transito : simulacion.getUnidadesEnTransito()) {
+            List<RutaPlanificada.ParadaPlanificada> paradas = new ArrayList<>();
+            int carga = 0;
+            int distancia = 0;
+            int regreso = transito.getSalida();
+            for (Tramo tramo : transito.getTramos()) {
+                distancia += tramo.getDistancia();
+                regreso = Math.max(regreso, tramo.getLlegada());
+                if (tramo.esEntrega() && tramo.getLlegada() > instante) {
+                    carga += tramo.getCantidad();
+                    paradas.add(new RutaPlanificada.ParadaPlanificada(
+                            NomenclaturaOperacion.codigoPedido(tramo.getIdPedido()),
+                            RecorridoCamino.coordenada(tramo.getDestino()), tramo.getCantidad(),
+                            lineaTiempo.aMilisegundos(tramo.getLlegada()),
+                            lineaTiempo.aMilisegundos(seguimiento.horaLimite(tramo.getIdPedido()))));
+                }
+            }
+            if (!paradas.isEmpty()) {
+                Vehiculo vehiculo = transito.getVehiculo();
+                rutas.add(new RutaPlanificada(codigosFlota.codigo(vehiculo),
+                        NomenclaturaOperacion.tipoUnidad(vehiculo.getTipo()),
+                        NomenclaturaOperacion.codigoAlmacen(transito.getOrigen()),
+                        lineaTiempo.aMilisegundos(transito.getSalida()), lineaTiempo.aMilisegundos(regreso),
+                        distancia, carga, vehiculo.getCapacidad(), List.copyOf(paradas)));
+            }
+        }
+        rutas.sort((a, b) -> Long.compare(a.salidaMs(), b.salidaMs()) != 0
+                ? Long.compare(a.salidaMs(), b.salidaMs()) : a.unidad().compareTo(b.unidad()));
+        List<String> sinAsignar = simulacion.getCola().stream()
+                .map(pedido -> NomenclaturaOperacion.codigoPedido(pedido.getId())).toList();
+        return new PlanEstable(configuracion.id(), configuracion.tipoEscenario().name(),
+                configuracion.algoritmo().name(), lineaTiempo.aMilisegundos(instante), paso.getTiempoComputoMs(),
+                paso.getUnidadesDespachadas().size(), List.copyOf(rutas), sinAsignar, null);
     }
 
     private void difundirEventos(ResultadoPaso paso, List<Tramo> completados) {
@@ -565,7 +632,8 @@ public final class MotorEjecucion {
         ContextoInstantanea contexto = new ContextoInstantanea(configuracion.id(),
                 configuracion.tipoEscenario().name(), estado.name(), pasoSc++, minutoInicial, minuto, lineaTiempo,
                 ZonedDateTime.now(relojPared), reloj.getInicioReal(), reloj.getFactorAceleracion(), codigosFlota,
-                seguimiento.pedidosActivos(minuto), seguimiento.indicadores(simulacion, minuto),
+                seguimiento.pedidosActivos(minuto), seguimiento.entregadosRecientes(minuto),
+                seguimiento.indicadores(simulacion, minuto),
                 Map.copyOf(averiasEnCurso));
         ultimaInstantanea = difusion.difundirEstado(contexto, simulacion);
     }

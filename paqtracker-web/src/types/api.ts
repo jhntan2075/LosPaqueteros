@@ -87,6 +87,23 @@ export interface AlmacenEnMapaApi {
   nivelInventario: NivelApi | null;
 }
 
+/** Estado de una fracción de pedido (FraccionEnvio en la API). */
+export type EstadoFraccionApi = 'PROGRAMADA' | 'EN_CAMINO' | 'ENTREGADA' | 'LIBERADA';
+
+/** Parte de un pedido que lleva una sola unidad (FraccionEnvio en la API). */
+export interface FraccionEnvioApi {
+  /** Correlativo dentro del pedido, desde 1. */
+  indice: number;
+  unidad: string;
+  almacenOrigen: IdAlmacenApi;
+  cantidad: number;
+  /** Salida del almacén; futura si la ruta ya se despachó y la unidad aún no sale. */
+  salidaMs: number;
+  /** Llegada estimada, o real si ya se entregó. */
+  llegadaMs: number;
+  estado: EstadoFraccionApi;
+}
+
 export interface PedidoEnMapaApi {
   id: number;
   codigo: string;
@@ -100,6 +117,10 @@ export interface PedidoEnMapaApi {
   unidad: string | null;
   /** Cliente según el archivo de ventas (p. ej. "c8662"), o null si no se conoce. */
   cliente?: string | null;
+  /** Entrega real (la de su última fracción), o null si aún no se entrega. */
+  entregaMs?: number | null;
+  /** Partes del pedido por unidad, en el orden en que salieron. */
+  fracciones?: FraccionEnvioApi[];
 }
 
 export interface BloqueoEnMapaApi {
@@ -145,6 +166,8 @@ export interface MensajeEstadoApi {
   pedidos: PedidoEnMapaApi[];
   bloqueos: BloqueoEnMapaApi[];
   indicadores: IndicadoresApi;
+  /** Pedidos entregados en las últimas 4 h simuladas, los más recientes primero. */
+  entregadosRecientes?: PedidoEnMapaApi[];
 }
 
 export type TipoEventoApi =
@@ -220,6 +243,8 @@ export interface PedidoApi {
   estado: EstadoPedidoApi;
   nivelHolgura: NivelPedidoApi;
   unidad: string | null;
+  entregaMs?: number | null;
+  fracciones?: FraccionEnvioApi[];
 }
 
 export interface RegistroPedidoApi {
@@ -228,6 +253,42 @@ export interface RegistroPedidoApi {
   replanifico: boolean;
   tiempoComputoMs: number;
   unidadesDespachadas: number;
+}
+
+/** Entrega pendiente dentro de una ruta del plan (RutaPlanificada.ParadaPlanificada). */
+export interface ParadaPlanificadaApi {
+  pedido: string;
+  destino: CoordenadaApi;
+  cantidad: number;
+  llegadaMs: number;
+  horaLimiteMs: number;
+}
+
+/** Ruta de una unidad en el plan estable. */
+export interface RutaPlanificadaApi {
+  unidad: string;
+  tipo: 'AUTO' | 'MOTO' | 'BICICLETA';
+  almacenOrigen: IdAlmacenApi;
+  salidaMs: number;
+  regresoMs: number;
+  distanciaKm: number;
+  carga: number;
+  capacidad: number;
+  paradas: ParadaPlanificadaApi[];
+}
+
+/** GET /api/ejecuciones/{id}/plan-estable: plan vigente tras la última planificación sin colapso. */
+export interface PlanEstableApi {
+  ejecucionId: string;
+  tipoEscenario: TipoEscenarioApi;
+  algoritmo: 'GA' | 'IACO';
+  instanteMs: number;
+  tiempoComputoMs: number;
+  unidadesDespachadas: number;
+  rutas: RutaPlanificadaApi[];
+  pedidosSinAsignar: string[];
+  /** Si la ejecución colapsó después de este plan: cuándo y por qué pedido. */
+  colapso: { instanteMs: number; pedido: string; causa: string } | null;
 }
 
 export interface HitoPedidoApi {
