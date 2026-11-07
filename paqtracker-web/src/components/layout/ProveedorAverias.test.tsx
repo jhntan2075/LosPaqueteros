@@ -34,7 +34,7 @@ describe('ProveedorAverias', () => {
       await expect(result.current.registrar('ej-1', 'M-03', 2)).resolves.toBe(respuesta);
     });
 
-    expect(llamada).toHaveBeenCalledWith('ej-1', 'M-03', 2);
+    expect(llamada).toHaveBeenCalledWith('ej-1', 'M-03', 2, undefined);
     expect(result.current.pendientes).toEqual({ 'ej-1:M-03': respuesta });
   });
 

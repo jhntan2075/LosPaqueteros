@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { ArrowDownWideNarrow, ArrowUpNarrowWide } from 'lucide-react';
 import { UNIDADES, type TipoUnidad } from '../../config/dominio';
 import { ESTADO_UNIDAD, NOMBRE_CARGA, RANGO_OCUPACION } from '../../config/glosario';
@@ -6,11 +6,17 @@ import { capitalizar, formatearDuracion, formatearHora, formatearMomento } from 
 import { useDatosOperacion } from '../../hooks/useDatosOperacion';
 import {
   CRITERIOS_ORDEN,
-  dentroDeMinutos,
+  RANGOS_KM,
+  dentroDe,
+  enRangosKm,
+  kmAlDestino,
+  kmDesdeOrigen,
   minutosDesdeSalida,
   minutosParaLlegar,
   ordenarUnidades,
   type CriterioOrden,
+  type IdRangoKm,
+  type MagnitudBusqueda,
   type ReferenciaTiempo,
   type Sentido,
 } from '../../lib/listaUnidades';
@@ -18,6 +24,9 @@ import { estadoFlota } from '../../lib/operacion';
 import { MarcaSemaforo } from '../map/simbolos';
 import { FONDO_SEMAFORO, NIVELES_CARGA, TEXTO_SEMAFORO, nivelDeOcupacion } from '../../lib/semaforo';
 import type { EstadoUnidad, SeleccionPanel } from '../../types/operacion';
+import type { Coordenada } from '../../types/domain';
+import { useDesplazarAResaltado } from '../../hooks/useDesplazarAResaltado';
+import type { SeleccionResaltable } from '../../lib/envios';
 import { FilaConBarra, TituloSeccion } from './comunes';
 
 import { iconoDeCarga, iconoDeUnidad } from '../map/iconosVehiculo';
@@ -40,7 +49,42 @@ const FILTROS_UNIDAD: { valor: FiltroUnidad; etiqueta: string }[] = [
 ];
 
 /** Sentido con que arranca cada criterio: lo más útil primero (más ocupadas, salidas y llegadas más próximas). */
-const SENTIDO_NATURAL: Record<CriterioOrden, Sentido> = { CODIGO: 'ASC', OCUPACION: 'DESC', SALIDA: 'ASC', LLEGADA: 'ASC' };
+const SENTIDO_NATURAL: Record<CriterioOrden, Sentido> = {
+  CODIGO: 'ASC',
+  OCUPACION: 'DESC',
+  SALIDA: 'ASC',
+  LLEGADA: 'ASC',
+  KM_POR_RECORRER: 'ASC',
+  KM_RECORRIDOS: 'DESC',
+};
+
+/** "12 km", "3,5 km". */
+const formatoKm = (km: number) => `${(Math.round(km * 10) / 10).toString().replace('.', ',')} km`;
+
+// El filtro por rangos de km (E11) es permanente: se recuerda al cerrar el panel y al recargar, en este
+// navegador. Si el almacenamiento no está disponible, dura mientras la página siga abierta.
+const CLAVE_RANGOS_KM = 'paqtracker.flota.rangosKm';
+let rangosKmEnMemoria: IdRangoKm[] = [];
+const leerRangosKm = (): Set<IdRangoKm> => {
+  try {
+    const guardado = localStorage.getItem(CLAVE_RANGOS_KM);
+    if (guardado !== null) {
+      const ids = JSON.parse(guardado) as string[];
+      return new Set(RANGOS_KM.map((r) => r.id).filter((id) => ids.includes(id)));
+    }
+  } catch {
+    // Sin almacenamiento: se usa la copia en memoria.
+  }
+  return new Set(rangosKmEnMemoria);
+};
+const guardarRangosKm = (rangos: Set<IdRangoKm>) => {
+  rangosKmEnMemoria = [...rangos];
+  try {
+    localStorage.setItem(CLAVE_RANGOS_KM, JSON.stringify(rangosKmEnMemoria));
+  } catch {
+    // Sin almacenamiento: queda la copia en memoria.
+  }
+};
 
 const Leyenda: React.FC<{ color: string; etiqueta: string; valor: number }> = ({ color, etiqueta, valor }) => (
   <span className="flex items-center gap-[5px] text-[12px] whitespace-nowrap">
@@ -51,8 +95,20 @@ const Leyenda: React.FC<{ color: string; etiqueta: string; valor: number }> = ({
 );
 
 /** Pestaña "Flota" del panel lateral del mapa (Operación y corrida de simulación). */
-export const EstadoFlota: React.FC<{ onSeleccionar: (seleccion: SeleccionPanel) => void }> = ({ onSeleccionar }) => {
+interface EstadoFlotaProps {
+  onSeleccionar: (seleccion: SeleccionPanel) => void;
+  /** Objeto resaltado en el mapa; si es una unidad, su fila se marca y se lleva a la vista (F01). */
+  resaltado?: SeleccionResaltable | null;
+  /** Clic en una fila: la marca en la lista y en el mapa. Sin valor, la fila abre el detalle (como antes). */
+  onResaltar?: (objeto: SeleccionResaltable) => void;
+  onCentrar?: (punto: Coordenada) => void;
+}
+
+export const EstadoFlota: React.FC<EstadoFlotaProps> = ({ onSeleccionar, resaltado = null, onResaltar, onCentrar }) => {
   const datos = useDatosOperacion();
+  const listaRef = useRef<HTMLUListElement>(null);
+  const unidadResaltada = resaltado?.tipo === 'vehiculo' ? resaltado.codigo : null;
+  useDesplazarAResaltado(listaRef, unidadResaltada ? `[data-fila-unidad="${unidadResaltada}"]` : null);
   const { reloj } = datos;
   const flota = estadoFlota(datos);
   const utilizacion = flota.total === 0 ? 0 : Math.round((flota.enRuta / flota.total) * 100);
@@ -91,9 +147,23 @@ export const EstadoFlota: React.FC<{ onSeleccionar: (seleccion: SeleccionPanel) 
   const [sentido, setSentido] = useState<Sentido>('ASC');
   const [minutos, setMinutos] = useState('');
   const [referencia, setReferencia] = useState<ReferenciaTiempo>('LLEGADA');
+  const [magnitud, setMagnitud] = useState<MagnitudBusqueda>('MIN');
+  const [rangosKm, setRangosKm] = useState<Set<IdRangoKm>>(leerRangosKm);
+  const cambiarRangosKm = (rangos: Set<IdRangoKm>) => {
+    setRangosKm(rangos);
+    guardarRangosKm(rangos);
+  };
+  const alternarRangoKm = (id: IdRangoKm) => {
+    const siguientes = new Set(rangosKm);
+    if (siguientes.has(id)) siguientes.delete(id);
+    else siguientes.add(id);
+    cambiarRangosKm(siguientes);
+  };
   const limite = minutos.trim() === '' || Number.isNaN(Number(minutos)) ? null : Number(minutos);
   const porEstado = filtro === 'TODAS' ? datos.flota : datos.flota.filter((u) => u.estado === filtro);
-  const buscadas = limite === null ? porEstado : porEstado.filter((u) => dentroDeMinutos(u, limite, referencia, reloj));
+  // Filtro permanente por rangos de km (E11) y, sobre su resultado, la búsqueda por minutos o km (E06–E09).
+  const porRango = porEstado.filter((u) => enRangosKm(u, rangosKm));
+  const buscadas = limite === null ? porRango : porRango.filter((u) => dentroDe(u, limite, magnitud, referencia, reloj));
   const unidadesFiltradas = ordenarUnidades(buscadas, orden, sentido);
   const cambiarOrden = (criterio: CriterioOrden) => {
     setOrden(criterio);
@@ -173,8 +243,9 @@ export const EstadoFlota: React.FC<{ onSeleccionar: (seleccion: SeleccionPanel) 
           ))}
         </section>
 
-        {/* Todas las unidades: lista completa, clicable (abre su detalle), filtrable por estado, ordenable
-            (E13–E15) y con búsqueda por minutos al destino o desde el origen (E06, E07). */}
+        {/* Todas las unidades: lista completa, clicable (abre su detalle), filtrable por estado y por rangos de
+            km al destino (E11), ordenable (E13–E17) y con búsqueda por minutos o km al destino o desde el
+            origen (E06–E09). */}
         <section className="px-[12px] pt-[12px] pb-[14px] flex flex-col gap-[8px]" aria-label="Todas las unidades">
           <TituloSeccion derecha={`${unidadesFiltradas.length} de ${flota.total}`}>Todas las unidades</TituloSeccion>
           <div className="flex items-center gap-[6px] text-[12px]">
@@ -205,7 +276,7 @@ export const EstadoFlota: React.FC<{ onSeleccionar: (seleccion: SeleccionPanel) 
             </button>
           </div>
           <fieldset className="flex flex-wrap items-center gap-[6px] text-[12px]">
-            <legend className="sr-only">Buscar por tiempo del tramo en curso</legend>
+            <legend className="sr-only">Buscar por tiempo o distancia del tramo en curso</legend>
             <label htmlFor="minutos-unidades" className="font-sans text-[#64748B] whitespace-nowrap">
               A ≤
             </label>
@@ -217,10 +288,33 @@ export const EstadoFlota: React.FC<{ onSeleccionar: (seleccion: SeleccionPanel) 
               placeholder="—"
               value={minutos}
               onChange={(e) => setMinutos(e.target.value)}
-              aria-label="Minutos como máximo"
+              step={magnitud === 'KM' ? 'any' : 1}
+              aria-label={magnitud === 'KM' ? 'Kilómetros como máximo' : 'Minutos como máximo'}
               className="h-[26px] w-[56px] px-[6px] rounded-[4px] border border-[#CBD5E1] bg-white tabular-nums text-[12px] text-[#0F172A]"
             />
-            <span className="font-sans text-[#64748B]">min de la</span>
+            <div role="radiogroup" aria-label="Magnitud de la búsqueda" className="flex rounded-[4px] border border-[#CBD5E1] overflow-hidden">
+              {(
+                [
+                  ['MIN', 'min'],
+                  ['KM', 'km'],
+                ] as const
+              ).map(([valor, etiqueta]) => (
+                <button
+                  key={valor}
+                  type="button"
+                  role="radio"
+                  aria-checked={magnitud === valor}
+                  aria-label={valor === 'MIN' ? 'Minutos' : 'Kilómetros'}
+                  onClick={() => setMagnitud(valor)}
+                  className={`h-[24px] px-[8px] text-[11px] font-sans ${
+                    magnitud === valor ? 'bg-[#DBEAFE] text-[#1E40AF] font-medium' : 'bg-white text-[#64748B] hover:bg-[#F8FAFC]'
+                  }`}
+                >
+                  {etiqueta}
+                </button>
+              ))}
+            </div>
+            <span className="font-sans text-[#64748B]">de la</span>
             <div role="radiogroup" aria-label="Referencia de tiempo" className="flex rounded-[4px] border border-[#CBD5E1] overflow-hidden">
               {(
                 [
@@ -248,6 +342,27 @@ export const EstadoFlota: React.FC<{ onSeleccionar: (seleccion: SeleccionPanel) 
               </button>
             )}
           </fieldset>
+          <div className="flex flex-wrap items-center gap-[4px] text-[12px]" role="group" aria-label="Distancia al destino">
+            <span className="font-sans text-[#64748B] mr-[2px]">Al destino:</span>
+            {RANGOS_KM.map(({ id, etiqueta }) => (
+              <button
+                key={id}
+                type="button"
+                aria-pressed={rangosKm.has(id)}
+                onClick={() => alternarRangoKm(id)}
+                className={`px-[7px] py-[3px] rounded-[4px] text-[12px] font-sans tabular-nums ${
+                  rangosKm.has(id) ? 'bg-[#DBEAFE] text-[#1E40AF] font-medium' : 'bg-white border border-[#E2E8F0] text-[#64748B] hover:border-[#CBD5E1]'
+                }`}
+              >
+                {etiqueta}
+              </button>
+            ))}
+            {rangosKm.size > 0 && (
+              <button type="button" onClick={() => cambiarRangosKm(new Set())} className="text-[11px] text-[#1E40AF] hover:underline">
+                Todas las distancias
+              </button>
+            )}
+          </div>
           <div className="flex flex-wrap gap-[4px]" role="group" aria-label="Filtrar unidades">
             {FILTROS_UNIDAD.map(({ valor, etiqueta }) => (
               <button
@@ -265,22 +380,46 @@ export const EstadoFlota: React.FC<{ onSeleccionar: (seleccion: SeleccionPanel) 
           </div>
           {unidadesFiltradas.length === 0 && (
             <p className="font-sans text-[12px] text-[#64748B]">
-              {limite !== null ? 'Ninguna unidad dentro de ese tiempo.' : 'Ninguna unidad en este estado.'}
+              {limite !== null
+                ? magnitud === 'KM'
+                  ? 'Ninguna unidad dentro de esa distancia.'
+                  : 'Ninguna unidad dentro de ese tiempo.'
+                : rangosKm.size > 0
+                  ? 'Ninguna unidad en esos rangos de distancia.'
+                  : 'Ninguna unidad en este estado.'}
             </p>
           )}
-          <ul className="flex flex-col">
+          <ul ref={listaRef} className="flex flex-col">
             {unidadesFiltradas.map((u) => {
               const nivel = nivelDeOcupacion(u.carga, u.capacidad);
               const porcentaje = u.capacidad > 0 ? Math.round((u.carga / u.capacidad) * 100) : null;
               const paraLlegar = minutosParaLlegar(u, reloj);
               const desdeSalida = minutosDesdeSalida(u, reloj);
+              const alDestino = kmAlDestino(u);
+              const desdeOrigen = kmDesdeOrigen(u);
+              const seleccionada = unidadResaltada === u.codigo;
+              const objeto: SeleccionResaltable = { tipo: 'vehiculo', codigo: u.codigo };
+              // Primer clic: la marca en la lista y en el mapa, y la centra; con la fila ya marcada, abre su detalle.
+              const elegir = () => {
+                if (!onResaltar || seleccionada) {
+                  onSeleccionar(objeto);
+                  return;
+                }
+                onResaltar(objeto);
+                onCentrar?.(u.posicion);
+              };
               return (
-                <li key={u.codigo}>
+                <li
+                  key={u.codigo}
+                  data-fila-unidad={u.codigo}
+                  aria-current={seleccionada ? 'true' : undefined}
+                  className={`flex items-stretch -mx-[4px] rounded ${seleccionada ? 'bg-[#EFF6FF] ring-1 ring-[#1E40AF]' : ''}`}
+                >
                   <button
                     type="button"
-                    onClick={() => onSeleccionar({ tipo: 'vehiculo', codigo: u.codigo })}
+                    onClick={elegir}
                     data-unidad={u.codigo}
-                    className="w-full py-[5px] flex flex-col gap-[1px] text-left text-[12px] hover:bg-[#F8FAFC] -mx-[4px] px-[4px] rounded"
+                    className="flex-1 min-w-0 py-[5px] flex flex-col gap-[1px] text-left text-[12px] hover:bg-[#F8FAFC] px-[4px] rounded"
                   >
                     <span className="flex items-center gap-[8px] w-full">
                       <img src={iconoDeUnidad(u).href} alt="" className="block -my-[4px]" />
@@ -296,9 +435,6 @@ export const EstadoFlota: React.FC<{ onSeleccionar: (seleccion: SeleccionPanel) 
                           </>
                         )}
                       </span>
-                      <span className="text-[#64748B]" aria-hidden="true">
-                        ›
-                      </span>
                     </span>
                     <span className="pl-[38px] text-[11px] text-[#64748B] tabular-nums truncate">
                       {u.tramo && paraLlegar !== null && desdeSalida !== null ? (
@@ -306,16 +442,33 @@ export const EstadoFlota: React.FC<{ onSeleccionar: (seleccion: SeleccionPanel) 
                           → ({Math.round(u.tramo.destino.x)},{Math.round(u.tramo.destino.y)}) ·{' '}
                           <span className={referencia === 'SALIDA' ? 'text-[#0F172A] font-medium' : undefined}>
                             salió {formatearHora(u.tramo.salida)} · hace {formatearDuracion(desdeSalida)}
+                            {desdeOrigen !== null && ` · ${formatoKm(desdeOrigen)}`}
                           </span>{' '}
                           ·{' '}
                           <span className={referencia === 'LLEGADA' ? 'text-[#0F172A] font-medium' : undefined}>
                             llega {formatearHora(u.tramo.llegada)} · en {formatearDuracion(paraLlegar)}
+                            {alDestino !== null && ` · ${formatoKm(alDestino)}`}
                           </span>
                         </>
                       ) : (
                         'Sin tramo en curso'
                       )}
                     </span>
+                    {(u.kmPorRecorrer > 0 || u.distanciaRecorridaKm > 0) && (
+                      <span className="pl-[38px] text-[11px] text-[#64748B] tabular-nums truncate">
+                        Ruta: <span className={orden === 'KM_RECORRIDOS' ? 'text-[#0F172A] font-medium' : undefined}>recorrió {formatoKm(u.distanciaRecorridaKm)}</span>
+                        {' · '}
+                        <span className={orden === 'KM_POR_RECORRER' ? 'text-[#0F172A] font-medium' : undefined}>faltan {formatoKm(u.kmPorRecorrer)}</span>
+                      </span>
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onSeleccionar(objeto)}
+                    aria-label={`Ver detalle de ${u.codigo}`}
+                    className="w-[24px] shrink-0 text-[#64748B] hover:text-[#0F172A]"
+                  >
+                    ›
                   </button>
                 </li>
               );

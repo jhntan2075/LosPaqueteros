@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Download } from 'lucide-react';
+import { ReportePlanificacion } from '../reporte/ReportePlanificacion';
 import { useDatosOperacion } from '../../hooks/useDatosOperacion';
 import type { DatosOperacion } from '../../types/operacion';
 import { formatearCronometro, formatearDiasHoras, formatearFechaLarga, formatearMiles } from '../../lib/formato';
@@ -69,8 +70,12 @@ interface InformeCorridaProps {
   onNuevaCorrida: () => void;
 }
 
+type VistaInforme = 'resumen' | 'planificacion';
+
 export const InformeCorrida: React.FC<InformeCorridaProps> = ({ ejecucion, estado, onVolverACorrida, onNuevaCorrida }) => {
   const datos = useDatosOperacion();
+  // Resumen de indicadores, o el reporte de la última planificación estable (G08; G10 en el colapso).
+  const [vista, setVista] = useState<VistaInforme>('resumen');
   const { resumen, indicadores } = datos;
   const colapso = estado === 'COLAPSO';
   const porcentaje = (valor: number) => `${valor.toFixed(1).replace('.', ',')} %`;
@@ -99,8 +104,33 @@ export const InformeCorrida: React.FC<InformeCorridaProps> = ({ ejecucion, estad
         </button>
       </header>
 
-      <div className="flex-1 min-h-0 overflow-y-auto">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-[16px] p-[24px] items-start">
+      <div role="tablist" aria-label="Contenido del informe" className="h-[40px] bg-white border-b border-[#E2E8F0] px-[24px] flex items-end gap-[20px] shrink-0">
+        {(
+          [
+            ['resumen', 'Resumen'],
+            ['planificacion', colapso ? 'Última planificación estable (antes del colapso)' : 'Última planificación estable'],
+          ] as const
+        ).map(([valor, etiqueta]) => (
+          <button
+            key={valor}
+            type="button"
+            role="tab"
+            aria-selected={vista === valor}
+            onClick={() => setVista(valor)}
+            className={`h-full px-[2px] border-b-2 font-sans text-[13px] ${
+              vista === valor ? 'border-[#1E40AF] font-semibold text-[#0F172A]' : 'border-transparent text-[#64748B] hover:text-[#0F172A]'
+            }`}
+          >
+            {etiqueta}
+          </button>
+        ))}
+      </div>
+
+      <div className="flex-1 min-h-0 overflow-y-auto" role="tabpanel">
+        {vista === 'planificacion' ? (
+          <ReportePlanificacion ejecucionId={ejecucion.id} />
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-[16px] p-[24px] items-start">
           <Tarjeta titulo="Resultado">
             <Fila etiqueta="Escenario" valor={ejecucion.tipoEscenario === 'COLAPSO_LOGISTICO' ? 'Hasta el colapso' : `Simulación ${ejecucion.dias} días`} />
             <Fila
@@ -135,7 +165,8 @@ export const InformeCorrida: React.FC<InformeCorridaProps> = ({ ejecucion, estad
               valor={`ajustado < ${Math.round(ejecucion.parametros.fraccionSemaforoAmbar * 100)} % · crítico < ${Math.round(ejecucion.parametros.fraccionSemaforoRojo * 100)} %`}
             />
           </Tarjeta>
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );

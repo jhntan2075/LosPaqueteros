@@ -14,7 +14,8 @@ export interface ContextoAveriasValor {
   /** Averías registradas que el servidor aún no aplica, por "ejecucionId:unidad". */
   pendientes: Record<string, RespuestaRegistroAveriaApi>;
   /** Registra la avería; si falla, lanza un Error con el mensaje para el operador. */
-  registrar: (ejecucionId: string, unidad: string, tipo: 1 | 2 | 3) => Promise<RespuestaRegistroAveriaApi>;
+  /** `instanteMs` programa la avería para un instante futuro del reloj de la ejecución. */
+  registrar: (ejecucionId: string, unidad: string, tipo: 1 | 2 | 3, instanteMs?: number) => Promise<RespuestaRegistroAveriaApi>;
   /** Deshace la avería programada de la unidad; si ya se aplicó o falla, lanza un Error con el mensaje. */
   cancelar: (ejecucionId: string, unidad: string) => Promise<void>;
 }

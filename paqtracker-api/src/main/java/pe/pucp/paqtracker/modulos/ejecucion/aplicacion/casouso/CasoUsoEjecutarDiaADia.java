@@ -86,6 +86,20 @@ public class CasoUsoEjecutarDiaADia {
     }
 
     /**
+     * Reinicia la operacion dia a dia para que tome los parametros del dominio vigentes (B02, B04,
+     * B07-B09): detiene la ejecucion en curso y crea otra desde el instante actual. Los pedidos registrados
+     * a mano se recuperan como tras un reinicio de la API y se replanifican.
+     *
+     * @return la ejecucion dia a dia nueva
+     */
+    public RespuestaEjecucion reiniciar() {
+        registro.buscar(ServicioEjecucion.ID_DIA_A_DIA).filter(motor -> !motor.getEstado().esTerminal())
+                .ifPresent(MotorEjecucion::detener);
+        LOGGER.info("Operación día a día reiniciada para aplicar los parámetros del dominio vigentes");
+        return ejecutar();
+    }
+
+    /**
      * El estado vivo esta en memoria: si la API se reinicio, los pedidos registrados a mano antes del
      * reinicio se reincorporan si son de este mes y su plazo aun no vence (entran a la cola en el primer
      * paso). Los identificadores nuevos continuan despues del ultimo guardado para no repetirse.

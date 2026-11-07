@@ -290,7 +290,7 @@ public final class Reparador {
             int tramo = CalculadoraTiempos.distancia(escenario, actual, entrega.getDestino(), reloj,
                     ruta.getVehiculo());
             reloj = CalendarioTurnos.avanzarConPausa(idVehiculo, reloj,
-                    CalculadoraTiempos.minutosDeViaje(tramo, ruta.getVehiculo().getTipo()));
+                    CalculadoraTiempos.minutosDeViaje(tramo, ruta.getVehiculo()));
             if (reloj > entrega.getHoraLimite()) {
                 incumplimientos++;
             }

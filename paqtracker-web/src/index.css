@@ -36,3 +36,23 @@ body {
   background-color: var(--color-fondo);
   color: var(--color-texto);
 }
+
+/* Impresión del reporte de planificación (G08–G10): solo se imprime lo marcado con data-imprimible, sin
+   botones ni la interfaz alrededor. */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  [data-imprimible],
+  [data-imprimible] * {
+    visibility: visible;
+  }
+  [data-imprimible] {
+    position: absolute;
+    inset: 0;
+    overflow: visible;
+  }
+  [data-no-imprimir] {
+    display: none !important;
+  }
+}

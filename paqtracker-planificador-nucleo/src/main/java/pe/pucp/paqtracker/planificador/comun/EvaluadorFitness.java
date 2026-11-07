@@ -226,7 +226,7 @@ public final class EvaluadorFitness {
                     ruta.getVehiculo());
             resultado.distancia += tramo;
             reloj = CalendarioTurnos.avanzarConPausa(idVehiculo, reloj,
-                    CalculadoraTiempos.minutosDeViaje(tramo, ruta.getVehiculo().getTipo()));
+                    CalculadoraTiempos.minutosDeViaje(tramo, ruta.getVehiculo()));
             resultado.penalizacionTiempo += penalizacionTiempo(entrega.getHoraLimite() - reloj,
                     entrega.getCantidad(), pesos);
             reloj = CalendarioTurnos.avanzarConPausa(idVehiculo, reloj, escenario.getTiempoServicio());

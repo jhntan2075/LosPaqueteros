@@ -134,6 +134,23 @@ public final class ConfiguracionDominio {
     }
 
     /**
+     * Construye los almacenes con los parametros configurados (B02): el primero es el central, ilimitado.
+     *
+     * @param parametros parametros del dominio
+     * @return lista con el almacen central y los intermedios, con ids desde cero
+     */
+    public static List<Almacen> crearAlmacenes(ParametrosDominio parametros) {
+        List<Almacen> almacenes = new ArrayList<>();
+        for (int i = 0; i < parametros.almacenes().size(); i++) {
+            ParametrosDominio.ParametrosAlmacen almacen = parametros.almacenes().get(i);
+            Nodo nodo = new Nodo(almacen.x(), almacen.y());
+            almacenes.add(i == 0 ? new Almacen(0, nodo, true, Integer.MAX_VALUE)
+                    : new Almacen(i, nodo, false, almacen.capacidad()));
+        }
+        return almacenes;
+    }
+
+    /**
      * Construye la flota completa, con todas las unidades ubicadas en el
      * almacen central al inicio de la operacion.
      *
@@ -156,6 +173,22 @@ public final class ConfiguracionDominio {
      * @throws IllegalArgumentException si alguna cantidad es negativa o la flota queda vacia
      */
     public static List<Vehiculo> crearFlota(Almacen central, int autos, int motos, int bicicletas) {
+        return crearFlota(central, autos, motos, bicicletas, ParametrosDominio.porDefecto());
+    }
+
+    /**
+     * Construye una flota con la composicion indicada y los atributos configurados de cada tipo (B04).
+     *
+     * @param central    almacen central de partida
+     * @param autos      cantidad de autos
+     * @param motos      cantidad de motocicletas
+     * @param bicicletas cantidad de bicicletas
+     * @param parametros parametros del dominio, con capacidad, velocidad y costo de cada tipo
+     * @return lista de vehiculos de la flota
+     * @throws IllegalArgumentException si alguna cantidad es negativa o la flota queda vacia
+     */
+    public static List<Vehiculo> crearFlota(Almacen central, int autos, int motos, int bicicletas,
+                                            ParametrosDominio parametros) {
         if (autos < 0 || motos < 0 || bicicletas < 0 || autos + motos + bicicletas == 0) {
             throw new IllegalArgumentException("Composicion de flota invalida: autos=" + autos
                     + ", motos=" + motos + ", bicicletas=" + bicicletas);
@@ -163,13 +196,13 @@ public final class ConfiguracionDominio {
         List<Vehiculo> flota = new ArrayList<>();
         int id = 0;
         for (int i = 0; i < autos; i++) {
-            flota.add(new Vehiculo(id++, TipoVehiculo.AUTO, central));
+            flota.add(new Vehiculo(id++, TipoVehiculo.AUTO, central, parametros.unidad(TipoVehiculo.AUTO)));
         }
         for (int i = 0; i < motos; i++) {
-            flota.add(new Vehiculo(id++, TipoVehiculo.MOTOCICLETA, central));
+            flota.add(new Vehiculo(id++, TipoVehiculo.MOTOCICLETA, central, parametros.unidad(TipoVehiculo.MOTOCICLETA)));
         }
         for (int i = 0; i < bicicletas; i++) {
-            flota.add(new Vehiculo(id++, TipoVehiculo.BICICLETA, central));
+            flota.add(new Vehiculo(id++, TipoVehiculo.BICICLETA, central, parametros.unidad(TipoVehiculo.BICICLETA)));
         }
         return flota;
     }

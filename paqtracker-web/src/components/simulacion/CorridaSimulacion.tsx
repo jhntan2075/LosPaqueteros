@@ -12,7 +12,8 @@ import { EstadoConexion } from '../layout/EstadoConexion';
 import { FooterBar } from '../layout/FooterBar';
 import { GridMap, type DestinoMapa, type GridMapHandle } from '../map/GridMap';
 import { BarraPaneles } from '../operacion/BarraPaneles';
-import { PanelLateral, type SeleccionPanel } from '../operacion/PanelLateral';
+import { PanelLateral } from '../operacion/PanelLateral';
+import { useNavegacionPanel } from '../../hooks/useNavegacionPanel';
 import { DiagnosticoColapso } from './DiagnosticoColapso';
 import { EncabezadoCorrida } from './EncabezadoCorrida';
 import { InformeCorrida } from './InformeCorrida';
@@ -48,16 +49,12 @@ const CorridaEnVivo: React.FC<CorridaSimulacionProps & { recibidoEnMs: number }>
   const conectado = useConexionStomp();
   const segundosActualizado = useSegundosDesde(recibidoEnMs);
   const mapaRef = useRef<GridMapHandle>(null);
-  const [panel, setPanel] = useState<SeleccionPanel | null>(null);
-  // Pestaña del panel (la que resalta la barra vertical y a la que "Volver" regresa al salir de un
-  // detalle de pedido, vehículo o almacén).
-  const [ultimaPestana, setUltimaPestana] = useState<PestanaPanel>('incidencias');
-  const seleccionar = (seleccion: SeleccionPanel) => {
-    if (seleccion.tipo === 'resumen' || seleccion.tipo === 'incidencias' || seleccion.tipo === 'flota' || seleccion.tipo === 'bitacora') {
-      setUltimaPestana(seleccion.tipo);
-    }
-    setPanel(seleccion);
-  };
+  // Pestaña abierta del panel (null: cerrado). El detalle, lo resaltado y la pila de "Volver" los lleva la
+  // navegación del panel, la misma que en Operación.
+  const [pestana, setPestana] = useState<PestanaPanel | null>(null);
+  const nav = useNavegacionPanel({ pestana, abrirPestana: setPestana, cerrarPanel: () => setPestana(null) });
+  const seleccionar = nav.seleccionar;
+  const panelAbierto = nav.panelAbierto;
   const [verInforme, setVerInforme] = useState(false);
   // El diagnóstico se abre solo al detectar el colapso; el usuario puede cerrarlo y reabrirlo.
   const [diagnosticoCerrado, setDiagnosticoCerrado] = useState(false);
@@ -74,7 +71,7 @@ const CorridaEnVivo: React.FC<CorridaSimulacionProps & { recibidoEnMs: number }>
           : 'DETENIDA'
         : 'EJECUCION';
   const colapso = estado === 'COLAPSO';
-  const verDiagnostico = colapso && !diagnosticoCerrado && panel === null;
+  const verDiagnostico = colapso && !diagnosticoCerrado && !panelAbierto;
   const flota = estadoFlota(datos);
   const riesgo = pedidosEnRiesgo(datos);
   const dia = `${datos.reloj.getDate()} ${MESES[datos.reloj.getMonth()]}`;
@@ -121,21 +118,26 @@ const CorridaEnVivo: React.FC<CorridaSimulacionProps & { recibidoEnMs: number }>
           destinos={destinos}
           bloqueos={datos.bloqueos}
           almacenes={datos.almacenes}
-          seleccion={panel && (panel.tipo === 'pedido' || panel.tipo === 'vehiculo' || panel.tipo === 'almacen') ? panel : null}
-          anchoPanelDerecho={panel || verDiagnostico ? ANCHO_PANEL_PX : 0}
+          seleccion={nav.seleccionMapa}
+          anchoPanelDerecho={panelAbierto || verDiagnostico ? ANCHO_PANEL_PX : 0}
           riesgo={resumenRiesgo(datos)}
-          onSeleccionar={seleccionar}
+          onSeleccionar={nav.elegirEnMapa}
           onAbrirIncidencias={() => seleccionar({ tipo: 'incidencias' })}
           onAbrirAverias={() => seleccionar({ tipo: 'flota' })}
+          onAbrirFlota={() => seleccionar({ tipo: 'flota' })}
+          onAbrirAlmacenes={() => seleccionar({ tipo: 'almacenes' })}
           onHoverCoordenada={setNodo}
         >
-          {panel && (
+          {panelAbierto && (
             <PanelLateral
-              seleccion={panel}
+              seleccion={nav.seleccionPanel}
               onSeleccionar={seleccionar}
-              onCerrar={() => setPanel(null)}
+              onCerrar={nav.cerrar}
               onCentrar={(punto) => mapaRef.current?.centrarEn(punto)}
-              onVolver={() => seleccionar({ tipo: ultimaPestana })}
+              onVolver={nav.volver}
+              etiquetaVolver={nav.etiquetaVolver}
+              resaltado={nav.resaltado}
+              onResaltar={nav.resaltar}
             />
           )}
           {verDiagnostico && (
@@ -147,7 +149,7 @@ const CorridaEnVivo: React.FC<CorridaSimulacionProps & { recibidoEnMs: number }>
             />
           )}
           {/* El diagnóstico se puede cerrar para ver el mapa completo; este acceso lo reabre. */}
-          {colapso && diagnosticoCerrado && panel === null && (
+          {colapso && diagnosticoCerrado && !panelAbierto && (
             <button
               type="button"
               onClick={() => setDiagnosticoCerrado(false)}
@@ -158,7 +160,7 @@ const CorridaEnVivo: React.FC<CorridaSimulacionProps & { recibidoEnMs: number }>
           )}
         </GridMap>
         <BarraPaneles
-          activa={panel || verDiagnostico ? ultimaPestana : null}
+          activa={panelAbierto || verDiagnostico ? nav.pestanaActiva : null}
           onSeleccionar={(tipo) => seleccionar({ tipo })}
           conteos={{ incidencias: riesgo.length, flota: flota.averiadas.length }}
         />

@@ -44,7 +44,7 @@ public class CasoUsoRegistrarAveria {
 
     /**
      * @param ejecucionId ejecucion en la que se registra la averia
-     * @param solicitud   unidad y tipo de la averia
+     * @param solicitud   unidad, tipo e instante (opcional) de la averia
      * @return averia registrada y encolada
      * @throws SolicitudInvalidaException    si el tipo no es 1, 2 ni 3
      * @throws RecursoNoEncontradoException  si la ejecucion o la unidad no existen
@@ -54,7 +54,7 @@ public class CasoUsoRegistrarAveria {
     public RespuestaRegistroAveria ejecutar(String ejecucionId, SolicitudRegistroAveria solicitud) {
         TipoAveria tipo = interpretarTipo(solicitud.tipo());
         AveriaProgramada programada = servicioEjecucion.registrarAveria(ejecucionId,
-                new SolicitudAveriaEnVivo(solicitud.unidad(), tipo));
+                new SolicitudAveriaEnVivo(solicitud.unidad(), tipo, solicitud.instanteMs()));
         AveriaRegistrada registrada = repositorio.guardar(new AveriaRegistrada(null, programada.ejecucionId(),
                 programada.codigoUnidad(), programada.tipo(), Instant.ofEpochMilli(programada.instanteMs()),
                 relojPared.instant(), null));

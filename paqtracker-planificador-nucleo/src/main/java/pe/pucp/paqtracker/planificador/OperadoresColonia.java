@@ -149,7 +149,7 @@ public final class OperadoresColonia {
                 }
                 int tramo = orden.get(ultima).getDestino().distanciaManhattan(entrega.getDestino());
                 int llegada = CalendarioTurnos.avanzarConPausa(vehiculo.getId(), reloj,
-                        CalculadoraTiempos.minutosDeViaje(tramo, vehiculo.getTipo()));
+                        CalculadoraTiempos.minutosDeViaje(tramo, vehiculo));
                 if (llegada + bufferMinutos <= entrega.getHoraLimite()) {
                     factibles[cantidad] = indice;
                     llegadas[cantidad] = llegada;
@@ -194,7 +194,7 @@ public final class OperadoresColonia {
                 continue;
             }
             int llegada = CalendarioTurnos.avanzarConPausa(vehiculo.getId(), escenario.getInstanteActual(),
-                    CalculadoraTiempos.minutosDeViaje(distancia, vehiculo.getTipo()));
+                    CalculadoraTiempos.minutosDeViaje(distancia, vehiculo));
             opciones.add(new Opcion(vehiculo, llegada, entrega.getHoraLimite() - llegada, distancia));
         }
         if (opciones.isEmpty()) {

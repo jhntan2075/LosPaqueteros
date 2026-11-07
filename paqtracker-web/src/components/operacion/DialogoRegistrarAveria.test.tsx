@@ -191,7 +191,7 @@ describe('DialogoRegistrarAveria', () => {
 
   it('las tarjetas de tipo son radios nativos sin valor por defecto', () => {
     montar({ unidadInicial: 'A-01' });
-    const radios = screen.getAllByRole('radio') as HTMLInputElement[];
+    const radios = within(screen.getByRole('group', { name: 'Tipo de avería' })).getAllByRole('radio') as HTMLInputElement[];
     expect(radios).toHaveLength(3);
     expect(radios.some((r) => r.checked)).toBe(false);
     expect(screen.queryByText(/\*/)).toBeNull(); // sin asterisco de obligatorio
@@ -202,7 +202,32 @@ describe('DialogoRegistrarAveria', () => {
     elegirTipo(3);
     fireEvent.click(botonRegistrar());
     await waitFor(() => expect(onRegistrada).toHaveBeenCalledWith(respuesta));
-    expect(registrar).toHaveBeenCalledWith('ej-1', 'A-01', 3);
+    expect(registrar).toHaveBeenCalledWith('ej-1', 'A-01', 3, undefined);
+  });
+
+  it('B07-B09 · programa la avería para un instante futuro y rechaza uno pasado', async () => {
+    const { registrar, onRegistrada } = montar({ unidadInicial: 'A-01' });
+    elegirTipo(1);
+    fireEvent.click(screen.getByDisplayValue('programar'));
+    const campo = screen.getByLabelText('Fecha y hora de la avería') as HTMLInputElement;
+
+    // Por defecto propone una hora después del reloj.
+    expect(new Date(campo.value).getTime()).toBe(Math.floor((datos.reloj.getTime() + HORA) / 60_000) * 60_000);
+    const pasado = new Date(datos.reloj.getTime() - HORA);
+    const dos = (n: number) => String(n).padStart(2, '0');
+    const valor = (f: Date) => `${f.getFullYear()}-${dos(f.getMonth() + 1)}-${dos(f.getDate())}T${dos(f.getHours())}:${dos(f.getMinutes())}`;
+    fireEvent.change(campo, { target: { value: valor(pasado) } });
+    expect(screen.getByText(/Debe ser posterior a la hora del reloj/)).toBeTruthy();
+    expect(botonRegistrar().disabled).toBe(true);
+
+    const futuro = new Date(datos.reloj.getTime() + 3 * HORA);
+    futuro.setSeconds(0, 0);
+    fireEvent.change(campo, { target: { value: valor(futuro) } });
+    expect(botonRegistrar().disabled).toBe(false);
+    fireEvent.click(botonRegistrar());
+
+    await waitFor(() => expect(onRegistrada).toHaveBeenCalled());
+    expect(registrar).toHaveBeenCalledWith('ej-1', 'A-01', 1, futuro.getTime());
   });
 
   it('mientras envía bloquea el botón y el cierre', async () => {

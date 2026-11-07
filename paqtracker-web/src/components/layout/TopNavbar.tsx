@@ -1,9 +1,9 @@
 import React from 'react';
 import logo from '../../assets/marca/logo.svg';
-import { LayoutGrid, Package, PlayCircle, BarChart3, Clock, Radio } from 'lucide-react';
+import { LayoutGrid, Package, PlayCircle, BarChart3, Clock, Radio, Settings } from 'lucide-react';
 import { RelojReal } from './RelojReal';
 
-export type TabModulo = 'operacion' | 'pedidos' | 'simulacion' | 'metricas';
+export type TabModulo = 'operacion' | 'pedidos' | 'simulacion' | 'metricas' | 'configuracion';
 
 interface TopNavbarProps {
   tabActiva: TabModulo;
@@ -25,6 +25,7 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
     { id: 'pedidos' as TabModulo, label: 'Pedidos', icon: Package },
     { id: 'simulacion' as TabModulo, label: 'Simulación', icon: PlayCircle },
     { id: 'metricas' as TabModulo, label: 'Métricas', icon: BarChart3 },
+    { id: 'configuracion' as TabModulo, label: 'Configuración', icon: Settings },
   ];
 
   return (

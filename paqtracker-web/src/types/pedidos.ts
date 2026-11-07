@@ -32,6 +32,10 @@ export interface PedidoEnCola {
   nivelHolgura: NivelHolgura;
   vehiculo: VehiculoAsignado | null;
   estado: EstadoPedidoCola;
+  /** Primera salida de un almacén ("04/03 10:00"), o null si aún no sale (rúbrica E31). */
+  salida: string | null;
+  /** Todas las unidades que lo llevan (un pedido fraccionado va en varias), sin las liberadas por avería. */
+  unidades: string[];
 }
 
 export interface BorradorPedido {

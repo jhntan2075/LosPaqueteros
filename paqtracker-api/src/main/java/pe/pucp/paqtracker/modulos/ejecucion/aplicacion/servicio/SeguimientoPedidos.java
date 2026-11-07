@@ -8,6 +8,7 @@ import pe.pucp.paqtracker.modelo.Tramo;
 import pe.pucp.paqtracker.modelo.Vehiculo;
 import pe.pucp.paqtracker.modulos.configuracion.dominio.FuenteRangosSemaforo;
 import pe.pucp.paqtracker.modulos.difusion.aplicacion.dto.Coordenada;
+import pe.pucp.paqtracker.modulos.difusion.aplicacion.dto.FraccionEnvio;
 import pe.pucp.paqtracker.modulos.difusion.aplicacion.dto.IndicadoresOperacion;
 import pe.pucp.paqtracker.modulos.difusion.aplicacion.dto.PedidoEnMapa;
 import pe.pucp.paqtracker.modulos.difusion.aplicacion.servicio.CodigosFlota;
@@ -21,6 +22,7 @@ import pe.pucp.paqtracker.simulacion.SimulacionEnCurso;
 import pe.pucp.paqtracker.simulacion.Trasbordo;
 import pe.pucp.paqtracker.simulacion.UnidadEnTransito;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -30,8 +32,11 @@ import java.util.stream.Collectors;
 
 /**
  * Sigue el estado de cada pedido de una ejecucion a partir de lo que reporta cada paso de la
- * simulacion: estado, unidad, llegada estimada, trazabilidad, holgura, semaforo y KPI. Lo usa solo el
- * hilo del motor.
+ * simulacion: estado, unidad, llegada estimada, fracciones por unidad, trazabilidad, holgura, semaforo y
+ * KPI. Lo usa solo el hilo del motor.
+ *
+ * <p>Es una proyeccion (modelo de lectura) de los {@link ResultadoPaso}: el panel del visualizador
+ * consulta aqui lo que sale, va en camino o se entrego desde cada almacen sin volver al nucleo.
  */
 public final class SeguimientoPedidos {
 
@@ -42,6 +47,8 @@ public final class SeguimientoPedidos {
     private static final String NIVEL_ROJO = "ROJO";
     private static final double PORCENTAJE_TOTAL = 100.0;
     private static final int MINUTOS_POR_HORA = 60;
+    /** Ventana de "entregados recientemente" que acompana a cada instantanea: las ultimas 4 h simuladas. */
+    public static final int VENTANA_RECIENTE_MINUTOS = 4 * MINUTOS_POR_HORA;
 
     private final LineaTiempo lineaTiempo;
     private final FuenteRangosSemaforo semaforo;
@@ -118,6 +125,21 @@ public final class SeguimientoPedidos {
      */
     public List<PedidoEnMapa> pedidosActivos(double minuto) {
         return pedidos.values().stream().filter(s -> s.estado != EstadoPedido.ENTREGADO)
+                .map(s -> aPedidoEnMapa(s, minuto)).toList();
+    }
+
+    /**
+     * Pedidos entregados dentro de la ventana {@link #VENTANA_RECIENTE_MINUTOS} que termina en el minuto
+     * actual, con su borde inferior incluido; los mas recientes primero.
+     *
+     * @param minuto minuto simulado actual
+     * @return pedidos entregados en las ultimas 4 h simuladas
+     */
+    public List<PedidoEnMapa> entregadosRecientes(double minuto) {
+        double desde = minuto - VENTANA_RECIENTE_MINUTOS;
+        return pedidos.values().stream()
+                .filter(s -> s.estado == EstadoPedido.ENTREGADO && s.entregaReal >= desde && s.entregaReal <= minuto)
+                .sorted(Comparator.comparingInt((Seguimiento s) -> s.entregaReal).reversed())
                 .map(s -> aPedidoEnMapa(s, minuto)).toList();
     }
 
@@ -202,6 +224,7 @@ public final class SeguimientoPedidos {
             return false;
         }
         seguimiento.partesEnCamino--;
+        seguimiento.entregarFraccion(tramo);
         if (seguimiento.partesEnCamino > 0) {
             seguimiento.hito(tramo.getLlegada(), "Entrega parcial", tramo.getCantidad() + " paquetes entregados");
             return false;
@@ -225,11 +248,11 @@ public final class SeguimientoPedidos {
         int instante = averia.averia().getInstante();
         String causa = "la unidad " + codigo + " tuvo una avería tipo " + averia.averia().getTipo().getNumero();
         for (Entrega entrega : averia.entregasLiberadas()) {
-            retirarParte(entrega, instante, "Liberado por avería", entrega.getCantidad()
+            retirarParte(entrega, codigo, instante, "Liberado por avería", entrega.getCantidad()
                     + " paquetes vuelven a planificarse en el siguiente ciclo: " + causa);
         }
         for (Entrega entrega : averia.entregasRespaldadas()) {
-            retirarParte(entrega, instante, "Respaldo por avería", entrega.getCantidad()
+            retirarParte(entrega, codigo, instante, "Respaldo por avería", entrega.getCantidad()
                     + " paquetes salen en otra unidad desde un almacén: " + causa);
         }
         if (averia.transitoReanudado() != null) {
@@ -248,18 +271,23 @@ public final class SeguimientoPedidos {
                 continue;
             }
             seguimiento.actualizarEta(tramo.getLlegada());
+            seguimiento.fraccionActiva(codigo).ifPresent(fraccion -> fraccion.llegada = tramo.getLlegada());
             seguimiento.hito(instante, "Retrasado por avería", "La unidad " + codigo
                     + " se detuvo por una avería tipo 1 con la carga a bordo, nueva llegada estimada "
                     + lineaTiempo.formatear(tramo.getLlegada()));
         }
     }
 
-    /** Una parte que la averiada deja de llevar: sale del conteo en camino y, si era la ultima, el pedido espera. */
-    private void retirarParte(Entrega entrega, int instante, String titulo, String detalle) {
+    /**
+     * Una parte que la averiada deja de llevar: sale del conteo en camino, su fraccion queda liberada y, si
+     * era la ultima, el pedido espera.
+     */
+    private void retirarParte(Entrega entrega, String codigoUnidad, int instante, String titulo, String detalle) {
         Seguimiento seguimiento = pedidos.get(entrega.getIdPedido());
         if (seguimiento == null || seguimiento.estado == EstadoPedido.ENTREGADO) {
             return;
         }
+        seguimiento.fraccionActiva(codigoUnidad).ifPresent(fraccion -> fraccion.estado = EstadoFraccion.LIBERADA);
         seguimiento.partesEnCamino = Math.max(0, seguimiento.partesEnCamino - 1);
         if (seguimiento.partesEnCamino == 0) {
             seguimiento.estado = EstadoPedido.REGISTRADO;
@@ -285,12 +313,19 @@ public final class SeguimientoPedidos {
             }
             seguimiento.actualizarEta(tramo.getLlegada());
             if (!trasvasados.contains(tramo.getIdPedido())) {
+                seguimiento.fraccionActiva(receptora).ifPresent(fraccion -> fraccion.llegada = tramo.getLlegada());
                 seguimiento.hito(instante, "Desvío por trasvase", "La unidad " + receptora + " se desvía a recoger "
                         + "carga de " + codigoAveriada + "; nueva llegada estimada "
                         + lineaTiempo.formatear(tramo.getLlegada()));
                 continue;
             }
             seguimiento.unidad = receptora;
+            // La fraccion conserva su codigo y su origen: cambia de unidad y de llegada.
+            seguimiento.fraccionActiva(codigoAveriada).or(() -> seguimiento.fraccionActiva(receptora))
+                    .ifPresent(fraccion -> {
+                        fraccion.unidad = receptora;
+                        fraccion.llegada = tramo.getLlegada();
+                    });
             seguimiento.hito(instante, "Trasvasado", tramo.getCantidad() + " paquetes pasan de " + codigoAveriada
                     + " (averiada) a " + receptora + ", que los recoge a las "
                     + lineaTiempo.formatear(trasbordo.getRecojo()) + "; nueva llegada estimada "
@@ -309,6 +344,9 @@ public final class SeguimientoPedidos {
             seguimiento.unidad = codigo;
             seguimiento.eta = Math.max(seguimiento.eta, tramo.getLlegada());
             seguimiento.partesEnCamino++;
+            seguimiento.fracciones.add(new Fraccion(seguimiento.fracciones.size() + 1, codigo,
+                    NomenclaturaOperacion.codigoAlmacen(unidad.getOrigen()), tramo.getCantidad(), unidad.getSalida(),
+                    tramo.getLlegada()));
             seguimiento.hito(instante, "Despachado", tramo.getCantidad() + " paquetes en " + codigo + " desde "
                     + NomenclaturaOperacion.nombreAlmacen(unidad.getOrigen()) + ", llegada estimada "
                     + lineaTiempo.formatear(tramo.getLlegada()));
@@ -326,11 +364,26 @@ public final class SeguimientoPedidos {
                 : lineaTiempo.aMilisegundos(seguimiento.estado == EstadoPedido.ENTREGADO
                         ? seguimiento.entregaReal : seguimiento.eta);
         String nivel = seguimiento.estado == EstadoPedido.ENTREGADO ? NIVEL_CERRADO : nivel(seguimiento, minuto);
+        Long entrega = seguimiento.estado == EstadoPedido.ENTREGADO
+                ? lineaTiempo.aMilisegundos(seguimiento.entregaReal) : null;
+        List<FraccionEnvio> fracciones = seguimiento.fracciones.stream()
+                .map(fraccion -> aFraccionEnvio(fraccion, minuto)).toList();
         return new PedidoEnMapa(pedido.getId(), NomenclaturaOperacion.codigoPedido(pedido.getId()),
                 new Coordenada(pedido.getDestino().getX(), pedido.getDestino().getY()), pedido.getCantidad(),
                 lineaTiempo.aMilisegundos(pedido.getInstanteRegistro()),
                 lineaTiempo.aMilisegundos(pedido.getHoraLimite()), eta, seguimiento.estado.name(), nivel,
-                seguimiento.unidad, pedido.getCliente());
+                seguimiento.unidad, pedido.getCliente(), entrega, fracciones);
+    }
+
+    /** Una fraccion activa esta PROGRAMADA mientras su unidad no sale del almacen y EN_CAMINO despues. */
+    private FraccionEnvio aFraccionEnvio(Fraccion fraccion, double minuto) {
+        String estado = switch (fraccion.estado) {
+            case ACTIVA -> fraccion.salida > minuto ? "PROGRAMADA" : "EN_CAMINO";
+            case ENTREGADA -> "ENTREGADA";
+            case LIBERADA -> "LIBERADA";
+        };
+        return new FraccionEnvio(fraccion.indice, fraccion.unidad, fraccion.almacenOrigen, fraccion.cantidad,
+                lineaTiempo.aMilisegundos(fraccion.salida), lineaTiempo.aMilisegundos(fraccion.llegada), estado);
     }
 
     /**
@@ -369,9 +422,34 @@ public final class SeguimientoPedidos {
         private int eta;
         private int entregaReal;
         private int partesEnCamino;
+        private final List<Fraccion> fracciones = new ArrayList<>();
 
         private Seguimiento(Pedido pedido) {
             this.pedido = pedido;
+        }
+
+        /** Primera fraccion aun sin entregar ni liberar que lleva la unidad. */
+        private Optional<Fraccion> fraccionActiva(String codigoUnidad) {
+            return fracciones.stream()
+                    .filter(f -> f.estado == EstadoFraccion.ACTIVA && f.unidad.equals(codigoUnidad)).findFirst();
+        }
+
+        /**
+         * Marca como entregada la fraccion de un tramo de entrega. El nucleo no dice que unidad completo el
+         * tramo: se busca la fraccion activa con la misma llegada y cantidad; si no hay, la de igual cantidad
+         * que llega antes, y si tampoco, la primera activa.
+         */
+        private void entregarFraccion(Tramo tramo) {
+            fracciones.stream().filter(f -> f.estado == EstadoFraccion.ACTIVA
+                            && f.llegada == tramo.getLlegada() && f.cantidad == tramo.getCantidad()).findFirst()
+                    .or(() -> fracciones.stream()
+                            .filter(f -> f.estado == EstadoFraccion.ACTIVA && f.cantidad == tramo.getCantidad())
+                            .min(Comparator.comparingInt((Fraccion f) -> f.llegada)))
+                    .or(() -> fracciones.stream().filter(f -> f.estado == EstadoFraccion.ACTIVA).findFirst())
+                    .ifPresent(fraccion -> {
+                        fraccion.estado = EstadoFraccion.ENTREGADA;
+                        fraccion.llegada = tramo.getLlegada();
+                    });
         }
 
         private void hito(int minuto, String titulo, String detalle) {
@@ -384,6 +462,29 @@ public final class SeguimientoPedidos {
          */
         private void actualizarEta(int llegada) {
             eta = partesEnCamino <= 1 ? llegada : Math.max(eta, llegada);
+        }
+    }
+
+    /** Estado interno de una fraccion; PROGRAMADA y EN_CAMINO se distinguen al difundir, con el reloj. */
+    private enum EstadoFraccion { ACTIVA, ENTREGADA, LIBERADA }
+
+    /** Parte de un pedido en una unidad. Cambia de unidad en un trasvase y de llegada ante una averia. */
+    private static final class Fraccion {
+        private final int indice;
+        private final String almacenOrigen;
+        private final int cantidad;
+        private final int salida;
+        private String unidad;
+        private int llegada;
+        private EstadoFraccion estado = EstadoFraccion.ACTIVA;
+
+        private Fraccion(int indice, String unidad, String almacenOrigen, int cantidad, int salida, int llegada) {
+            this.indice = indice;
+            this.unidad = unidad;
+            this.almacenOrigen = almacenOrigen;
+            this.cantidad = cantidad;
+            this.salida = salida;
+            this.llegada = llegada;
         }
     }
 }

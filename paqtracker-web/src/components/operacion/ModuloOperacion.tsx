@@ -2,13 +2,14 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useDatosOperacion } from '../../hooks/useDatosOperacion';
 import { estadoFlota, fueraDelAlmacen, resumenRiesgo } from '../../lib/operacion';
 import type { Coordenada } from '../../types/domain';
-import type { PestanaPanel, SeleccionPanel, SubvistaOperacion } from '../../types/operacion';
-import { GridMap, type DestinoMapa, type GridMapHandle, type ObjetoMapa } from '../map/GridMap';
+import { useNavegacionPanel } from '../../hooks/useNavegacionPanel';
+import type { SubvistaOperacion } from '../../types/operacion';
+import { GridMap, type DestinoMapa, type GridMapHandle } from '../map/GridMap';
 import { BarraPaneles } from './BarraPaneles';
 import { PanelLateral } from './PanelLateral';
 
 // Operación día a día: mapa en vivo de la ejecución que difunde paqtracker-api. Resumen, Incidencias,
-// Flota y Bitácora son pestañas del panel lateral sobre el mapa, elegidas desde la barra vertical fija
+// Pedidos, Flota, Almacenes y Bitácora son pestañas del panel lateral sobre el mapa, elegidas desde la barra vertical fija
 // a su derecha, igual que en la corrida de simulación.
 
 const ANCHO_PANEL_PX = 340 + 12;
@@ -32,8 +33,13 @@ export const ModuloOperacion: React.FC<ModuloOperacionProps> = ({
 }) => {
   const datos = useDatosOperacion();
   const mapaRef = useRef<GridMapHandle>(null);
-  // Objeto abierto en el panel derecho; sin objeto, el panel muestra la pestaña de subvista.
-  const [detalle, setDetalle] = useState<ObjetoMapa | null>(null);
+  // La subvista es la pestaña abierta del panel; 'vivo' es el mapa sin panel. El detalle abierto, lo
+  // resaltado y la pila de "Volver" los lleva la navegación del panel, la misma que en Simulación.
+  const nav = useNavegacionPanel({
+    pestana: subvista === 'vivo' ? null : subvista,
+    abrirPestana: onCambiarSubvista,
+    cerrarPanel: () => onCambiarSubvista('vivo'),
+  });
   // Destino por centrar: se reintenta con cada instantánea hasta que el mapa midió su contenedor.
   const porCentrarRef = useRef<Coordenada | null>(null);
   // Último pedidoAEnfocar ya abierto: evita reabrirlo en cada render mientras la prop sigue viva.
@@ -46,12 +52,7 @@ export const ModuloOperacion: React.FC<ModuloOperacionProps> = ({
     [datos.flota],
   );
   const unidadesEnMapa = datos.flota.filter(fueraDelAlmacen);
-  // La subvista es la pestaña abierta del panel; 'vivo' es el mapa sin panel.
-  const panelAbierto = subvista !== 'vivo' || detalle !== null;
-  // Pestaña a la que "Volver" regresa y que la barra vertical resalta: la última elegida, o Incidencias
-  // si el detalle se abrió sin pasar por una pestaña (p. ej. desde el buscador).
-  const pestanaDesdeSubvista: PestanaPanel = subvista === 'vivo' ? 'incidencias' : subvista;
-  const seleccionPanel: SeleccionPanel = detalle ?? { tipo: pestanaDesdeSubvista };
+  const { panelAbierto } = nav;
 
   // Pedido pedido desde otra pantalla ("Ubicar en el mapa"): se abre en cuanto cambia la prop, no solo
   // al montar (Operación ahora queda montada entre pestañas, para no perder el zoom, el panel y las
@@ -61,7 +62,7 @@ export const ModuloOperacion: React.FC<ModuloOperacionProps> = ({
   if (pedidoAEnfocarActual !== ultimoPedidoAEnfocar) {
     setUltimoPedidoAEnfocar(pedidoAEnfocarActual);
     const pedido = pedidoAEnfocarActual ? datos.pedidos[pedidoAEnfocarActual] : undefined;
-    if (pedido) setDetalle({ tipo: 'pedido', codigo: pedido.codigo });
+    if (pedido) nav.seleccionar({ tipo: 'pedido', codigo: pedido.codigo });
   }
 
   // Centrar el mapa y avisar al padre que ya se abrió sí son efectos: el primero toca un ref que otro
@@ -77,19 +78,6 @@ export const ModuloOperacion: React.FC<ModuloOperacionProps> = ({
     if (porCentrarRef.current && panelAbierto && mapaRef.current?.centrarEn(porCentrarRef.current)) porCentrarRef.current = null;
   }, [datos, panelAbierto]);
 
-  const seleccionar = (seleccion: SeleccionPanel) => {
-    if (seleccion.tipo === 'resumen' || seleccion.tipo === 'incidencias' || seleccion.tipo === 'flota' || seleccion.tipo === 'bitacora') {
-      setDetalle(null);
-      onCambiarSubvista(seleccion.tipo);
-    } else {
-      setDetalle(seleccion);
-    }
-  };
-  const cerrarPanel = () => {
-    setDetalle(null);
-    onCambiarSubvista('vivo');
-  };
-
   return (
     <div className="flex-1 flex flex-col min-h-0">
       <main className="flex-1 relative flex min-h-0 bg-[#F8FAFC]">
@@ -99,27 +87,32 @@ export const ModuloOperacion: React.FC<ModuloOperacionProps> = ({
           destinos={destinos}
           bloqueos={datos.bloqueos}
           almacenes={datos.almacenes}
-          seleccion={detalle}
+          seleccion={nav.seleccionMapa}
           anchoPanelDerecho={panelAbierto ? ANCHO_PANEL_PX : 0}
           riesgo={riesgo}
-          onSeleccionar={setDetalle}
-          onAbrirIncidencias={() => seleccionar({ tipo: 'incidencias' })}
-          onAbrirAverias={() => seleccionar({ tipo: 'flota' })}
+          onSeleccionar={nav.elegirEnMapa}
+          onAbrirIncidencias={() => nav.seleccionar({ tipo: 'incidencias' })}
+          onAbrirAverias={() => nav.seleccionar({ tipo: 'flota' })}
+          onAbrirFlota={() => nav.seleccionar({ tipo: 'flota' })}
+          onAbrirAlmacenes={() => nav.seleccionar({ tipo: 'almacenes' })}
           onHoverCoordenada={onHoverCoordenada}
         >
           {panelAbierto && (
             <PanelLateral
-              seleccion={seleccionPanel}
-              onSeleccionar={seleccionar}
-              onCerrar={cerrarPanel}
+              seleccion={nav.seleccionPanel}
+              onSeleccionar={nav.seleccionar}
+              onCerrar={nav.cerrar}
               onCentrar={(punto) => mapaRef.current?.centrarEn(punto)}
-              onVolver={() => seleccionar({ tipo: pestanaDesdeSubvista })}
+              onVolver={nav.volver}
+              etiquetaVolver={nav.etiquetaVolver}
+              resaltado={nav.resaltado}
+              onResaltar={nav.resaltar}
             />
           )}
         </GridMap>
         <BarraPaneles
-          activa={panelAbierto ? pestanaDesdeSubvista : null}
-          onSeleccionar={(tipo) => seleccionar({ tipo })}
+          activa={panelAbierto ? nav.pestanaActiva : null}
+          onSeleccionar={(tipo) => nav.seleccionar({ tipo })}
           conteos={{ incidencias: riesgo.rojo + riesgo.ambar, flota: flota.averiadas.length }}
         />
       </main>

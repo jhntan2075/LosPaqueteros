@@ -23,6 +23,7 @@ import {
 import { fueraDelAlmacen, ocupacionAlmacenes, ocupacionFlota } from '../../lib/operacion';
 import { almacenPasaFiltros, cantidadFiltros, guardarFiltros, leerFiltros, SIN_FILTROS, unidadPasaFiltros, type FiltrosMapa as Filtros } from '../../lib/filtrosMapa';
 import { COLOR_SEMAFORO, NIVELES_CARGA, nivelDeOcupacion, type NivelCarga } from '../../lib/semaforo';
+import { destinoResaltado, unidadesResaltadas, type SeleccionResaltable } from '../../lib/envios';
 import { colorDeUnidad, iconoDeUnidad } from './iconosVehiculo';
 import type { Capa } from './capas';
 import { FiltrosMapa, type ConteosFiltros } from './FiltrosMapa';
@@ -55,10 +56,11 @@ export interface DestinoMapa {
   unidad: string;
 }
 
-export type ObjetoMapa =
-  | { tipo: 'pedido'; codigo: string }
-  | { tipo: 'vehiculo'; codigo: string }
-  | { tipo: 'almacen'; codigo: string };
+/**
+ * Lo que el mapa resalta: un pedido (todas sus rutas), una fracción (solo la ruta de su unidad), una unidad o
+ * un almacén. Al tocar el mapa solo se eligen pedidos, unidades y almacenes; la fracción se elige en el panel.
+ */
+export type ObjetoMapa = SeleccionResaltable;
 
 /** Objeto bajo el cursor: muestra su tooltip. Los bloqueos tienen tooltip pero no se seleccionan. */
 type ObjetoHover = { tipo: ObjetoMapa['tipo'] | 'bloqueo'; codigo: string };
@@ -346,7 +348,7 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
     const fueClic = Math.hypot(e.clientX - a.inicioX, e.clientY - a.inicioY) <= TOLERANCIA_CLIC_PX;
     if (!fueClic || !a.objeto) return;
     const [tipo, codigo] = a.objeto.split(':');
-    if (tipo !== 'bloqueo') onSeleccionar({ tipo: tipo as ObjetoMapa['tipo'], codigo });
+    if (tipo !== 'bloqueo') onSeleccionar({ tipo: tipo as 'pedido' | 'vehiculo' | 'almacen', codigo });
   };
 
   const buscar = (evento: React.FormEvent) => {
@@ -404,13 +406,7 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
 
   // Filtros globales: lo seleccionado nunca se oculta, para no perder el contexto de lo que se mira.
   const enMapa = unidades.filter(fueraDelAlmacen);
-  const codigosSeleccionados = new Set(
-    seleccion?.tipo === 'vehiculo'
-      ? [seleccion.codigo]
-      : seleccion?.tipo === 'pedido'
-        ? destinos.filter((d) => d.pedido === seleccion.codigo).map((d) => d.unidad)
-        : [],
-  );
+  const codigosSeleccionados = unidadesResaltadas(seleccion, destinos);
   const unidadesVisibles =
     filtrosActivos === 0 ? unidades : unidades.filter((u) => codigosSeleccionados.has(u.codigo) || unidadPasaFiltros(filtros, u));
   const codigosVisibles = new Set(unidadesVisibles.map((u) => u.codigo));
@@ -877,14 +873,9 @@ const CapasMapa: React.FC<CapasMapaProps> = ({
 
   const halo = { stroke: '#FFFFFF', strokeWidth: 3, paintOrder: 'stroke' } as const;
 
-  // Unidades destacadas: la seleccionada o todas las que llevan el pedido seleccionado (puede ir fraccionado).
-  const unidadesDestacadas = new Set(
-    seleccion?.tipo === 'vehiculo'
-      ? [seleccion.codigo]
-      : seleccion?.tipo === 'pedido'
-        ? destinos.filter((d) => d.pedido === seleccion.codigo).map((d) => d.unidad)
-        : [],
-  );
+  // Unidades destacadas: la seleccionada, todas las que llevan el pedido seleccionado (F03, puede ir
+  // fraccionado) o solo la que lleva la fracción seleccionada (F02).
+  const unidadesDestacadas = unidadesResaltadas(seleccion, destinos);
   const enRuta = unidades.filter((u) => u.estado === 'EN_RUTA');
   // Las rutas destacadas se dibujan al final para quedar encima de las demás.
   const ordenRutas = [...enRuta].sort((a, b) => Number(unidadesDestacadas.has(a.codigo)) - Number(unidadesDestacadas.has(b.codigo)));
@@ -913,7 +904,8 @@ const CapasMapa: React.FC<CapasMapaProps> = ({
     const capacidad = u.capacidad;
     const averiada = u.estado === 'AVERIADA';
     const color = colorDeUnidad(u);
-    const seleccionada = seleccion?.tipo === 'vehiculo' && seleccion.codigo === u.codigo;
+    const seleccionada =
+      (seleccion?.tipo === 'vehiculo' && seleccion.codigo === u.codigo) || (seleccion?.tipo === 'fraccion' && seleccion.unidad === u.codigo);
     const icono = iconoDeUnidad(u);
     const rotuloX = icono.medioAnchoVisible + (seleccionada ? 6 : 4);
     return (
@@ -1067,7 +1059,7 @@ const CapasMapa: React.FC<CapasMapaProps> = ({
       {capas.destinos &&
         destinos.map((d) => {
           const { x, y } = proyectar(vista, d.destino);
-          const seleccionado = seleccion?.tipo === 'pedido' && seleccion.codigo === d.pedido;
+          const seleccionado = destinoResaltado(seleccion, d);
           // Mientras su unidad lo entrega, el pin cambia de color para distinguirlo de los que esperan.
           const entregando = unidades.some((u) => u.codigo === d.unidad && u.pedidoEnEntrega === d.pedido);
           return (

@@ -50,6 +50,8 @@ export const mensajeRubrica = (sobrescribir: Partial<MensajeEstadoApi> = {}): Pa
         { x: 27, y: 24 },
         { x: 40, y: 24 },
       ],
+      // Ruta completa: (27,14) → (27,24) → (40,24) = 23 km; a mitad del primer tramo lleva 5 y le faltan 18.
+      distanciaRutaKm: 23,
       paradas: [{ codigoPedido: '#1001', destino: { x: 27, y: 24 }, cantidad: 3, etaMs: INICIO_MS + 60 * MIN }],
     }),
     unidadApi({
@@ -65,6 +67,8 @@ export const mensajeRubrica = (sobrescribir: Partial<MensajeEstadoApi> = {}): Pa
         { x: 57, y: 27 },
         { x: 50, y: 27 },
       ],
+      // Le faltan 7 km de una ruta de 20: lleva 13.
+      distanciaRutaKm: 20,
       paradas: [{ codigoPedido: '#1002', destino: { x: 50, y: 27 }, cantidad: 3, etaMs: INICIO_MS + 90 * MIN }],
     }),
     unidadApi({

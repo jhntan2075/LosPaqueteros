@@ -22,6 +22,7 @@ public final class Averia {
     private final int instante;
     private final int idVehiculo;
     private final TipoAveria tipo;
+    private final ParametrosDominio.ParametrosAveria duraciones;
 
     /**
      * @param instante   minuto absoluto en que ocurre la averia
@@ -29,6 +30,17 @@ public final class Averia {
      * @param tipo       severidad de la averia
      */
     public Averia(int instante, int idVehiculo, TipoAveria tipo) {
+        this(instante, idVehiculo, tipo, ParametrosDominio.ParametrosAveria.porDefecto());
+    }
+
+    /**
+     * @param instante   minuto absoluto en que ocurre la averia
+     * @param idVehiculo identificador de la unidad afectada
+     * @param tipo       severidad de la averia
+     * @param duraciones duraciones configuradas de las averias (B07-B09)
+     */
+    public Averia(int instante, int idVehiculo, TipoAveria tipo, ParametrosDominio.ParametrosAveria duraciones) {
+        this.duraciones = duraciones;
         this.instante = instante;
         this.idVehiculo = idVehiculo;
         this.tipo = tipo;
@@ -79,7 +91,7 @@ public final class Averia {
     }
 
     /**
-     * Instante en que la unidad vuelve a operar (LE-incidencias): tipo 1 a las 2 h; tipo 2 al fin del
+     * Instante en que la unidad vuelve a operar (LE-incidencias): tipo 1 tras su detencion (2 h por defecto); tipo 2 al fin del
      * turno siguiente al de la averia; tipo 3 al inicio del primer turno de 15:00 que empieza cumplidos
      * los 2 dias desde la averia.
      *
@@ -87,10 +99,10 @@ public final class Averia {
      */
     public int getInstanteReincorporacion() {
         return switch (tipo) {
-            case TIPO_1 -> instante + ConfiguracionDominio.AVERIA_TIPO1_MINUTOS;
+            case TIPO_1 -> instante + duraciones.tipo1Minutos();
             case TIPO_2 -> CalendarioTurnos.finDelSiguienteTurno(instante);
             case TIPO_3 -> CalendarioTurnos.proximoTurnoDeLasTres(
-                    instante + ConfiguracionDominio.AVERIA_TIPO3_MINIMO_MINUTOS);
+                    instante + duraciones.tipo3MinimoMinutos());
         };
     }
 
@@ -109,11 +121,18 @@ public final class Averia {
         if (!tieneTraslado()) {
             throw new IllegalStateException("Una averia tipo 1 no se traslada al almacen central");
         }
-        return instante + ConfiguracionDominio.AVERIA_PERMANENCIA_SITIO_MINUTOS;
+        return instante + duraciones.permanenciaSitioMinutos();
     }
 
     public int getIdVehiculo() {
         return idVehiculo;
+    }
+
+    /**
+     * @return duraciones con que se calculan el traslado y la reincorporacion
+     */
+    public ParametrosDominio.ParametrosAveria getDuraciones() {
+        return duraciones;
     }
 
     public TipoAveria getTipo() {

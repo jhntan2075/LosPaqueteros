@@ -1,6 +1,6 @@
 package pe.pucp.paqtracker.simulacion;
 
-import pe.pucp.paqtracker.modelo.ConfiguracionDominio;
+import pe.pucp.paqtracker.modelo.ParametrosDominio;
 import pe.pucp.paqtracker.modelo.Entrega;
 import pe.pucp.paqtracker.modelo.EscenarioOperativo;
 import pe.pucp.paqtracker.modelo.EstadoVehiculo;
@@ -40,10 +40,10 @@ final class GestorTrasbordo {
     /** Receptoras que se evaluan con el trazado exacto, entre las preseleccionadas que llegan antes. */
     static final int MAXIMO_CANDIDATAS = 5;
 
-    private static final int TRASVASE = ConfiguracionDominio.TRASVASE_MINUTOS;
-    private static final int DETENCION_TIPO1 = ConfiguracionDominio.AVERIA_TIPO1_MINUTOS;
-
     private final EscenarioOperativo escenario;
+    private final int trasvase;
+    private final int detencionTipo1;
+    private final int permanenciaSitio;
 
     /**
      * Entregas trasvasadas y las que necesitaban rescate pero ninguna receptora pudo llevar a tiempo.
@@ -59,7 +59,18 @@ final class GestorTrasbordo {
      * @param escenario escenario con la malla vigente, para distancias y caminos
      */
     GestorTrasbordo(EscenarioOperativo escenario) {
+        this(escenario, ParametrosDominio.ParametrosAveria.porDefecto());
+    }
+
+    /**
+     * @param escenario  escenario con la malla vigente, para distancias y caminos
+     * @param duraciones duraciones configuradas de las averias y del trasvase
+     */
+    GestorTrasbordo(EscenarioOperativo escenario, ParametrosDominio.ParametrosAveria duraciones) {
         this.escenario = escenario;
+        this.trasvase = duraciones.trasvaseMinutos();
+        this.detencionTipo1 = duraciones.tipo1Minutos();
+        this.permanenciaSitio = duraciones.permanenciaSitioMinutos();
     }
 
     /**
@@ -74,7 +85,7 @@ final class GestorTrasbordo {
                      List<UnidadEnTransito> enRuta) {
         Nodo punto = transito.ubicacionEn(instanteAveria);
         int partida = instanteAveria + (tipo == TipoAveria.TIPO_1
-                ? DETENCION_TIPO1 : ConfiguracionDominio.AVERIA_PERMANENCIA_SITIO_MINUTOS);
+                ? detencionTipo1 : permanenciaSitio);
         List<Entrega> porRescatar = porRescatar(transito, tipo, instanteAveria);
         List<Receptora> receptoras = trasvasar(porRescatar, transito.getVehiculo(), punto, partida, salida,
                 enRuta);
@@ -101,7 +112,7 @@ final class GestorTrasbordo {
      */
     UnidadEnTransito reanudar(UnidadEnTransito transito, int instanteAveria, Set<Entrega> quitadas) {
         if (quitadas.isEmpty()) {
-            return transito.detenerEn(instanteAveria, DETENCION_TIPO1);
+            return transito.detenerEn(instanteAveria, detencionTipo1);
         }
         Set<Entrega> pendientes = identidad(transito.cortarEn(instanteAveria).entregasPendientes());
         List<Entrega> secuencia = new ArrayList<>();
@@ -117,9 +128,9 @@ final class GestorTrasbordo {
         Vehiculo vehiculo = transito.getVehiculo();
         Nodo punto = transito.ubicacionEn(instanteAveria);
         List<Tramo> tramos = transito.tramosHasta(instanteAveria);
-        tramos.add(UnidadEnTransito.detencion(punto, instanteAveria, DETENCION_TIPO1));
+        tramos.add(UnidadEnTransito.detencion(punto, instanteAveria, detencionTipo1));
         tramos.addAll(CalculadoraTiempos.trazarDesde(escenario, vehiculo, punto, restantes,
-                transito.getDestino().getUbicacion(), instanteAveria + DETENCION_TIPO1));
+                transito.getDestino().getUbicacion(), instanteAveria + detencionTipo1));
         Ruta ruta = new Ruta(vehiculo, transito.getOrigen());
         ruta.getSecuencia().addAll(secuencia);
         ruta.setDestino(transito.getDestino());
@@ -130,10 +141,10 @@ final class GestorTrasbordo {
     /**
      * Tipo 1: las entregas que llegarian tarde esperando las 2 h. Tipo 2 y 3: todas las pendientes.
      */
-    private static List<Entrega> porRescatar(UnidadEnTransito transito, TipoAveria tipo, int instanteAveria) {
+    private List<Entrega> porRescatar(UnidadEnTransito transito, TipoAveria tipo, int instanteAveria) {
         List<Entrega> pendientes = new ArrayList<>(transito.cortarEn(instanteAveria).entregasPendientes());
         if (tipo == TipoAveria.TIPO_1) {
-            Map<Entrega, Integer> esperando = transito.detenerEn(instanteAveria, DETENCION_TIPO1).llegadasPorEntrega();
+            Map<Entrega, Integer> esperando = transito.detenerEn(instanteAveria, detencionTipo1).llegadasPorEntrega();
             pendientes.removeIf(entrega -> esperando.get(entrega) <= entrega.getHoraLimite());
         }
         pendientes.sort(Comparator.comparingInt(Entrega::getHoraLimite));
@@ -184,10 +195,10 @@ final class GestorTrasbordo {
             }
             Receptora receptora = new Receptora(unidad, inicio, punto, partida);
             int viaje = CalculadoraTiempos.minutosDeViaje(receptora.posicion.distanciaManhattan(punto),
-                    vehiculo.getTipo());
+                    vehiculo);
             if (vehiculo.getCapacidad() - receptora.carga >= menorCarga
-                    && inicio + viaje + TRASVASE <= partida
-                    && receptora.holguraMinima() >= 2 * viaje + TRASVASE) {
+                    && inicio + viaje + trasvase <= partida
+                    && receptora.holguraMinima() >= 2 * viaje + trasvase) {
                 receptora.llegadaEstimada = inicio + viaje;
                 receptoras.add(receptora);
             }
@@ -279,7 +290,7 @@ final class GestorTrasbordo {
             }
             Tramo ida = CalculadoraTiempos.trazarViaje(escenario, vehiculo, posicion, punto,
                     TipoTramo.VIAJE_A_TRASBORDO, inicio);
-            int finTrasvase = ida.getLlegada() + TRASVASE;
+            int finTrasvase = ida.getLlegada() + trasvase;
             if (finTrasvase > partida) {
                 return null;
             }
@@ -357,7 +368,7 @@ final class GestorTrasbordo {
             for (Entrega entrega : secuencia) {
                 int tramo = actual.distanciaManhattan(entrega.getDestino());
                 kilometros += tramo;
-                reloj += CalculadoraTiempos.minutosDeViaje(tramo, vehiculo.getTipo());
+                reloj += CalculadoraTiempos.minutosDeViaje(tramo, vehiculo);
                 if (reloj > entrega.getHoraLimite()) {
                     tarde++;
                 }

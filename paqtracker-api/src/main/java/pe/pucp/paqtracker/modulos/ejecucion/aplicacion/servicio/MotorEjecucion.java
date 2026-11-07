@@ -4,6 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import pe.pucp.paqtracker.comun.excepcion.OperacionNoPermitidaException;
 import pe.pucp.paqtracker.comun.excepcion.RecursoNoEncontradoException;
+import pe.pucp.paqtracker.comun.excepcion.SolicitudInvalidaException;
 import pe.pucp.paqtracker.comun.tiempo.LineaTiempo;
 import pe.pucp.paqtracker.modelo.Averia;
 import pe.pucp.paqtracker.modelo.Bloqueo;
@@ -24,6 +25,8 @@ import pe.pucp.paqtracker.modulos.difusion.aplicacion.servicio.ServicioDifusion;
 import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.dto.AveriaProgramada;
 import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.dto.DetallePedido;
 import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.dto.EstimacionAveria;
+import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.dto.PlanEstable;
+import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.dto.RutaPlanificada;
 import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.dto.ResultadoRegistroPedido;
 import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.dto.SolicitudAveriaEnVivo;
 import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.dto.SolicitudPedidoEnVivo;
@@ -37,6 +40,8 @@ import pe.pucp.paqtracker.simulacion.ResultadoPaso;
 import pe.pucp.paqtracker.simulacion.ResultadoSimulacion;
 import pe.pucp.paqtracker.simulacion.SimulacionEnCurso;
 import pe.pucp.paqtracker.simulacion.Trasbordo;
+import pe.pucp.paqtracker.simulacion.UnidadEnTransito;
+import java.util.ArrayList;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZonedDateTime;
@@ -87,6 +92,8 @@ public final class MotorEjecucion {
     private final Map<Integer, AveriaEnCurso> averiasEnCurso = new HashMap<>();
     private volatile EstadoEjecucion estado = EstadoEjecucion.CONFIGURADA;
     private volatile MensajeEstadoEjecucion ultimaInstantanea;
+    /** Plan vigente tras la ultima planificacion que termino sin colapso; null hasta la primera. */
+    private volatile PlanEstable planEstable;
     private int siguientePaso;
     private long pasoSc;
 
@@ -223,11 +230,12 @@ public final class MotorEjecucion {
     }
 
     /**
-     * Registra una averia en el instante actual del reloj (CU-13). Valida la averia contra el estado de
-     * la ejecucion y la encola en la agenda, sin tocar la simulacion: el motor la aplica al inicio de su
-     * siguiente salto Sc y en ese momento repara su carga (trasvase o respaldo), sin replanificar la cola.
+     * Registra una averia en el instante actual del reloj o en uno futuro (CU-13, B07-B09). Valida la
+     * averia contra el estado de la ejecucion y la encola en la agenda, sin tocar la simulacion: el motor la
+     * aplica en el primer salto Sc que alcanza su instante y en ese momento repara su carga (trasvase o
+     * respaldo), sin replanificar la cola. Mientras no se aplica, se puede cancelar.
      *
-     * @param solicitud unidad y tipo de la averia
+     * @param solicitud unidad, tipo e instante opcional de la averia
      * @return averia programada, con su instante y su reincorporacion estimada
      * @throws OperacionNoPermitidaException si el escenario no admite averias, la ejecucion no esta en
      *                                       curso ni pausada, o la unidad ya esta averiada
@@ -245,9 +253,9 @@ public final class MotorEjecucion {
                     || simulacion.tieneAveriaPendiente(idVehiculo)) {
                 throw new OperacionNoPermitidaException("La unidad " + codigo + " ya está averiada");
             }
-            int instante = instanteParaAveria();
+            int instante = instanteSolicitado(solicitud.instanteMs());
             agenda.encolar(new GestorEventos.EventoAveria(idVehiculo, solicitud.tipo(), instante));
-            Averia averia = new Averia(instante, idVehiculo, solicitud.tipo());
+            Averia averia = new Averia(instante, idVehiculo, solicitud.tipo(), simulacion.getDuracionesAveria());
             return new AveriaProgramada(configuracion.id(), codigo, solicitud.tipo().getNumero(),
                     lineaTiempo.aMilisegundos(instante),
                     lineaTiempo.aMilisegundos(averia.getInstanteReincorporacion()),
@@ -284,12 +292,38 @@ public final class MotorEjecucion {
         return enHiloMotor(() -> {
             int instante = instanteParaAveria();
             return Arrays.stream(TipoAveria.values()).map(tipo -> {
-                Averia averia = new Averia(instante, -1, tipo);
+                Averia averia = new Averia(instante, -1, tipo, simulacion.getDuracionesAveria());
                 return new EstimacionAveria(tipo.getNumero(), lineaTiempo.aMilisegundos(instante),
                         lineaTiempo.aMilisegundos(averia.getInstanteReincorporacion()),
                         averia.tieneTraslado() ? lineaTiempo.aMilisegundos(averia.getInstanteTraslado()) : null);
             }).toList();
         });
+    }
+
+    /**
+     * Minuto en que ocurre una averia pedida para el instante dado. Un instante que ya paso por menos de un
+     * minuto (la demora entre el formulario y la API) se toma como "ahora".
+     *
+     * @param instanteMs instante simulado pedido, en epoch ms; null para "ahora"
+     * @return minuto de la averia
+     * @throws SolicitudInvalidaException si el instante ya paso o cae despues del fin de la ejecucion
+     */
+    private int instanteSolicitado(Long instanteMs) {
+        int minimo = instanteParaAveria();
+        if (instanteMs == null) {
+            return minimo;
+        }
+        ZonedDateTime fecha = Instant.ofEpochMilli(instanteMs).atZone(lineaTiempo.getMinutoCero().getZone());
+        int pedido = (int) Math.ceil(lineaTiempo.aMinuto(fecha));
+        if (pedido < Math.floor(minutoVisible()) - 1) {
+            throw new SolicitudInvalidaException("El instante de la avería (" + LineaTiempo.formatear(fecha)
+                    + ") ya pasó: elija ahora o un instante futuro del reloj simulado");
+        }
+        if (pedido > horizonte) {
+            throw new SolicitudInvalidaException("El instante de la avería (" + LineaTiempo.formatear(fecha)
+                    + ") es posterior al fin de la ejecución (" + lineaTiempo.formatear(horizonte) + ")");
+        }
+        return Math.max(pedido, minimo);
     }
 
     /** Primer minuto en que el motor puede aplicar una averia registrada ahora. */
@@ -310,6 +344,22 @@ public final class MotorEjecucion {
      */
     public Optional<DetallePedido> consultarPedido(int idPedido) {
         return enHiloMotor(() -> seguimiento.detalle(idPedido, minutoVisible()));
+    }
+
+    /**
+     * @return la ultima planificacion estable (G08-G10); si la ejecucion colapso despues, lleva los datos del
+     *         colapso. Vacio si todavia no hubo ninguna planificacion
+     */
+    public Optional<PlanEstable> consultarPlanEstable() {
+        return enHiloMotor(() -> {
+            if (planEstable == null) {
+                return Optional.<PlanEstable>empty();
+            }
+            Optional<ColapsoLogistico> colapso = simulacion.getResultado().getColapso();
+            return Optional.of(colapso.map(c -> planEstable.conColapso(new PlanEstable.ColapsoPlan(
+                    lineaTiempo.aMilisegundos(c.getInstante()), NomenclaturaOperacion.codigoPedido(c.getIdPedido()),
+                    c.getCausa().name()))).orElse(planEstable));
+        });
     }
 
     /**
@@ -361,7 +411,8 @@ public final class MotorEjecucion {
         int instantePaso = simulacion.getUltimoInstante() + 1;
         for (GestorEventos.EventoAveria evento : eventos) {
             int instante = Math.max(evento.instante(), simulacion.getUltimoInstante() + 1);
-            simulacion.agregarAveria(new Averia(instante, evento.idVehiculo(), evento.tipo()));
+            simulacion.agregarAveria(new Averia(instante, evento.idVehiculo(), evento.tipo(),
+                    simulacion.getDuracionesAveria()));
             instantePaso = Math.max(instantePaso, instante);
         }
         ejecutarPaso(instantePaso, false);
@@ -435,8 +486,53 @@ public final class MotorEjecucion {
     private ResultadoPaso ejecutarPaso(int instante, boolean planificar) {
         ResultadoPaso paso = simulacion.avanzar(instante, planificar);
         List<Tramo> completados = seguimiento.aplicar(paso);
+        if (paso.huboPlanificacion() && !paso.isColapsoDeclarado()) {
+            planEstable = construirPlanEstable(paso);
+        }
         difundirEventos(paso, completados);
         return paso;
+    }
+
+    /**
+     * Copia el plan vigente tras un paso que planifico: cada unidad en transito con entregas pendientes, en el
+     * orden de su ruta, y los pedidos que quedaron en la cola.
+     */
+    private PlanEstable construirPlanEstable(ResultadoPaso paso) {
+        int instante = paso.getInstante();
+        List<RutaPlanificada> rutas = new ArrayList<>();
+        for (UnidadEnTransito transito : simulacion.getUnidadesEnTransito()) {
+            List<RutaPlanificada.ParadaPlanificada> paradas = new ArrayList<>();
+            int carga = 0;
+            int distancia = 0;
+            int regreso = transito.getSalida();
+            for (Tramo tramo : transito.getTramos()) {
+                distancia += tramo.getDistancia();
+                regreso = Math.max(regreso, tramo.getLlegada());
+                if (tramo.esEntrega() && tramo.getLlegada() > instante) {
+                    carga += tramo.getCantidad();
+                    paradas.add(new RutaPlanificada.ParadaPlanificada(
+                            NomenclaturaOperacion.codigoPedido(tramo.getIdPedido()),
+                            RecorridoCamino.coordenada(tramo.getDestino()), tramo.getCantidad(),
+                            lineaTiempo.aMilisegundos(tramo.getLlegada()),
+                            lineaTiempo.aMilisegundos(seguimiento.horaLimite(tramo.getIdPedido()))));
+                }
+            }
+            if (!paradas.isEmpty()) {
+                Vehiculo vehiculo = transito.getVehiculo();
+                rutas.add(new RutaPlanificada(codigosFlota.codigo(vehiculo),
+                        NomenclaturaOperacion.tipoUnidad(vehiculo.getTipo()),
+                        NomenclaturaOperacion.codigoAlmacen(transito.getOrigen()),
+                        lineaTiempo.aMilisegundos(transito.getSalida()), lineaTiempo.aMilisegundos(regreso),
+                        distancia, carga, vehiculo.getCapacidad(), List.copyOf(paradas)));
+            }
+        }
+        rutas.sort((a, b) -> Long.compare(a.salidaMs(), b.salidaMs()) != 0
+                ? Long.compare(a.salidaMs(), b.salidaMs()) : a.unidad().compareTo(b.unidad()));
+        List<String> sinAsignar = simulacion.getCola().stream()
+                .map(pedido -> NomenclaturaOperacion.codigoPedido(pedido.getId())).toList();
+        return new PlanEstable(configuracion.id(), configuracion.tipoEscenario().name(),
+                configuracion.algoritmo().name(), lineaTiempo.aMilisegundos(instante), paso.getTiempoComputoMs(),
+                paso.getUnidadesDespachadas().size(), List.copyOf(rutas), sinAsignar, null);
     }
 
     private void difundirEventos(ResultadoPaso paso, List<Tramo> completados) {
@@ -565,7 +661,8 @@ public final class MotorEjecucion {
         ContextoInstantanea contexto = new ContextoInstantanea(configuracion.id(),
                 configuracion.tipoEscenario().name(), estado.name(), pasoSc++, minutoInicial, minuto, lineaTiempo,
                 ZonedDateTime.now(relojPared), reloj.getInicioReal(), reloj.getFactorAceleracion(), codigosFlota,
-                seguimiento.pedidosActivos(minuto), seguimiento.indicadores(simulacion, minuto),
+                seguimiento.pedidosActivos(minuto), seguimiento.entregadosRecientes(minuto),
+                seguimiento.indicadores(simulacion, minuto),
                 Map.copyOf(averiasEnCurso));
         ultimaInstantanea = difusion.difundirEstado(contexto, simulacion);
     }

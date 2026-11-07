@@ -164,7 +164,7 @@ const SelectFiltro: React.FC<SelectFiltroProps> = ({ label, valor, opciones, act
 };
 
 function exportarCsv(pedidos: PedidoEnCola[]) {
-  const encabezado = ['ID', 'Cliente', 'Destino', 'Cantidad', 'Plazo', 'Hora límite', 'Llegada estimada', 'Holgura', 'Vehículo', 'Estado'];
+  const encabezado = ['ID', 'Cliente', 'Destino', 'Cantidad', 'Plazo', 'Hora límite', 'Salida', 'Llegada estimada', 'Holgura', 'Vehículo', 'Unidades', 'Estado'];
   const filas = pedidos.map((p) => [
     p.codigo,
     p.cliente,
@@ -172,9 +172,11 @@ function exportarCsv(pedidos: PedidoEnCola[]) {
     p.cantidad,
     etiquetaPlazo(p.plazoHoras),
     p.horaLimite,
+    p.salida ?? '',
     p.eta ?? '',
     p.holgura,
     p.vehiculo ? etiquetaVehiculo(p) : '',
+    p.unidades.join(' / '),
     ESTADOS[p.estado].etiqueta,
   ]);
   const csv = [encabezado, ...filas]
@@ -609,6 +611,7 @@ export const ColaPedidos: React.FC<{
               <EncabezadoOrdenable campo="cantidad" orden={orden} onOrdenar={alternarOrden} alinear="right">Cant.</EncabezadoOrdenable>
               <th className="py-2 px-4">Plazo</th>
               <EncabezadoOrdenable campo="horaLimite" orden={orden} onOrdenar={alternarOrden}>Hora límite</EncabezadoOrdenable>
+              <th className="py-2 px-4">Salida</th>
               <th className="py-2 px-4">Llegada estimada</th>
               <EncabezadoOrdenable campo="holgura" orden={orden} onOrdenar={alternarOrden}>Holgura</EncabezadoOrdenable>
               <th className="py-2 px-4">Vehículo</th>
@@ -657,6 +660,7 @@ export const ColaPedidos: React.FC<{
                     </span>
                   </td>
                   <td className="py-2 px-4 tabular-nums text-slate-600">{pedido.horaLimite}</td>
+                  <td className="py-2 px-4 tabular-nums text-slate-600">{pedido.salida ?? '—'}</td>
                   <td className="py-2 px-4 tabular-nums text-slate-700 font-medium">{pedido.eta ?? '—'}</td>
                   <td className="py-2 px-4">
                     <span className="inline-flex items-center gap-1.5 tabular-nums font-medium">
@@ -666,7 +670,11 @@ export const ColaPedidos: React.FC<{
                   </td>
                   <td className="py-2 px-4 tabular-nums text-slate-700">
                     {pedido.vehiculo ? (
-                      <span className="font-medium text-blue-700">{etiquetaVehiculo(pedido)}</span>
+                      // Fraccionado: la unidad principal y cuántas más; el título nombra todas.
+                      <span className="font-medium text-blue-700" title={pedido.unidades.length > 1 ? `Va en ${pedido.unidades.join(', ')}` : undefined}>
+                        {etiquetaVehiculo(pedido)}
+                        {pedido.unidades.length > 1 && <span className="text-slate-500 font-normal"> +{pedido.unidades.length - 1}</span>}
+                      </span>
                     ) : (
                       <span className="text-slate-500">Sin asignar</span>
                     )}

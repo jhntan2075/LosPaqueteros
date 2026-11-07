@@ -1,6 +1,6 @@
-import { CORTE_HOLGURA, CORTE_INVENTARIO, CORTE_OCUPACION, CORTE_STOCK, esPlazoRegular } from './dominio';
+import { CORTE_HOLGURA, CORTE_INVENTARIO, CORTE_OCUPACION, CORTE_STOCK, DURACIONES_AVERIA, esPlazoRegular, formatearDuracion } from './dominio';
 import type { NivelCarga } from '../lib/semaforo';
-import type { EstadoUnidad, SituacionUnidad } from '../types/operacion';
+import type { EstadoFraccion, EstadoUnidad, SituacionUnidad } from '../types/operacion';
 import type { NivelHolgura } from '../types/pedidos';
 
 // Glosario de la interfaz: un solo nombre por concepto en todas las pantallas. Si un término cambia,
@@ -74,12 +74,22 @@ export const TIPO_AVERIA: Record<
   1: {
     nombre: 'Menor',
     ejemplo: 'llanta desinflada',
-    duracion: '2 h detenida en el lugar',
+    // Duración vigente (configurable): se lee al pintar, no al cargar el módulo.
+    get duracion() {
+      return `${formatearDuracion(DURACIONES_AVERIA.tipo1Minutos)} detenida en el lugar`;
+    },
     impacto: (varios) =>
       varios ? 'se quedan en la unidad; otra unidad en ruta puede recogerlos.' : 'se queda en la unidad; otra unidad en ruta puede recogerlo.',
   },
   2: { nombre: 'Intermedia', ejemplo: 'falla de transmisión', duracion: 'Hasta el fin del siguiente turno', impacto: REPLANIFICA },
-  3: { nombre: 'Mayor', ejemplo: 'mantenimiento', duracion: '2 días o más', impacto: REPLANIFICA },
+  3: {
+    nombre: 'Mayor',
+    ejemplo: 'mantenimiento',
+    get duracion() {
+      return `${formatearDuracion(DURACIONES_AVERIA.tipo3MinimoMinutos)} o más`;
+    },
+    impacto: REPLANIFICA,
+  },
 };
 
 /** Cómo se ve cada tipo de avería en el mapa (forma y color de la insignia, COLOR_AVERIA). */
@@ -94,6 +104,34 @@ export const SIMBOLO_BLOQUEO = 'línea y aspa magenta';
 
 /** "Tipo 2 · Intermedia". */
 export const nombreAveria = (tipo: 1 | 2 | 3) => `Tipo ${tipo} · ${TIPO_AVERIA[tipo].nombre}`;
+
+/**
+ * Fracción de un pedido: la parte que lleva una sola unidad. Es el "producto" de la rúbrica (los paquetes del
+ * producto P no tienen identidad); el pedido es el "envío".
+ */
+export const NOMBRE_ESTADO_FRACCION: Record<EstadoFraccion, string> = {
+  PROGRAMADA: 'Por salir',
+  EN_CAMINO: 'En camino',
+  ENTREGADA: 'Entregada',
+  LIBERADA: 'Liberada por avería',
+};
+
+/** Marca de texto que acompaña al estado de la fracción: el color nunca es la única señal. */
+export const MARCA_ESTADO_FRACCION: Record<EstadoFraccion, string> = {
+  PROGRAMADA: '⏱',
+  EN_CAMINO: '↗',
+  ENTREGADA: '✓',
+  LIBERADA: '↺',
+};
+
+/** "Fracción 2 de 3"; con una sola fracción el pedido no va fraccionado y no se numera. */
+export const etiquetaFraccion = (indice: number, total: number) => (total > 1 ? `Fracción ${indice} de ${total}` : 'Pedido completo');
+
+/** "Va en 3 unidades" / "Va en 1 unidad". */
+export const vaEnUnidades = (cantidad: number) => `Va en ${cantidad} ${cantidad === 1 ? 'unidad' : 'unidades'}`;
+
+/** Almacén central en las listas: no tiene tope. */
+export const STOCK_CENTRAL = 'Sin tope · abastece a toda la red';
 
 /** Estado de una unidad de la flota. */
 export const ESTADO_UNIDAD: Record<EstadoUnidad, string> = {

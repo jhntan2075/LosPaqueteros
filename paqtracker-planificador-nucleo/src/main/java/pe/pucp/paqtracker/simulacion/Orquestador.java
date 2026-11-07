@@ -7,6 +7,7 @@ import pe.pucp.paqtracker.modelo.Entrega;
 import pe.pucp.paqtracker.modelo.EscenarioOperativo;
 import pe.pucp.paqtracker.modelo.EstadoVehiculo;
 import pe.pucp.paqtracker.modelo.Nodo;
+import pe.pucp.paqtracker.modelo.ParametrosDominio;
 import pe.pucp.paqtracker.modelo.Pedido;
 import pe.pucp.paqtracker.modelo.Ruta;
 import pe.pucp.paqtracker.modelo.SolucionRuteo;
@@ -71,6 +72,9 @@ public final class Orquestador {
     private final int plazoDespachoDirecto;
     private final long semilla;
     private final LongFunction<AlgoritmoMetaheuristico> fabricaAlgoritmo;
+    private final ParametrosDominio.ParametrosAveria duracionesAveria;
+    /** Mayor capacidad entre las unidades de la flota, con los parametros configurados de cada tipo. */
+    private final int capacidadMaxima;
     private ObservadorSimulacion observador;
 
     /**
@@ -141,7 +145,36 @@ public final class Orquestador {
                        List<Averia> averias, Malla malla, int saMinutos, int tiempoServicio, int plazoMaximo,
                        int plazoDespachoDirecto, long semilla,
                        LongFunction<AlgoritmoMetaheuristico> fabricaAlgoritmo) {
+        this(almacenes, flota, pedidos, averias, malla, saMinutos, tiempoServicio, plazoMaximo,
+                plazoDespachoDirecto, semilla, fabricaAlgoritmo, ParametrosDominio.ParametrosAveria.porDefecto());
+    }
+
+    /**
+     * Crea un orquestador con el algoritmo indicado y las duraciones de averia configuradas (B07-B09).
+     *
+     * @param almacenes            almacenes del sistema
+     * @param flota                flota completa
+     * @param pedidos              pedidos del horizonte, con registro absoluto
+     * @param averias              averias programadas del horizonte
+     * @param malla                malla con bloqueos programados
+     * @param saMinutos            paso del reloj en minutos
+     * @param tiempoServicio       acondicionamiento por entrega en minutos
+     * @param plazoMaximo          plazo maximo del catalogo, para ponderar urgencia
+     * @param plazoDespachoDirecto plazo maximo, en minutos, para despacho directo sin pasar por el planificador
+     * @param semilla              semilla base para reproducibilidad
+     * @param fabricaAlgoritmo     crea el algoritmo de cada ciclo a partir de su semilla
+     * @param duracionesAveria     duraciones con que se crean las averias registradas en vivo
+     * @throws IllegalArgumentException si una averia programada es sobre una unidad que no existe
+     */
+    public Orquestador(List<Almacen> almacenes, List<Vehiculo> flota, List<Pedido> pedidos,
+                       List<Averia> averias, Malla malla, int saMinutos, int tiempoServicio, int plazoMaximo,
+                       int plazoDespachoDirecto, long semilla,
+                       LongFunction<AlgoritmoMetaheuristico> fabricaAlgoritmo,
+                       ParametrosDominio.ParametrosAveria duracionesAveria) {
         this.fabricaAlgoritmo = fabricaAlgoritmo;
+        this.duracionesAveria = duracionesAveria;
+        this.capacidadMaxima = flota.stream().mapToInt(Vehiculo::getCapacidad).max()
+                .orElse(TipoVehiculo.capacidadMaxima());
         this.almacenes = almacenes;
         this.flota = flota;
         this.pedidos = new ArrayList<>(pedidos);
@@ -159,6 +192,13 @@ public final class Orquestador {
         this.plazoMaximo = plazoMaximo;
         this.plazoDespachoDirecto = plazoDespachoDirecto;
         this.semilla = semilla;
+    }
+
+    /**
+     * @return duraciones con que se crean las averias de esta simulacion
+     */
+    ParametrosDominio.ParametrosAveria getDuracionesAveria() {
+        return duracionesAveria;
     }
 
     /**
@@ -361,7 +401,7 @@ public final class Orquestador {
      */
     private void registrarSalida(Ruta ruta, int distancia, ResultadoSimulacion resultado) {
         ruta.getOrigen().descontar(ruta.getCarga());
-        resultado.sumarCosto(distancia * ruta.getVehiculo().getTipo().getCostoPorKm());
+        resultado.sumarCosto(distancia * ruta.getVehiculo().getCostoPorKm());
     }
 
     /**
@@ -470,7 +510,7 @@ public final class Orquestador {
     private Resolucion resolverEnRuta(Averia averia, UnidadEnTransito transito, int salida,
                                       List<UnidadEnTransito> enRuta, ResultadoSimulacion resultado) {
         int instanteAveria = averia.getInstante();
-        GestorTrasbordo gestor = new GestorTrasbordo(escenarioDirecto(salida));
+        GestorTrasbordo gestor = new GestorTrasbordo(escenarioDirecto(salida), averia.getDuraciones());
         GestorTrasbordo.Decision decision = gestor.decidir(transito, averia.getTipo(), instanteAveria, salida,
                 enRuta);
         Map<Entrega, Integer> previas = llegadasPendientes(transito, instanteAveria);
@@ -575,7 +615,7 @@ public final class Orquestador {
 
     private static void sumarRecorrido(Vehiculo vehiculo, int kilometros, ResultadoSimulacion resultado) {
         resultado.sumarDistancia(kilometros);
-        resultado.sumarCosto(kilometros * vehiculo.getTipo().getCostoPorKm());
+        resultado.sumarCosto(kilometros * vehiculo.getCostoPorKm());
     }
 
     private static int kilometros(UnidadEnTransito transito) {
@@ -816,7 +856,7 @@ public final class Orquestador {
      */
     private int despacharPedidoDirecto(Pedido pedido, int instante,
                                        List<UnidadEnTransito> enRuta, ResultadoSimulacion resultado) {
-        if (pedido.getCantidad() > TipoVehiculo.capacidadMaxima()) {
+        if (pedido.getCantidad() > capacidadMaxima) {
             return 0;
         }
         int unidades = despacharATiempo(pedido, instante, enRuta, resultado);
@@ -1010,7 +1050,7 @@ public final class Orquestador {
         int tramo = CalculadoraTiempos.distancia(escenario,
                 vehiculo.getPosicion().getUbicacion(), pedido.getDestino(), instante, vehiculo);
         return CalendarioTurnos.avanzarConPausa(vehiculo.getId(), instante,
-                CalculadoraTiempos.minutosDeViaje(tramo, vehiculo.getTipo()));
+                CalculadoraTiempos.minutosDeViaje(tramo, vehiculo));
     }
 
     /**
@@ -1130,7 +1170,7 @@ public final class Orquestador {
             int tramo = CalculadoraTiempos.distancia(escenario, actual, entrega.getDestino(), reloj,
                     ruta.getVehiculo());
             reloj = CalendarioTurnos.avanzarConPausa(idVehiculo, reloj,
-                    CalculadoraTiempos.minutosDeViaje(tramo, ruta.getVehiculo().getTipo()));
+                    CalculadoraTiempos.minutosDeViaje(tramo, ruta.getVehiculo()));
             resultado.registrarMargenEntrega(entrega.getHoraLimite() - reloj, entrega.getCantidad());
             reloj = CalendarioTurnos.avanzarConPausa(idVehiculo, reloj, escenario.getTiempoServicio());
             actual = entrega.getDestino();
@@ -1206,7 +1246,7 @@ public final class Orquestador {
                 libres.add(vehiculo);
             }
         }
-        List<Entrega> entregas = Fragmentador.fragmentar(cola, TipoVehiculo.capacidadMaxima());
+        List<Entrega> entregas = Fragmentador.fragmentar(cola, capacidadMaxima);
         entregas.addAll(liberadas);
         return new EscenarioOperativo(almacenes, libres, entregas, instante,
                 plazoMaximo, malla, tiempoServicio);
@@ -1232,7 +1272,7 @@ public final class Orquestador {
             int tramo = CalculadoraTiempos.distancia(escenario, actual, entrega.getDestino(), reloj,
                     ruta.getVehiculo());
             reloj = CalendarioTurnos.avanzarConPausa(idVehiculo, reloj,
-                    CalculadoraTiempos.minutosDeViaje(tramo, ruta.getVehiculo().getTipo()));
+                    CalculadoraTiempos.minutosDeViaje(tramo, ruta.getVehiculo()));
             int holgura = entrega.getHoraLimite() - reloj;
             if (holgura < 0) {
                 resultado.registrarColapso(ColapsoLogistico.porEntregaTardia(entrega.getIdPedido(), salida,

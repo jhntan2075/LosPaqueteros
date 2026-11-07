@@ -24,6 +24,8 @@ import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.dto.AveriaProgramada;
 import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.dto.DetallePedido;
 import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.dto.EstimacionAveria;
 import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.dto.HitoPedido;
+import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.dto.PlanEstable;
+import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.dto.RutaPlanificada;
 import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.dto.ResultadoRegistroPedido;
 import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.dto.SolicitudAveriaEnVivo;
 import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.dto.SolicitudPedidoEnVivo;
@@ -206,6 +208,51 @@ class MotorEjecucionTest {
         assertEquals(EstadoEjecucion.COLAPSADA, motor.getEstado());
         assertTrue(hayEvento("ALERTA_COLAPSO"));
         assertNotNull(guardados.get("prueba").fechaColapso());
+    }
+
+    /** Rubrica 91.EvaSw G08: reporte de la ultima planificacion estable al terminar la simulacion. */
+    @Test
+    void consultarPlanEstable_trasPlanificar_copiaLasRutasVigentesConSusParadasPendientes() {
+        MotorEjecucion motor = crearMotor(pedidos(), false);
+        motor.preparar();
+        assertTrue(motor.consultarPlanEstable().isEmpty());
+        motor.iniciar();
+
+        pared.avanzar(Duration.ofSeconds(30));
+        motor.procesarTickAhora();
+
+        PlanEstable plan = motor.consultarPlanEstable().orElseThrow();
+        assertEquals("GA", plan.algoritmo());
+        assertEquals("SIMULACION_PERIODO", plan.tipoEscenario());
+        assertNull(plan.colapso());
+        assertFalse(plan.rutas().isEmpty());
+        for (RutaPlanificada ruta : plan.rutas()) {
+            assertFalse(ruta.paradas().isEmpty());
+            assertTrue(ruta.carga() <= ruta.capacidad());
+            assertEquals(ruta.carga(), ruta.paradas().stream().mapToInt(RutaPlanificada.ParadaPlanificada::cantidad)
+                    .sum());
+            assertTrue(ruta.paradas().stream().allMatch(parada -> parada.llegadaMs() > plan.instanteMs()));
+            assertTrue(ruta.regresoMs() >= ruta.salidaMs());
+        }
+    }
+
+    /** Rubrica 91.EvaSw G10: en el colapso, el reporte usa el plan anterior y nombra el pedido que lo causo. */
+    @Test
+    void consultarPlanEstable_trasElColapso_conservaElPlanAnteriorYTraeElPedidoQueColapso() {
+        // El pedido 1 se planifica en el minuto 0; el 2 entra en el 60 con un plazo imposible.
+        MotorEjecucion motor = crearMotor(List.of(new Pedido(1, new Nodo(30, 18), 3, 0, PLAZO_REGULAR),
+                new Pedido(2, new Nodo(67, 14), 2, 60, 1)), true);
+        motor.preparar();
+        motor.iniciar();
+
+        pared.avanzar(Duration.ofMinutes(2));
+        motor.procesarTickAhora();
+
+        assertEquals(EstadoEjecucion.COLAPSADA, motor.getEstado());
+        PlanEstable plan = motor.consultarPlanEstable().orElseThrow();
+        assertNotNull(plan.colapso());
+        assertEquals(NomenclaturaOperacion.codigoPedido(2), plan.colapso().pedido());
+        assertTrue(plan.instanteMs() < plan.colapso().instanteMs());
     }
 
     @Test

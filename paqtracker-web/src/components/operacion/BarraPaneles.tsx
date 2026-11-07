@@ -1,11 +1,13 @@
 import React from 'react';
-import { AlertTriangle, BarChart3, ScrollText, Truck } from 'lucide-react';
+import { AlertTriangle, BarChart3, Package, ScrollText, Truck, Warehouse } from 'lucide-react';
 import type { PestanaPanel } from '../../types/operacion';
 
 const PESTANAS: { tipo: PestanaPanel; etiqueta: string; Icono: React.ComponentType<{ className?: string }> }[] = [
   { tipo: 'resumen', etiqueta: 'Resumen', Icono: BarChart3 },
   { tipo: 'incidencias', etiqueta: 'Incidencias', Icono: AlertTriangle },
+  { tipo: 'pedidos', etiqueta: 'Pedidos', Icono: Package },
   { tipo: 'flota', etiqueta: 'Flota', Icono: Truck },
+  { tipo: 'almacenes', etiqueta: 'Almacenes', Icono: Warehouse },
   { tipo: 'bitacora', etiqueta: 'Bitácora', Icono: ScrollText },
 ];
 

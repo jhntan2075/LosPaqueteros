@@ -26,6 +26,9 @@ function estadoEnCola(pedido: PedidoApi): EstadoPedidoCola {
 
 export function adaptarPedidoEnCola(pedido: PedidoApi, reloj: Date): PedidoEnCola {
   const referencia = pedido.etaMs ?? reloj.getTime();
+  const vigentes = (pedido.fracciones ?? []).filter((f) => f.estado !== 'LIBERADA');
+  const salidaMs = vigentes.length === 0 ? null : Math.min(...vigentes.map((f) => f.salidaMs));
+  const unidades = [...new Set(vigentes.map((f) => f.unidad))];
   return {
     codigo: pedido.codigo,
     cliente: pedido.cliente ?? '—',
@@ -40,6 +43,8 @@ export function adaptarPedidoEnCola(pedido: PedidoApi, reloj: Date): PedidoEnCol
     nivelHolgura: pedido.nivelHolgura,
     vehiculo: vehiculoDeCodigo(pedido.unidad),
     estado: estadoEnCola(pedido),
+    salida: salidaMs === null ? null : formatearDiaMesHora(new Date(salidaMs)),
+    unidades: unidades.length > 0 ? unidades : pedido.unidad ? [pedido.unidad] : [],
   };
 }
 

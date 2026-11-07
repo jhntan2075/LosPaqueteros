@@ -1,6 +1,7 @@
 package pe.pucp.paqtracker.modulos.planificacion.aplicacion.dto;
 
 import pe.pucp.paqtracker.modelo.Bloqueo;
+import pe.pucp.paqtracker.modelo.ParametrosDominio;
 import pe.pucp.paqtracker.modelo.Pedido;
 import pe.pucp.paqtracker.modulos.planificacion.dominio.AlgoritmoPlanificacion;
 import java.util.List;
@@ -15,8 +16,28 @@ import java.util.List;
  * @param saMinutos        salto del algoritmo Sa, en minutos simulados
  * @param detenerEnColapso verdadero para detenerse en el primer incumplimiento (CU-17)
  * @param flota            composicion de la flota
+ * @param parametros       almacenes, atributos de las unidades y duraciones de averia de la ejecucion
  */
 public record SolicitudPreparacionSimulacion(List<Pedido> pedidos, List<Bloqueo> bloqueos,
                                              AlgoritmoPlanificacion algoritmo, long semilla, int saMinutos,
-                                             boolean detenerEnColapso, ComposicionFlota flota) {
+                                             boolean detenerEnColapso, ComposicionFlota flota,
+                                             ParametrosDominio parametros) {
+
+    /**
+     * Solicitud con los parametros del dominio por defecto.
+     *
+     * @param pedidos          pedidos del horizonte
+     * @param bloqueos         bloqueos programados
+     * @param algoritmo        metaheuristica de cada ciclo
+     * @param semilla          semilla base
+     * @param saMinutos        salto del algoritmo Sa
+     * @param detenerEnColapso verdadero para detenerse en el primer incumplimiento
+     * @param flota            composicion de la flota
+     */
+    public SolicitudPreparacionSimulacion(List<Pedido> pedidos, List<Bloqueo> bloqueos,
+                                          AlgoritmoPlanificacion algoritmo, long semilla, int saMinutos,
+                                          boolean detenerEnColapso, ComposicionFlota flota) {
+        this(pedidos, bloqueos, algoritmo, semilla, saMinutos, detenerEnColapso, flota,
+                ParametrosDominio.porDefecto());
+    }
 }

@@ -13,6 +13,9 @@ public final class Vehiculo {
 
     private final int id;
     private final TipoVehiculo tipo;
+    private final int capacidad;
+    private final int velocidad;
+    private final double costoPorKm;
     private Almacen posicion;
     private Nodo ubicacionActual;
     private EstadoVehiculo estado;
@@ -23,8 +26,21 @@ public final class Vehiculo {
      * @param posicion almacen en que se encuentra inicialmente
      */
     public Vehiculo(int id, TipoVehiculo tipo, Almacen posicion) {
+        this(id, tipo, posicion, ParametrosDominio.ParametrosUnidad.de(tipo));
+    }
+
+    /**
+     * @param id         identificador de la unidad
+     * @param tipo       tipo de unidad
+     * @param posicion   almacen en que se encuentra inicialmente
+     * @param parametros capacidad, velocidad y costo configurados para el tipo (B04)
+     */
+    public Vehiculo(int id, TipoVehiculo tipo, Almacen posicion, ParametrosDominio.ParametrosUnidad parametros) {
         this.id = id;
         this.tipo = tipo;
+        this.capacidad = parametros.capacidad();
+        this.velocidad = parametros.velocidadKmH();
+        this.costoPorKm = parametros.costoPorKm();
         this.posicion = posicion;
         this.ubicacionActual = posicion.getUbicacion();
         this.estado = EstadoVehiculo.DISPONIBLE_EN_ALMACEN;
@@ -89,7 +105,21 @@ public final class Vehiculo {
     }
 
     public int getCapacidad() {
-        return tipo.getCapacidad();
+        return capacidad;
+    }
+
+    /**
+     * @return velocidad de la unidad en km/h
+     */
+    public int getVelocidad() {
+        return velocidad;
+    }
+
+    /**
+     * @return costo por kilometro recorrido
+     */
+    public double getCostoPorKm() {
+        return costoPorKm;
     }
 
     @Override

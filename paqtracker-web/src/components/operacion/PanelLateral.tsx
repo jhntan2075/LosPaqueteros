@@ -9,7 +9,12 @@ import { cantidadBloqueos, distanciaDesdeOrigen, fueraDelAlmacen, pedidosEnRiesg
 import { BORDE_SEMAFORO, FONDO_SEMAFORO, TEXTO_SEMAFORO, nivelDeOcupacion } from '../../lib/semaforo';
 import { turnoVigente } from '../../lib/turnos';
 import type { Coordenada } from '../../types/domain';
-import type { HitoTrazabilidad, PedidoOperacion, PestanaPanel, SeleccionPanel, UnidadOperacion } from '../../types/operacion';
+import type { HitoTrazabilidad, PedidoOperacion, SeleccionPanel, UnidadOperacion } from '../../types/operacion';
+import { TITULO_PESTANA } from '../../hooks/useNavegacionPanel';
+import { buscarPedido, type SeleccionResaltable } from '../../lib/envios';
+import { FilaFraccion } from './FilaFraccion';
+import { EnviosAlmacen, ListaAlmacenes } from './ListaAlmacenes';
+import { ListaPedidos } from './ListaPedidos';
 import type { NivelHolgura } from '../../types/pedidos';
 import { iconoDeUnidad } from '../map/iconosVehiculo';
 import { MarcaSemaforo } from '../map/simbolos';
@@ -30,13 +35,6 @@ import { ResumenOperacion } from './ResumenOperacion';
 
 export type { SeleccionPanel };
 
-const TITULO_PESTANA: Record<PestanaPanel, string> = {
-  resumen: 'Resumen',
-  incidencias: 'Incidencias',
-  flota: 'Flota',
-  bitacora: 'Bitácora',
-};
-
 interface PanelLateralProps {
   seleccion: SeleccionPanel;
   onSeleccionar: (seleccion: SeleccionPanel) => void;
@@ -44,6 +42,12 @@ interface PanelLateralProps {
   onCentrar: (punto: Coordenada) => void;
   /** "‹ Volver" de un detalle (pedido, vehículo o almacén); sin valor, vuelve a Incidencias. */
   onVolver?: () => void;
+  /** Adónde lleva "‹": la pestaña o el detalle anterior ("Flota", "Almacén Central"). */
+  etiquetaVolver?: string;
+  /** Objeto marcado en el mapa y en las listas (F01, F05). */
+  resaltado?: SeleccionResaltable | null;
+  /** Marca un objeto desde una fila de lista, sin salir de la lista. */
+  onResaltar?: (objeto: SeleccionResaltable) => void;
 }
 
 const BORDE_NIVEL: Record<NivelHolgura, string> = {
@@ -86,16 +90,23 @@ const Subpestanas = <T extends string>({ opciones, activa, onCambiar, derecha }:
   </div>
 );
 
-const EncabezadoObjeto: React.FC<{ onVolver: () => void; onCerrar: () => void; titulo: React.ReactNode; estado: string }> = ({
+const EncabezadoObjeto: React.FC<{ onVolver: () => void; onCerrar: () => void; titulo: React.ReactNode; estado: string; etiquetaVolver?: string }> = ({
   onVolver,
   onCerrar,
   titulo,
   estado,
+  etiquetaVolver,
 }) => (
   <div className="px-[12px] pt-[9px] pb-[9px] border-b border-[#E2E8F0] flex flex-col gap-[6px]">
     <div className="flex items-center justify-between">
-      <button type="button" onClick={onVolver} className="font-sans text-[12px] text-[#1E40AF] hover:underline">
-        ‹ Volver
+      {/* Miga: dice adónde vuelve (la pestaña o el detalle anterior), no un "Volver" genérico. */}
+      <button
+        type="button"
+        onClick={onVolver}
+        aria-label={etiquetaVolver ? `Volver a ${etiquetaVolver}` : 'Volver'}
+        className="font-sans text-[12px] text-[#1E40AF] hover:underline"
+      >
+        ‹ {etiquetaVolver ?? 'Volver'}
       </button>
       <button type="button" onClick={onCerrar} aria-label="Cerrar panel" className="size-[24px] rounded text-[#64748B] hover:bg-[#F1F5F9] hover:text-[#0F172A]">
         ✕
@@ -143,12 +154,14 @@ const Trazabilidad: React.FC<{ hitos: HitoTrazabilidad[] }> = ({ hitos }) => {
   );
 };
 
-const DetallePedido: React.FC<{ pedido: PedidoOperacion } & Omit<PanelLateralProps, 'seleccion'>> = ({
+const DetallePedido: React.FC<{ pedido: PedidoOperacion; fraccionResaltada?: string } & Omit<PanelLateralProps, 'seleccion'>> = ({
   pedido,
+  fraccionResaltada,
   onSeleccionar,
   onCentrar,
   onCerrar,
   onVolver,
+  etiquetaVolver,
 }) => {
   const volver = onVolver ?? (() => onSeleccionar({ tipo: 'incidencias' }));
   const datos = useDatosOperacion();
@@ -164,7 +177,7 @@ const DetallePedido: React.FC<{ pedido: PedidoOperacion } & Omit<PanelLateralPro
   const fraccion = pedido.holguraMinutos / (pedido.plazoHoras * 60);
   return (
     <>
-      <EncabezadoObjeto onVolver={volver} onCerrar={onCerrar} titulo={`Pedido ${pedido.codigo}`} estado={pedido.estado} />
+      <EncabezadoObjeto onVolver={volver} onCerrar={onCerrar} titulo={`Pedido ${pedido.codigo}`} estado={pedido.estado} etiquetaVolver={etiquetaVolver} />
       <div className="flex-1 min-h-0 overflow-y-auto">
         <div className="p-[12px] border-b border-[#E2E8F0]">
           <div className={`border rounded-[4px] px-[12px] py-[8px] flex items-center justify-between ${BORDE_NIVEL[pedido.nivel]}`}>
@@ -191,7 +204,9 @@ const DetallePedido: React.FC<{ pedido: PedidoOperacion } & Omit<PanelLateralPro
           <Dato etiqueta="Hora límite" valor={pedido.horaLimite} />
           <Dato etiqueta="Llegada estimada" valor={pedido.eta} />
           <Dato etiqueta="Destino" valor={`(${pedido.destino.x},${pedido.destino.y})`} />
-          {portadoras.length > 1 ? (
+          {pedido.fracciones.length > 0 ? (
+            <FraccionesDelPedido pedido={pedido} resaltada={fraccionResaltada} onSeleccionar={onSeleccionar} />
+          ) : portadoras.length > 1 ? (
             <div className="px-[12px] py-[3px] flex flex-col gap-[2px] text-[12px]">
               <span className="font-sans text-[#64748B]">Vehículos asignados · pedido fraccionado en {portadoras.length}</span>
               <ul aria-label="Vehículos asignados" className="flex flex-col">
@@ -238,6 +253,40 @@ const DetallePedido: React.FC<{ pedido: PedidoOperacion } & Omit<PanelLateralPro
         </button>
       </Acciones>
     </>
+  );
+};
+
+/**
+ * Fracciones del pedido (E31): una fila por unidad con su almacén de origen, salida, llegada y estado. Elegir
+ * una resalta en el mapa solo la ruta de su unidad (F02); la que ya está elegida se marca.
+ */
+const FraccionesDelPedido: React.FC<{ pedido: PedidoOperacion; resaltada?: string; onSeleccionar: PanelLateralProps['onSeleccionar'] }> = ({
+  pedido,
+  resaltada,
+  onSeleccionar,
+}) => {
+  const { reloj } = useDatosOperacion();
+  const total = pedido.fracciones.length;
+  return (
+    <div className="px-[12px] py-[3px] flex flex-col gap-[2px] text-[12px]">
+      <span className="font-sans text-[#64748B]">
+        {total > 1 ? `Fracciones · el pedido va en ${new Set(pedido.fracciones.map((f) => f.unidad)).size} unidades` : 'Unidad y horarios'}
+      </span>
+      <ul aria-label="Fracciones del pedido" className="flex flex-col">
+        {pedido.fracciones.map((f) => (
+          <FilaFraccion
+            key={f.codigo}
+            fraccion={f}
+            total={total}
+            contexto="ruta"
+            ahora={reloj}
+            resaltada={resaltada === f.codigo}
+            onElegir={(fraccion) => onSeleccionar({ tipo: 'fraccion', codigo: fraccion.codigo, pedido: fraccion.pedido, unidad: fraccion.unidad })}
+          />
+        ))}
+      </ul>
+      {resaltada && <p className="text-[11px] text-[#1E40AF]">En el mapa se resalta solo la ruta de la fracción {resaltada}.</p>}
+    </div>
   );
 };
 
@@ -296,7 +345,7 @@ const RecuadroAveria: React.FC<{ unidad: UnidadOperacion; reloj: Date }> = ({ un
 
 const DetalleVehiculo: React.FC<
   { unidad: UnidadOperacion; onRegistrarAveria: AbrirRegistroAveria; onDeshacerAveria: (unidad: string) => void } & Omit<PanelLateralProps, 'seleccion'>
-> = ({ unidad, onSeleccionar, onCentrar, onCerrar, onRegistrarAveria, onDeshacerAveria, onVolver }) => {
+> = ({ unidad, onSeleccionar, onCentrar, onCerrar, onRegistrarAveria, onDeshacerAveria, onVolver, etiquetaVolver }) => {
   const volver = onVolver ?? (() => onSeleccionar({ tipo: 'incidencias' }));
   const [pestana, setPestana] = useState<'resumen' | 'ruta'>('resumen');
   const parametros = UNIDADES[unidad.tipo];
@@ -316,6 +365,7 @@ const DetalleVehiculo: React.FC<
       <EncabezadoObjeto
         onVolver={volver}
         onCerrar={onCerrar}
+        etiquetaVolver={etiquetaVolver}
         titulo={
           <>
             <img src={iconoDeUnidad(unidad).href} alt="" className="block -my-[6px] -ml-[4px]" />
@@ -420,6 +470,7 @@ const DetalleAlmacen: React.FC<{ codigo: string } & Omit<PanelLateralProps, 'sel
   onCentrar,
   onCerrar,
   onVolver,
+  etiquetaVolver,
 }) => {
   const volver = onVolver ?? (() => onSeleccionar({ tipo: 'incidencias' }));
   const datos = useDatosOperacion();
@@ -434,7 +485,13 @@ const DetalleAlmacen: React.FC<{ codigo: string } & Omit<PanelLateralProps, 'sel
   const salieron = datos.flota.filter((u) => u.origen === almacen.id && fueraDelAlmacen(u));
   return (
     <>
-      <EncabezadoObjeto onVolver={volver} onCerrar={onCerrar} titulo={`Almacén ${almacen.nombre}`} estado={central ? 'Central' : 'Intermedio'} />
+      <EncabezadoObjeto
+        onVolver={volver}
+        onCerrar={onCerrar}
+        titulo={`Almacén ${almacen.nombre}`}
+        estado={central ? 'Central' : 'Intermedio'}
+        etiquetaVolver={etiquetaVolver}
+      />
       <div className="flex-1 min-h-0 overflow-y-auto">
         <div className="p-[12px] border-b border-[#E2E8F0]">
           {conStock && nivel ? (
@@ -473,6 +530,7 @@ const DetalleAlmacen: React.FC<{ codigo: string } & Omit<PanelLateralProps, 'sel
           {!central && <Dato etiqueta="Recarga" valor="a su capacidad, cada día a las 23:59" />}
           <Dato etiqueta="Unidades en ruta desde aquí" valor={salieron.length} />
         </div>
+        <EnviosAlmacen almacen={almacen.id} onSeleccionar={onSeleccionar} />
         <section className="px-[12px] pt-[9px] pb-[6px] flex flex-col gap-[6px]">
           <TituloSeccion derecha={salieron.length > 0 ? salieron.length : undefined}>Unidades que salieron de aquí</TituloSeccion>
           {salieron.length === 0 && <p className="text-[12px] text-[#64748B]">Ninguna unidad en ruta salió de este almacén.</p>}
@@ -596,7 +654,16 @@ const ListaIncidencias: React.FC<Pick<PanelLateralProps, 'onSeleccionar' | 'onCe
   );
 };
 
-export const PanelLateral: React.FC<PanelLateralProps> = ({ seleccion, onSeleccionar, onCerrar, onCentrar, onVolver }) => {
+export const PanelLateral: React.FC<PanelLateralProps> = ({
+  seleccion,
+  onSeleccionar,
+  onCerrar,
+  onCentrar,
+  onVolver,
+  etiquetaVolver,
+  resaltado = null,
+  onResaltar,
+}) => {
   const datos = useDatosOperacion();
   const mostrarAviso = useAvisos();
   const { cancelar } = useAverias();
@@ -611,8 +678,12 @@ export const PanelLateral: React.FC<PanelLateralProps> = ({ seleccion, onSelecci
   // Diálogo de registro de avería: null cerrado; con unidad, abierto desde su detalle.
   const [registro, setRegistro] = useState<{ unidad?: string } | null>(null);
   const abrirRegistro: AbrirRegistroAveria = (codigo) => setRegistro({ unidad: codigo });
-  const esDetalle = seleccion.tipo === 'pedido' || seleccion.tipo === 'vehiculo' || seleccion.tipo === 'almacen';
-  const pedido = seleccion.tipo === 'pedido' ? datos.pedidos[seleccion.codigo] : undefined;
+  const esDetalle = seleccion.tipo === 'pedido' || seleccion.tipo === 'fraccion' || seleccion.tipo === 'vehiculo' || seleccion.tipo === 'almacen';
+  // Un pedido recién entregado ya no está entre los activos: se busca también entre los entregados recientes.
+  const pedido =
+    seleccion.tipo === 'pedido' ? buscarPedido(datos, seleccion.codigo) : seleccion.tipo === 'fraccion' ? buscarPedido(datos, seleccion.pedido) : undefined;
+  // Sin onResaltar (pruebas de un componente suelto), una fila de lista abre el detalle directamente.
+  const resaltar = onResaltar ?? ((objeto: SeleccionResaltable) => onSeleccionar(objeto));
   const unidad = seleccion.tipo === 'vehiculo' ? unidadPorCodigo(datos, seleccion.codigo) : undefined;
   return (
     <aside
@@ -629,7 +700,18 @@ export const PanelLateral: React.FC<PanelLateralProps> = ({ seleccion, onSelecci
           </button>
         </div>
       )}
-      {pedido && <DetallePedido key={pedido.codigo} pedido={pedido} onSeleccionar={onSeleccionar} onCentrar={onCentrar} onCerrar={onCerrar} onVolver={onVolver} />}
+      {pedido && (
+        <DetallePedido
+          key={pedido.codigo}
+          pedido={pedido}
+          fraccionResaltada={seleccion.tipo === 'fraccion' ? seleccion.codigo : undefined}
+          onSeleccionar={onSeleccionar}
+          onCentrar={onCentrar}
+          onCerrar={onCerrar}
+          onVolver={onVolver}
+          etiquetaVolver={etiquetaVolver}
+        />
+      )}
       {unidad && (
         <DetalleVehiculo
           key={unidad.codigo}
@@ -640,14 +722,25 @@ export const PanelLateral: React.FC<PanelLateralProps> = ({ seleccion, onSelecci
           onRegistrarAveria={abrirRegistro}
           onDeshacerAveria={deshacerAveria}
           onVolver={onVolver}
+          etiquetaVolver={etiquetaVolver}
         />
       )}
       {seleccion.tipo === 'almacen' && (
-        <DetalleAlmacen key={seleccion.codigo} codigo={seleccion.codigo} onSeleccionar={onSeleccionar} onCentrar={onCentrar} onCerrar={onCerrar} onVolver={onVolver} />
+        <DetalleAlmacen
+          key={seleccion.codigo}
+          codigo={seleccion.codigo}
+          onSeleccionar={onSeleccionar}
+          onCentrar={onCentrar}
+          onCerrar={onCerrar}
+          onVolver={onVolver}
+          etiquetaVolver={etiquetaVolver}
+        />
       )}
       {seleccion.tipo === 'resumen' && <ResumenOperacion onSeleccionar={onSeleccionar} />}
       {seleccion.tipo === 'incidencias' && <ListaIncidencias onSeleccionar={onSeleccionar} onCentrar={onCentrar} onRegistrarAveria={abrirRegistro} />}
-      {seleccion.tipo === 'flota' && <EstadoFlota onSeleccionar={onSeleccionar} />}
+      {seleccion.tipo === 'pedidos' && <ListaPedidos resaltado={resaltado} onResaltar={resaltar} onSeleccionar={onSeleccionar} onCentrar={onCentrar} />}
+      {seleccion.tipo === 'flota' && <EstadoFlota onSeleccionar={onSeleccionar} resaltado={resaltado} onResaltar={resaltar} onCentrar={onCentrar} />}
+      {seleccion.tipo === 'almacenes' && <ListaAlmacenes resaltado={resaltado} onResaltar={resaltar} onSeleccionar={onSeleccionar} onCentrar={onCentrar} />}
       {seleccion.tipo === 'bitacora' && <BitacoraEventos onSeleccionar={onSeleccionar} />}
       {registro && (
         <DialogoRegistrarAveria

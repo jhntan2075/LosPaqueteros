@@ -13,7 +13,9 @@ import pe.pucp.paqtracker.comun.excepcion.SolicitudInvalidaException;
 import pe.pucp.paqtracker.modulos.difusion.aplicacion.dto.MensajeEstadoEjecucion;
 import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.casouso.CasoUsoControlarEjecucion;
 import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.casouso.CasoUsoEjecutarColapso;
+import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.casouso.CasoUsoEjecutarDiaADia;
 import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.casouso.CasoUsoEjecutarSimulacionPeriodo;
+import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.dto.PlanEstable;
 import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.dto.RespuestaEjecucion;
 import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.dto.SolicitudCreacionEjecucion;
 import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.servicio.ServicioEjecucion;
@@ -32,20 +34,35 @@ public class ControladorEjecuciones {
     private final CasoUsoEjecutarColapso casoUsoColapso;
     private final CasoUsoControlarEjecucion casoUsoControlar;
     private final ServicioEjecucion servicioEjecucion;
+    private final CasoUsoEjecutarDiaADia casoUsoDiaADia;
 
     /**
-     * @param casoUsoPeriodo   CU-16
-     * @param casoUsoColapso   CU-17
-     * @param casoUsoControlar control del reloj
+     * @param casoUsoPeriodo    CU-16
+     * @param casoUsoColapso    CU-17
+     * @param casoUsoControlar  control del reloj
      * @param servicioEjecucion consultas
+     * @param casoUsoDiaADia    CU-15, para reiniciar la operacion con los parametros vigentes
      */
     public ControladorEjecuciones(CasoUsoEjecutarSimulacionPeriodo casoUsoPeriodo,
                                   CasoUsoEjecutarColapso casoUsoColapso,
-                                  CasoUsoControlarEjecucion casoUsoControlar, ServicioEjecucion servicioEjecucion) {
+                                  CasoUsoControlarEjecucion casoUsoControlar, ServicioEjecucion servicioEjecucion,
+                                  CasoUsoEjecutarDiaADia casoUsoDiaADia) {
         this.casoUsoPeriodo = casoUsoPeriodo;
         this.casoUsoColapso = casoUsoColapso;
         this.casoUsoControlar = casoUsoControlar;
         this.servicioEjecucion = servicioEjecucion;
+        this.casoUsoDiaADia = casoUsoDiaADia;
+    }
+
+    /**
+     * Reinicia la operacion dia a dia desde el instante actual con los parametros del dominio vigentes.
+     * Los pedidos registrados a mano se conservan y se replanifican.
+     *
+     * @return la ejecucion dia a dia nueva
+     */
+    @PostMapping("/" + ServicioEjecucion.ID_DIA_A_DIA + "/reiniciar")
+    public RespuestaEjecucion reiniciarDiaADia() {
+        return casoUsoDiaADia.reiniciar();
     }
 
     /**
@@ -91,6 +108,18 @@ public class ControladorEjecuciones {
     @GetMapping("/{id}/estado")
     public MensajeEstadoEjecucion estado(@PathVariable String id) {
         return servicioEjecucion.instantanea(id);
+    }
+
+    /**
+     * Ultima planificacion estable (G08-G10): rutas vigentes por unidad tras la ultima planificacion que termino
+     * sin colapso. Sirve para el reporte al terminar la simulacion, al colapsar y al cerrar el dia a dia.
+     *
+     * @param id identificador de la ejecucion
+     * @return plan estable; 404 si la ejecucion aun no planifico
+     */
+    @GetMapping("/{id}/plan-estable")
+    public PlanEstable planEstable(@PathVariable String id) {
+        return servicioEjecucion.planEstable(id);
     }
 
     /**

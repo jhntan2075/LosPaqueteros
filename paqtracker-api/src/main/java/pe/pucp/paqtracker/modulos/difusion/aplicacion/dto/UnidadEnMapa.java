@@ -20,10 +20,13 @@ import java.util.List;
  *                        almacen de retorno; vacia si no esta en ruta (lo recorrido ya no aparece)
  * @param paradas         entregas pendientes, en orden
  * @param averia          averia vigente si la unidad esta averiada, o null
+ * @param distanciaRutaKm longitud total de la ruta en curso, desde su almacen de origen hasta el de retorno
+ *                        (suma de los caminos de sus tramos); 0 si no esta en ruta. Lo recorrido es esta
+ *                        longitud menos la de {@code rutaRestante} (E17)
  */
 public record UnidadEnMapa(int id, String codigo, String tipo, int capacidadMaxima, int cargaActual,
                            double ocupacion, int velocidadKmH, String estado, String almacenOrigen,
                            Coordenada ubicacionActual,
                            TramoEnCurso tramoEnCurso, List<Coordenada> rutaRestante, List<ParadaPendiente> paradas,
-                           AveriaEnCurso averia) {
+                           AveriaEnCurso averia, double distanciaRutaKm) {
 }

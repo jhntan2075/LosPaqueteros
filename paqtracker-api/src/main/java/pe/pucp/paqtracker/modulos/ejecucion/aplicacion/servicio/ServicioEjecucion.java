@@ -7,6 +7,7 @@ import pe.pucp.paqtracker.modulos.difusion.aplicacion.dto.PedidoEnMapa;
 import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.dto.AveriaProgramada;
 import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.dto.EstimacionAveria;
 import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.dto.DetallePedido;
+import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.dto.PlanEstable;
 import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.dto.RespuestaEjecucion;
 import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.dto.ResultadoRegistroPedido;
 import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.dto.SolicitudAveriaEnVivo;
@@ -114,6 +115,16 @@ public class ServicioEjecucion {
      */
     public List<EstimacionAveria> estimarAverias(String id) {
         return registro.obtener(id).estimarAverias();
+    }
+
+    /**
+     * @param id identificador de la ejecucion
+     * @return ultima planificacion estable de la ejecucion (G08-G10)
+     * @throws RecursoNoEncontradoException si la ejecucion no existe o aun no planifico
+     */
+    public PlanEstable planEstable(String id) {
+        return registro.obtener(id).consultarPlanEstable()
+                .orElseThrow(() -> new RecursoNoEncontradoException("planificación estable", "de la ejecución " + id));
     }
 
     /**

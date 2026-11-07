@@ -4,6 +4,79 @@ Formato basado en Keep a Changelog; versionado semántico (MAJOR.MINOR.PATCH).
 
 ## [Sin publicar]
 
+Fase 5 del plan de la rúbrica: configuración del dominio (B02, B04, B07–B09).
+
+### Parámetros del dominio configurables (núcleo y API)
+- `ParametrosDominio` (núcleo): ubicación y capacidad de los almacenes, capacidad, velocidad y costo por km de
+  cada tipo de unidad y duraciones de las averías (detención tipo 1, permanencia en el sitio, mínimo del
+  tipo 3, trasvase). Se valida al construirse: nodo dentro de 70 × 50, sin almacenes repetidos, capacidades y
+  velocidades en rango, trasvase más corto que cada detención, tipo 3 ≥ permanencia. `porDefecto()` reproduce
+  `ConfiguracionDominio`, así la experimentación no cambia.
+- `Vehiculo` lleva su capacidad, velocidad y costo; los tiempos de viaje, el costo y la capacidad máxima del
+  fraccionamiento salen de la unidad y no del tipo. `Averia`, `GestorTrasbordo` y `Orquestador` reciben las
+  duraciones configuradas.
+- `GET`, `PUT` y `DELETE /api/configuracion/parametros` (migración V7, tabla `parametros_dominio`). Cada
+  ejecución nueva copia la versión vigente al crearse; las que están en curso no cambian.
+- `POST /api/ejecuciones/dia-a-dia/reiniciar`: la operación día a día toma los parámetros vigentes desde el
+  minuto actual. Los pedidos registrados a mano se recuperan y se replanifican.
+- `GET /api/configuracion/dominio` responde con los parámetros vigentes.
+
+### Avería programada (API y web, B07–B09)
+- `POST /api/ejecuciones/{id}/averias` acepta `instanteMs` opcional: la avería se programa para un instante
+  futuro del reloj de la ejecución. Responde 400 si ya pasó o cae después del fin. Se puede deshacer hasta
+  que se aplica.
+- El diálogo "Registrar avería" tiene **Cuándo ocurre**: ahora o programada (fecha y hora al minuto).
+
+### Distancias en km en la lista de unidades (web y API, nivel 5)
+- Búsqueda por **minutos o km** al destino inmediato o desde el origen inmediato (E06–E09).
+- Filtro permanente por rangos de km al destino: 0–10, 10–20, 20–40 y 40–200 km. Se combina con la búsqueda y
+  se recuerda al cerrar el panel (E11).
+- Orden por **km por recorrer** y **km recorridos** de la ruta en curso (E16, E17). Cada fila muestra
+  "Ruta: recorrió X km · faltan Y km".
+- `UnidadEnMapa.distanciaRutaKm`: longitud de la ruta en curso, para calcular lo recorrido.
+
+### Pantalla Configuración (web)
+- Pestaña nueva **Configuración**: almacenes (con vista previa en la malla), unidades, averías y acceso a los
+  rangos del semáforo. Valida junto al campo con las mismas reglas que la API. Incluye "Restablecer valores
+  por defecto" y "Aplicar a la operación día a día", los dos con confirmación.
+- El front lee los parámetros vigentes al arrancar y, al cambiarlos, actualiza el mapa, los paneles y las
+  duraciones de avería que muestra.
+
+## [0.6.0] — 2026-11-07
+
+Rúbrica de autoevaluación 91.EvaSw para un equipo de 4 (plan en `docs/plan-rubrica-equipo4.md`).
+
+### Fracciones de pedido y ventanas de 4 h (API)
+- `SeguimientoPedidos` lleva las **fracciones** de cada pedido: la parte que lleva una unidad, con su almacén de
+  origen, salida (puede ser futura), llegada y estado (`PROGRAMADA`, `EN_CAMINO`, `ENTREGADA`, `LIBERADA`). Se
+  actualizan en los despachos, las entregas, las averías (liberación y respaldo) y los trasvases.
+- `PedidoEnMapa` y `RespuestaPedido` agregan `entregaMs` y `fracciones`.
+- La instantánea agrega `entregadosRecientes`: pedidos entregados en las últimas 4 h simuladas.
+
+### Última planificación estable (API, G08–G10)
+- El motor guarda una copia inmutable del plan después de cada planificación que termina sin colapso.
+- `GET /api/ejecuciones/{id}/plan-estable`: rutas por unidad con sus paradas pendientes y pedidos sin asignar;
+  si la ejecución colapsó después, trae el instante y el pedido del colapso. 404 si aún no planificó.
+
+### Panel del mapa (web)
+- Pestañas nuevas **Pedidos** (E31, con filtros de 4 h E32/E33) y **Almacenes** (E18, E19). El indicador
+  global "Almacenes" abre la lista; "Flota" abre la Flota.
+- Detalle del almacén: **En camino**, **Por salir · 4 h** y **Entregados · 4 h** (E20–E22).
+- Selección compartida mapa ↔ listas (F01, F05): con una lista abierta, tocar el objeto en el mapa marca su
+  fila; un clic en la fila lo resalta y centra en el mapa, y otro clic (o ›) abre el detalle.
+- Una **fracción** se puede elegir: resalta solo la ruta de su unidad (F02); el pedido entero resalta todas
+  (F03). "‹ Volver" dice adónde vuelve y recorre los detalles anteriores.
+- Cola de pedidos: columnas **Salida** y todas las unidades de un pedido fraccionado (también en el CSV).
+
+### Reportes (web)
+- "Última planificación estable" en el informe de la simulación (G08) y del colapso (G10).
+- "Generar reporte de cierre" en Resumen de la operación día a día, sin detenerla (G09). Exportar CSV e
+  imprimir.
+
+### Versión
+- La versión del front y el commit del build se ven en el pie de página (A01).
+- `docs/diagramas.md`: consumo Sc/Sa, varios navegadores y componentes (A22, A23).
+
 ### Registro de averías en el front (CU-13)
 - Diálogo "Registrar avería" desde el detalle del vehículo o desde Incidencias:
   - tipo sin valor por defecto, con ejemplo, duración y la reincorporación que estima el

@@ -265,7 +265,7 @@ public final class Malla {
      */
     private static int instanteTrasRecorrer(int salida, int kilometros, Vehiculo vehiculo) {
         return CalendarioTurnos.avanzarConPausa(vehiculo.getId(), salida,
-                CalculadoraTiempos.minutosDeViaje(kilometros, vehiculo.getTipo()));
+                CalculadoraTiempos.minutosDeViaje(kilometros, vehiculo));
     }
 
     /**
