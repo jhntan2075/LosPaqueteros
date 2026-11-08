@@ -12,6 +12,9 @@ spring:
     locations: classpath:db/migracion
 
 paqtracker:
+  # Las pruebas existentes llaman a la API sin sesion; las del login la activan en su propia clase.
+  seguridad:
+    activa: false
   datos:
     ventas: tests-resources/datos/ventas
     bloqueos: tests-resources/datos/bloqueos

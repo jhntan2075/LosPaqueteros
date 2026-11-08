@@ -47,6 +47,12 @@
             <groupId>org.springdoc</groupId>
             <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
         </dependency>
+        <!-- Solo el cifrado BCrypt de la clave del login. No se usa el starter de Spring Security: su
+             autoconfiguracion cerraria todas las rutas, incluidas las que se verifican sin sesion (A20). -->
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-crypto</artifactId>
+        </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-jpa</artifactId>

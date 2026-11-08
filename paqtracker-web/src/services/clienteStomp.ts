@@ -1,4 +1,5 @@
 import { Client, type StompSubscription } from '@stomp/stompjs';
+import { tokenVigente } from './sesion';
 
 // Cliente STOMP único de la aplicación (una conexión WebSocket por navegador). Los hooks se suscriben
 // por tópico; si la conexión se cae, el cliente reconecta y vuelve a suscribir todos los tópicos.
@@ -28,6 +29,12 @@ const cliente = new Client({
   heartbeatOutgoing: LATIDO_MS,
   // stompjs invoca debug() sin comprobarlo: debe ser una función.
   debug: () => {},
+  // La API pide el token de la sesión en el CONNECT. Se lee en cada intento, así una reconexión usa el
+  // token vigente y no el que había al cargar la página.
+  beforeConnect: () => {
+    const token = tokenVigente();
+    cliente.connectHeaders = token ? { Authorization: `Bearer ${token}` } : {};
+  },
   onConnect: () => {
     oyentes.forEach((_, destino) => suscribirEnBroker(destino));
     cambiarConexion(true);
@@ -90,3 +97,11 @@ export function alCambiarConexion(oyente: OyenteConexion): () => void {
 }
 
 export const estaConectado = () => conectado;
+
+/**
+ * Cierra la conexión al terminar la sesión. Los hooks que sigan suscritos vuelven a activarla al
+ * suscribirse de nuevo, ya con el token de la sesión nueva.
+ */
+export function desconectar(): void {
+  if (cliente.active) void cliente.deactivate();
+}

@@ -51,6 +51,9 @@ cd paqtracker-web && npm ci && npm run dev   # front en http://127.0.0.1:5173
 
 Vite reenvía `/api` y `/ws` a `127.0.0.1:3000`.
 
+El sistema pide login con la cuenta del equipo (pedir la clave al responsable del equipo). La cuenta se
+configura con `APP_USUARIO` y `APP_CLAVE_HASH` (hash BCrypt); no hay registro ni gestión de usuarios. Solo en desarrollo se puede apagar con `APP_SEGURIDAD_ACTIVA=false`.
+
 Para probar la API sin el front, Swagger UI está en `http://127.0.0.1:3000/swagger-ui.html` y la
 especificación OpenAPI en `http://127.0.0.1:3000/v3/api-docs`. Se desactivan con `APP_SWAGGER=false`.
 

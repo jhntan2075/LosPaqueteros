@@ -4,6 +4,21 @@ Formato basado en Keep a Changelog; versionado semántico (MAJOR.MINOR.PATCH).
 
 ## [Sin publicar]
 
+### Login con la cuenta del equipo (API y web)
+- Pantalla de login. En escritorio es un panel dividido: a la izquierda la ilustración de la operación (malla,
+  almacenes, bloqueo y unidades en movimiento) y a la derecha la tarjeta. En celular queda solo la tarjeta.
+  Sin sesión, al recargar, cuando la sesión vence o cuando la API responde 401, se vuelve al login. Hay
+  botón **Salir** en la barra superior.
+- Una sola cuenta compartida, configurada con `APP_USUARIO` y `APP_CLAVE_HASH` (BCrypt). No hay registro ni
+  gestión de usuarios. `GeneradorHashClave` genera el hash desde el JAR.
+- `GET`, `POST` y `DELETE /api/sesion`. La sesión es un token en memoria que vence a las 12 h
+  (`APP_DURACION_SESION`). Tras 5 intentos fallidos seguidos el login se bloquea 30 s.
+- La API pide `Authorization: Bearer <token>` en todo `/api/**` salvo `/api/sesion` y `GET /api/ejecuciones`,
+  que sigue abierta para la verificación del despliegue (A20). El handshake de `/ws` sigue respondiendo 101
+  (A21); STOMP pide el token en el `CONNECT`.
+- Sin usar el starter de Spring Security: un filtro propio y `spring-security-crypto` solo para BCrypt. Las
+  pruebas existentes corren con `paqtracker.seguridad.activa=false`.
+
 Fase 5 del plan de la rúbrica: configuración del dominio (B02, B04, B07–B09).
 
 ### Parámetros del dominio configurables (núcleo y API)
