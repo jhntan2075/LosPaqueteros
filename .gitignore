@@ -40,3 +40,6 @@ desktop.ini
 
 # Contexto local de Claude Code: no se versiona por decision del equipo
 CLAUDE.md
+
+# Maquetas del asistente de diseño (visual companion)
+.superpowers/

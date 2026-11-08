@@ -13,6 +13,7 @@ import type {
   RespuestaRegistroAveriaApi,
   SolicitudEjecucionApi,
 } from '../types/api';
+import { terminarSesion, tokenVigente } from './sesion';
 
 // Cliente REST de paqtracker-api. La URL base sale de VITE_API_BASE_URL; en despliegue es relativa
 // (/api) y Nginx (o el proxy de Vite en desarrollo) la reenvía a la API.
@@ -35,32 +36,42 @@ export class ErrorDeApi extends Error {
   }
 }
 
-async function solicitar<T>(ruta: string, opciones: RequestInit = {}): Promise<T> {
+/**
+ * Agrega el token de la sesión, si hay una. Sin sesión las opciones quedan tal cual (así las ven las
+ * pruebas y las rutas abiertas de la API).
+ */
+function conSesion(opciones: RequestInit): { opciones: RequestInit; conToken: boolean } {
+  const token = tokenVigente();
+  if (!token) return { opciones, conToken: false };
+  const cabeceras = { ...(opciones.headers as Record<string, string> | undefined), Authorization: `Bearer ${token}` };
+  return { opciones: { ...opciones, headers: cabeceras }, conToken: true };
+}
+
+/** Hace la solicitud con la sesión; un 401 a una solicitud con token significa que la sesión ya no vale. */
+async function pedir(ruta: string, opciones: RequestInit): Promise<Response> {
+  const { opciones: conToken, conToken: llevaToken } = conSesion(opciones);
   let respuesta: Response;
   try {
-    respuesta = await fetch(`${BASE}${ruta}`, opciones);
+    respuesta = await fetch(`${BASE}${ruta}`, conToken);
   } catch {
     throw new ErrorDeApi(0, 'No se pudo conectar con el servidor');
   }
+  if (respuesta.status === 401 && llevaToken) terminarSesion('vencida');
   if (!respuesta.ok) {
     const cuerpo = (await respuesta.json().catch(() => null)) as ErrorApi | null;
     throw new ErrorDeApi(respuesta.status, cuerpo?.mensaje ?? `Error ${respuesta.status}`, cuerpo?.detalles ?? []);
   }
+  return respuesta;
+}
+
+async function solicitar<T>(ruta: string, opciones: RequestInit = {}): Promise<T> {
+  const respuesta = await pedir(ruta, opciones);
   return (await respuesta.json()) as T;
 }
 
 /** DELETE que responde 204 sin cuerpo. */
 async function eliminar(ruta: string): Promise<void> {
-  let respuesta: Response;
-  try {
-    respuesta = await fetch(`${BASE}${ruta}`, { method: 'DELETE' });
-  } catch {
-    throw new ErrorDeApi(0, 'No se pudo conectar con el servidor');
-  }
-  if (!respuesta.ok) {
-    const cuerpo = (await respuesta.json().catch(() => null)) as ErrorApi | null;
-    throw new ErrorDeApi(respuesta.status, cuerpo?.mensaje ?? `Error ${respuesta.status}`, cuerpo?.detalles ?? []);
-  }
+  await pedir(ruta, { method: 'DELETE' });
 }
 
 const enviarJson = <T>(ruta: string, cuerpo?: unknown) =>
@@ -135,4 +146,63 @@ export const clienteApi = {
   /** Mes en formato YYYYMM. */
   subirVentas: (archivo: File, mes: string) => subirArchivo('/archivos/pedidos', archivo, mes),
   subirBloqueos: (archivo: File, mes: string) => subirArchivo('/archivos/bloqueos', archivo, mes),
+};
+
+/** Estado de la sesión que devuelve GET /api/sesion. */
+export interface EstadoSesionApi {
+  seguridadActiva: boolean;
+  autenticado: boolean;
+  usuario: string | null;
+  expiraEnMs: number | null;
+}
+
+/** Sesión recién abierta (POST /api/sesion). */
+export interface InicioSesionApi {
+  token: string;
+  usuario: string;
+  expiraEnMs: number;
+}
+
+/**
+ * Login. Va aparte de `clienteApi` porque un 401 aquí es "credenciales incorrectas", no una sesión vencida,
+ * y porque el token se pasa explícito en vez de leerse del almacenamiento.
+ */
+export const clienteSesion = {
+  /** Si la API exige sesión y si el token (si se pasa) sigue vigente. */
+  consultar: async (token: string | null): Promise<EstadoSesionApi> => {
+    let respuesta: Response;
+    try {
+      respuesta = await fetch(`${BASE}/sesion`, token ? { headers: { Authorization: `Bearer ${token}` } } : {});
+    } catch {
+      throw new ErrorDeApi(0, 'No se pudo conectar con el servidor');
+    }
+    if (!respuesta.ok) throw new ErrorDeApi(respuesta.status, `Error ${respuesta.status}`);
+    return (await respuesta.json()) as EstadoSesionApi;
+  },
+  /** 401 con "Usuario o contraseña incorrectos", 429 tras varios intentos fallidos. */
+  iniciar: async (usuario: string, clave: string): Promise<InicioSesionApi> => {
+    let respuesta: Response;
+    try {
+      respuesta = await fetch(`${BASE}/sesion`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ usuario, clave }),
+      });
+    } catch {
+      throw new ErrorDeApi(0, 'No se pudo conectar con el servidor');
+    }
+    if (!respuesta.ok) {
+      const cuerpo = (await respuesta.json().catch(() => null)) as ErrorApi | null;
+      throw new ErrorDeApi(respuesta.status, cuerpo?.mensaje ?? `Error ${respuesta.status}`, cuerpo?.detalles ?? []);
+    }
+    return (await respuesta.json()) as InicioSesionApi;
+  },
+  /** Cierra la sesión en la API; si falla la red no importa, el token se borra igual en el navegador. */
+  cerrar: async (token: string): Promise<void> => {
+    try {
+      await fetch(`${BASE}/sesion`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
+    } catch {
+      // Sin red: el token vence solo en la API.
+    }
+  },
 };

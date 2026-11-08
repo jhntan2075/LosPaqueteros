@@ -1,7 +1,8 @@
 import React from 'react';
 import logo from '../../assets/marca/logo.svg';
-import { LayoutGrid, Package, PlayCircle, BarChart3, Clock, Radio, Settings } from 'lucide-react';
+import { LayoutGrid, Package, PlayCircle, BarChart3, Clock, Radio, Settings, LogOut } from 'lucide-react';
 import { RelojReal } from './RelojReal';
+import { useSesion } from '../sesion/contextoSesion';
 
 export type TabModulo = 'operacion' | 'pedidos' | 'simulacion' | 'metricas' | 'configuracion';
 
@@ -20,6 +21,8 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
   turno,
   conectado = true,
 }) => {
+  // Sin sesión (API sin login o pruebas que montan la barra sola) no hay botón Salir.
+  const sesion = useSesion();
   const menuItems = [
     { id: 'operacion' as TabModulo, label: 'Operación', icon: LayoutGrid },
     { id: 'pedidos' as TabModulo, label: 'Pedidos', icon: Package },
@@ -70,7 +73,7 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
         </nav>
       </div>
 
-      {/* 2. Lado Derecho: Reloj, Turno y Estado de Conexión (sin usuario: aún no hay autenticación) */}
+      {/* 2. Lado Derecho: Reloj, Turno, Estado de Conexión y Salir */}
       <div className="flex items-center gap-2 sm:gap-3 shrink-0 ml-2">
         {/* Reloj de la operación día a día (oculto en Simulación, que muestra el de su corrida) */}
         {relojSimulado && (
@@ -117,6 +120,20 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
           <Radio className={`w-3 h-3 ${conectado ? 'text-[#1E40AF] animate-pulse' : 'text-[#B91C1C]'}`} />
           <span className="hidden sm:inline">{conectado ? 'CONECTADO' : 'SIN CONEXIÓN'}</span>
         </span>
+
+        {/* Cerrar sesión: en el celular solo el ícono */}
+        {sesion && (
+          <button
+            type="button"
+            onClick={sesion.cerrarSesion}
+            title={`Cerrar la sesión de ${sesion.usuario}`}
+            aria-label="Cerrar sesión"
+            className="h-[28px] px-2 sm:px-2.5 rounded-[6px] border border-[#CBD5E1] bg-white text-[#334155] hover:bg-slate-100 hover:text-[#0F172A] flex items-center gap-1.5 text-[12px] font-medium shrink-0 cursor-pointer transition"
+          >
+            <LogOut className="w-3.5 h-3.5" aria-hidden="true" />
+            <span className="hidden sm:inline">Salir</span>
+          </button>
+        )}
       </div>
     </header>
   );

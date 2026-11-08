@@ -34,6 +34,14 @@ springdoc:
     tags-sorter: alpha
 
 paqtracker:
+  # Login con una cuenta compartida del equipo. La clave se guarda solo como hash BCrypt; con la seguridad
+  # activa y sin usuario o hash, la API no arranca. GET /api/ejecuciones y el handshake de /ws quedan
+  # abiertos para la verificacion del despliegue (A20, A21); los datos de STOMP piden el token en CONNECT.
+  seguridad:
+    activa: ${APP_SEGURIDAD_ACTIVA:true}
+    usuario: ${APP_USUARIO:}
+    clave-hash: ${APP_CLAVE_HASH:}
+    duracion-sesion: ${APP_DURACION_SESION:12h}
   datos:
     ventas: ${APP_DATOS_VENTAS:datos/ventas.v20260909}
     bloqueos: ${APP_DATOS_BLOQUEOS:datos/bloqueos.v20260909}

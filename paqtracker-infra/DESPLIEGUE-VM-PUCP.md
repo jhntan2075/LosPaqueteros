@@ -103,6 +103,17 @@ sudo grep -E '^(APP_HOST|APP_PORT|DB_NAME|DB_USER)=' /etc/paqtracker/paqtracker.
 
 Debe quedar `APP_HOST=127.0.0.1` y `APP_PORT=3000`. Si en el paso 2 se usaron otros `DB_NAME` o `DB_USER`, corregirlos aquí con `sudo nano /etc/paqtracker/paqtracker.env`.
 
+**Cuenta del login.** La API no arranca sin `APP_USUARIO` ni `APP_CLAVE_HASH`. El hash se genera con el mismo JAR, sin levantar la API. La clave se pide dos veces y no se muestra:
+
+```bash
+java -cp /opt/paqtracker/paqtracker-api.jar \
+  -Dloader.main=pe.pucp.paqtracker.modulos.acceso.aplicacion.GeneradorHashClave \
+  org.springframework.boot.loader.launch.PropertiesLauncher          # imprime $2a$10$...
+sudo nano /etc/paqtracker/paqtracker.env                             # APP_USUARIO=... y APP_CLAVE_HASH=<hash, sin comillas>
+```
+
+La clave debe tener al menos 8 caracteres. Para cambiarla, se genera un hash nuevo, se reemplaza `APP_CLAVE_HASH` y se reinicia con `sudo systemctl restart paqtracker-api`. Al reiniciar, todas las sesiones abiertas se cierran.
+
 ## 5. Incluir el snippet en el server 443 (una sola vez)
 
 Respaldar el sitio **fuera** de `sites-enabled` (Nginx carga todo lo que hay en esa carpeta, y una copia ahí duplicaría los server):
@@ -194,13 +205,15 @@ curl -s --http1.1 --max-time 5 -o /dev/null -w "%{http_code}\n" \
 
 El último comando corta a los 5 s porque la conexión queda abierta; lo que importa es el `101`.
 
+`/api/ejecuciones` y el handshake de `/ws` quedan abiertos a propósito para esta comprobación. El resto de la API pide sesión: `curl -s -o /dev/null -w "%{http_code}\n" https://<dominio>/api/configuracion/semaforo` debe dar `401`. Los datos en vivo de `/ws` solo llegan con el token en el `CONNECT` de STOMP.
+
 En el navegador, abrir `https://<dominio>`: debe cargar la interfaz y el mapa. En las herramientas de desarrollo (pestaña *Red*, filtro *WS*) la conexión debe ser `wss://<dominio>/ws` y no debe haber avisos de contenido mixto.
 
 ## Operación
 
 - **Registro de la API:** `journalctl -u paqtracker-api -f`
 - **Memoria:** `free -h`; la API no debería pasar de unos 800 MB en total (heap de 640 MB).
-- **Actualizar:** en la VM, `cd ~/LosPaqueteros && git pull`; en la laptop, compilar y subir el JAR y `dist` como en el paso 1 (misma versión del código); en la VM, `sudo env NGINX_MODO=snippet CONSTRUIR_API=0 CONSTRUIR_WEB=0 bash paqtracker-infra/scripts/desplegar.sh`. Si no se sube un JAR nuevo, se reinstala el anterior que quedó en `target/`. No pisa las variables, los archivos subidos ni el `sites-enabled/default` editado.
+- **Actualizar:** en la VM, `cd ~/LosPaqueteros && git pull`; en la laptop, compilar y subir el JAR y `dist` como en el paso 1 (misma versión del código); en la VM, `sudo env NGINX_MODO=snippet CONSTRUIR_API=0 CONSTRUIR_WEB=0 bash paqtracker-infra/scripts/desplegar.sh`. Si no se sube un JAR nuevo, se reinstala el anterior que quedó en `target/`. No pisa las variables, los archivos subidos ni el `sites-enabled/default` editado. **Primera actualización con login:** como no pisa las variables, `APP_USUARIO` y `APP_CLAVE_HASH` no se agregan solas. Hay que agregarlas antes de reiniciar (paso 4); si faltan, la API no arranca.
 - **Retirar PaqTracker:** restaurar el respaldo del paso 5, `sudo nginx -t && sudo systemctl reload nginx` y `sudo systemctl disable --now paqtracker-api`.
 
 ## Pendiente
