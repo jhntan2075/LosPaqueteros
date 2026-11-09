@@ -28,7 +28,7 @@ export const BarraPaneles: React.FC<BarraPanelesProps> = ({ activa, onSelecciona
     aria-label="Paneles del mapa"
     role="tablist"
     aria-orientation="vertical"
-    className="w-[64px] shrink-0 bg-white border-l border-[#E2E8F0] flex flex-col items-stretch"
+    className="w-16 shrink-0 bg-white border-l border-neutral-200 flex flex-col items-stretch"
   >
     {PESTANAS.map(({ tipo, etiqueta, Icono }) => {
       const esActiva = activa === tipo;
@@ -41,16 +41,16 @@ export const BarraPaneles: React.FC<BarraPanelesProps> = ({ activa, onSelecciona
           aria-selected={esActiva}
           onClick={() => onSeleccionar(tipo)}
           aria-label={conteo && conteo > 0 ? `${etiqueta}, ${conteo} ${conteo === 1 ? 'pendiente' : 'pendientes'}` : undefined}
-          className={`relative h-[56px] flex flex-col items-center justify-center gap-[3px] border-l-[3px] transition ${
-            esActiva ? 'border-[#1E40AF] bg-[#EFF6FF] text-[#1E40AF]' : 'border-transparent text-[#64748B] hover:bg-[#F8FAFC] hover:text-[#0F172A]'
+          className={`relative h-14 flex flex-col items-center justify-center gap-1 border-l-2 transition ${
+            esActiva ? 'border-primary-600 bg-primary-50 text-primary-600' : 'border-transparent text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900'
           }`}
         >
-          <Icono className="w-[18px] h-[18px]" />
-          <span className="font-sans text-[10px] leading-none">{etiqueta}</span>
+          <Icono className="size-[18px]" />
+          <span className="font-sans text-caption leading-none">{etiqueta}</span>
           {conteo !== undefined && conteo > 0 && (
             <span
               aria-hidden="true"
-              className="absolute top-[6px] right-[8px] min-w-[15px] h-[15px] px-[3px] rounded-full bg-[#B91C1C] text-white text-[10px] font-semibold tabular-nums flex items-center justify-center"
+              className="absolute top-1.5 right-2 min-w-4 h-4 px-1 rounded-full bg-critical-600 text-white text-caption font-semibold tabular-nums flex items-center justify-center"
             >
               {conteo > 99 ? '99+' : conteo}
             </span>

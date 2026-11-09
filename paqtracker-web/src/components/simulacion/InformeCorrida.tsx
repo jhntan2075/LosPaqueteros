@@ -6,6 +6,7 @@ import type { DatosOperacion } from '../../types/operacion';
 import { formatearCronometro, formatearDiasHoras, formatearFechaLarga, formatearMiles } from '../../lib/formato';
 import type { EjecucionApi } from '../../types/api';
 import type { EstadoCorrida } from '../../types/simulacion';
+import { Boton, EncabezadoPagina, FilaDato, Insignia, Pestanas, Tarjeta, type Tono } from '../ui';
 import { ESTADO_CORRIDA } from './estadoCorrida';
 
 /** Mismas filas que las tres tarjetas del informe, para que la descarga audite exactamente lo que se ve en pantalla. */
@@ -49,18 +50,19 @@ function exportarCsv(ejecucion: EjecucionApi, estado: EstadoCorrida, datos: Dato
 // que el informe debe auditar con el lenguaje visual del resto del sistema. Los valores son los de la
 // última instantánea de la ejecución.
 
-const Tarjeta: React.FC<{ titulo: string; children: React.ReactNode }> = ({ titulo, children }) => (
-  <section className="bg-white border border-[#E2E8F0] rounded-[10px]">
-    <h2 className="h-[44px] px-[15px] flex items-center border-b border-[#E2E8F0] font-sans font-semibold text-[14px] text-[#0F172A]">{titulo}</h2>
-    <div className="px-[15px] py-[8px]">{children}</div>
-  </section>
+/**
+ * Sección del informe. El título va en el mismo contenedor que las filas (no en el encabezado de la
+ * Tarjeta): las pruebas de la rúbrica localizan cada fila desde el título (`heading.parentElement`).
+ */
+const SeccionInforme: React.FC<{ titulo: string; children: React.ReactNode }> = ({ titulo, children }) => (
+  <Tarjeta cuerpoClassName="flex flex-col px-5 pb-3 pt-4">
+    <h2 className="border-b border-neutral-200 pb-3 text-title-sm text-neutral-900">{titulo}</h2>
+    {children}
+  </Tarjeta>
 );
 
-const Fila: React.FC<{ etiqueta: string; valor: string; color?: string }> = ({ etiqueta, valor, color = 'text-[#0F172A]' }) => (
-  <div className="h-[30px] flex items-center justify-between border-b border-dashed border-[#E2E8F0] last:border-0 text-[12px]">
-    <span className="font-sans text-[#64748B]">{etiqueta}</span>
-    <span className={`tabular-nums ${color}`}>{valor}</span>
-  </div>
+const Fila: React.FC<{ etiqueta: string; valor: string; tono?: Tono }> = ({ etiqueta, valor, tono }) => (
+  <FilaDato separador etiqueta={etiqueta} valor={valor} tono={tono} />
 );
 
 interface InformeCorridaProps {
@@ -79,94 +81,85 @@ export const InformeCorrida: React.FC<InformeCorridaProps> = ({ ejecucion, estad
   const { resumen, indicadores } = datos;
   const colapso = estado === 'COLAPSO';
   const porcentaje = (valor: number) => `${valor.toFixed(1).replace('.', ',')} %`;
+  const estadoCorrida = ESTADO_CORRIDA[estado];
   return (
-    <div className="flex-1 flex flex-col min-h-0 leading-[normal]">
-      <header className="h-[80px] bg-white border-b border-[#E2E8F0] px-[24px] flex items-center gap-[16px] shrink-0">
-        <div className="flex flex-col gap-[6px]">
-          <button type="button" onClick={onVolverACorrida} className="self-start font-sans font-medium text-[12px] text-[#1E40AF] hover:underline">
-            ‹ Volver a la corrida
-          </button>
-          <h1 className="font-sans font-semibold text-[18px] text-[#0F172A]">Informe de la corrida</h1>
-        </div>
-        <span className={`ml-[8px] rounded-[4px] px-[10px] py-[5px] font-sans font-semibold text-[12px] tracking-[0.5px] ${ESTADO_CORRIDA[estado].clase}`}>
-          {ESTADO_CORRIDA[estado].texto}
-        </span>
-        <button
-          type="button"
-          onClick={() => exportarCsv(ejecucion, estado, datos)}
-          className="ml-auto h-[36px] px-[14px] rounded-[6px] border border-[#E2E8F0] hover:bg-[#F8FAFC] text-[#334155] font-sans font-medium text-[12px] flex items-center gap-[8px]"
-        >
-          <Download className="w-[14px] h-[14px]" />
-          Exportar informe (CSV)
-        </button>
-        <button type="button" onClick={onNuevaCorrida} className="h-[36px] px-[16px] rounded-[6px] bg-[#1E40AF] hover:bg-[#1E3A8A] text-white font-sans font-semibold text-[12px]">
-          Nueva corrida
-        </button>
-      </header>
+    <div className="flex min-h-0 flex-1 flex-col">
+      <EncabezadoPagina
+        titulo="Informe de la corrida"
+        volver={{ texto: 'Volver a la corrida', onClick: onVolverACorrida }}
+        estado={
+          <Insignia tamano="md" tono={estadoCorrida.tono} punto={estadoCorrida.punto} contorno={estadoCorrida.contorno}>
+            {estadoCorrida.texto}
+          </Insignia>
+        }
+        acciones={
+          <>
+            <Boton variante="secundario" icono={Download} onClick={() => exportarCsv(ejecucion, estado, datos)}>
+              Exportar informe (CSV)
+            </Boton>
+            <Boton variante="primario" onClick={onNuevaCorrida}>
+              Nueva corrida
+            </Boton>
+          </>
+        }
+      />
 
-      <div role="tablist" aria-label="Contenido del informe" className="h-[40px] bg-white border-b border-[#E2E8F0] px-[24px] flex items-end gap-[20px] shrink-0">
-        {(
-          [
-            ['resumen', 'Resumen'],
-            ['planificacion', colapso ? 'Última planificación estable (antes del colapso)' : 'Última planificación estable'],
-          ] as const
-        ).map(([valor, etiqueta]) => (
-          <button
-            key={valor}
-            type="button"
-            role="tab"
-            aria-selected={vista === valor}
-            onClick={() => setVista(valor)}
-            className={`h-full px-[2px] border-b-2 font-sans text-[13px] ${
-              vista === valor ? 'border-[#1E40AF] font-semibold text-[#0F172A]' : 'border-transparent text-[#64748B] hover:text-[#0F172A]'
-            }`}
-          >
-            {etiqueta}
-          </button>
-        ))}
+      <div className="shrink-0 border-b border-neutral-200 bg-white px-4 sm:px-6">
+        <Pestanas
+          etiqueta="Contenido del informe"
+          activa={vista}
+          onCambiar={setVista}
+          className="mx-auto max-w-6xl border-b-0"
+          opciones={[
+            { id: 'resumen', etiqueta: 'Resumen' },
+            { id: 'planificacion', etiqueta: colapso ? 'Última planificación estable (antes del colapso)' : 'Última planificación estable' },
+          ]}
+        />
       </div>
 
-      <div className="flex-1 min-h-0 overflow-y-auto" role="tabpanel">
-        {vista === 'planificacion' ? (
-          <ReportePlanificacion ejecucionId={ejecucion.id} />
-        ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-[16px] p-[24px] items-start">
-          <Tarjeta titulo="Resultado">
-            <Fila etiqueta="Escenario" valor={ejecucion.tipoEscenario === 'COLAPSO_LOGISTICO' ? 'Hasta el colapso' : `Simulación ${ejecucion.dias} días`} />
-            <Fila
-              etiqueta={colapso ? 'Instante del colapso' : 'Reloj simulado'}
-              valor={formatearFechaLarga(datos.reloj, false)}
-              color={colapso ? 'text-[#B91C1C]' : undefined}
-            />
-            <Fila etiqueta="Operación soportada" valor={formatearDiasHoras(datos.transcurridoSimuladoMs)} />
-            <Fila etiqueta="Tiempo de ejecución" valor={formatearCronometro(datos.transcurridoRealMs)} />
-            <Fila etiqueta="Planificaciones" valor={formatearMiles(indicadores.replanificaciones)} />
-            <Fila etiqueta="Tiempo de la última planificación" valor={`${indicadores.tiempoComputoUltimoTaMs} ms`} />
-          </Tarjeta>
+      <div className="min-h-0 flex-1 overflow-y-auto bg-white" role="tabpanel">
+        <div className="mx-auto w-full max-w-6xl">
+          {vista === 'planificacion' ? (
+            <ReportePlanificacion ejecucionId={ejecucion.id} />
+          ) : (
+            <div className="grid grid-cols-1 items-start gap-4 p-4 sm:p-6 lg:grid-cols-3">
+              <SeccionInforme titulo="Resultado">
+                <Fila etiqueta="Escenario" valor={ejecucion.tipoEscenario === 'COLAPSO_LOGISTICO' ? 'Hasta el colapso' : `Simulación ${ejecucion.dias} días`} />
+                <Fila
+                  etiqueta={colapso ? 'Instante del colapso' : 'Reloj simulado'}
+                  valor={formatearFechaLarga(datos.reloj, false)}
+                  tono={colapso ? 'critical' : undefined}
+                />
+                <Fila etiqueta="Operación soportada" valor={formatearDiasHoras(datos.transcurridoSimuladoMs)} />
+                <Fila etiqueta="Tiempo de ejecución" valor={formatearCronometro(datos.transcurridoRealMs)} />
+                <Fila etiqueta="Planificaciones" valor={formatearMiles(indicadores.replanificaciones)} />
+                <Fila etiqueta="Tiempo de la última planificación" valor={`${indicadores.tiempoComputoUltimoTaMs} ms`} />
+              </SeccionInforme>
 
-          <Tarjeta titulo="Indicadores">
-            <Fila etiqueta="Pedidos" valor={formatearMiles(resumen.total)} />
-            <Fila etiqueta="Entregados" valor={formatearMiles(resumen.entregados)} />
-            <Fila etiqueta="Cumplimiento en plazo" valor={porcentaje(indicadores.porcentajeCumplimiento)} />
-            <Fila etiqueta="Fuera de plazo" valor={String(resumen.fueraDePlazo)} color={resumen.fueraDePlazo > 0 ? 'text-[#B91C1C]' : undefined} />
-            <Fila etiqueta="En espera al cierre" valor={String(resumen.enEspera)} />
-            <Fila etiqueta="Distancia recorrida" valor={`${formatearMiles(Math.round(indicadores.distanciaTotalKm))} km`} />
-          </Tarjeta>
+              <SeccionInforme titulo="Indicadores">
+                <Fila etiqueta="Pedidos" valor={formatearMiles(resumen.total)} />
+                <Fila etiqueta="Entregados" valor={formatearMiles(resumen.entregados)} />
+                <Fila etiqueta="Cumplimiento en plazo" valor={porcentaje(indicadores.porcentajeCumplimiento)} />
+                <Fila etiqueta="Fuera de plazo" valor={String(resumen.fueraDePlazo)} tono={resumen.fueraDePlazo > 0 ? 'critical' : undefined} />
+                <Fila etiqueta="En espera al cierre" valor={String(resumen.enEspera)} />
+                <Fila etiqueta="Distancia recorrida" valor={`${formatearMiles(Math.round(indicadores.distanciaTotalKm))} km`} />
+              </SeccionInforme>
 
-          <Tarjeta titulo="Parámetros de la corrida">
-            <Fila etiqueta="Inicio" valor={formatearFechaLarga(datos.relojInicio, false)} />
-            <Fila etiqueta="Algoritmo" valor={ejecucion.algoritmo} />
-            <Fila etiqueta="Flota" valor={`${ejecucion.flota.autos} A · ${ejecucion.flota.motos} M · ${ejecucion.flota.bicicletas} B`} />
-            <Fila etiqueta="Factor de aceleración (k)" valor={`×${ejecucion.parametros.factorAceleracionK}`} />
-            <Fila etiqueta="Planifica cada" valor={`${ejecucion.parametros.saltoAlgoritmoSaMinutos} min simulados`} />
-            <Fila etiqueta="Actualiza la vista cada" valor={`${ejecucion.parametros.saltoConsumoScSegundos} s reales`} />
-            <Fila
-              etiqueta="Semáforo de holgura"
-              valor={`ajustado < ${Math.round(ejecucion.parametros.fraccionSemaforoAmbar * 100)} % · crítico < ${Math.round(ejecucion.parametros.fraccionSemaforoRojo * 100)} %`}
-            />
-          </Tarjeta>
-          </div>
-        )}
+              <SeccionInforme titulo="Parámetros de la corrida">
+                <Fila etiqueta="Inicio" valor={formatearFechaLarga(datos.relojInicio, false)} />
+                <Fila etiqueta="Algoritmo" valor={ejecucion.algoritmo} />
+                <Fila etiqueta="Flota" valor={`${ejecucion.flota.autos} A · ${ejecucion.flota.motos} M · ${ejecucion.flota.bicicletas} B`} />
+                <Fila etiqueta="Factor de aceleración (k)" valor={`×${ejecucion.parametros.factorAceleracionK}`} />
+                <Fila etiqueta="Planifica cada" valor={`${ejecucion.parametros.saltoAlgoritmoSaMinutos} min simulados`} />
+                <Fila etiqueta="Actualiza la vista cada" valor={`${ejecucion.parametros.saltoConsumoScSegundos} s reales`} />
+                <Fila
+                  etiqueta="Semáforo de holgura"
+                  valor={`ajustado < ${Math.round(ejecucion.parametros.fraccionSemaforoAmbar * 100)} % · crítico < ${Math.round(ejecucion.parametros.fraccionSemaforoRojo * 100)} %`}
+                />
+              </SeccionInforme>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

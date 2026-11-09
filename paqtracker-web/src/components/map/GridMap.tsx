@@ -157,7 +157,7 @@ const guardarLeyendaAbierta = (abierta: boolean) => {
 
 const COLOR_NIVEL: Record<NivelHolgura, string> = { ROJO: '#B91C1C', AMBAR: '#B45309', VERDE: '#15803D', CERRADO: '#94A3B8' };
 
-const ESTILO_PILDORA = 'h-[32px] bg-white shadow-[0px_1px_4px_rgba(0,0,0,0.13)] rounded-full border border-[#E2E8F0] flex items-center';
+const ESTILO_PILDORA = 'h-8 bg-white shadow-xs rounded-full border border-neutral-200 flex items-center';
 
 export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
   {
@@ -445,7 +445,7 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
         setHover(null);
         setCursorEnMapa(false);
       }}
-      className={`relative flex-1 w-full h-full bg-white overflow-hidden select-none touch-none outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#1E40AF] ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+      className={`relative flex-1 w-full h-full bg-white overflow-hidden select-none touch-none outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-600 ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
     >
       {/* 1. Barra flotante: búsqueda, riesgo, bloqueos y averías a la izquierda; ocupación global a la
           derecha. En pantallas angostas los indicadores bajan a una segunda fila en lugar de tapar las
@@ -454,8 +454,8 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
         className="absolute left-3 top-3 z-10 flex flex-wrap items-center gap-2 pointer-events-none [&>*]:pointer-events-auto"
         style={{ right: derechaControles }}
       >
-        <form onSubmit={buscar} className={`${ESTILO_PILDORA} relative w-[206px] px-3 gap-2`} role="search">
-          <Search className="w-3.5 h-3.5 text-[#64748B] shrink-0" />
+        <form onSubmit={buscar} className={`${ESTILO_PILDORA} relative w-52 px-3 gap-2`} role="search">
+          <Search className="size-3.5 text-neutral-600 shrink-0" />
           <input
             type="search"
             placeholder="Pedido, unidad o almacén"
@@ -466,13 +466,13 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
               setTerminoBusqueda(e.target.value);
               setSinResultados(false);
             }}
-            className={`w-full text-[12px] font-sans bg-transparent focus:outline-none [&::-webkit-calendar-picker-indicator]:!hidden ${
-              sinResultados ? 'text-[#B91C1C]' : 'text-[#0F172A]'
-            } placeholder-[#94A3B8]`}
+            className={`w-full text-body-sm font-sans bg-transparent focus:outline-none [&::-webkit-calendar-picker-indicator]:!hidden ${
+              sinResultados ? 'text-critical-600' : 'text-neutral-900'
+            } placeholder-neutral-400`}
           />
-          <span role="status" className="absolute left-0 top-[36px] whitespace-nowrap">
+          <span role="status" className="absolute left-0 top-9 whitespace-nowrap">
             {sinResultados && (
-              <span className="block bg-white border border-[#FECACA] rounded-[6px] px-2 py-1 font-sans text-[12px] text-[#B91C1C] shadow-xs">
+              <span className="block bg-white border border-critical-600/25 rounded-control px-2 py-1 font-sans text-body-sm text-critical-600 shadow-xs">
                 No hay pedidos, unidades ni almacenes en el mapa con «{terminoBusqueda.trim()}»
               </span>
             )}
@@ -494,13 +494,13 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
           type="button"
           onClick={onAbrirIncidencias}
           aria-label={`${riesgo.rojo} pedidos críticos y ${riesgo.ambar} ajustados. Ver incidencias`}
-          className={`${ESTILO_PILDORA} px-3 gap-1.5 hover:bg-slate-50`}
+          className={`${ESTILO_PILDORA} px-3 gap-1.5 hover:bg-neutral-50`}
         >
-          <span className="w-2 h-2 bg-[#B91C1C] rounded-full"></span>
-          <span className="text-[#B91C1C] tabular-nums font-medium text-[12px]">{riesgo.rojo}</span>
-          <span className="text-[#B45309] text-[11px] leading-none" aria-hidden="true">▲</span>
-          <span className="text-[#B45309] tabular-nums font-medium text-[12px]">{riesgo.ambar}</span>
-          <span className="text-[#64748B] font-sans text-[12px]">en riesgo</span>
+          <span className="size-2 bg-critical-600 rounded-full"></span>
+          <span className="text-critical-600 tabular-nums font-medium text-body-sm">{riesgo.rojo}</span>
+          <span className="text-warn-700 text-caption leading-none" aria-hidden="true">▲</span>
+          <span className="text-warn-700 tabular-nums font-medium text-body-sm">{riesgo.ambar}</span>
+          <span className="text-neutral-600 font-sans text-body-sm">en riesgo</span>
         </button>
 
         {!enSimulacion && (
@@ -508,11 +508,11 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
           type="button"
           onClick={onAbrirIncidencias}
           aria-label={`${cantidadBloqueos} bloqueos activos. Ver incidencias`}
-          className={`${ESTILO_PILDORA} px-3 gap-1.5 hover:bg-slate-50`}
+          className={`${ESTILO_PILDORA} px-3 gap-1.5 hover:bg-neutral-50`}
         >
-          <span className="w-2 h-2 rounded-full" style={{ background: COLOR_BLOQUEO }}></span>
-          <span className="tabular-nums font-medium text-[12px]" style={{ color: COLOR_BLOQUEO }}>{cantidadBloqueos}</span>
-          <span className="text-[#64748B] font-sans text-[12px]">bloqueos</span>
+          <span className="size-2 rounded-full" style={{ background: COLOR_BLOQUEO }}></span>
+          <span className="tabular-nums font-medium text-body-sm" style={{ color: COLOR_BLOQUEO }}>{cantidadBloqueos}</span>
+          <span className="text-neutral-600 font-sans text-body-sm">bloqueos</span>
         </button>
         )}
 
@@ -521,11 +521,11 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
           type="button"
           onClick={abrirAverias}
           aria-label={`${averiadas} unidades averiadas. Ver flota`}
-          className={`${ESTILO_PILDORA} px-3 gap-1.5 hover:bg-slate-50`}
+          className={`${ESTILO_PILDORA} px-3 gap-1.5 hover:bg-neutral-50`}
         >
-          <span className="w-2 h-2 bg-[#B91C1C] rounded-full"></span>
-          <span className="text-[#B91C1C] tabular-nums font-medium text-[12px]">{averiadas}</span>
-          <span className="text-[#64748B] font-sans text-[12px]">averías</span>
+          <span className="size-2 bg-critical-600 rounded-full"></span>
+          <span className="text-critical-600 tabular-nums font-medium text-body-sm">{averiadas}</span>
+          <span className="text-neutral-600 font-sans text-body-sm">averías</span>
         </button>
         )}
 
@@ -541,36 +541,36 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
 
       {/* 2. Controles de zoom (a la izquierda del panel derecho si está abierto) */}
       <div
-        className="absolute bottom-12 z-10 flex flex-col gap-1.5 bg-white p-1.5 rounded-xl shadow-[0px_2px_8px_rgba(0,0,0,0.15)] border border-[#E2E8F0]"
+        className="absolute bottom-12 z-10 flex flex-col gap-1.5 bg-white p-1.5 rounded-card shadow-xs border border-neutral-200"
         style={{ right: derechaControles }}
       >
         <button
           onClick={() => acercarAlCentro(FACTOR_BOTON)}
-          className="w-8 h-8 flex items-center justify-center hover:bg-slate-100 rounded-lg text-[#64748B] hover:text-[#0F172A] transition cursor-pointer"
+          className="w-8 h-8 flex items-center justify-center hover:bg-neutral-100 rounded-control text-neutral-600 hover:text-neutral-900 transition cursor-pointer"
           title="Acercar (+)"
           aria-label="Acercar"
         >
-          <ZoomIn className="w-4 h-4" />
+          <ZoomIn className="size-4" />
         </button>
         <button
           onClick={() => acercarAlCentro(1 / FACTOR_BOTON)}
           disabled={enEscalaMinima}
-          className="w-8 h-8 flex items-center justify-center hover:bg-slate-100 rounded-lg text-[#64748B] hover:text-[#0F172A] transition cursor-pointer disabled:opacity-40 disabled:cursor-default disabled:hover:bg-transparent"
+          className="w-8 h-8 flex items-center justify-center hover:bg-neutral-100 rounded-control text-neutral-600 hover:text-neutral-900 transition cursor-pointer disabled:opacity-40 disabled:cursor-default disabled:hover:bg-transparent"
           title="Alejar (-)"
           aria-label="Alejar"
         >
-          <ZoomOut className="w-4 h-4" />
+          <ZoomOut className="size-4" />
         </button>
-        <div className="w-full h-[1px] bg-[#E2E8F0] my-0.5"></div>
+        <div className="w-full h-px bg-neutral-200 my-0.5"></div>
         <button
           onClick={verTodo}
-          className="w-8 h-8 flex items-center justify-center hover:bg-slate-100 rounded-lg text-[#64748B] hover:text-[#0F172A] transition cursor-pointer"
+          className="w-8 h-8 flex items-center justify-center hover:bg-neutral-100 rounded-control text-neutral-600 hover:text-neutral-900 transition cursor-pointer"
           title="Ver la malla completa (0)"
           aria-label="Ver la malla completa"
         >
-          <Maximize2 className="w-3.5 h-3.5" />
+          <Maximize2 className="size-3.5" />
         </button>
-        <span className="text-[11px] tabular-nums text-center text-[#64748B] font-bold block">
+        <span className="text-caption tabular-nums text-center text-neutral-600 font-semibold block">
           {vista ? Math.round((vista.escala / escalaBase) * 100) : 100}%
         </span>
       </div>
@@ -592,23 +592,23 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
             type="button"
             onClick={() => alternarLeyenda(!leyendaAbierta)}
             aria-expanded={leyendaAbierta}
-            className={`${ESTILO_PILDORA} px-3 gap-1.5 hover:bg-slate-50 ${leyendaAbierta ? 'border-[#1E40AF]' : ''}`}
+            className={`${ESTILO_PILDORA} px-3 gap-1.5 hover:bg-neutral-50 ${leyendaAbierta ? 'border-primary-600' : ''}`}
           >
-            <MapIcon className="w-3.5 h-3.5 text-[#64748B]" />
-            <span className="text-[#0F172A] font-sans text-[12px]">Capas y leyenda</span>
+            <MapIcon className="size-3.5 text-neutral-600" />
+            <span className="text-neutral-900 font-sans text-body-sm">Capas y leyenda</span>
           </button>
-          <div className={`${ESTILO_PILDORA} ${filtrosActivos > 0 || filtrosAbiertos ? 'border-[#1E40AF]' : ''}`}>
+          <div className={`${ESTILO_PILDORA} ${filtrosActivos > 0 || filtrosAbiertos ? 'border-primary-600' : ''}`}>
             <button
               type="button"
               onClick={() => alternarFiltros(!filtrosAbiertos)}
               aria-expanded={filtrosAbiertos}
               aria-label={filtrosActivos > 0 ? `Filtros, ${filtrosActivos} ${filtrosActivos === 1 ? 'activo' : 'activos'}` : 'Filtros'}
-              className={`h-full pl-3 gap-1.5 flex items-center rounded-full hover:bg-slate-50 ${filtrosActivos > 0 ? 'pr-2' : 'pr-3'}`}
+              className={`h-full pl-3 gap-1.5 flex items-center rounded-full hover:bg-neutral-50 ${filtrosActivos > 0 ? 'pr-2' : 'pr-3'}`}
             >
-              <ListFilter className={`w-3.5 h-3.5 ${filtrosActivos > 0 ? 'text-[#1E40AF]' : 'text-[#64748B]'}`} />
-              <span className="text-[#0F172A] font-sans text-[12px]">Filtros</span>
+              <ListFilter className={`size-3.5 ${filtrosActivos > 0 ? 'text-primary-600' : 'text-neutral-600'}`} />
+              <span className="text-neutral-900 font-sans text-body-sm">Filtros</span>
               {filtrosActivos > 0 && (
-                <span className="min-w-[18px] h-[18px] px-[5px] rounded-full bg-[#1E40AF] text-white text-[11px] font-semibold tabular-nums flex items-center justify-center">
+                <span className="min-w-5 h-5 px-1 rounded-full bg-primary-600 text-white text-caption font-semibold tabular-nums flex items-center justify-center">
                   {filtrosActivos}
                 </span>
               )}
@@ -619,16 +619,16 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
                 onClick={() => cambiarFiltros(SIN_FILTROS)}
                 aria-label="Quitar los filtros"
                 title="Quitar los filtros"
-                className="h-full pl-1 pr-2.5 flex items-center rounded-r-full text-[#64748B] hover:text-[#0F172A] hover:bg-slate-50"
+                className="h-full pl-1 pr-2.5 flex items-center rounded-r-full text-neutral-600 hover:text-neutral-900 hover:bg-neutral-50"
               >
-                <X className="w-3.5 h-3.5" />
+                <X className="size-3.5" />
               </button>
             )}
           </div>
           {vista && (
-            <div className="bg-white/95 backdrop-blur-xs px-2.5 py-1 rounded-md border border-[#E2E8F0] shadow-xs pointer-events-none flex flex-col gap-[3px]">
-              <span className="tabular-nums text-[11px] text-[#475569]">{barraEscala(vista.escala).km} km</span>
-              <span className="block h-[5px] border-x-2 border-b-2 border-[#475569]" style={{ width: barraEscala(vista.escala).px }} />
+            <div className="bg-white/95 backdrop-blur-xs px-2.5 py-1 rounded-control border border-neutral-200 shadow-xs pointer-events-none flex flex-col gap-0.5">
+              <span className="tabular-nums text-caption text-neutral-600">{barraEscala(vista.escala).km} km</span>
+              <span className="block h-1.5 border-x-2 border-b-2 border-neutral-600" style={{ width: barraEscala(vista.escala).px }} />
             </div>
           )}
         </div>
@@ -784,15 +784,15 @@ const TooltipObjeto: React.FC<
   return (
     <div
       role="tooltip"
-      className="absolute z-20 pointer-events-none -translate-x-1/2 -translate-y-full bg-[#0F172A] text-white rounded-[6px] px-[10px] py-[6px] shadow-lg leading-[normal] whitespace-nowrap"
+      className="absolute z-20 pointer-events-none -translate-x-1/2 -translate-y-full bg-neutral-900 text-white rounded-control px-2.5 py-1.5 shadow-overlay whitespace-nowrap"
       style={{ left, top: p.y - contenido.alzaPx }}
     >
-      <p className="font-semibold text-[12px] tabular-nums">{contenido.titulo}</p>
-      <p className="flex items-center gap-[6px] text-[12px] text-[#CBD5E1] tabular-nums">
-        {contenido.color && <span className="size-[7px] rounded-full shrink-0" style={{ background: contenido.color }} />}
+      <p className="font-semibold text-body-sm tabular-nums">{contenido.titulo}</p>
+      <p className="flex items-center gap-1.5 text-body-sm text-neutral-300 tabular-nums">
+        {contenido.color && <span className="size-2 rounded-full shrink-0" style={{ background: contenido.color }} />}
         {contenido.detalle}
       </p>
-      {contenido.extra && <p className="text-[12px] text-[#CBD5E1] tabular-nums">{contenido.extra}</p>}
+      {contenido.extra && <p className="text-body-sm text-neutral-300 tabular-nums">{contenido.extra}</p>}
     </div>
   );
 };

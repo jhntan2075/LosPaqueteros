@@ -13,6 +13,7 @@ import type { UnidadOperacion } from '../../types/operacion';
 import { IndicadorRadio } from '../layout/IndicadorRadio';
 import { iconoDeUnidad } from '../map/iconosVehiculo';
 import { SelectorUnidad } from './SelectorUnidad';
+import { Aviso, Boton, Entrada } from '../ui';
 
 // CU-13 Registrar avería. Diálogo modal: la acción saca la unidad de servicio y replanifica sus pedidos,
 // así que pide elegir el tipo a conciencia (sin valor por defecto), muestra cuándo volvería a operar la
@@ -64,7 +65,7 @@ export const DialogoRegistrarAveria: React.FC<DialogoRegistrarAveriaProps> = ({ 
   const [estimaciones, setEstimaciones] = useState<Partial<Record<1 | 2 | 3, EstimacionAveriaApi>>>({});
   const dialogo = useRef<HTMLDivElement>(null);
   const primerCampo = useRef<HTMLInputElement | null>(null);
-  const errorRef = useRef<HTMLParagraphElement>(null);
+  const errorRef = useRef<HTMLDivElement>(null);
   // Pedidos que llevaba la unidad al elegirla: si cambian mientras se decide, se avisa.
   const [pedidosAlElegir, setPedidosAlElegir] = useState<{ codigo: string; pedidos: string } | null>(null);
 
@@ -142,16 +143,16 @@ export const DialogoRegistrarAveria: React.FC<DialogoRegistrarAveriaProps> = ({ 
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4 leading-[normal]" data-sin-zoom>
+    <div className="fixed inset-0 z-50 bg-neutral-900/40 flex items-center justify-center p-4" data-sin-zoom>
       <div
         ref={dialogo}
         role="dialog"
         aria-modal="true"
         aria-labelledby="registrar-averia-titulo"
-        className="bg-white rounded-[10px] shadow-2xl border border-[#E2E8F0] w-full max-w-[540px] flex flex-col max-h-[calc(100vh-32px)]"
+        className="bg-white rounded-card shadow-overlay border border-neutral-200 w-full max-w-[540px] flex flex-col max-h-full"
       >
-        <header className="h-[48px] px-[20px] flex items-center border-b border-[#E2E8F0] shrink-0">
-          <h2 id="registrar-averia-titulo" className="font-semibold text-[16px] text-[#0F172A]">
+        <header className="h-12 px-5 flex items-center border-b border-neutral-200 shrink-0">
+          <h2 id="registrar-averia-titulo" className="text-title text-neutral-900">
             Registrar avería
           </h2>
           <button
@@ -159,29 +160,29 @@ export const DialogoRegistrarAveria: React.FC<DialogoRegistrarAveriaProps> = ({ 
             onClick={onCerrar}
             disabled={enviando}
             aria-label="Cerrar"
-            className="ml-auto size-[28px] flex items-center justify-center rounded text-[#64748B] hover:bg-[#F1F5F9] hover:text-[#0F172A] disabled:opacity-50"
+            className="ml-auto size-7 flex items-center justify-center rounded-control text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900 disabled:opacity-50"
           >
-            <X className="w-4 h-4" />
+            <X className="size-4" />
           </button>
         </header>
 
-        <div className="px-[20px] py-[16px] flex flex-col gap-[16px] overflow-y-auto text-[13px]">
+        <div className="px-5 py-4 flex flex-col gap-4 overflow-y-auto text-body">
           {enSimulacion && corriendo && (
-            <p className="text-[12px] text-[#1E40AF] bg-[#EFF6FF] border border-[#BFDBFE] rounded-[6px] px-[10px] py-[6px]">
+            <p className="text-body-sm text-primary-600 bg-primary-50 border border-primary-100 rounded-control px-2.5 py-1.5">
               La simulación sigue corriendo mientras eliges: la carga y las horas se actualizan solas.
             </p>
           )}
 
           {/* Unidad */}
-          <div className="flex flex-col gap-[6px]">
-            <span className="font-medium text-[12px] text-[#334155]">Unidad</span>
+          <div className="flex flex-col gap-1.5">
+            <span className="font-medium text-body-sm text-neutral-700">Unidad</span>
             {unidadInicial && unidad ? (
-              <div className="flex items-center gap-[10px] border border-[#E2E8F0] rounded-[6px] bg-[#F8FAFC] px-[10px] py-[8px]">
-                <img src={iconoDeUnidad(unidad).href} alt="" className="block -my-[4px]" />
-                <span className="font-semibold text-[#0F172A]">
+              <div className="flex items-center gap-2.5 border border-neutral-200 rounded-control bg-neutral-50 px-2.5 py-2">
+                <img src={iconoDeUnidad(unidad).href} alt="" className="block -my-1" />
+                <span className="font-semibold text-neutral-900">
                   {capitalizar(UNIDADES[unidad.tipo].nombre)} {unidad.codigo}
                 </span>
-                <span className="text-[#64748B] tabular-nums">
+                <span className="text-neutral-600 tabular-nums">
                   {ESTADO_UNIDAD[unidad.estado]} · carga {unidad.carga}/{unidad.capacidad} · {pedidos.length}{' '}
                   {pedidos.length === 1 ? 'pedido' : 'pedidos'}
                 </span>
@@ -199,17 +200,17 @@ export const DialogoRegistrarAveria: React.FC<DialogoRegistrarAveriaProps> = ({ 
           </div>
 
           {/* Tipo de avería: radios nativos en tarjetas, sin valor por defecto */}
-          <fieldset className="flex flex-col gap-[6px]">
-            <legend className="font-medium text-[12px] text-[#334155] mb-[6px]">Tipo de avería</legend>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-[8px]">
+          <fieldset className="flex flex-col gap-1.5">
+            <legend className="font-medium text-body-sm text-neutral-700 mb-1.5">Tipo de avería</legend>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               {TIPOS.map((t, i) => {
                 const elegido = tipo === t;
                 const estimacion = estimaciones[t];
                 return (
                   <label
                     key={t}
-                    className={`rounded-[10px] p-[10px] flex flex-col gap-[4px] cursor-pointer transition has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[#1E40AF]/40 ${
-                      elegido ? 'bg-[#EAF1FD] border-2 border-[#1E40AF]' : 'bg-white border border-[#E2E8F0] hover:border-[#CBD5E1] hover:bg-[#F8FAFC]'
+                    className={`rounded-card p-2.5 flex flex-col gap-1 cursor-pointer transition has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-primary-600/40 ${
+                      elegido ? 'bg-primary-50 border-2 border-primary-600' : 'bg-white border border-neutral-200 hover:border-neutral-300 hover:bg-neutral-50'
                     }`}
                   >
                     <input
@@ -221,15 +222,15 @@ export const DialogoRegistrarAveria: React.FC<DialogoRegistrarAveriaProps> = ({ 
                       ref={i === 0 && unidadInicial ? primerCampo : undefined}
                       className="sr-only"
                     />
-                    <span className="flex items-center gap-[6px] text-[11px] font-semibold uppercase tracking-wider text-[#64748B]">
+                    <span className="flex items-center gap-1.5 text-overline uppercase text-neutral-600">
                       <IndicadorRadio marcado={elegido} />
                       Tipo {t}
                     </span>
-                    <span className={`font-semibold text-[14px] ${elegido ? 'text-[#1E40AF]' : 'text-[#0F172A]'}`}>{TIPO_AVERIA[t].nombre}</span>
-                    <span className="text-[12px] text-[#64748B]">Ej.: {TIPO_AVERIA[t].ejemplo}</span>
-                    <span className="text-[12px] text-[#0F172A]">{TIPO_AVERIA[t].duracion}</span>
+                    <span className={`text-title-sm ${elegido ? 'text-primary-600' : 'text-neutral-900'}`}>{TIPO_AVERIA[t].nombre}</span>
+                    <span className="text-body-sm text-neutral-600">Ej.: {TIPO_AVERIA[t].ejemplo}</span>
+                    <span className="text-body-sm text-neutral-900">{TIPO_AVERIA[t].duracion}</span>
                     {estimacion && (
-                      <span className="mt-[2px] text-[12px] font-medium text-[#0F172A] tabular-nums">
+                      <span className="mt-0.5 text-body-sm font-medium text-neutral-900 tabular-nums">
                         Volvería {formatearMomento(new Date(estimacion.reincorporacionMs), datos.reloj)}
                       </span>
                     )}
@@ -241,29 +242,29 @@ export const DialogoRegistrarAveria: React.FC<DialogoRegistrarAveriaProps> = ({ 
 
           {/* Impacto antes de confirmar */}
           {unidad && (
-            <div className="border-l-[3px] border-[#94A3B8] pl-[10px] flex flex-col gap-[2px]" aria-live="polite">
-              <p className="text-[13px] text-[#334155]" title={pedidos.length > PEDIDOS_NOMBRADOS ? pedidos.join(' ') : undefined}>
+            <div className="border-l-2 border-neutral-300 pl-2.5 flex flex-col gap-0.5" aria-live="polite">
+              <p className="text-body text-neutral-700" title={pedidos.length > PEDIDOS_NOMBRADOS ? pedidos.join(' ') : undefined}>
                 {impacto()}
               </p>
               {cambiaronPedidos && (
-                <p className="text-[12px] text-[#B45309]">Sus pedidos cambiaron desde que la elegiste: revisa antes de confirmar.</p>
+                <p className="text-body-sm text-warn-700">Sus pedidos cambiaron desde que la elegiste: revisa antes de confirmar.</p>
               )}
             </div>
           )}
 
           {/* Instante de la avería: ahora (por defecto) o programada para más tarde */}
-          <fieldset className="flex flex-col gap-[6px]">
-            <legend className="font-medium text-[12px] text-[#334155] mb-[6px]">Cuándo ocurre</legend>
-            <div className="flex flex-wrap items-center gap-x-[16px] gap-y-[6px]">
+          <fieldset className="flex flex-col gap-1.5">
+            <legend className="font-medium text-body-sm text-neutral-700 mb-1.5">Cuándo ocurre</legend>
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
               {(['ahora', 'programar'] as const).map((opcion) => (
-                <label key={opcion} className="flex items-center gap-[6px] cursor-pointer text-[13px] text-[#0F172A] has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-[#1E40AF]/40 rounded">
+                <label key={opcion} className="flex items-center gap-1.5 cursor-pointer text-body text-neutral-900 has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-primary-600/40 rounded">
                   <input type="radio" name="cuando-averia" value={opcion} checked={cuando === opcion} onChange={() => setCuando(opcion)} className="sr-only" />
                   <IndicadorRadio marcado={cuando === opcion} />
                   {opcion === 'ahora' ? 'Ahora' : 'Programar para'}
                 </label>
               ))}
               {cuando === 'programar' && (
-                <input
+                <Entrada
                   type="datetime-local"
                   aria-label="Fecha y hora de la avería"
                   value={instanteTexto}
@@ -271,18 +272,18 @@ export const DialogoRegistrarAveria: React.FC<DialogoRegistrarAveriaProps> = ({ 
                   onChange={(e) => setInstanteTexto(e.target.value)}
                   aria-invalid={errorInstante ? true : undefined}
                   aria-describedby={errorInstante ? 'instante-averia-error' : undefined}
-                  className={`h-[32px] rounded-[6px] border px-[8px] text-[13px] tabular-nums ${errorInstante ? 'border-[#B91C1C]' : 'border-[#CBD5E1]'}`}
+                  className="w-auto px-2 tabular-nums"
                 />
               )}
             </div>
             {errorInstante && (
-              <span id="instante-averia-error" className="text-[12px] text-[#B91C1C]">
+              <span id="instante-averia-error" className="text-body-sm text-critical-600">
                 {errorInstante}
               </span>
             )}
           </fieldset>
 
-          <p className="text-[12px] text-[#64748B]">
+          <p className="text-body-sm text-neutral-600">
             {instanteMs !== undefined && !errorInstante ? (
               <>
                 Ocurrirá {formatearMomento(new Date(instanteMs), datos.reloj)} del reloj {enSimulacion ? 'de la simulación' : 'de la operación'}. Hasta entonces se
@@ -297,35 +298,22 @@ export const DialogoRegistrarAveria: React.FC<DialogoRegistrarAveriaProps> = ({ 
           </p>
         </div>
 
-        <footer className="px-[20px] py-[12px] border-t border-[#E2E8F0] flex flex-col gap-[8px] shrink-0">
+        <footer className="px-5 py-3 border-t border-neutral-200 flex flex-col gap-2 shrink-0">
           {error && (
-            <p
-              ref={errorRef}
-              role="alert"
-              tabIndex={-1}
-              className="border-l-[3px] border-[#B91C1C] pl-[10px] text-[12px] text-[#B91C1C] outline-none"
-            >
-              {error}
-            </p>
+            <div ref={errorRef} role="alert" tabIndex={-1} className="outline-none">
+              <Aviso tono="critical" compacto>
+                {error}
+              </Aviso>
+            </div>
           )}
-          <div className="flex items-center gap-[8px]">
-            {!listo && !enviando && <span className="text-[12px] text-[#64748B]">Elige {faltantes.join(' y ')}.</span>}
-            <button
-              type="button"
-              onClick={onCerrar}
-              disabled={enviando}
-              className="ml-auto h-[34px] px-[14px] rounded-[6px] border border-[#CBD5E1] font-medium text-[13px] text-[#0F172A] hover:bg-[#F8FAFC] disabled:opacity-50"
-            >
+          <div className="flex items-center gap-2">
+            {!listo && !enviando && <span className="text-body-sm text-neutral-600">Elige {faltantes.join(' y ')}.</span>}
+            <Boton variante="secundario" onClick={onCerrar} disabled={enviando} className="ml-auto">
               Cancelar
-            </button>
-            <button
-              type="button"
-              onClick={confirmar}
-              disabled={!listo}
-              className="h-[34px] px-[14px] rounded-[6px] bg-[#B91C1C] hover:bg-[#991B1B] font-semibold text-[13px] text-white disabled:opacity-50 disabled:cursor-not-allowed"
-            >
+            </Boton>
+            <Boton variante="peligro" onClick={confirmar} disabled={!listo}>
               {enviando ? 'Registrando…' : 'Registrar avería'}
-            </button>
+            </Boton>
           </div>
         </footer>
       </div>

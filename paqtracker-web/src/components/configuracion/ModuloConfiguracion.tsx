@@ -10,6 +10,10 @@ import type { ParametrosAveriaApi, ParametrosDominioApi } from '../../types/api'
 import { DialogoRangosSemaforo } from '../map/DialogoRangosSemaforo';
 import { MiniMapaMalla } from '../map/MiniMapaMalla';
 import { DialogoConfirmacion } from '../modals/DialogoConfirmacion';
+import { AlmacenCentral, AlmacenIntermedio } from '../map/simbolos';
+import { Aviso, Boton, Campo, EncabezadoPagina, Entrada, Tarjeta } from '../ui';
+import type { EntradaProps } from '../ui/Campo';
+import { paleta } from '../../../tailwind.config.js';
 
 // Configuración del dominio (rúbrica B02, B04, B06, B07-B09): ubicación y capacidad de los almacenes,
 // capacidad, velocidad y costo de cada tipo de unidad, duraciones de las averías y rangos del semáforo.
@@ -49,17 +53,7 @@ const aParametros = (f: Formulario): ParametrosDominioApi => ({
   },
 });
 
-const Tarjeta: React.FC<{ titulo: string; codigo: string; descripcion: string; children: React.ReactNode }> = ({ titulo, codigo, descripcion, children }) => (
-  <section className="bg-white p-5 rounded-xl border border-[#CBD5E1] shadow-xs" aria-labelledby={`config-${codigo}`}>
-    <h2 id={`config-${codigo}`} className="text-sm font-bold text-slate-800">
-      {titulo}
-    </h2>
-    <p className="text-xs text-slate-600 mt-0.5 mb-4">{descripcion}</p>
-    {children}
-  </section>
-);
-
-interface CampoProps {
+interface CampoNumeroProps {
   id: string;
   etiqueta: string;
   valor: string;
@@ -71,43 +65,36 @@ interface CampoProps {
   onSalir: () => void;
 }
 
+/**
+ * Entrada con su unidad a la derecha. `Campo` pasa `aria-describedby` y `aria-invalid` a su hijo
+ * directo: este envoltorio los reenvía al input para que la ayuda y el error sigan unidos a él.
+ */
+const EntradaConSufijo: React.FC<EntradaProps & { sufijo?: string }> = ({ sufijo, ...resto }) => (
+  <div className="flex items-center gap-1.5">
+    <Entrada {...resto} />
+    {sufijo && <span className="shrink-0 text-caption text-neutral-600">{sufijo}</span>}
+  </div>
+);
+
 /** Campo numérico con su error debajo (se muestra al salir del campo o al intentar guardar). */
-const Campo: React.FC<CampoProps> = ({ id, etiqueta, valor, error, visible, sufijo, ayuda, onCambiar, onSalir }) => {
-  const mostrar = visible && error;
-  return (
-    <div className="flex flex-col gap-1 min-w-0">
-      <label htmlFor={id} className="text-[11px] font-medium text-slate-600">
-        {etiqueta}
-      </label>
-      <div className="flex items-center gap-1.5">
-        <input
-          id={id}
-          inputMode="decimal"
-          value={valor}
-          onChange={(e) => onCambiar(e.target.value)}
-          onBlur={onSalir}
-          aria-invalid={mostrar ? true : undefined}
-          aria-describedby={mostrar ? `${id}-error` : ayuda ? `${id}-ayuda` : undefined}
-          className={`h-8 w-full min-w-0 rounded-[6px] border px-2 text-[13px] tabular-nums text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#1E40AF]/30 ${
-            mostrar ? 'border-[#B91C1C]' : 'border-[#CBD5E1]'
-          }`}
-        />
-        {sufijo && <span className="text-[11px] text-slate-500 shrink-0">{sufijo}</span>}
-      </div>
-      {mostrar ? (
-        <span id={`${id}-error`} className="text-[11px] text-[#B91C1C]">
-          {error}
-        </span>
-      ) : (
-        ayuda && (
-          <span id={`${id}-ayuda`} className="text-[11px] text-slate-500">
-            {ayuda}
-          </span>
-        )
-      )}
-    </div>
-  );
-};
+const CampoNumero: React.FC<CampoNumeroProps> = ({ id, etiqueta, valor, error, visible, sufijo, ayuda, onCambiar, onSalir }) => (
+  <Campo htmlFor={id} etiqueta={etiqueta} ayuda={ayuda} error={visible && error ? error : undefined}>
+    <EntradaConSufijo
+      id={id}
+      inputMode="decimal"
+      value={valor}
+      onChange={(e) => onCambiar(e.target.value)}
+      onBlur={onSalir}
+      sufijo={sufijo}
+      className="tabular-nums"
+    />
+  </Campo>
+);
+
+/** Rótulo de la fila (nombre del almacén o de la unidad), alineado con los inputs de su derecha. */
+const RotuloFila: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <span className="mt-5 flex h-8 items-center text-body font-semibold text-neutral-900">{children}</span>
+);
 
 const CAMPOS_AVERIA: { campo: keyof ParametrosAveriaApi; etiqueta: string; ayuda: string }[] = [
   { campo: 'tipo1Minutos', etiqueta: 'Tipo 1 · detención en el lugar', ayuda: 'Luego sigue su ruta.' },
@@ -117,6 +104,9 @@ const CAMPOS_AVERIA: { campo: keyof ParametrosAveriaApi; etiqueta: string; ayuda
 ];
 
 type Confirmacion = 'restablecer' | 'aplicar' | null;
+
+const DESCRIPCION =
+  'Los cambios rigen para las simulaciones que se creen después de guardar; las que están en curso conservan sus valores. La operación día a día los toma al aplicarlos.';
 
 export const ModuloConfiguracion: React.FC = () => {
   const avisar = useAvisos();
@@ -154,10 +144,23 @@ export const ModuloConfiguracion: React.FC = () => {
   const hayErrores = Object.keys(errores).length > 0;
   const hayCambios = !!guardados && !!formulario && JSON.stringify(aFormulario(guardados)) !== JSON.stringify(formulario);
 
+  const encabezado = <EncabezadoPagina titulo="Configuración" descripcion={DESCRIPCION} />;
+
   if (!formulario || !parametros) {
     return (
-      <div className="flex-1 flex items-center justify-center text-sm text-slate-600" role="status">
-        {errorCarga ?? 'Cargando configuración…'}
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-white">
+        {encabezado}
+        <div className="flex flex-1 items-center justify-center p-4 sm:p-6">
+          {errorCarga ? (
+            <Aviso tono="critical" role="status">
+              {errorCarga}
+            </Aviso>
+          ) : (
+            <p className="text-body text-neutral-600" role="status">
+              Cargando configuración…
+            </p>
+          )}
+        </div>
       </div>
     );
   }
@@ -218,210 +221,207 @@ export const ModuloConfiguracion: React.FC = () => {
   }));
 
   return (
-    <div className="flex-1 overflow-y-auto">
-      <div className="max-w-5xl mx-auto w-full p-4 sm:p-6 flex flex-col gap-4">
-        <header>
-          <h1 className="text-base font-bold text-slate-800">Configuración</h1>
-          <p className="text-xs text-slate-600 mt-0.5">
-            Los cambios rigen para las simulaciones que se creen después de guardar; las que están en curso conservan sus valores. La operación día a día los
-            toma al aplicarlos.
-          </p>
-        </header>
-
-        {pendienteDiaADia && (
-          <div className="flex flex-wrap items-center gap-3 rounded-[8px] border border-[#BFDBFE] bg-[#EFF6FF] px-3 py-2 text-xs text-[#1E40AF]" role="status">
-            <span className="flex-1 min-w-[200px]">La operación día a día sigue con los parámetros anteriores hasta que los apliques.</span>
-            <button
-              type="button"
-              onClick={() => setConfirmacion('aplicar')}
-              className="h-8 px-3 rounded-[6px] bg-[#1E40AF] hover:bg-[#1E3A8A] text-white font-semibold flex items-center gap-1.5"
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-white">
+      {encabezado}
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 p-4 sm:p-6">
+          {pendienteDiaADia && (
+            <Aviso
+              tono="info"
+              role="status"
+              accion={
+                <Boton variante="primario" icono={RefreshCw} onClick={() => setConfirmacion('aplicar')}>
+                  Aplicar a la operación día a día
+                </Boton>
+              }
             >
-              <RefreshCw className="w-3.5 h-3.5" aria-hidden="true" />
-              Aplicar a la operación día a día
-            </button>
-          </div>
-        )}
+              La operación día a día sigue con los parámetros anteriores hasta que los apliques.
+            </Aviso>
+          )}
 
-        <Tarjeta titulo="Almacenes" codigo="almacenes" descripcion="Ubicación en la malla de 70 × 50 km y capacidad diaria de los intermedios. El central no tiene tope.">
-          <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-4">
+          <Tarjeta
+            id="config-almacenes"
+            titulo="Almacenes"
+            descripcion="Ubicación en la malla de 70 × 50 km y capacidad diaria de los intermedios. El central no tiene tope."
+          >
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_280px]">
+              <div className="flex flex-col gap-3">
+                {parametros.almacenes.map((a, i) => (
+                  <div key={a.codigo} className="grid grid-cols-[110px_1fr_1fr_1.4fr] items-start gap-2">
+                    <RotuloFila>{ALMACENES[i]?.nombre ?? a.codigo}</RotuloFila>
+                    {(['x', 'y'] as const).map((eje) => (
+                      <CampoNumero
+                        key={eje}
+                        id={`almacen-${i}-${eje}`}
+                        etiqueta={eje.toUpperCase()}
+                        sufijo="km"
+                        valor={formulario.almacenes[i][eje]}
+                        error={errores[`almacenes.${i}.${eje}`]}
+                        visible={visible(`almacenes.${i}.${eje}`)}
+                        onCambiar={(v) => fijar((f) => ((f.almacenes[i][eje] = v), f))}
+                        onSalir={() => tocar(`almacenes.${i}.${eje}`)}
+                      />
+                    ))}
+                    {a.codigo === 'CENTRAL' ? (
+                      <div className="flex flex-col gap-1">
+                        <span className="text-body-sm font-medium text-neutral-700">Capacidad</span>
+                        <span className="flex h-8 items-center text-body text-neutral-600">Ilimitada</span>
+                      </div>
+                    ) : (
+                      <CampoNumero
+                        id={`almacen-${i}-capacidad`}
+                        etiqueta="Capacidad"
+                        sufijo="paquetes"
+                        valor={formulario.almacenes[i].capacidad}
+                        error={errores[`almacenes.${i}.capacidad`]}
+                        visible={visible(`almacenes.${i}.capacidad`)}
+                        onCambiar={(v) => fijar((f) => ((f.almacenes[i].capacidad = v), f))}
+                        onSalir={() => tocar(`almacenes.${i}.capacidad`)}
+                      />
+                    )}
+                  </div>
+                ))}
+              </div>
+              <MiniMapaMalla margen={1} etiqueta="Vista previa de la ubicación de los almacenes en la malla">
+                {(vista) => (
+                  <svg className="absolute inset-0 h-full w-full overflow-visible" aria-hidden="true">
+                    {ubicaciones
+                      .filter((u) => u.valida)
+                      .map((u) => {
+                        const { x, y } = proyectar(vista, u.punto);
+                        return (
+                          <g key={u.codigo} transform={`translate(${x} ${y})`}>
+                            {u.codigo === 'CENTRAL' ? <AlmacenCentral /> : <AlmacenIntermedio color={paleta.neutral[600]} />}
+                            <text y={26} textAnchor="middle" fontSize={10} fontWeight={600} fill={paleta.neutral[900]}>
+                              {u.nombre}
+                            </text>
+                          </g>
+                        );
+                      })}
+                  </svg>
+                )}
+              </MiniMapaMalla>
+            </div>
+          </Tarjeta>
+
+          <Tarjeta
+            id="config-unidades"
+            titulo="Unidades de transporte"
+            descripcion="Capacidad, velocidad y costo por km de cada tipo. La cantidad de cada tipo se elige al crear la simulación."
+          >
             <div className="flex flex-col gap-3">
-              {parametros.almacenes.map((a, i) => (
-                <div key={a.codigo} className="grid grid-cols-[110px_1fr_1fr_1.4fr] gap-2 items-start">
-                  <span className="text-[13px] font-semibold text-slate-800 pt-6">{ALMACENES[i]?.nombre ?? a.codigo}</span>
-                  {(['x', 'y'] as const).map((eje) => (
-                    <Campo
-                      key={eje}
-                      id={`almacen-${i}-${eje}`}
-                      etiqueta={eje.toUpperCase()}
-                      sufijo="km"
-                      valor={formulario.almacenes[i][eje]}
-                      error={errores[`almacenes.${i}.${eje}`]}
-                      visible={visible(`almacenes.${i}.${eje}`)}
-                      onCambiar={(v) => fijar((f) => ((f.almacenes[i][eje] = v), f))}
-                      onSalir={() => tocar(`almacenes.${i}.${eje}`)}
-                    />
-                  ))}
-                  {a.codigo === 'CENTRAL' ? (
-                    <div className="flex flex-col gap-1">
-                      <span className="text-[11px] font-medium text-slate-600">Capacidad</span>
-                      <span className="h-8 flex items-center text-[13px] text-slate-600">Ilimitada</span>
-                    </div>
-                  ) : (
-                    <Campo
-                      id={`almacen-${i}-capacidad`}
-                      etiqueta="Capacidad"
-                      sufijo="paquetes"
-                      valor={formulario.almacenes[i].capacidad}
-                      error={errores[`almacenes.${i}.capacidad`]}
-                      visible={visible(`almacenes.${i}.capacidad`)}
-                      onCambiar={(v) => fijar((f) => ((f.almacenes[i].capacidad = v), f))}
-                      onSalir={() => tocar(`almacenes.${i}.capacidad`)}
-                    />
-                  )}
+              {parametros.unidades.map((u, i) => (
+                <div key={u.tipo} className="grid grid-cols-[110px_1fr_1fr_1fr] items-start gap-2">
+                  <RotuloFila>{NOMBRE_UNIDAD[u.tipo]}</RotuloFila>
+                  <CampoNumero
+                    id={`unidad-${i}-capacidad`}
+                    etiqueta="Capacidad"
+                    sufijo="paq."
+                    valor={formulario.unidades[i].capacidad}
+                    error={errores[`unidades.${i}.capacidad`]}
+                    visible={visible(`unidades.${i}.capacidad`)}
+                    onCambiar={(v) => fijar((f) => ((f.unidades[i].capacidad = v), f))}
+                    onSalir={() => tocar(`unidades.${i}.capacidad`)}
+                  />
+                  <CampoNumero
+                    id={`unidad-${i}-velocidad`}
+                    etiqueta="Velocidad"
+                    sufijo="km/h"
+                    valor={formulario.unidades[i].velocidadKmH}
+                    error={errores[`unidades.${i}.velocidadKmH`]}
+                    visible={visible(`unidades.${i}.velocidadKmH`)}
+                    onCambiar={(v) => fijar((f) => ((f.unidades[i].velocidadKmH = v), f))}
+                    onSalir={() => tocar(`unidades.${i}.velocidadKmH`)}
+                  />
+                  <CampoNumero
+                    id={`unidad-${i}-costo`}
+                    etiqueta="Costo por km"
+                    sufijo="S/"
+                    valor={formulario.unidades[i].costoPorKm}
+                    error={errores[`unidades.${i}.costoPorKm`]}
+                    visible={visible(`unidades.${i}.costoPorKm`)}
+                    onCambiar={(v) => fijar((f) => ((f.unidades[i].costoPorKm = v), f))}
+                    onSalir={() => tocar(`unidades.${i}.costoPorKm`)}
+                  />
                 </div>
               ))}
             </div>
-            <MiniMapaMalla alto={200} margen={24} etiqueta="Vista previa de la ubicación de los almacenes en la malla">
-              {(vista) => (
-                <svg className="absolute inset-0 w-full h-full" aria-hidden="true">
-                  {ubicaciones
-                    .filter((u) => u.valida)
-                    .map((u) => {
-                      const { x, y } = proyectar(vista, u.punto);
-                      return (
-                        <g key={u.codigo}>
-                          <rect x={x - 6} y={y - 6} width={12} height={12} rx={2} fill={u.codigo === 'CENTRAL' ? '#1E40AF' : '#0F766E'} stroke="#fff" strokeWidth={1.5} />
-                          <text x={x} y={y + 18} textAnchor="middle" fontSize={10} fontWeight={600} fill="#0F172A">
-                            {u.nombre}
-                          </text>
-                        </g>
-                      );
-                    })}
-                </svg>
-              )}
-            </MiniMapaMalla>
-          </div>
-        </Tarjeta>
+          </Tarjeta>
 
-        <Tarjeta titulo="Unidades de transporte" codigo="unidades" descripcion="Capacidad, velocidad y costo por km de cada tipo. La cantidad de cada tipo se elige al crear la simulación.">
-          <div className="flex flex-col gap-3">
-            {parametros.unidades.map((u, i) => (
-              <div key={u.tipo} className="grid grid-cols-[110px_1fr_1fr_1fr] gap-2 items-start">
-                <span className="text-[13px] font-semibold text-slate-800 pt-6">{NOMBRE_UNIDAD[u.tipo]}</span>
-                <Campo
-                  id={`unidad-${i}-capacidad`}
-                  etiqueta="Capacidad"
-                  sufijo="paq."
-                  valor={formulario.unidades[i].capacidad}
-                  error={errores[`unidades.${i}.capacidad`]}
-                  visible={visible(`unidades.${i}.capacidad`)}
-                  onCambiar={(v) => fijar((f) => ((f.unidades[i].capacidad = v), f))}
-                  onSalir={() => tocar(`unidades.${i}.capacidad`)}
-                />
-                <Campo
-                  id={`unidad-${i}-velocidad`}
-                  etiqueta="Velocidad"
-                  sufijo="km/h"
-                  valor={formulario.unidades[i].velocidadKmH}
-                  error={errores[`unidades.${i}.velocidadKmH`]}
-                  visible={visible(`unidades.${i}.velocidadKmH`)}
-                  onCambiar={(v) => fijar((f) => ((f.unidades[i].velocidadKmH = v), f))}
-                  onSalir={() => tocar(`unidades.${i}.velocidadKmH`)}
-                />
-                <Campo
-                  id={`unidad-${i}-costo`}
-                  etiqueta="Costo por km"
-                  sufijo="S/"
-                  valor={formulario.unidades[i].costoPorKm}
-                  error={errores[`unidades.${i}.costoPorKm`]}
-                  visible={visible(`unidades.${i}.costoPorKm`)}
-                  onCambiar={(v) => fijar((f) => ((f.unidades[i].costoPorKm = v), f))}
-                  onSalir={() => tocar(`unidades.${i}.costoPorKm`)}
-                />
-              </div>
-            ))}
-          </div>
-        </Tarjeta>
+          <Tarjeta
+            id="config-averias"
+            titulo="Averías"
+            descripcion="Duraciones en minutos. El tipo 2 vuelve al terminar el turno siguiente al de la avería; el instante de cada avería se elige al registrarla."
+          >
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              {CAMPOS_AVERIA.map(({ campo, etiqueta, ayuda }) => {
+                const minutos = parametros.averias[campo];
+                const legible = Number.isInteger(minutos) && minutos > 0 ? ` (${formatearDuracion(minutos)})` : '';
+                return (
+                  <CampoNumero
+                    key={campo}
+                    id={`averia-${campo}`}
+                    etiqueta={etiqueta}
+                    sufijo="min"
+                    ayuda={`${ayuda}${legible}`}
+                    valor={formulario.averias[campo]}
+                    error={errores[`averias.${campo}`]}
+                    visible={visible(`averias.${campo}`)}
+                    onCambiar={(v) => fijar((f) => ((f.averias[campo] = v), f))}
+                    onSalir={() => tocar(`averias.${campo}`)}
+                  />
+                );
+              })}
+            </div>
+          </Tarjeta>
 
-        <Tarjeta
-          titulo="Averías"
-          codigo="averias"
-          descripcion="Duraciones en minutos. El tipo 2 vuelve al terminar el turno siguiente al de la avería; el instante de cada avería se elige al registrarla."
-        >
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            {CAMPOS_AVERIA.map(({ campo, etiqueta, ayuda }) => {
-              const minutos = parametros.averias[campo];
-              const legible = Number.isInteger(minutos) && minutos > 0 ? ` (${formatearDuracion(minutos)})` : '';
-              return (
-                <Campo
-                  key={campo}
-                  id={`averia-${campo}`}
-                  etiqueta={etiqueta}
-                  sufijo="min"
-                  ayuda={`${ayuda}${legible}`}
-                  valor={formulario.averias[campo]}
-                  error={errores[`averias.${campo}`]}
-                  visible={visible(`averias.${campo}`)}
-                  onCambiar={(v) => fijar((f) => ((f.averias[campo] = v), f))}
-                  onSalir={() => tocar(`averias.${campo}`)}
-                />
-              );
-            })}
-          </div>
-        </Tarjeta>
+          <Tarjeta
+            id="config-semaforo"
+            titulo="Semáforo"
+            descripcion="Rangos de vacío, verde, ámbar y rojo de unidades y almacenes, y los de holgura y stock bajo. Rigen al instante en todas las pantallas."
+          >
+            <Boton variante="secundario" icono={SlidersHorizontal} onClick={() => setSemaforoAbierto(true)}>
+              Configurar rangos
+            </Boton>
+          </Tarjeta>
 
-        <Tarjeta titulo="Semáforo" codigo="semaforo" descripcion="Rangos de vacío, verde, ámbar y rojo de unidades y almacenes, y los de holgura y stock bajo. Rigen al instante en todas las pantallas.">
-          <button
-            type="button"
-            onClick={() => setSemaforoAbierto(true)}
-            className="h-8 px-3 rounded-[6px] border border-[#CBD5E1] text-[13px] font-medium text-slate-800 hover:bg-slate-50 flex items-center gap-1.5"
-          >
-            <SlidersHorizontal className="w-3.5 h-3.5" aria-hidden="true" />
-            Configurar rangos
-          </button>
-        </Tarjeta>
-
-        <footer className="sticky bottom-0 bg-[#F8FAFC]/95 backdrop-blur border-t border-[#E2E8F0] -mx-4 sm:-mx-6 px-4 sm:px-6 py-3 flex flex-wrap items-center gap-2">
-          {errorApi && (
-            <p role="alert" className="basis-full border-l-[3px] border-[#B91C1C] pl-2 text-xs text-[#B91C1C]">
-              {errorApi}
-            </p>
-          )}
-          {intentoGuardar && hayErrores && (
-            <p role="alert" className="text-xs text-[#B91C1C]">
-              Corrige los campos marcados antes de guardar.
-            </p>
-          )}
-          <button
-            type="button"
-            onClick={() => {
-              setConfirmacion('restablecer');
-              setErrorConfirmacion(null);
-            }}
-            disabled={enCurso}
-            className="h-8 px-3 rounded-[6px] text-[13px] font-medium text-slate-700 hover:bg-slate-100 flex items-center gap-1.5 disabled:opacity-50"
-          >
-            <RotateCcw className="w-3.5 h-3.5" aria-hidden="true" />
-            Restablecer valores por defecto
-          </button>
-          <button
-            type="button"
-            onClick={() => guardados && tomarGuardados(guardados)}
-            disabled={!hayCambios || enCurso}
-            className="ml-auto h-8 px-3 rounded-[6px] border border-[#CBD5E1] text-[13px] font-medium text-slate-800 hover:bg-white disabled:opacity-50"
-          >
-            Descartar cambios
-          </button>
-          <button
-            type="button"
-            onClick={guardar}
-            disabled={!hayCambios || enCurso}
-            className="h-8 px-3 rounded-[6px] bg-[#1E40AF] hover:bg-[#1E3A8A] text-white text-[13px] font-semibold flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <Save className="w-3.5 h-3.5" aria-hidden="true" />
-            {enCurso && !confirmacion ? 'Guardando…' : 'Guardar cambios'}
-          </button>
-        </footer>
+          <footer className="sticky bottom-0 -mx-4 flex flex-wrap items-center gap-2 border-t border-neutral-200 bg-white/95 px-4 py-3 backdrop-blur sm:-mx-6 sm:px-6">
+            {errorApi && (
+              <Aviso tono="critical" role="alert" className="basis-full">
+                {errorApi}
+              </Aviso>
+            )}
+            {intentoGuardar && hayErrores && (
+              <Aviso tono="critical" role="alert" compacto>
+                Corrige los campos marcados antes de guardar.
+              </Aviso>
+            )}
+            <Boton
+              variante="fantasma"
+              icono={RotateCcw}
+              onClick={() => {
+                setConfirmacion('restablecer');
+                setErrorConfirmacion(null);
+              }}
+              disabled={enCurso}
+            >
+              Restablecer valores por defecto
+            </Boton>
+            <Boton variante="secundario" onClick={() => guardados && tomarGuardados(guardados)} disabled={!hayCambios || enCurso} className="ml-auto">
+              Descartar cambios
+            </Boton>
+            <Boton
+              variante="primario"
+              icono={Save}
+              onClick={guardar}
+              disabled={!hayCambios || enCurso}
+              cargando={enCurso && !confirmacion}
+              textoCargando="Guardando…"
+            >
+              Guardar cambios
+            </Boton>
+          </footer>
+        </div>
       </div>
 
       <DialogoConfirmacion

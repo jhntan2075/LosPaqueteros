@@ -4,6 +4,7 @@ import { useCerrarConEscape } from '../../hooks/useCerrarConEscape';
 import { useFocoAtrapado } from '../../hooks/useFocoAtrapado';
 import { useGuardarRangosSemaforo, useRangosSemaforo } from '../../hooks/useRangosSemaforo';
 import type { RangosSemaforoApi } from '../../types/api';
+import { Aviso, Boton, Entrada } from '../ui';
 
 // Configuración de los rangos del semáforo (punto 6 de la evaluación). El operador los escribe en
 // porcentaje; la API los guarda como fracciones y, al aceptarlos, rigen de inmediato en el mapa, los
@@ -107,7 +108,7 @@ export const DialogoRangosSemaforo: React.FC<DialogoRangosSemaforoProps> = ({ on
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4 leading-[normal]">
+    <div className="fixed inset-0 z-50 bg-neutral-900/40 flex items-center justify-center p-4">
       <form
         ref={dialogo}
         role="dialog"
@@ -115,27 +116,27 @@ export const DialogoRangosSemaforo: React.FC<DialogoRangosSemaforoProps> = ({ on
         aria-labelledby="dialogo-rangos-titulo"
         onSubmit={manejarEnvio}
         noValidate
-        className="bg-white rounded-[10px] shadow-2xl border border-[#E2E8F0] w-full max-w-[520px] max-h-[90vh] overflow-y-auto p-[20px] flex flex-col gap-[12px] font-sans"
+        className="bg-white rounded-card shadow-overlay border border-neutral-200 w-full max-w-[520px] max-h-[90vh] overflow-y-auto p-5 flex flex-col gap-3 font-sans"
       >
         <div>
-          <h2 id="dialogo-rangos-titulo" className="font-semibold text-[16px] text-[#0F172A]">
+          <h2 id="dialogo-rangos-titulo" className="text-title text-neutral-900">
             Rangos del semáforo
           </h2>
-          <p className="text-[12px] text-[#64748B]">
+          <p className="text-body-sm text-neutral-600">
             En porcentaje. Se guardan en el servidor y rigen de inmediato para todos, sin reiniciar.
           </p>
         </div>
 
         {GRUPOS.map(({ grupo, mide, campos }, indiceGrupo) => (
-          <fieldset key={grupo} className="border border-[#E2E8F0] rounded-[8px] px-[12px] pt-[6px] pb-[10px]">
-            <legend className="px-[4px] font-semibold text-[13px] text-[#0F172A]">{NOMBRE_RANGO[grupo]}</legend>
-            <p className="text-[11px] text-[#64748B] mb-[6px]">{mide}</p>
-            <div className="grid grid-cols-3 gap-[8px]">
+          <fieldset key={grupo} className="border border-neutral-200 rounded-card px-3 pt-1.5 pb-2.5">
+            <legend className="px-1 font-semibold text-body text-neutral-900">{NOMBRE_RANGO[grupo]}</legend>
+            <p className="text-caption text-neutral-600 mb-1.5">{mide}</p>
+            <div className="grid grid-cols-3 gap-2">
               {campos.map(({ umbral, etiqueta }, indiceCampo) => (
-                <label key={umbral} className="flex flex-col gap-[2px] text-[12px] text-[#334155]">
+                <label key={umbral} className="flex flex-col gap-0.5 text-body-sm font-medium text-neutral-700">
                   {etiqueta}
-                  <span className="flex items-center gap-[4px]">
-                    <input
+                  <span className="flex items-center gap-1">
+                    <Entrada
                       ref={indiceGrupo === 0 && indiceCampo === 0 ? primerCampo : undefined}
                       type="number"
                       inputMode="decimal"
@@ -145,7 +146,7 @@ export const DialogoRangosSemaforo: React.FC<DialogoRangosSemaforoProps> = ({ on
                       value={formulario[grupo][umbral] ?? ''}
                       onChange={(evento) => manejarCambio(grupo, umbral, evento.target.value)}
                       aria-label={`${NOMBRE_RANGO[grupo]}: ${etiqueta.toLowerCase()} (%)`}
-                      className="w-full h-[30px] px-[8px] rounded-[6px] border border-[#CBD5E1] tabular-nums text-[13px] text-[#0F172A]"
+                      className="tabular-nums font-normal"
                     />
                     <span aria-hidden="true">%</span>
                   </span>
@@ -156,43 +157,31 @@ export const DialogoRangosSemaforo: React.FC<DialogoRangosSemaforoProps> = ({ on
         ))}
 
         {mostrarErrores && (
-          <ul role="alert" className="border-l-[3px] border-[#B91C1C] pl-[9px] text-[12px] text-[#B91C1C] list-none">
-            {errores.map((mensaje) => (
-              <li key={mensaje}>{mensaje}</li>
-            ))}
-          </ul>
+          <Aviso tono="critical" role="alert">
+            <ul className="list-none">
+              {errores.map((mensaje) => (
+                <li key={mensaje}>{mensaje}</li>
+              ))}
+            </ul>
+          </Aviso>
         )}
         {error && (
-          <p role="alert" className="border-l-[3px] border-[#B91C1C] pl-[9px] text-[12px] text-[#B91C1C]">
+          <Aviso tono="critical" role="alert">
             {error}
-          </p>
+          </Aviso>
         )}
 
-        <div className="mt-[4px] flex flex-wrap justify-between gap-[8px]">
-          <button
-            type="button"
-            onClick={() => setFormulario(aFormulario(RANGOS_POR_DEFECTO))}
-            disabled={enCurso}
-            className="h-[34px] px-[12px] rounded-[6px] text-[13px] text-[#334155] underline hover:text-[#0F172A] disabled:opacity-50"
-          >
+        <div className="mt-1 flex flex-wrap justify-between gap-2">
+          <Boton variante="fantasma" onClick={() => setFormulario(aFormulario(RANGOS_POR_DEFECTO))} disabled={enCurso} className="underline">
             Valores por defecto
-          </button>
-          <div className="flex gap-[8px]">
-            <button
-              type="button"
-              onClick={onCerrar}
-              disabled={enCurso}
-              className="h-[34px] px-[14px] rounded-[6px] border border-[#CBD5E1] font-medium text-[13px] text-[#0F172A] hover:bg-[#F8FAFC] disabled:opacity-50"
-            >
+          </Boton>
+          <div className="flex gap-2">
+            <Boton variante="secundario" onClick={onCerrar} disabled={enCurso}>
               Cancelar
-            </button>
-            <button
-              type="submit"
-              disabled={enCurso}
-              className="h-[34px] px-[14px] rounded-[6px] bg-[#0F172A] hover:bg-[#1E293B] font-semibold text-[13px] text-white disabled:opacity-60"
-            >
-              {enCurso ? 'Guardando…' : 'Guardar rangos'}
-            </button>
+            </Boton>
+            <Boton variante="primario" type="submit" cargando={enCurso} textoCargando="Guardando…">
+              Guardar rangos
+            </Boton>
           </div>
         </div>
       </form>

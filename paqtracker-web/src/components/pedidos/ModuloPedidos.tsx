@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { useDatosOperacion } from '../../hooks/useDatosOperacion';
 import type { PedidoRegistrado as Pedido, VistaPedidos } from '../../types/pedidos';
+import { EncabezadoPagina } from '../ui';
 import { ColaPedidos } from './ColaPedidos';
-import { EncabezadoPedidos } from './EncabezadoPedidos';
 import { PedidoRegistrado } from './PedidoRegistrado';
 import { RegistrarPedido } from './RegistrarPedido';
 
@@ -19,14 +19,15 @@ export const ModuloPedidos: React.FC<ModuloPedidosProps> = ({ vista, onCambiarVi
   const [registrado, setRegistrado] = useState<Pedido | null>(null);
   const { pedidos } = useDatosOperacion();
   const volverACola = () => onCambiarVista('cola');
+  const volver = { texto: 'Volver a la cola de pedidos', onClick: volverACola };
 
   if (vista === 'registrar' || (vista === 'registrado' && !registrado)) {
     return (
-      <div className="flex-1 flex flex-col min-h-0 bg-[#F8FAFC]">
-        <EncabezadoPedidos
+      <div className="flex-1 flex flex-col min-h-0 bg-white">
+        <EncabezadoPagina
           titulo="Registrar nuevo pedido"
-          subtitulo="Con el cliente, el destino y el plazo se estima si llega a tiempo antes de registrarlo"
-          onVolver={volverACola}
+          descripcion="Con el cliente, el destino y el plazo se estima si llega a tiempo antes de registrarlo"
+          volver={volver}
         />
         <RegistrarPedido
           onCancelar={volverACola}
@@ -41,11 +42,8 @@ export const ModuloPedidos: React.FC<ModuloPedidosProps> = ({ vista, onCambiarVi
 
   if (vista === 'registrado' && registrado) {
     return (
-      <div className="flex-1 flex flex-col min-h-0 bg-[#F8FAFC]">
-        <EncabezadoPedidos
-          titulo="Pedido registrado"
-          onVolver={volverACola}
-        />
+      <div className="flex-1 flex flex-col min-h-0 bg-white">
+        <EncabezadoPagina titulo="Pedido registrado" volver={volver} />
         <PedidoRegistrado
           pedido={registrado}
           // Solo se ofrece cuando el pedido ya figura en el estado en vivo: antes no hay nada que ubicar.
@@ -58,7 +56,7 @@ export const ModuloPedidos: React.FC<ModuloPedidosProps> = ({ vista, onCambiarVi
   }
 
   return (
-    <div className="flex-1 flex flex-col min-h-0 bg-[#F8FAFC] p-4 lg:p-6 overflow-hidden">
+    <div className="flex-1 flex flex-col min-h-0 bg-white overflow-hidden">
       <ColaPedidos
         onRegistrar={() => onCambiarVista('registrar')}
         onVerEnLienzo={onVerEnLienzo}

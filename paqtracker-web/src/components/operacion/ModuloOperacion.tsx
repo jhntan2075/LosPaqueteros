@@ -80,7 +80,7 @@ export const ModuloOperacion: React.FC<ModuloOperacionProps> = ({
 
   return (
     <div className="flex-1 flex flex-col min-h-0">
-      <main className="flex-1 relative flex min-h-0 bg-[#F8FAFC]">
+      <main className="flex-1 relative flex min-h-0 bg-white">
         <GridMap
           ref={mapaRef}
           unidades={unidadesEnMapa}

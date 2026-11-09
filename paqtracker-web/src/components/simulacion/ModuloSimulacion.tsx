@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
+import { ArrowLeft } from 'lucide-react';
 import { useParametroUrl } from '../../hooks/useParametroUrl';
 import { mensajeDeError } from '../../hooks/useEjecuciones';
 import { clienteApi } from '../../services/clienteApi';
 import type { EjecucionApi } from '../../types/api';
+import { Aviso, Boton, Tarjeta } from '../ui';
 import { ConfiguracionEscenario } from './ConfiguracionEscenario';
 import { CorridaSimulacion } from './CorridaSimulacion';
 
@@ -50,22 +52,25 @@ export const ModuloSimulacion: React.FC = () => {
   // Hay un id en la URL (se pidió abrir esa corrida) pero el estado local todavía no la tiene.
   if (ejecucionId && !ejecucion) {
     return (
-      <div className="flex-1 flex items-center justify-center bg-[#F8FAFC]">
-        <div className="bg-white border border-[#E2E8F0] rounded-[10px] px-[28px] py-[22px] flex flex-col items-center gap-[10px] max-w-[440px] text-center">
-          <p className="font-sans font-semibold text-[14px] text-[#0F172A]">Abrir simulación</p>
+      <div className="flex flex-1 items-center justify-center bg-white p-6">
+        <Tarjeta className="w-full max-w-md" cuerpoClassName="flex flex-col items-center gap-3 px-6 py-6 text-center">
+          <p className="text-title-sm text-neutral-900">Abrir simulación</p>
           {errorActual ? (
             <>
-              <p className="font-sans text-[12px] text-[#B91C1C]">{errorActual}</p>
-              <button type="button" onClick={salir} className="font-sans font-medium text-[12px] text-[#1E40AF] hover:underline">
+              <Aviso tono="critical" compacto role="alert">
+                {errorActual}
+              </Aviso>
+              <Boton variante="secundario" tamano="sm" icono={ArrowLeft} onClick={salir}>
                 Ver otras simulaciones
-              </button>
+              </Boton>
             </>
           ) : (
-            <p className="font-sans text-[12px] text-[#64748B] flex items-center justify-center gap-[8px]">
-              <span className="size-[6px] rounded-full bg-[#1E40AF] animate-pulse" /> Abriendo…
+            <p className="flex items-center justify-center gap-2 text-body-sm text-neutral-600">
+              <span aria-hidden="true" className="size-1.5 rounded-full bg-primary-600 motion-safe:animate-pulse" />
+              Abriendo…
             </p>
           )}
-        </div>
+        </Tarjeta>
       </div>
     );
   }

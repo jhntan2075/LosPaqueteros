@@ -14,6 +14,7 @@ import {
 import { useRangosSemaforo } from '../../hooks/useRangosSemaforo';
 import { NIVELES_CARGA } from '../../lib/semaforo';
 import { CAPAS, type Capa } from './capas';
+import { Boton } from '../ui';
 import { DialogoRangosSemaforo } from './DialogoRangosSemaforo';
 import { iconoVehiculo } from './iconosVehiculo';
 import {
@@ -53,11 +54,11 @@ const IconoUnidad: React.FC<{ tipo: 'AUTO' | 'MOTO' | 'BICICLETA'; hueco?: boole
 
 /** Fila de símbolo: columna de ícono de ancho fijo, nombre y, opcional, qué codifica en gris. */
 const Fila: React.FC<{ simbolo: React.ReactNode; nombre: string; detalle?: string }> = ({ simbolo, nombre, detalle }) => (
-  <li className="grid grid-cols-[28px_1fr] items-center gap-x-[10px] h-[26px]">
+  <li className="grid grid-cols-[28px_1fr] items-center gap-x-2.5 h-[26px]">
     <span className="h-[22px] flex items-center justify-center">{simbolo}</span>
-    <span className="text-[12px] text-[#0F172A] truncate">
+    <span className="text-body-sm text-neutral-900 truncate">
       {nombre}
-      {detalle && <span className="text-[#64748B]"> · {detalle}</span>}
+      {detalle && <span className="text-neutral-600"> · {detalle}</span>}
     </span>
   </li>
 );
@@ -80,33 +81,33 @@ export const LeyendaMapa: React.FC<LeyendaMapaProps> = ({ onCerrar, capas, onCam
     aria-label="Capas y leyenda"
     data-sin-zoom
     onPointerDown={(e) => e.stopPropagation()}
-    className="w-[280px] max-h-[calc(100vh-260px)] overflow-y-auto bg-white border border-[#E2E8F0] rounded-[10px] shadow-[0px_2px_12px_0px_rgba(0,0,0,0.16)] leading-[normal] cursor-default"
+    className="w-[280px] max-h-[calc(100vh-260px)] overflow-y-auto bg-white border border-neutral-200 rounded-card shadow-overlay cursor-default"
   >
-    <header className="h-[36px] pl-[12px] pr-[8px] flex items-center border-b border-[#E2E8F0]">
-      <h2 className="font-semibold text-[13px] text-[#0F172A]">Capas y leyenda</h2>
+    <header className="h-9 pl-3 pr-2 flex items-center border-b border-neutral-200">
+      <h2 className="font-semibold text-body text-neutral-900">Capas y leyenda</h2>
       <button
         type="button"
         onClick={onCerrar}
         aria-label="Cerrar capas y leyenda"
-        className="ml-auto size-[24px] flex items-center justify-center rounded text-[#64748B] hover:bg-[#F1F5F9] hover:text-[#0F172A]"
+        className="ml-auto size-6 flex items-center justify-center rounded-control text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900"
       >
-        <X className="w-3.5 h-3.5" />
+        <X className="size-3.5" />
       </button>
     </header>
 
     {capas && onCambiarCapa && (
-      <fieldset className="px-[12px] py-[8px] border-b border-[#E2E8F0] flex flex-col gap-[2px]">
+      <fieldset className="px-3 py-2 border-b border-neutral-200 flex flex-col gap-0.5">
         <legend className="sr-only">Capas visibles</legend>
         {CAPAS.map(({ clave, etiqueta }) => (
-          <label key={clave} className="flex items-center gap-[8px] py-[2px] text-[12px] font-sans text-[#0F172A] cursor-pointer">
-            <input type="checkbox" checked={capas[clave]} onChange={() => onCambiarCapa(clave)} className="accent-[#1E40AF]" />
+          <label key={clave} className="flex items-center gap-2 py-0.5 text-body-sm font-sans text-neutral-900 cursor-pointer">
+            <input type="checkbox" checked={capas[clave]} onChange={() => onCambiarCapa(clave)} className="accent-primary-600" />
             {etiqueta}
           </label>
         ))}
       </fieldset>
     )}
 
-    <ul className="px-[12px] py-[8px]">
+    <ul className="px-3 py-2">
       <Fila simbolo={<Simbolo caja="-16 -16 32 32"><AlmacenCentral /></Simbolo>} nombre="Almacén central" />
       <Fila
         simbolo={<Simbolo caja="-14 -14 28 28"><AlmacenIntermedio color={VERDE} fraccionStock={0.6} /></Simbolo>}
@@ -167,21 +168,21 @@ export const LeyendaMapa: React.FC<LeyendaMapaProps> = ({ onCerrar, capas, onCam
       />
     </ul>
 
-    <div className="px-[12px] pt-[10px] pb-[12px] border-t border-[#E2E8F0] flex flex-col gap-[10px]">
-      <table className="w-full text-[12px] tabular-nums">
-        <caption className="text-left font-semibold text-[12px] text-[#0F172A] pb-[4px]">Semáforo de carga y stock</caption>
+    <div className="px-3 pt-2.5 pb-3 border-t border-neutral-200 flex flex-col gap-2.5">
+      <table className="w-full text-body-sm tabular-nums">
+        <caption className="text-left font-semibold text-body-sm text-neutral-900 pb-1">Semáforo de carga y stock</caption>
         <thead>
-          <tr className="text-[11px] text-[#64748B]">
-            <th scope="col" className="text-left font-normal pb-[2px]">Nivel</th>
-            <th scope="col" className="text-right font-normal pb-[2px]">Unidad</th>
-            <th scope="col" className="text-right font-normal pb-[2px]">Almacén</th>
+          <tr className="text-caption text-neutral-600">
+            <th scope="col" className="text-left font-normal pb-0.5">Nivel</th>
+            <th scope="col" className="text-right font-normal pb-0.5">Unidad</th>
+            <th scope="col" className="text-right font-normal pb-0.5">Almacén</th>
           </tr>
         </thead>
         <tbody>
           {NIVELES_CARGA.map((nivel) => (
-            <tr key={nivel} className="h-[20px] text-[#0F172A]">
+            <tr key={nivel} className="h-5 text-neutral-900">
               <th scope="row" className="text-left font-normal">
-                <span className="flex items-center gap-[6px] whitespace-nowrap">
+                <span className="flex items-center gap-1.5 whitespace-nowrap">
                   <MarcaSemaforo nivel={nivel} />
                   {NOMBRE_CARGA[nivel]}
                 </span>
@@ -192,23 +193,19 @@ export const LeyendaMapa: React.FC<LeyendaMapaProps> = ({ onCerrar, capas, onCam
           ))}
         </tbody>
       </table>
-      <div className="grid grid-cols-[52px_repeat(3,minmax(0,1fr))] gap-x-[8px] items-center text-[12px]">
-        <span className="text-[#64748B]">Holgura</span>
+      <div className="grid grid-cols-[52px_repeat(3,minmax(0,1fr))] gap-x-2 items-center text-body-sm">
+        <span className="text-neutral-600">Holgura</span>
         {NIVELES_HOLGURA.map((nivel) => (
-          <span key={nivel} className="flex items-center gap-[4px] whitespace-nowrap tabular-nums text-[#0F172A]">
+          <span key={nivel} className="flex items-center gap-1 whitespace-nowrap tabular-nums text-neutral-900">
             <MarcaSemaforo nivel={nivel} />
             {RANGO_HOLGURA[nivel]}
           </span>
         ))}
       </div>
-      <p className="text-[11px] text-[#64748B]">La forma también indica el nivel, no solo el color.</p>
-      <button
-        type="button"
-        onClick={() => setConfigurando(true)}
-        className="self-start h-[28px] px-[10px] rounded-[6px] border border-[#CBD5E1] text-[12px] font-medium text-[#0F172A] hover:bg-[#F8FAFC]"
-      >
+      <p className="text-caption text-neutral-600">La forma también indica el nivel, no solo el color.</p>
+      <Boton tamano="sm" variante="secundario" onClick={() => setConfigurando(true)} className="self-start">
         Configurar rangos
-      </button>
+      </Boton>
     </div>
     {/* En un portal: la leyenda tiene scroll propio y el diálogo debe cubrir toda la pantalla. */}
     {configurando && createPortal(<DialogoRangosSemaforo onCerrar={() => setConfigurando(false)} />, document.body)}

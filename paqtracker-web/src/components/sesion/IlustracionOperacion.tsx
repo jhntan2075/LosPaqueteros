@@ -33,6 +33,19 @@ const AlmacenIntermedio: React.FC<{ x: number; y: number; color: string; fraccio
   );
 };
 
+/** Marcas de la leyenda del panel de marca (login): las mismas figuras de almacén, en miniatura. */
+export const MarcaLeyendaCentral: React.FC = () => (
+  <svg width="12" height="11" viewBox="-15 -14 30 28" aria-hidden="true">
+    <path d="M0 -13L14 -4V13H-14V-4L0 -13Z" fill="#0F172A" stroke="#fff" strokeWidth="2.5" />
+  </svg>
+);
+
+export const MarcaLeyendaIntermedio: React.FC = () => (
+  <svg width="11" height="10" viewBox="-13 -12 26 24" aria-hidden="true">
+    <path d="M0 -11L12 -3V11H-12V-3L0 -11Z" fill="#fff" stroke="#15803D" strokeWidth="2.5" />
+  </svg>
+);
+
 export const IlustracionOperacion: React.FC = () => {
   const [animar, setAnimar] = useState(() => !usaMovimientoReducido());
 

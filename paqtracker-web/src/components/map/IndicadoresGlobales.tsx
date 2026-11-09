@@ -26,20 +26,20 @@ const Indicador: React.FC<IndicadorProps> = ({ etiqueta, ocupacion, descripcion,
       : `${etiqueta}: ${porcentaje} %, ${NOMBRE_CARGA[nivel].toLowerCase()} (${ocupacion.cantidad} de ${ocupacion.capacidad})`;
   const contenido = (
     <>
-      <span className="text-[11px] text-[#64748B] font-sans">{etiqueta}</span>
+      <span className="text-caption text-neutral-600 font-sans">{etiqueta}</span>
       {porcentaje === null || !nivel ? (
-        <span className="text-[12px] text-[#64748B]">—</span>
+        <span className="text-body-sm text-neutral-600">—</span>
       ) : (
-        <span className="flex items-center gap-[5px]">
+        <span className="flex items-center gap-1">
           <MarcaSemaforo nivel={nivel} />
-          <span className={`tabular-nums font-semibold text-[13px] ${TEXTO_SEMAFORO[nivel]}`}>{porcentaje} %</span>
+          <span className={`tabular-nums font-semibold text-body ${TEXTO_SEMAFORO[nivel]}`}>{porcentaje} %</span>
         </span>
       )}
     </>
   );
-  const clase = 'h-full px-3 flex items-center gap-[8px]';
+  const clase = 'h-full px-3 flex items-center gap-2';
   return onAbrir ? (
-    <button type="button" onClick={onAbrir} aria-label={`${lectura}. ${descripcion}. Ver detalle`} title={descripcion} className={`${clase} hover:bg-slate-50`}>
+    <button type="button" onClick={onAbrir} aria-label={`${lectura}. ${descripcion}. Ver detalle`} title={descripcion} className={`${clase} hover:bg-neutral-50`}>
       {contenido}
     </button>
   ) : (
@@ -59,7 +59,7 @@ interface IndicadoresGlobalesProps {
 export const IndicadoresGlobales: React.FC<IndicadoresGlobalesProps> = ({ flota, almacenes, onAbrirFlota, onAbrirAlmacenes }) => (
   <section
     aria-label="Ocupación global"
-    className="h-[32px] bg-white shadow-[0px_1px_4px_rgba(0,0,0,0.13)] rounded-full border border-[#E2E8F0] flex items-center overflow-hidden"
+    className="h-8 bg-white shadow-xs rounded-full border border-neutral-200 flex items-center overflow-hidden"
   >
     <Indicador
       etiqueta="Flota"
@@ -68,7 +68,7 @@ export const IndicadoresGlobales: React.FC<IndicadoresGlobalesProps> = ({ flota,
       sinDatos="sin unidades fuera"
       onAbrir={onAbrirFlota}
     />
-    <span className="w-px h-[18px] bg-[#E2E8F0]" aria-hidden="true" />
+    <span className="w-px h-4 bg-neutral-200" aria-hidden="true" />
     <Indicador
       etiqueta="Almacenes"
       ocupacion={almacenes}

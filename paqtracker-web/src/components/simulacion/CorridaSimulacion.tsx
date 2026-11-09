@@ -14,6 +14,7 @@ import { GridMap, type DestinoMapa, type GridMapHandle } from '../map/GridMap';
 import { BarraPaneles } from '../operacion/BarraPaneles';
 import { PanelLateral } from '../operacion/PanelLateral';
 import { useNavegacionPanel } from '../../hooks/useNavegacionPanel';
+import { Boton } from '../ui';
 import { DiagnosticoColapso } from './DiagnosticoColapso';
 import { EncabezadoCorrida } from './EncabezadoCorrida';
 import { InformeCorrida } from './InformeCorrida';
@@ -110,7 +111,7 @@ const CorridaEnVivo: React.FC<CorridaSimulacionProps & { recibidoEnMs: number }>
         onVerInforme={() => setVerInforme(true)}
         conectado={conectado}
       />
-      <main className="flex-1 relative flex min-h-0 bg-[#F8FAFC]">
+      <main className="relative flex min-h-0 flex-1 bg-white">
         <GridMap
           ref={mapaRef}
           variante="simulacion"
@@ -150,13 +151,13 @@ const CorridaEnVivo: React.FC<CorridaSimulacionProps & { recibidoEnMs: number }>
           )}
           {/* El diagnóstico se puede cerrar para ver el mapa completo; este acceso lo reabre. */}
           {colapso && diagnosticoCerrado && !panelAbierto && (
-            <button
-              type="button"
+            <Boton
+              variante="peligro-secundario"
               onClick={() => setDiagnosticoCerrado(false)}
-              className="absolute right-4 top-3 z-10 h-[32px] px-3.5 bg-white shadow-[0px_1px_4px_rgba(0,0,0,0.13)] rounded-full border border-[#B91C1C] font-sans text-[12px] font-medium text-[#B91C1C] hover:bg-[#FEF2F2]"
+              className="absolute right-4 top-3 z-10 rounded-full border-critical-600 px-3.5 text-body-sm shadow-xs"
             >
               Ver diagnóstico del colapso
-            </button>
+            </Boton>
           )}
         </GridMap>
         <BarraPaneles

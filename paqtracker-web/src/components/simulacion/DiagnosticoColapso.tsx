@@ -5,7 +5,10 @@ import { useDatosOperacion } from '../../hooks/useDatosOperacion';
 import { estadoFlota, pedidosEnRiesgo } from '../../lib/operacion';
 import type { EventoBitacora } from '../../types/operacion';
 import type { NivelHolgura } from '../../types/pedidos';
+import { X } from 'lucide-react';
+import { cn } from '../../lib/clases';
 import { COLOR_HOLGURA } from '../pedidos/estilos';
+import { Aviso, Boton, FilaDato, Insignia, TituloGrupo, type Tono } from '../ui';
 
 // Panel derecho "Diagnóstico del colapso" (Figma "Corrida de Simulación · Hasta el colapso"). Se arma
 // con el estado de la ejecución en el instante en que el servidor la detuvo por colapso.
@@ -17,28 +20,17 @@ const OCUPACION_SATURADA = 0.9;
 
 const NIVEL_POR_COLOR: Record<EventoBitacora['color'], NivelHolgura> = { rojo: 'ROJO', ambar: 'AMBAR', azul: 'VERDE', gris: 'CERRADO' };
 
-const Titulo: React.FC<{ numero: string; children: React.ReactNode; derecha?: string }> = ({ numero, children, derecha }) => (
-  <div className="flex items-center gap-[8px]">
-    <h3 className="min-w-0 truncate font-sans font-semibold text-[12px] text-[#64748B] tracking-[0.7px] uppercase">
-      {numero} · {children}
-    </h3>
-    {derecha && <span className="ml-auto tabular-nums text-[12px] text-[#64748B] whitespace-nowrap">{derecha}</span>}
-  </div>
-);
-
-const Dato: React.FC<{ etiqueta: string; valor: string; color?: string }> = ({ etiqueta, valor, color = 'text-[#0F172A]' }) => (
-  <div className="flex justify-between gap-[8px] text-[12px]">
-    <span className="font-sans text-[#64748B] whitespace-nowrap">{etiqueta}</span>
-    <span className={`tabular-nums font-medium whitespace-nowrap ${color}`}>{valor}</span>
-  </div>
-);
-
 interface DiagnosticoColapsoProps {
   diaColapso: string; // "29 ago"
   onCerrar: () => void;
   onEstadoCompleto: () => void;
   onVerInforme: () => void;
 }
+
+/** Fila compacta del pedido crítico (sin la altura mínima de las listas de datos). */
+const Dato: React.FC<{ etiqueta: string; valor: string; tono?: Tono }> = ({ etiqueta, valor, tono }) => (
+  <FilaDato etiqueta={etiqueta} valor={valor} tono={tono} className="min-h-0 gap-2" />
+);
 
 export const DiagnosticoColapso: React.FC<DiagnosticoColapsoProps> = ({ diaColapso, onCerrar, onEstadoCompleto, onVerInforme }) => {
   const datos = useDatosOperacion();
@@ -52,90 +44,87 @@ export const DiagnosticoColapso: React.FC<DiagnosticoColapsoProps> = ({ diaColap
       : { titulo: 'Plazo inalcanzable con la flota libre', detalle: `${flota.disponibles} unidades libres` };
   const intermedios = datos.almacenes.filter((a) => a.capacidad !== null && a.stock !== null);
 
+  // Ancho de 340 px: el mismo que PanelLateral (ANCHO_PANEL_PX en CorridaSimulacion reserva ese espacio en el mapa).
   return (
     <aside
       aria-label="Diagnóstico del colapso"
       data-sin-zoom
       onPointerDown={(e) => e.stopPropagation()}
-      className="absolute right-[12px] top-0 bottom-0 z-20 w-[340px] bg-white border border-[#E2E8F0] rounded-[10px] shadow-[0px_2px_12px_0px_rgba(0,0,0,0.16)] flex flex-col overflow-hidden leading-[normal]"
+      className="absolute bottom-0 right-3 top-0 z-20 flex w-[340px] flex-col overflow-hidden rounded-card border border-neutral-200 bg-white shadow-overlay"
     >
-      <div className="h-[36px] px-[12px] flex items-center gap-[8px] border-b border-[#E2E8F0] shrink-0">
-        <span className="size-[7px] rounded-full bg-[#B91C1C]" />
-        <h2 className="font-sans font-semibold text-[13px] text-[#0F172A]">Diagnóstico del colapso</h2>
-        <button type="button" onClick={onCerrar} aria-label="Cerrar diagnóstico" className="ml-auto size-[24px] rounded text-[#64748B] hover:bg-[#F1F5F9] hover:text-[#0F172A]">
-          ✕
-        </button>
+      <div className="flex h-10 shrink-0 items-center gap-2 border-b border-neutral-200 pl-3 pr-1.5">
+        <span aria-hidden="true" className="size-2 rounded-full bg-critical-600" />
+        <h2 className="text-title-sm text-neutral-900">Diagnóstico del colapso</h2>
+        <Boton variante="fantasma" tamano="sm" icono={X} onClick={onCerrar} aria-label="Cerrar diagnóstico" title="Cerrar diagnóstico" className="ml-auto text-neutral-600" />
       </div>
 
-      <div className="flex-1 min-h-0 overflow-y-auto">
-        <section className="px-[12px] pt-[10px] pb-[10px] flex flex-col gap-[7px] border-b border-[#E2E8F0]">
-          <Titulo numero="01" derecha="últimos eventos">Antes — deterioro previo</Titulo>
-          {previos.length === 0 && <p className="font-sans text-[12px] text-[#64748B]">Sin eventos registrados en esta vista.</p>}
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        <section className="flex flex-col gap-2 border-b border-neutral-200 p-3">
+          <TituloGrupo derecha="últimos eventos">01 · Antes — deterioro previo</TituloGrupo>
+          {previos.length === 0 && <p className="text-body-sm text-neutral-600">Sin eventos registrados en esta vista.</p>}
           {previos.map((evento) => (
-            <div key={evento.id} className="flex gap-[10px] text-[12px]">
-              <time className="w-[52px] tabular-nums text-[#64748B] shrink-0">{evento.hora}</time>
-              <span className={`font-sans ${COLOR_HOLGURA[NIVEL_POR_COLOR[evento.color]]}`}>{evento.detalle}</span>
+            <div key={evento.id} className="flex gap-2.5 text-body-sm">
+              <time className="w-12 shrink-0 tabular-nums text-neutral-600">{evento.hora}</time>
+              <span className={COLOR_HOLGURA[NIVEL_POR_COLOR[evento.color]]}>{evento.detalle}</span>
             </div>
           ))}
         </section>
 
-        <section className="px-[12px] pt-[10px] pb-[10px] flex flex-col gap-[8px] border-b border-[#E2E8F0]">
-          <Titulo numero="02" derecha={diaColapso}>Instante — pedido que rompe el plazo</Titulo>
+        <section className="flex flex-col gap-2 border-b border-neutral-200 p-3">
+          <TituloGrupo derecha={diaColapso}>02 · Instante — pedido que rompe el plazo</TituloGrupo>
           {critico ? (
-            <div className="border border-[#B91C1C] rounded-[6px] px-[12px] py-[10px] flex flex-col gap-[6px]">
+            <div className="flex flex-col gap-1.5 rounded-control border border-critical-600 px-3 py-2.5">
               <div className="flex items-center">
-                <span className="tabular-nums font-semibold text-[14px] text-[#0F172A]">Pedido {critico.codigo}</span>
-                <span className="ml-auto border border-[#B91C1C] rounded-[4px] px-[6px] py-[1px] font-sans font-medium text-[12px] text-[#B91C1C]">
+                <span className="text-title-sm tabular-nums text-neutral-900">Pedido {critico.codigo}</span>
+                <Insignia tono="critical" contorno className="ml-auto">
                   {etiquetaPlazo(critico.plazoHoras)}
-                </span>
+                </Insignia>
               </div>
               <Dato etiqueta="Destino / Cantidad" valor={`(${critico.destino.x},${critico.destino.y}) · ${critico.cantidad} u`} />
               <Dato etiqueta="Registrado / Límite" valor={`${critico.registrado} → ${critico.horaLimite}`} />
               <Dato etiqueta="Mejor llegada factible" valor={critico.eta} />
-              <Dato etiqueta="Holgura" valor={critico.holgura} color="text-[#B91C1C]" />
+              <Dato etiqueta="Holgura" valor={critico.holgura} tono="critical" />
             </div>
           ) : (
-            <p className="font-sans text-[12px] text-[#64748B]">El pedido incumplido ya salió en una ruta que llega tarde.</p>
+            <p className="text-body-sm text-neutral-600">El pedido incumplido ya salió en una ruta que llega tarde.</p>
           )}
         </section>
 
-        <section className="px-[12px] pt-[10px] pb-[12px] flex flex-col gap-[8px]">
-          <Titulo numero="03">Después — causa probable</Titulo>
-          <div className="bg-[#FEF2F2] border border-[#FECACA] rounded-[6px] px-[10px] py-[8px] flex items-center gap-[8px] text-[12px]">
-            <span className="text-[#B91C1C] text-[11px]">▲</span>
-            <span className="font-sans font-semibold text-[#0F172A]">{causa.titulo}</span>
-            <span className="ml-auto tabular-nums text-[#B91C1C]">{causa.detalle}</span>
-          </div>
-          <div className="flex items-center text-[12px] mt-[4px]">
-            <span className="font-sans font-semibold text-[#0F172A]">Almacenes en el instante del quiebre</span>
-            <span className="ml-auto tabular-nums text-[#64748B]">recarga a las 23:59</span>
+        <section className="flex flex-col gap-2 p-3">
+          <TituloGrupo>03 · Después — causa probable</TituloGrupo>
+          <Aviso tono="critical" accion={<span className="tabular-nums">{causa.detalle}</span>} className="items-center rounded-control py-2">
+            <span className="font-semibold text-neutral-900">{causa.titulo}</span>
+          </Aviso>
+          <div className="mt-1 flex items-center text-body-sm">
+            <span className="font-semibold text-neutral-900">Almacenes en el instante del quiebre</span>
+            <span className="ml-auto tabular-nums text-neutral-600">recarga a las 23:59</span>
           </div>
           {intermedios.map((a) => {
             const fraccion = (a.stock as number) / (a.capacidad as number);
             return (
-              <div key={a.id} className="flex flex-col gap-[4px]">
-                <span className={`tabular-nums text-[12px] truncate ${a.stockBajo ? 'text-[#B91C1C]' : 'text-[#0F172A]'}`}>
+              <div key={a.id} className="flex flex-col gap-1">
+                <span className={cn('truncate text-body-sm tabular-nums', a.stockBajo ? 'text-critical-600' : 'text-neutral-900')}>
                   {ALMACENES.find((x) => x.id === a.id)?.nombre} · {a.stock}/{a.capacidad} u · {Math.round(fraccion * 100)} %
                 </span>
-                <div className="h-[4px] bg-[#E2E8F0] rounded-full overflow-hidden">
-                  <div className={`h-full ${a.stockBajo ? 'bg-[#B91C1C]' : 'bg-[#1E40AF]'}`} style={{ width: `${fraccion * 100}%` }} />
+                <div className="h-1 overflow-hidden rounded-full bg-neutral-200">
+                  <div className={cn('h-full', a.stockBajo ? 'bg-critical-600' : 'bg-primary-600')} style={{ width: `${fraccion * 100}%` }} />
                 </div>
               </div>
             );
           })}
-          <p className="border-l-[3px] border-[#94A3B8] pl-[8px] font-sans text-[12px] text-[#64748B]">
+          <Aviso tono="neutral" icono={null}>
             {datos.bloqueos.length} {datos.bloqueos.length === 1 ? 'tramo bloqueado vigente' : 'tramos bloqueados vigentes'} · {datos.resumen.enEspera} pedidos en espera
-          </p>
+          </Aviso>
         </section>
       </div>
 
-      <div className="p-[12px] border-t border-[#E2E8F0] flex gap-[8px] shrink-0">
-        <button type="button" onClick={onEstadoCompleto} className="flex-1 h-[32px] border border-[#CBD5E1] rounded-[6px] font-sans font-medium text-[12px] text-[#0F172A] hover:bg-[#F8FAFC]">
+      <div className="flex shrink-0 gap-2 border-t border-neutral-200 p-3">
+        <Boton variante="secundario" onClick={onEstadoCompleto} className="flex-1">
           Estado completo del sistema
-        </button>
-        <button type="button" onClick={onVerInforme} className="flex-1 h-[32px] rounded-[6px] bg-[#1E40AF] hover:bg-[#1E3A8A] font-sans font-semibold text-[12px] text-white">
+        </Boton>
+        <Boton variante="primario" onClick={onVerInforme} className="flex-1">
           Ver informe
-        </button>
+        </Boton>
       </div>
     </aside>
   );

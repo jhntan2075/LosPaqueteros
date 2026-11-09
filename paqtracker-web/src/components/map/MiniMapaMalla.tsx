@@ -10,7 +10,8 @@ import type { Coordenada } from '../../types/domain';
 // pantalla, así conservan su tamaño sin importar la escala.
 
 interface MiniMapaMallaProps {
-  alto: number;
+  /** Alto fijo del recuadro en px. Sin valor, la malla es el recuadro: toma la proporción 70 × 50 y ocupa todo el ancho. */
+  alto?: number;
   /**
    * Espacio libre alrededor de la malla para que los marcadores de los bordes no se corten.
    * 40 px cubre el pin de destino (~27 px sobre su punta) y el marcador de almacén con su rótulo (~37 px bajo el nodo).
@@ -34,12 +35,17 @@ export const MiniMapaMalla: React.FC<MiniMapaMallaProps> = ({ alto, margen = 40,
       ref={ref}
       role="img"
       aria-label={etiqueta}
-      className="relative w-full shrink-0 bg-[#F1F5F9] border border-[#E2E8F0] rounded-[8px] overflow-hidden"
-      style={{ height: alto }}
+      className={
+        alto === undefined
+          ? 'relative w-full shrink-0'
+          : 'relative w-full shrink-0 bg-neutral-100 border border-neutral-200 rounded-card overflow-hidden'
+      }
+      // Sin marco, el borde de la malla es el del recuadro; los marcadores de los bordes pueden asomar fuera.
+      style={alto === undefined ? { aspectRatio: `${MALLA_ANCHO_KM} / ${MALLA_ALTO_KM}` } : { height: alto }}
     >
       {vista && (
         <>
-          <svg className="absolute inset-0 w-full h-full" aria-hidden="true">
+          <svg className="absolute inset-0 w-full h-full overflow-visible" aria-hidden="true">
             <CuadriculaMalla vista={vista} />
           </svg>
           {children(vista, tamano)}
