@@ -33,9 +33,9 @@ El cubo isométrico tiene tres caras, y cada una da origen a un rol de la paleta
 
 | Token | Hex | | Token | Hex |
 |---|---|---|---|---|
-| neutral-50 | `#F4F6FA` | | primary-600 | `#1B4DD9` |
-| neutral-100 | `#E8ECF3` | | primary-700 | `#153CB0` |
-| neutral-200 | `#D3DAE6` | | info-600 | `#1586D7` |
+| neutral-50 | `#F8F9FA` | | primary-600 | `#1B4DD9` |
+| neutral-100 | `#F1F3F5` | | primary-700 | `#153CB0` |
+| neutral-200 | `#E2E5E9` | | info-600 | `#1586D7` |
 | neutral-400 | `#8190AA` | | info-700 | `#0F6AAE` |
 | neutral-500 | `#5F6F8C` | | warn-500 | `#FB8229` |
 | neutral-700 | `#2F3C57` | | warn-700 | `#B44D08` |
@@ -82,8 +82,56 @@ juntos como único diferenciador (por ejemplo dos tipos de ruta). Es una validac
 falta revisarla en pantalla (Chrome DevTools → Rendering → Emulate vision deficiencies) y con
 personas con daltonismo.
 
-## Estado de la migración
+## Tipografía
 
-Los tokens y alias `brand.*` ya existen, pero la mayoría de los componentes siguen usando hex
-literales del diseño anterior (`#1E40AF`, `#64748B`, etc.). Migrarlos a las clases de token
-(`bg-primary-600`, `text-neutral-500`…) es el siguiente paso; este cambio no los toca.
+Fira Sans, tres pesos (400, 500, 600; sin `font-bold`). Cifras, horas y códigos con `tabular-nums`.
+Escala única definida en `tailwind.config.js` (`theme.extend.fontSize`); no se escribe `text-[Npx]`.
+
+| Clase | Tamaño / interlínea | Uso |
+|---|---|---|
+| `text-caption` | 11 / 16 | Ayudas de campo, sufijos, marcas de eje |
+| `text-overline` + `uppercase` | 11 / 16, 600, tracking 0.06em | Título de grupo (único uso de mayúsculas sostenidas) |
+| `text-body-sm` | 12 / 16 | Tablas, listas densas, filas etiqueta/valor |
+| `text-body` | 13 / 20 | Texto corriente, botones, inputs |
+| `text-title-sm` | 14 / 20, 600 | Título de tarjeta o sección |
+| `text-title` | 18 / 24, 600 | Título de página (uno por pantalla) |
+| `text-kpi` | 22 / 28, 600 | Cifra destacada |
+
+## Forma, tamaño y elevación
+
+| Token | Valor | Uso |
+|---|---|---|
+| `rounded-control` | 6 px | Botón, input, select, pestaña |
+| `rounded-card` | 10 px | Tarjeta, panel, diálogo, cajón |
+| `rounded` / `rounded-full` | 4 px / píldora | Chips pequeños / insignias, puntos |
+| `h-7` · `h-8` · `h-10` | 28 · 32 · 40 px | Control `sm` (barras densas) · `md` (por defecto) · `lg` (acción final de un flujo) |
+| `shadow-xs` | sombra mínima | Tarjeta |
+| `shadow-overlay` | sombra de capa | Cajón, popover, diálogo |
+| `motion-safe:animate-entrar-derecha` | 200 ms | Entrada de cajones laterales |
+
+Espaciado solo en la escala de 4 px de Tailwind.
+
+## Componentes base
+
+Las pantallas componen con `src/components/ui` en lugar de repetir clases: `Boton` (primario,
+secundario, fantasma, peligro, peligro-secundario × sm/md/lg), `Campo` + `Entrada`/`Selector`,
+`Insignia`, `Tarjeta`, `EncabezadoPagina`, `TituloGrupo`, `FilaDato`, `Indicador`, `Aviso`,
+`EstadoVacio` y `Pestanas`. Para combinar clases se usa `cn` (`src/lib/clases.ts`), que conoce los
+tokens propios. Reglas: un `Boton primario` por vista; lo destructivo usa `peligro` y pasa por
+`DialogoConfirmacion`; insignias y estados con mayúscula inicial.
+
+## Íconos
+
+`lucide-react` con trazo por defecto. La referencia son los íconos de Operación (tabla en
+`propuesta-unificacion-ui.md` §2.4): mismo concepto, mismo ícono en todas las pestañas. Tamaños:
+12 px (`size-3`, en chips), 14 px (`size-3.5`, por defecto), 16 px (`size-4`, botones `lg`, barra
+superior, controles del mapa) y 18 px (solo la barra de paneles). Los símbolos del mapa
+(`map/simbolos.tsx`, `map/iconosVehiculo.ts`) se usan en todo mapa o minimapa.
+
+## Candado
+
+`src/config/estilos.test.ts` falla si en `src/components` o `App.tsx` aparece un color hex en una
+clase (`bg-[#…]`), un `text-[Npx]`, una clase de color por defecto de Tailwind (`slate-500`,
+`blue-600`…), `font-bold`, o un color hex como texto fuera del dibujo del dominio (`components/map/`
+y la ilustración del login, que declaran colores de SVG como dato). Las pocas excepciones están
+listadas en la propia prueba, cada una con la prueba de rúbrica que verifica ese valor literal.
