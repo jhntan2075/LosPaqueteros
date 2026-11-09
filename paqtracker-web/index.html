@@ -5,6 +5,17 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>PaqTracker — Centro de Operación y Monitoreo</title>
+    <!-- Tema guardado (src/hooks/useTema.ts, misma clave), aplicado antes de dibujar para no destellar en blanco. -->
+    <script>
+      (function () {
+        try {
+          var p = localStorage.getItem('paqtracker.tema');
+          if (p === 'oscuro' || (p !== 'claro' && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('oscuro');
+          }
+        } catch (e) {}
+      })();
+    </script>
     <!-- Google Fonts: Fira Sans, tipografía única del sistema (pesos 400, 500, 600 y 700) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

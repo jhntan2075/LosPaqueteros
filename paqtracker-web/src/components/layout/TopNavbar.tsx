@@ -2,6 +2,7 @@ import React from 'react';
 import logo from '../../assets/marca/logo.svg';
 import { LayoutGrid, Package, PlayCircle, BarChart3, Radio, Settings, LogOut } from 'lucide-react';
 import { RelojesBarra } from './RelojesBarra';
+import { SelectorTema } from './SelectorTema';
 import { useSesion } from '../sesion/contextoSesion';
 import { Boton, Insignia } from '../ui';
 
@@ -74,7 +75,7 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
         </nav>
       </div>
 
-      {/* 2. Lado Derecho: Reloj, Turno, Estado de Conexión y Salir */}
+      {/* 2. Lado Derecho: Reloj, Turno, Estado de Conexión, Tema y Salir */}
       <div className="flex items-center gap-2 sm:gap-3 shrink-0 ml-2">
         {/* Relojes de la operación día a día y real (en Simulación van en el encabezado de la corrida) */}
         {relojSimulado && <RelojesBarra operacion={relojSimulado} />}
@@ -95,6 +96,9 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
           <Radio className={`size-3 ${conectado ? 'text-primary-700 animate-pulse' : 'text-critical-600'}`} />
           <span className="hidden sm:inline">{conectado ? 'Conectado' : 'Sin conexión'}</span>
         </Insignia>
+
+        {/* Tema: claro, oscuro o automático */}
+        <SelectorTema />
 
         {/* Cerrar sesión: en el celular solo el ícono */}
         {sesion && (

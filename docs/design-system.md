@@ -132,6 +132,45 @@ superior, controles del mapa) y 18 px (solo la barra de paneles). Los símbolos 
 
 `src/config/estilos.test.ts` falla si en `src/components` o `App.tsx` aparece un color hex en una
 clase (`bg-[#…]`), un `text-[Npx]`, una clase de color por defecto de Tailwind (`slate-500`,
-`blue-600`…), `font-bold`, o un color hex como texto fuera del dibujo del dominio (`components/map/`
-y la ilustración del login, que declaran colores de SVG como dato). Las pocas excepciones están
-listadas en la propia prueba, cada una con la prueba de rúbrica que verifica ese valor literal.
+`blue-600`…), `font-bold`, `bg-white` (va `bg-superficie`), o un color hex como texto fuera del
+dibujo del dominio (`components/map/` y la ilustración del login, que declaran colores de SVG como
+dato). Las pocas excepciones están listadas en la propia prueba, cada una con la prueba de rúbrica que
+verifica ese valor literal.
+
+## Tema oscuro
+
+Se activa con la clase `oscuro` en `<html>`. El usuario elige en el selector de la barra superior
+(`layout/SelectorTema.tsx`): claro, oscuro o automático (el del sistema operativo, por defecto, que se
+sigue también con la aplicación abierta). La elección se guarda en el navegador (`paqtracker.tema`) y un
+script en `index.html` la aplica antes de dibujar la página, para que no destelle en blanco.
+
+**Cómo funciona.** `tailwind.config.js` tiene los dos temas en hexadecimal (`paleta` y
+`paletaOscura`, más los colores por función de `semanticos`) y un plugin genera con ellos las variables
+CSS (`--color-neutral-50: 248 249 250`). Las clases leen la variable del tema activo, así que los
+componentes no cambian: `text-neutral-900` es casi negro en claro y casi blanco en oscuro. Al imprimir
+rige siempre el claro.
+
+**Escala neutra invertida.** En oscuro, `neutral-50…200` son superficies y bordes oscuros y
+`neutral-600…900`, textos claros. Los colores de estado suben de brillo (`primary-600` #5B85F7,
+`critical-600` #F2627A, `ok-600` #2DB07F…) y sus fondos `-50` son tonos oscuros del mismo color.
+
+**Colores por función** (no son un tono de la escala):
+
+| Token | Uso | Claro | Oscuro |
+| --- | --- | --- | --- |
+| `fondo` | Lienzo de la aplicación | `#FFFFFF` | `#0B1120` |
+| `superficie` | Tarjetas, paneles, diálogos | `#FFFFFF` | `#111A2C` |
+| `inverso` / `sobre-inverso` | Avisos y descripciones emergentes, y su texto | `#0D152E` / blanco | `#E8ECF3` / `#0D152E` |
+| `sobre-color` | Texto sobre un relleno de color (botón primario, contador) | blanco | `#0B1120` |
+| `velo` | Capa detrás de un diálogo (`bg-velo/40`) | `#0D152E` | negro |
+| `marca` | Panel de marca del login, igual en los dos temas | `#0D152E` | `#0D152E` |
+
+**Valores fijados por la rúbrica.** Algunas clases y atributos llevan el color escrito porque las
+pruebas de la rúbrica los buscan tal cual (`text-[#15803D]` del semáforo, `path[stroke="#1E40AF"]` de la
+ruta destacada). Esos se quedan; en oscuro, `src/index.css` los reemplaza con CSS (una regla CSS manda
+sobre un atributo SVG). En el mapa y los minimapas (clase `lienzo-mapa`) se reemplazan el lienzo, la
+cuadrícula, los rótulos con su halo y las rutas; los símbolos con significado (semáforo, averías,
+almacenes, bloqueos, vehículos) conservan su color y su contorno blanco.
+
+**Contraste.** `paleta.test.ts` verifica en oscuro los mismos pares que en claro (texto ≥ 4,5:1,
+gráficos ≥ 3:1), los reemplazos de `index.css` y que los dos temas tengan las mismas claves.
