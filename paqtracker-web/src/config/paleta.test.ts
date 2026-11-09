@@ -33,6 +33,17 @@ describe('paleta: contraste WCAG', () => {
     ['neutral-900 sobre neutral-50', neutral[900], neutral[50]],
     ['neutral-900 sobre warn-500', neutral[900], warn[500]],
     ['neutral-100 sobre neutral-900', neutral[100], neutral[900]],
+    // Combinaciones de los componentes base (src/components/ui).
+    ['neutral-600 sobre blanco', neutral[600], BLANCO],
+    ['neutral-600 sobre neutral-50', neutral[600], neutral[50]],
+    ['neutral-700 sobre neutral-100', neutral[700], neutral[100]],
+    ['blanco sobre primary-700', BLANCO, primary[700]],
+    ['primary-700 sobre primary-50', primary[700], primary[50]],
+    ['primary-700 sobre primary-100', primary[700], primary[100]],
+    ['ok-700 sobre blanco', ok[700], BLANCO],
+    ['blanco sobre critical-600', BLANCO, critical[600]],
+    ['blanco sobre critical-700', BLANCO, critical[700]],
+    ['info-700 sobre info-50', info[700], info[50]],
   ])('texto: %s ≥ 4.5', (_n, fg, bg) => {
     expect(contraste(fg, bg)).toBeGreaterThanOrEqual(4.5)
   })

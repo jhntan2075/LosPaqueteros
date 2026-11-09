@@ -4,7 +4,7 @@
 
 :root {
   /* Paleta derivada del logo. Fuente única: tailwind.config.js (ver docs/design-system.md). */
-  --color-fondo: #f4f6fa;
+  --color-fondo: #ffffff;
   --color-texto: #0d152e;
   --color-primario: #1b4dd9;
   --color-info: #1586d7;
