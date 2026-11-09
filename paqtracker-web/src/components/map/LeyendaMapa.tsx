@@ -42,7 +42,7 @@ const GRIS = '#64748B';
  * escala para caber, así todos los íconos quedan de una altura parecida y alineados en columna.
  */
 const Simbolo: React.FC<{ caja: string; children: React.ReactNode }> = ({ caja, children }) => (
-  <svg width="28" height="22" viewBox={caja} className="block overflow-visible" aria-hidden="true">
+  <svg width="28" height="22" viewBox={caja} className="lienzo-mapa block overflow-visible" aria-hidden="true">
     {children}
   </svg>
 );
@@ -81,7 +81,7 @@ export const LeyendaMapa: React.FC<LeyendaMapaProps> = ({ onCerrar, capas, onCam
     aria-label="Capas y leyenda"
     data-sin-zoom
     onPointerDown={(e) => e.stopPropagation()}
-    className="w-[280px] max-h-[calc(100vh-260px)] overflow-y-auto bg-white border border-neutral-200 rounded-card shadow-overlay cursor-default"
+    className="w-[280px] max-h-[calc(100vh-260px)] overflow-y-auto bg-superficie border border-neutral-200 rounded-card shadow-overlay cursor-default"
   >
     <header className="h-9 pl-3 pr-2 flex items-center border-b border-neutral-200">
       <h2 className="font-semibold text-body text-neutral-900">Capas y leyenda</h2>

@@ -104,8 +104,8 @@ export const EncabezadoCorrida: React.FC<EncabezadoCorridaProps> = ({
   return (
     <div className="shrink-0">
       {/* Banda de modo */}
-      <div className={cn('flex h-6 items-center gap-2 px-4 text-body-sm text-white', colapso ? 'bg-critical-600' : 'bg-primary-600')}>
-        <span aria-hidden="true" className="size-1.5 rounded-full bg-white" />
+      <div className={cn('flex h-6 items-center gap-2 px-4 text-body-sm text-sobre-color', colapso ? 'bg-critical-600' : 'bg-primary-600')}>
+        <span aria-hidden="true" className="size-1.5 rounded-full bg-sobre-color" />
         <span className="font-semibold">{titulo}</span>
         <span className="tabular-nums opacity-80">
           · {formatearFechaLarga(inicio, false)} → {colapso ? `Colapso ${formatearFechaLarga(relojSimulado, false)}` : formatearFechaLarga(fin, false)}
@@ -123,7 +123,7 @@ export const EncabezadoCorrida: React.FC<EncabezadoCorridaProps> = ({
 
       {/* Encabezado de corrida. flex-wrap: a lo ancho justo (~1366 px con "Detener simulación" visible)
           pasa a una segunda línea en vez de cortar los botones de la derecha. */}
-      <header className="flex min-h-14 flex-wrap items-center gap-x-5 gap-y-2.5 border-b border-neutral-200 bg-white px-4 py-2.5">
+      <header className="flex min-h-14 flex-wrap items-center gap-x-5 gap-y-2.5 border-b border-neutral-200 bg-superficie px-4 py-2.5">
         <TarjetaTiempo titulo="Simulado">
           <Bloque etiqueta={colapso ? 'Instante del colapso' : 'Fecha y hora simulada'}>
             <span className="flex items-center gap-2">
@@ -213,7 +213,7 @@ export const EncabezadoCorrida: React.FC<EncabezadoCorridaProps> = ({
       />
 
       {/* Avance de la corrida */}
-      <div className="flex h-11 items-center gap-4 border-b border-neutral-200 bg-white px-4 text-body-sm">
+      <div className="flex h-11 items-center gap-4 border-b border-neutral-200 bg-superficie px-4 text-body-sm">
         <span className="w-28 shrink-0 whitespace-nowrap text-neutral-600">Avance de la corrida</span>
         {sinHorizonteFijo ? (
           <>

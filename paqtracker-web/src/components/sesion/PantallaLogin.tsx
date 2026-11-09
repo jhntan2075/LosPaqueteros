@@ -96,9 +96,9 @@ export const PantallaLogin: React.FC<PantallaLoginProps> = ({ aviso, usuarioInic
   const mensaje = error ?? avisoInicial;
 
   return (
-    <div className="h-screen w-screen overflow-y-auto grid min-[900px]:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] bg-primary-50 font-sans">
+    <div className="h-screen w-screen overflow-y-auto grid min-[900px]:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] bg-primary-50 dark:bg-fondo font-sans">
       {/* Panel de marca: solo en escritorio */}
-      <aside className="relative hidden min-[900px]:flex flex-col justify-between overflow-hidden bg-neutral-900 text-white px-8 py-7">
+      <aside className="relative hidden min-[900px]:flex flex-col justify-between overflow-hidden bg-marca text-white px-8 py-7">
         <IlustracionOperacion />
         <div className="relative flex items-center gap-2.5 text-title tracking-tight">
           <img src={logoOscuro} alt="" aria-hidden="true" className="h-[30px] w-auto" />
@@ -108,7 +108,7 @@ export const PantallaLogin: React.FC<PantallaLoginProps> = ({ aviso, usuarioInic
           <p className="text-kpi tracking-tight max-w-[360px] mb-2.5">
             Planifica, despacha y sigue cada pedido en tiempo real.
           </p>
-          <ul className="flex flex-wrap gap-x-4 gap-y-1.5 mt-4 text-body-sm text-neutral-300">
+          <ul className="flex flex-wrap gap-x-4 gap-y-1.5 mt-4 text-body-sm text-white/75">
             {['Replanificación automática', 'Seguimiento en vivo', 'Autos · motos · bicicletas'].map((t) => (
               <li key={t} className="flex items-center gap-2 before:content-[''] before:w-3.5 before:h-px before:bg-info-600">
                 {t}
@@ -116,7 +116,7 @@ export const PantallaLogin: React.FC<PantallaLoginProps> = ({ aviso, usuarioInic
             ))}
           </ul>
         </div>
-        <ul className="relative flex flex-wrap gap-3.5 text-caption text-neutral-300" aria-label="Leyenda de la ilustración">
+        <ul className="relative flex flex-wrap gap-3.5 text-caption text-white/75" aria-label="Leyenda de la ilustración">
           <li className="flex items-center gap-1.5">
             <i className="size-2 rounded-full bg-info-600" />
             En ruta
@@ -146,7 +146,7 @@ export const PantallaLogin: React.FC<PantallaLoginProps> = ({ aviso, usuarioInic
           onSubmit={enviar}
           noValidate
           aria-labelledby="login-titulo"
-          className="w-full max-w-[360px] bg-white border border-primary-100 rounded-card px-7 pt-7 pb-6 shadow-overlay"
+          className="w-full max-w-[360px] bg-superficie border border-primary-100 rounded-card px-7 pt-7 pb-6 shadow-overlay"
         >
           <div className="flex flex-col items-center text-center mb-5">
             <div className="size-14 rounded-card bg-primary-100 border border-primary-100 flex items-center justify-center mb-3">
@@ -227,7 +227,7 @@ export const PantallaLogin: React.FC<PantallaLoginProps> = ({ aviso, usuarioInic
             cargando={enviando}
             textoCargando={
               <>
-                <span className="size-3.5 rounded-full border-2 border-white/45 border-t-white animate-spin" aria-hidden="true" />
+                <span className="size-3.5 rounded-full border-2 border-sobre-color/45 border-t-sobre-color animate-spin" aria-hidden="true" />
                 Ingresando…
               </>
             }

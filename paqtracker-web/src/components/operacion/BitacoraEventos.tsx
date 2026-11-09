@@ -67,7 +67,7 @@ export const BitacoraEventos: React.FC<{ onSeleccionar: (seleccion: SeleccionPan
               aria-pressed={filtro === valor}
               onClick={() => setFiltro(valor)}
               className={`px-2 py-1 rounded text-body-sm font-sans ${
-                filtro === valor ? 'bg-primary-100 text-primary-700 font-medium' : 'bg-white border border-neutral-200 text-neutral-600 hover:border-neutral-300'
+                filtro === valor ? 'bg-primary-100 text-primary-700 font-medium' : 'bg-superficie border border-neutral-200 text-neutral-600 hover:border-neutral-300'
               }`}
             >
               {etiqueta}
@@ -84,7 +84,7 @@ export const BitacoraEventos: React.FC<{ onSeleccionar: (seleccion: SeleccionPan
             aria-pressed={congelados !== null}
             onClick={() => setCongelados(congelados ? null : [...eventos])}
             className={`ml-auto rounded px-2 py-1 font-sans ${
-              congelados ? 'bg-primary-100 text-primary-700 font-medium' : 'bg-white border border-neutral-200 text-neutral-900 hover:bg-neutral-50'
+              congelados ? 'bg-primary-100 text-primary-700 font-medium' : 'bg-superficie border border-neutral-200 text-neutral-900 hover:bg-neutral-50'
             }`}
           >
             {congelados ? 'Reanudar lista' : 'Pausar lista'}

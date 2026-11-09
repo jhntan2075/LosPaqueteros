@@ -114,13 +114,13 @@ export const DetallePedido: React.FC<DetallePedidoProps> = ({ pedido, ejecucionI
 
   return (
     <>
-      <div className="fixed inset-0 z-30 bg-neutral-900/20" onClick={onCerrar} aria-hidden="true" />
+      <div className="fixed inset-0 z-30 bg-velo/20" onClick={onCerrar} aria-hidden="true" />
       <aside
         ref={dialogo}
         role="dialog"
         aria-modal="true"
         aria-labelledby="detalle-pedido-titulo"
-        className="fixed inset-y-0 right-0 z-40 flex w-full max-w-md flex-col border-l border-neutral-200 bg-white shadow-overlay motion-safe:animate-entrar-derecha"
+        className="fixed inset-y-0 right-0 z-40 flex w-full max-w-md flex-col border-l border-neutral-200 bg-superficie shadow-overlay motion-safe:animate-entrar-derecha"
       >
         {/* 1. Identidad */}
         <div className="flex min-h-16 shrink-0 items-center gap-3 border-b border-neutral-200 px-5 py-3">
@@ -141,7 +141,7 @@ export const DetallePedido: React.FC<DetallePedidoProps> = ({ pedido, ejecucionI
           <Boton ref={cerrarRef} variante="fantasma" icono={X} onClick={onCerrar} title="Cerrar" aria-label="Cerrar detalle del pedido" />
         </div>
 
-        <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto bg-white p-4 text-body-sm">
+        <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto bg-superficie p-4 text-body-sm">
           {/* 2. Plazo: lo primero que se decide al abrir un pedido es si llega a tiempo. */}
           <Tarjeta cuerpoClassName="flex flex-col gap-2 p-4">
             <TituloGrupo>Plazo</TituloGrupo>

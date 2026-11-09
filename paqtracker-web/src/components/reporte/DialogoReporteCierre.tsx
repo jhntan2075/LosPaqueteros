@@ -23,15 +23,15 @@ export const DialogoReporteCierre: React.FC<DialogoReporteCierreProps> = ({ ejec
   useFocoAtrapado(dialogo);
   useCerrarConEscape(true, onCerrar);
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-stretch justify-center bg-neutral-900/40 p-6" data-sin-zoom>
+    <div className="fixed inset-0 z-50 flex items-stretch justify-center bg-velo/40 p-6" data-sin-zoom>
       <div
         ref={dialogo}
         role="dialog"
         aria-modal="true"
         aria-labelledby="titulo-reporte-cierre"
-        className="flex w-full max-w-6xl flex-col overflow-hidden rounded-card bg-white shadow-overlay"
+        className="flex w-full max-w-6xl flex-col overflow-hidden rounded-card bg-superficie shadow-overlay"
       >
-        <header className="flex min-h-16 shrink-0 items-center gap-3 border-b border-neutral-200 bg-white px-6 py-3" data-no-imprimir>
+        <header className="flex min-h-16 shrink-0 items-center gap-3 border-b border-neutral-200 bg-superficie px-6 py-3" data-no-imprimir>
           <div className="flex flex-col gap-0.5">
             <h1 id="titulo-reporte-cierre" className="text-title text-neutral-900">
               {diaADia ? 'Reporte de cierre · operación día a día' : 'Última planificación estable'}

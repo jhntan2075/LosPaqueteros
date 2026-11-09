@@ -157,7 +157,7 @@ const guardarLeyendaAbierta = (abierta: boolean) => {
 
 const COLOR_NIVEL: Record<NivelHolgura, string> = { ROJO: '#B91C1C', AMBAR: '#B45309', VERDE: '#15803D', CERRADO: '#94A3B8' };
 
-const ESTILO_PILDORA = 'h-8 bg-white shadow-xs rounded-full border border-neutral-200 flex items-center';
+const ESTILO_PILDORA = 'h-8 bg-superficie shadow-xs rounded-full border border-neutral-200 flex items-center';
 
 export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
   {
@@ -445,7 +445,7 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
         setHover(null);
         setCursorEnMapa(false);
       }}
-      className={`relative flex-1 w-full h-full bg-white overflow-hidden select-none touch-none outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-600 ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+      className={`relative flex-1 w-full h-full bg-superficie overflow-hidden select-none touch-none outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-600 ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
     >
       {/* 1. Barra flotante: búsqueda, riesgo, bloqueos y averías a la izquierda; ocupación global a la
           derecha. En pantallas angostas los indicadores bajan a una segunda fila en lugar de tapar las
@@ -472,7 +472,7 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
           />
           <span role="status" className="absolute left-0 top-9 whitespace-nowrap">
             {sinResultados && (
-              <span className="block bg-white border border-critical-600/25 rounded-control px-2 py-1 font-sans text-body-sm text-critical-600 shadow-xs">
+              <span className="block bg-superficie border border-critical-600/25 rounded-control px-2 py-1 font-sans text-body-sm text-critical-600 shadow-xs">
                 No hay pedidos, unidades ni almacenes en el mapa con «{terminoBusqueda.trim()}»
               </span>
             )}
@@ -541,7 +541,7 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
 
       {/* 2. Controles de zoom (a la izquierda del panel derecho si está abierto) */}
       <div
-        className="absolute bottom-12 z-10 flex flex-col gap-1.5 bg-white p-1.5 rounded-card shadow-xs border border-neutral-200"
+        className="absolute bottom-12 z-10 flex flex-col gap-1.5 bg-superficie p-1.5 rounded-card shadow-xs border border-neutral-200"
         style={{ right: derechaControles }}
       >
         <button
@@ -608,7 +608,7 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
               <ListFilter className={`size-3.5 ${filtrosActivos > 0 ? 'text-primary-600' : 'text-neutral-600'}`} />
               <span className="text-neutral-900 font-sans text-body-sm">Filtros</span>
               {filtrosActivos > 0 && (
-                <span className="min-w-5 h-5 px-1 rounded-full bg-primary-600 text-white text-caption font-semibold tabular-nums flex items-center justify-center">
+                <span className="min-w-5 h-5 px-1 rounded-full bg-primary-600 text-sobre-color text-caption font-semibold tabular-nums flex items-center justify-center">
                   {filtrosActivos}
                 </span>
               )}
@@ -626,7 +626,7 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
             )}
           </div>
           {vista && (
-            <div className="bg-white/95 backdrop-blur-xs px-2.5 py-1 rounded-control border border-neutral-200 shadow-xs pointer-events-none flex flex-col gap-0.5">
+            <div className="bg-superficie/95 backdrop-blur-xs px-2.5 py-1 rounded-control border border-neutral-200 shadow-xs pointer-events-none flex flex-col gap-0.5">
               <span className="tabular-nums text-caption text-neutral-600">{barraEscala(vista.escala).km} km</span>
               <span className="block h-1.5 border-x-2 border-b-2 border-neutral-600" style={{ width: barraEscala(vista.escala).px }} />
             </div>
@@ -784,7 +784,7 @@ const TooltipObjeto: React.FC<
   return (
     <div
       role="tooltip"
-      className="absolute z-20 pointer-events-none -translate-x-1/2 -translate-y-full bg-neutral-900 text-white rounded-control px-2.5 py-1.5 shadow-overlay whitespace-nowrap"
+      className="absolute z-20 pointer-events-none -translate-x-1/2 -translate-y-full bg-inverso text-sobre-inverso rounded-control px-2.5 py-1.5 shadow-overlay whitespace-nowrap"
       style={{ left, top: p.y - contenido.alzaPx }}
     >
       <p className="font-semibold text-body-sm tabular-nums">{contenido.titulo}</p>
@@ -964,7 +964,7 @@ const CapasMapa: React.FC<CapasMapaProps> = ({
   };
 
   return (
-    <svg ref={svgRef} className="absolute inset-0 w-full h-full">
+    <svg ref={svgRef} className="lienzo-mapa absolute inset-0 w-full h-full">
       {/* Cuadrícula continua y uniforme en todo el lienzo */}
       {Array.from({ length: Math.max(0, iMax - iMin + 1) }, (_, idx) => {
         const i = iMin + idx;

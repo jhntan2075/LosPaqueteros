@@ -50,7 +50,7 @@ export const DiagnosticoColapso: React.FC<DiagnosticoColapsoProps> = ({ diaColap
       aria-label="Diagnóstico del colapso"
       data-sin-zoom
       onPointerDown={(e) => e.stopPropagation()}
-      className="absolute bottom-0 right-3 top-0 z-20 flex w-[340px] flex-col overflow-hidden rounded-card border border-neutral-200 bg-white shadow-overlay"
+      className="absolute bottom-0 right-3 top-0 z-20 flex w-[340px] flex-col overflow-hidden rounded-card border border-neutral-200 bg-superficie shadow-overlay"
     >
       <div className="flex h-10 shrink-0 items-center gap-2 border-b border-neutral-200 pl-3 pr-1.5">
         <span aria-hidden="true" className="size-2 rounded-full bg-critical-600" />

@@ -42,14 +42,14 @@ const ContenidoConfirmacion: React.FC<Omit<DialogoConfirmacionProps, 'abierto'>>
   }, []);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-900/40 p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-velo/40 p-4">
       <div
         ref={dialogo}
         role="alertdialog"
         aria-modal="true"
         aria-labelledby="dialogo-confirmacion-titulo"
         aria-describedby="dialogo-confirmacion-descripcion"
-        className="flex w-full max-w-md flex-col gap-3 rounded-card border border-neutral-200 bg-white p-5 shadow-overlay"
+        className="flex w-full max-w-md flex-col gap-3 rounded-card border border-neutral-200 bg-superficie p-5 shadow-overlay"
       >
         <h2 id="dialogo-confirmacion-titulo" className="text-title text-neutral-900">
           {titulo}

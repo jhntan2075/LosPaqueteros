@@ -108,7 +108,7 @@ export const ListaPedidos: React.FC<ListaPedidosProps> = ({ resaltado, onResalta
               aria-pressed={filtro === valor}
               onClick={() => setFiltro(valor)}
               className={`px-2 py-1 rounded text-body-sm font-sans ${
-                filtro === valor ? 'bg-primary-100 text-primary-700 font-medium' : 'bg-white border border-neutral-200 text-neutral-600 hover:border-neutral-300'
+                filtro === valor ? 'bg-primary-100 text-primary-700 font-medium' : 'bg-superficie border border-neutral-200 text-neutral-600 hover:border-neutral-300'
               }`}
             >
               {etiqueta}
@@ -120,7 +120,7 @@ export const ListaPedidos: React.FC<ListaPedidosProps> = ({ resaltado, onResalta
           <select
             value={orden}
             onChange={(e) => setOrden(e.target.value as OrdenPedidos)}
-            className="h-6 px-1 rounded-control border border-neutral-300 text-body-sm text-neutral-900 bg-white"
+            className="h-6 px-1 rounded-control border border-neutral-300 text-body-sm text-neutral-900 bg-superficie"
           >
             {ORDENES.map(({ valor, etiqueta }) => (
               <option key={valor} value={valor}>

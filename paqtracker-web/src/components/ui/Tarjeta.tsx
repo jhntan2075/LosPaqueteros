@@ -42,7 +42,7 @@ export const Tarjeta: React.FC<TarjetaProps> = ({
     <section
       id={id}
       aria-labelledby={titulo !== undefined ? idTitulo : undefined}
-      className={cn('flex min-w-0 flex-col rounded-card border border-neutral-200 bg-white shadow-xs', className)}
+      className={cn('flex min-w-0 flex-col rounded-card border border-neutral-200 bg-superficie shadow-xs', className)}
     >
       {conEncabezado && (
         <div className={cn('flex flex-wrap items-start gap-x-3 gap-y-2 px-5 pt-4', divisor ? 'border-b border-neutral-200 pb-3' : 'pb-3')}>

@@ -25,7 +25,7 @@ export const ProveedorAvisos: React.FC<{ children: React.ReactNode }> = ({ child
         {aviso && (
           <div
             key={aviso.id}
-            className="pointer-events-auto flex items-center gap-3 bg-neutral-900 text-white rounded-control pl-3 pr-1.5 py-2 shadow-overlay text-body max-w-[calc(100vw-32px)]"
+            className="pointer-events-auto flex items-center gap-3 bg-inverso text-sobre-inverso rounded-control pl-3 pr-1.5 py-2 shadow-overlay text-body max-w-[calc(100vw-32px)]"
           >
             {aviso.tipo === 'error' ? (
               <AlertTriangle className="size-4 text-critical-600 shrink-0" aria-hidden="true" />
@@ -40,7 +40,7 @@ export const ProveedorAvisos: React.FC<{ children: React.ReactNode }> = ({ child
                   aviso.accion?.alHacer();
                   setAviso(null);
                 }}
-                className="font-semibold text-primary-100 hover:text-white whitespace-nowrap"
+                className="font-semibold text-primary-100 hover:text-sobre-inverso whitespace-nowrap"
               >
                 {aviso.accion.etiqueta}
               </button>
@@ -49,7 +49,7 @@ export const ProveedorAvisos: React.FC<{ children: React.ReactNode }> = ({ child
               type="button"
               onClick={() => setAviso(null)}
               aria-label="Cerrar aviso"
-              className="size-6 flex items-center justify-center rounded-control text-neutral-300 hover:text-white hover:bg-white/10"
+              className="size-6 flex items-center justify-center rounded-control text-neutral-300 hover:text-sobre-inverso hover:bg-sobre-inverso/10"
             >
               <X className="size-3.5" />
             </button>

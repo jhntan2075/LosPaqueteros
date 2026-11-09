@@ -125,7 +125,7 @@ export const SelectorUnidad = forwardRef<HTMLInputElement, SelectorUnidadProps>(
           entradaRef.current?.focus();
           setAbierta((actual) => !actual);
         }}
-        className="h-9 px-2.5 flex items-center gap-2 border border-neutral-300 rounded-control bg-white cursor-text focus-within:border-primary-600 focus-within:ring-1 focus-within:ring-primary-600/30"
+        className="h-9 px-2.5 flex items-center gap-2 border border-neutral-300 rounded-control bg-superficie cursor-text focus-within:border-primary-600 focus-within:ring-1 focus-within:ring-primary-600/30"
       >
         {elegida && !abierta ? (
           <img src={iconoDeUnidad(elegida).href} alt="" className="block -my-1 -ml-1" />
@@ -172,7 +172,7 @@ export const SelectorUnidad = forwardRef<HTMLInputElement, SelectorUnidadProps>(
           aria-label="Unidades"
           // mousedown sin preventDefault quitaría el foco del campo y cerraría la lista antes del clic.
           onMouseDown={(e) => e.preventDefault()}
-          className="absolute left-0 right-0 top-10 z-10 max-h-64 overflow-y-auto bg-white border border-neutral-200 rounded-card shadow-overlay py-1"
+          className="absolute left-0 right-0 top-10 z-10 max-h-64 overflow-y-auto bg-superficie border border-neutral-200 rounded-card shadow-overlay py-1"
         >
           {grupos.length === 0 && (
             <li className="px-3 py-2.5 text-body-sm text-neutral-600" role="presentation">

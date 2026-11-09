@@ -104,7 +104,7 @@ export const InformeCorrida: React.FC<InformeCorridaProps> = ({ ejecucion, estad
         }
       />
 
-      <div className="shrink-0 border-b border-neutral-200 bg-white px-4 sm:px-6">
+      <div className="shrink-0 border-b border-neutral-200 bg-superficie px-4 sm:px-6">
         <Pestanas
           etiqueta="Contenido del informe"
           activa={vista}
@@ -117,7 +117,7 @@ export const InformeCorrida: React.FC<InformeCorridaProps> = ({ ejecucion, estad
         />
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto bg-white" role="tabpanel">
+      <div className="min-h-0 flex-1 overflow-y-auto bg-superficie" role="tabpanel">
         <div className="mx-auto w-full max-w-6xl">
           {vista === 'planificacion' ? (
             <ReportePlanificacion ejecucionId={ejecucion.id} />

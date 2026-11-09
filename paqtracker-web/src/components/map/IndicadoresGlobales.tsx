@@ -59,7 +59,7 @@ interface IndicadoresGlobalesProps {
 export const IndicadoresGlobales: React.FC<IndicadoresGlobalesProps> = ({ flota, almacenes, onAbrirFlota, onAbrirAlmacenes }) => (
   <section
     aria-label="Ocupación global"
-    className="h-8 bg-white shadow-xs rounded-full border border-neutral-200 flex items-center overflow-hidden"
+    className="h-8 bg-superficie shadow-xs rounded-full border border-neutral-200 flex items-center overflow-hidden"
   >
     <Indicador
       etiqueta="Flota"

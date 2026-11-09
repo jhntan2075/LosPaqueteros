@@ -64,7 +64,7 @@ export function Pestanas<T extends string>({ opciones, activa, onCambiar, etique
                   )
                 : cn(
                     'h-7 rounded px-3',
-                    seleccionada ? 'bg-white text-primary-700 shadow-xs' : 'text-neutral-600 hover:text-neutral-900',
+                    seleccionada ? 'bg-superficie text-primary-700 shadow-xs' : 'text-neutral-600 hover:text-neutral-900',
                   ),
             )}
           >

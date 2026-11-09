@@ -642,7 +642,7 @@ export const PanelLateral: React.FC<PanelLateralProps> = ({
   return (
     <aside
       aria-label="Incidencias, flota y bitácora"
-      className="absolute right-3 top-0 bottom-0 z-20 w-[340px] bg-white border border-neutral-200 rounded-card shadow-overlay flex flex-col overflow-hidden"
+      className="absolute right-3 top-0 bottom-0 z-20 w-[340px] bg-superficie border border-neutral-200 rounded-card shadow-overlay flex flex-col overflow-hidden"
       data-sin-zoom
       onPointerDown={(e) => e.stopPropagation()}
     >

@@ -28,7 +28,7 @@ export const BarraPaneles: React.FC<BarraPanelesProps> = ({ activa, onSelecciona
     aria-label="Paneles del mapa"
     role="tablist"
     aria-orientation="vertical"
-    className="w-16 shrink-0 bg-white border-l border-neutral-200 flex flex-col items-stretch"
+    className="w-16 shrink-0 bg-superficie border-l border-neutral-200 flex flex-col items-stretch"
   >
     {PESTANAS.map(({ tipo, etiqueta, Icono }) => {
       const esActiva = activa === tipo;
@@ -50,7 +50,7 @@ export const BarraPaneles: React.FC<BarraPanelesProps> = ({ activa, onSelecciona
           {conteo !== undefined && conteo > 0 && (
             <span
               aria-hidden="true"
-              className="absolute top-1.5 right-2 min-w-4 h-4 px-1 rounded-full bg-critical-600 text-white text-caption font-semibold tabular-nums flex items-center justify-center"
+              className="absolute top-1.5 right-2 min-w-4 h-4 px-1 rounded-full bg-critical-600 text-sobre-color text-caption font-semibold tabular-nums flex items-center justify-center"
             >
               {conteo > 99 ? '99+' : conteo}
             </span>

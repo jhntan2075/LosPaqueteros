@@ -143,13 +143,13 @@ export const DialogoRegistrarAveria: React.FC<DialogoRegistrarAveriaProps> = ({ 
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-neutral-900/40 flex items-center justify-center p-4" data-sin-zoom>
+    <div className="fixed inset-0 z-50 bg-velo/40 flex items-center justify-center p-4" data-sin-zoom>
       <div
         ref={dialogo}
         role="dialog"
         aria-modal="true"
         aria-labelledby="registrar-averia-titulo"
-        className="bg-white rounded-card shadow-overlay border border-neutral-200 w-full max-w-[540px] flex flex-col max-h-full"
+        className="bg-superficie rounded-card shadow-overlay border border-neutral-200 w-full max-w-[540px] flex flex-col max-h-full"
       >
         <header className="h-12 px-5 flex items-center border-b border-neutral-200 shrink-0">
           <h2 id="registrar-averia-titulo" className="text-title text-neutral-900">
@@ -210,7 +210,7 @@ export const DialogoRegistrarAveria: React.FC<DialogoRegistrarAveriaProps> = ({ 
                   <label
                     key={t}
                     className={`rounded-card p-2.5 flex flex-col gap-1 cursor-pointer transition has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-primary-600/40 ${
-                      elegido ? 'bg-primary-50 border-2 border-primary-600' : 'bg-white border border-neutral-200 hover:border-neutral-300 hover:bg-neutral-50'
+                      elegido ? 'bg-primary-50 border-2 border-primary-600' : 'bg-superficie border border-neutral-200 hover:border-neutral-300 hover:bg-neutral-50'
                     }`}
                   >
                     <input

@@ -31,7 +31,7 @@ const Chip: React.FC<{ activo: boolean; conteo: number; onClick: () => void; chi
     aria-pressed={activo}
     onClick={onClick}
     className={`h-7 pl-2 pr-2.5 rounded-full border flex items-center gap-1.5 text-body-sm font-sans transition-colors ${
-      activo ? 'bg-primary-50 border-primary-600 text-primary-600' : 'bg-white border-neutral-300 text-neutral-900 hover:bg-neutral-50'
+      activo ? 'bg-primary-50 border-primary-600 text-primary-600' : 'bg-superficie border-neutral-300 text-neutral-900 hover:bg-neutral-50'
     }`}
   >
     {activo && <Check className="size-3 shrink-0" aria-hidden="true" />}
@@ -79,7 +79,7 @@ export const FiltrosMapa: React.FC<FiltrosMapaProps> = ({ filtros, conteos, onCa
       aria-label="Filtros del mapa"
       data-sin-zoom
       onPointerDown={(e) => e.stopPropagation()}
-      className="w-[300px] max-h-[calc(100vh-260px)] overflow-y-auto bg-white border border-neutral-200 rounded-card shadow-overlay cursor-default"
+      className="w-[300px] max-h-[calc(100vh-260px)] overflow-y-auto bg-superficie border border-neutral-200 rounded-card shadow-overlay cursor-default"
     >
       <header className="h-9 pl-3 pr-2 flex items-center border-b border-neutral-200">
         <h2 className="font-semibold text-body text-neutral-900">Filtros</h2>

@@ -256,7 +256,7 @@ export const EstadoFlota: React.FC<EstadoFlotaProps> = ({ onSeleccionar, resalta
               id="orden-unidades"
               value={orden}
               onChange={(e) => cambiarOrden(e.target.value as CriterioOrden)}
-              className="h-7 px-1.5 rounded-control border border-neutral-300 bg-white text-body-sm text-neutral-900"
+              className="h-7 px-1.5 rounded-control border border-neutral-300 bg-superficie text-body-sm text-neutral-900"
             >
               {CRITERIOS_ORDEN.map(({ valor, etiqueta }) => (
                 <option key={valor} value={valor}>
@@ -269,7 +269,7 @@ export const EstadoFlota: React.FC<EstadoFlotaProps> = ({ onSeleccionar, resalta
               onClick={() => setSentido(sentido === 'ASC' ? 'DESC' : 'ASC')}
               aria-label={sentido === 'ASC' ? 'Orden ascendente; cambiar a descendente' : 'Orden descendente; cambiar a ascendente'}
               title={sentido === 'ASC' ? 'Ascendente' : 'Descendente'}
-              className="h-7 px-2 rounded-control border border-neutral-300 bg-white text-neutral-900 hover:bg-neutral-50 flex items-center gap-1"
+              className="h-7 px-2 rounded-control border border-neutral-300 bg-superficie text-neutral-900 hover:bg-neutral-50 flex items-center gap-1"
             >
               {sentido === 'ASC' ? <ArrowUpNarrowWide className="size-3.5" /> : <ArrowDownWideNarrow className="size-3.5" />}
               <span className="text-caption">{sentido === 'ASC' ? 'Asc.' : 'Desc.'}</span>
@@ -290,7 +290,7 @@ export const EstadoFlota: React.FC<EstadoFlotaProps> = ({ onSeleccionar, resalta
               onChange={(e) => setMinutos(e.target.value)}
               step={magnitud === 'KM' ? 'any' : 1}
               aria-label={magnitud === 'KM' ? 'Kilómetros como máximo' : 'Minutos como máximo'}
-              className="h-7 w-14 px-1.5 rounded-control border border-neutral-300 bg-white tabular-nums text-body-sm text-neutral-900"
+              className="h-7 w-14 px-1.5 rounded-control border border-neutral-300 bg-superficie tabular-nums text-body-sm text-neutral-900"
             />
             <div role="radiogroup" aria-label="Magnitud de la búsqueda" className="flex rounded-control border border-neutral-300 overflow-hidden">
               {(
@@ -307,7 +307,7 @@ export const EstadoFlota: React.FC<EstadoFlotaProps> = ({ onSeleccionar, resalta
                   aria-label={valor === 'MIN' ? 'Minutos' : 'Kilómetros'}
                   onClick={() => setMagnitud(valor)}
                   className={`h-6 px-2 text-caption font-sans ${
-                    magnitud === valor ? 'bg-primary-100 text-primary-700 font-medium' : 'bg-white text-neutral-600 hover:bg-neutral-50'
+                    magnitud === valor ? 'bg-primary-100 text-primary-700 font-medium' : 'bg-superficie text-neutral-600 hover:bg-neutral-50'
                   }`}
                 >
                   {etiqueta}
@@ -329,7 +329,7 @@ export const EstadoFlota: React.FC<EstadoFlotaProps> = ({ onSeleccionar, resalta
                   aria-checked={referencia === valor}
                   onClick={() => setReferencia(valor)}
                   className={`h-6 px-2 text-caption font-sans ${
-                    referencia === valor ? 'bg-primary-100 text-primary-700 font-medium' : 'bg-white text-neutral-600 hover:bg-neutral-50'
+                    referencia === valor ? 'bg-primary-100 text-primary-700 font-medium' : 'bg-superficie text-neutral-600 hover:bg-neutral-50'
                   }`}
                 >
                   {etiqueta}
@@ -351,7 +351,7 @@ export const EstadoFlota: React.FC<EstadoFlotaProps> = ({ onSeleccionar, resalta
                 aria-pressed={rangosKm.has(id)}
                 onClick={() => alternarRangoKm(id)}
                 className={`px-2 py-1 rounded text-body-sm font-sans tabular-nums ${
-                  rangosKm.has(id) ? 'bg-primary-100 text-primary-700 font-medium' : 'bg-white border border-neutral-200 text-neutral-600 hover:border-neutral-300'
+                  rangosKm.has(id) ? 'bg-primary-100 text-primary-700 font-medium' : 'bg-superficie border border-neutral-200 text-neutral-600 hover:border-neutral-300'
                 }`}
               >
                 {etiqueta}
@@ -371,7 +371,7 @@ export const EstadoFlota: React.FC<EstadoFlotaProps> = ({ onSeleccionar, resalta
                 aria-pressed={filtro === valor}
                 onClick={() => setFiltro(valor)}
                 className={`px-2 py-1 rounded text-body-sm font-sans ${
-                  filtro === valor ? 'bg-primary-100 text-primary-700 font-medium' : 'bg-white border border-neutral-200 text-neutral-600 hover:border-neutral-300'
+                  filtro === valor ? 'bg-primary-100 text-primary-700 font-medium' : 'bg-superficie border border-neutral-200 text-neutral-600 hover:border-neutral-300'
                 }`}
               >
                 {etiqueta}

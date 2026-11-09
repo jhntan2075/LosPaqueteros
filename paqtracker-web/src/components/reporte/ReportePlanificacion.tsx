@@ -184,15 +184,15 @@ export const ReportePlanificacion: React.FC<ReportePlanificacionProps> = ({ ejec
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Indicador
-          className="bg-white"
+          className="bg-superficie"
           etiqueta="Unidades con ruta"
           valor={plan.rutas.length}
           detalle={`${paradas} ${paradas === 1 ? 'parada' : 'paradas'} pendientes`}
         />
-        <Indicador className="bg-white" etiqueta="Paquetes planificados" valor={formatearMiles(paquetes)} />
-        <Indicador className="bg-white" etiqueta="Distancia de las rutas" valor={`${formatearMiles(km)} km`} />
+        <Indicador className="bg-superficie" etiqueta="Paquetes planificados" valor={formatearMiles(paquetes)} />
+        <Indicador className="bg-superficie" etiqueta="Distancia de las rutas" valor={`${formatearMiles(km)} km`} />
         <Indicador
-          className="bg-white"
+          className="bg-superficie"
           etiqueta="Pedidos sin asignar"
           valor={plan.pedidosSinAsignar.length}
           detalle={plan.pedidosSinAsignar.length === 0 ? 'Todos tienen unidad' : 'Entran en la próxima planificación'}
@@ -202,7 +202,7 @@ export const ReportePlanificacion: React.FC<ReportePlanificacionProps> = ({ ejec
       {plan.rutas.length === 0 ? (
         <p className="text-body text-neutral-600">El plan no deja entregas pendientes: todas las unidades terminaron sus rutas.</p>
       ) : (
-        <div className="overflow-x-auto rounded-card border border-neutral-200 bg-white shadow-xs">
+        <div className="overflow-x-auto rounded-card border border-neutral-200 bg-superficie shadow-xs">
           <table className="w-full border-collapse text-left text-body-sm text-neutral-900">
             <caption className="sr-only">Rutas del plan, una por unidad; cada fila se despliega con sus paradas en orden.</caption>
             <thead className="bg-neutral-50 text-overline uppercase text-neutral-600">

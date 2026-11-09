@@ -45,7 +45,7 @@ export const ModuloMetricas: React.FC<{ datos: DatosOperacion }> = ({ datos }) =
   const almacenesOrdenados = [...almacenes].filter((a) => a.porcentajeStock !== null).sort((a, b) => (a.porcentajeStock ?? 0) - (b.porcentajeStock ?? 0));
 
   return (
-    <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-white">
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-superficie">
       <EncabezadoPagina titulo="Métricas de la operación" descripcion="Indicadores en vivo de la operación día a día." />
       <div className="min-h-0 flex-1 overflow-y-auto">
         <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 p-4 sm:p-6">

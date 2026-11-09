@@ -13,7 +13,6 @@ import { DialogoConfirmacion } from '../modals/DialogoConfirmacion';
 import { AlmacenCentral, AlmacenIntermedio } from '../map/simbolos';
 import { Aviso, Boton, Campo, EncabezadoPagina, Entrada, Tarjeta } from '../ui';
 import type { EntradaProps } from '../ui/Campo';
-import { paleta } from '../../../tailwind.config.js';
 
 // Configuración del dominio (rúbrica B02, B04, B06, B07-B09): ubicación y capacidad de los almacenes,
 // capacidad, velocidad y costo de cada tipo de unidad, duraciones de las averías y rangos del semáforo.
@@ -148,7 +147,7 @@ export const ModuloConfiguracion: React.FC = () => {
 
   if (!formulario || !parametros) {
     return (
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-white">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-superficie">
         {encabezado}
         <div className="flex flex-1 items-center justify-center p-4 sm:p-6">
           {errorCarga ? (
@@ -221,7 +220,7 @@ export const ModuloConfiguracion: React.FC = () => {
   }));
 
   return (
-    <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-white">
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-superficie">
       {encabezado}
       <div className="min-h-0 flex-1 overflow-y-auto">
         <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 p-4 sm:p-6">
@@ -290,9 +289,9 @@ export const ModuloConfiguracion: React.FC = () => {
                       .map((u) => {
                         const { x, y } = proyectar(vista, u.punto);
                         return (
-                          <g key={u.codigo} transform={`translate(${x} ${y})`}>
-                            {u.codigo === 'CENTRAL' ? <AlmacenCentral /> : <AlmacenIntermedio color={paleta.neutral[600]} />}
-                            <text y={26} textAnchor="middle" fontSize={10} fontWeight={600} fill={paleta.neutral[900]}>
+                          <g key={u.codigo} transform={`translate(${x} ${y})`} className="text-neutral-600">
+                            {u.codigo === 'CENTRAL' ? <AlmacenCentral /> : <AlmacenIntermedio color="currentColor" />}
+                            <text y={26} textAnchor="middle" fontSize={10} fontWeight={600} className="fill-neutral-900">
                               {u.nombre}
                             </text>
                           </g>
@@ -385,7 +384,7 @@ export const ModuloConfiguracion: React.FC = () => {
             </Boton>
           </Tarjeta>
 
-          <footer className="sticky bottom-0 -mx-4 flex flex-wrap items-center gap-2 border-t border-neutral-200 bg-white/95 px-4 py-3 backdrop-blur sm:-mx-6 sm:px-6">
+          <footer className="sticky bottom-0 -mx-4 flex flex-wrap items-center gap-2 border-t border-neutral-200 bg-superficie/95 px-4 py-3 backdrop-blur sm:-mx-6 sm:px-6">
             {errorApi && (
               <Aviso tono="critical" role="alert" className="basis-full">
                 {errorApi}

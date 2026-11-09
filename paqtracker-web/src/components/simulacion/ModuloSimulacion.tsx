@@ -52,7 +52,7 @@ export const ModuloSimulacion: React.FC = () => {
   // Hay un id en la URL (se pidió abrir esa corrida) pero el estado local todavía no la tiene.
   if (ejecucionId && !ejecucion) {
     return (
-      <div className="flex flex-1 items-center justify-center bg-white p-6">
+      <div className="flex flex-1 items-center justify-center bg-superficie p-6">
         <Tarjeta className="w-full max-w-md" cuerpoClassName="flex flex-col items-center gap-3 px-6 py-6 text-center">
           <p className="text-title-sm text-neutral-900">Abrir simulación</p>
           {errorActual ? (

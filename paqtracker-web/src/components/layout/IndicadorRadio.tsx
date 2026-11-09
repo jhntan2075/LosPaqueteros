@@ -8,7 +8,7 @@ export const IndicadorRadio: React.FC<{ marcado: boolean }> = ({ marcado }) => (
   <span
     aria-hidden="true"
     className={`size-3.5 shrink-0 rounded-full border-2 flex items-center justify-center ${
-      marcado ? 'border-primary-600' : 'border-neutral-400 bg-white'
+      marcado ? 'border-primary-600' : 'border-neutral-400 bg-superficie'
     }`}
   >
     {marcado && <span className="size-1.5 rounded-full bg-primary-600" />}

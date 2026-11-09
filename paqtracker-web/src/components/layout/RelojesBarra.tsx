@@ -37,7 +37,7 @@ export const RelojesBarra: React.FC<RelojesBarraProps> = ({ operacion }) => {
   const [fechaOperacion, horaOperacion = ''] = operacion.split(' · ');
   const [fechaReal, horaReal] = formatearFechaLarga(ahora).split(' · ');
   return (
-    <div className="flex h-10 shrink-0 items-stretch rounded-control border border-neutral-200 bg-white shadow-xs">
+    <div className="flex h-10 shrink-0 items-stretch rounded-control border border-neutral-200 bg-superficie shadow-xs">
       <div role="group" aria-label="Reloj de la operación día a día" title="Reloj de la operación día a día" className="flex items-center gap-2 pl-2.5 pr-3">
         <Clock className="size-4 shrink-0 text-primary-600" aria-hidden="true" />
         <Reloj etiqueta="Operación" fecha={fechaOperacion} hora={horaOperacion} principal />

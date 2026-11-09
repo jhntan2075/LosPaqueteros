@@ -31,7 +31,7 @@ export const Insignia: React.FC<InsigniaProps> = ({
     className={cn(
       'inline-flex items-center gap-1.5 whitespace-nowrap rounded-full font-medium',
       tamano === 'sm' ? 'px-2 py-0.5 text-caption' : 'px-2.5 py-1 text-body-sm font-semibold',
-      contorno ? cn('border border-current bg-white', TEXTO_TONO[tono]) : FONDO_TONO[tono],
+      contorno ? cn('border border-current bg-superficie', TEXTO_TONO[tono]) : FONDO_TONO[tono],
       className,
     )}
   >

@@ -37,8 +37,8 @@ export const MiniMapaMalla: React.FC<MiniMapaMallaProps> = ({ alto, margen = 40,
       aria-label={etiqueta}
       className={
         alto === undefined
-          ? 'relative w-full shrink-0'
-          : 'relative w-full shrink-0 bg-neutral-100 border border-neutral-200 rounded-card overflow-hidden'
+          ? 'lienzo-mapa relative w-full shrink-0'
+          : 'lienzo-mapa relative w-full shrink-0 bg-neutral-100 border border-neutral-200 rounded-card overflow-hidden'
       }
       // Sin marco, el borde de la malla es el del recuadro; los marcadores de los bordes pueden asomar fuera.
       style={alto === undefined ? { aspectRatio: `${MALLA_ANCHO_KM} / ${MALLA_ALTO_KM}` } : { height: alto }}

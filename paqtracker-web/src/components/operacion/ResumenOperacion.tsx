@@ -34,7 +34,7 @@ const Ficha: React.FC<FichaProps> = ({ titulo, valor, linea1, linea2, onClick, e
       <span className="font-sans text-caption text-neutral-600 truncate w-full">{linea2}</span>
     </>
   );
-  const base = 'w-full bg-white border rounded-card px-2.5 py-2 flex flex-col gap-0.5 items-start text-left overflow-hidden transition';
+  const base = 'w-full bg-superficie border rounded-card px-2.5 py-2 flex flex-col gap-0.5 items-start text-left overflow-hidden transition';
   const borde = esAlerta ? 'border-critical-600/25 bg-critical-50/40' : 'border-neutral-200';
   return onClick ? (
     <button

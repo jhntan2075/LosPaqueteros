@@ -108,7 +108,7 @@ export const DialogoRangosSemaforo: React.FC<DialogoRangosSemaforoProps> = ({ on
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-neutral-900/40 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 bg-velo/40 flex items-center justify-center p-4">
       <form
         ref={dialogo}
         role="dialog"
@@ -116,7 +116,7 @@ export const DialogoRangosSemaforo: React.FC<DialogoRangosSemaforoProps> = ({ on
         aria-labelledby="dialogo-rangos-titulo"
         onSubmit={manejarEnvio}
         noValidate
-        className="bg-white rounded-card shadow-overlay border border-neutral-200 w-full max-w-[520px] max-h-[90vh] overflow-y-auto p-5 flex flex-col gap-3 font-sans"
+        className="bg-superficie rounded-card shadow-overlay border border-neutral-200 w-full max-w-[520px] max-h-[90vh] overflow-y-auto p-5 flex flex-col gap-3 font-sans"
       >
         <div>
           <h2 id="dialogo-rangos-titulo" className="text-title text-neutral-900">

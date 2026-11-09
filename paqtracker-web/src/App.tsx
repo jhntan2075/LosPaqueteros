@@ -81,7 +81,7 @@ export default function App() {
   return (
     <ProveedorAvisos>
       <ProveedorAverias>
-        <div className="flex flex-col h-screen w-screen overflow-hidden bg-white">
+        <div className="flex flex-col h-screen w-screen overflow-hidden bg-superficie">
           <TopNavbar
             tabActiva={tabActiva}
             onCambiarTab={(tab) => (tab === 'pedidos' ? abrirPedidos('cola') : setTabActiva(tab))}
@@ -92,7 +92,7 @@ export default function App() {
 
           <ContextoDatosOperacion.Provider value={datos}>
             <div className="flex-1 flex flex-col min-h-0 min-w-0 overflow-hidden">
-              <main className="flex-1 relative flex overflow-hidden bg-white">
+              <main className="flex-1 relative flex overflow-hidden bg-superficie">
                 {/* Operación queda montada aunque se cambie de pestaña, como la corrida de Simulación:
                     el zoom, el objeto abierto en el panel y las capas visibles del mapa no se pierden
                     al volver. Antes de la primera instantánea no hay nada que montar. */}

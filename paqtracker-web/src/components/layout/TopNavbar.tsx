@@ -33,7 +33,7 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
   ];
 
   return (
-    <header className="h-[52px] bg-white border-b border-neutral-300 px-3 md:px-4 flex items-center justify-between z-30 select-none shadow-xs shrink-0">
+    <header className="h-[52px] bg-superficie border-b border-neutral-300 px-3 md:px-4 flex items-center justify-between z-30 select-none shadow-xs shrink-0">
       {/* 1. Lado Izquierdo: Marca + Pestañas de Módulos */}
       <div className="flex items-center gap-2 sm:gap-3 overflow-x-auto no-scrollbar">
         {/* Isotipo y Nombre */}

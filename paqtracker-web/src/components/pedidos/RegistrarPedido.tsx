@@ -36,7 +36,7 @@ const ESTILO_FACTIBILIDAD: Record<NivelFactibilidad, { titulo: string; tono: Ton
 
 /** Caja con el estilo de `Entrada` para controles compuestos (prefijo X/Y, botones − y +). */
 const CAJA_CONTROL =
-  'flex h-10 items-center rounded-control border border-neutral-300 bg-white transition-colors focus-within:border-primary-600 focus-within:ring-2 focus-within:ring-primary-600/20';
+  'flex h-10 items-center rounded-control border border-neutral-300 bg-superficie transition-colors focus-within:border-primary-600 focus-within:ring-2 focus-within:ring-primary-600/20';
 
 const InputCoordenada: React.FC<{ id?: string; eje: 'X' | 'Y'; valor: string; maximo: number; ayuda?: string; onCambiar: (valor: string) => void }> = ({
   id,
@@ -322,7 +322,7 @@ export const RegistrarPedido: React.FC<RegistrarPedidoProps> = ({ onCancelar, on
                         'flex cursor-pointer flex-col items-start gap-1 rounded-card border p-3 text-left transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-primary-600/40',
                         seleccionado
                           ? 'border-primary-600 bg-primary-50 shadow-xs ring-1 ring-primary-600'
-                          : 'border-neutral-200 bg-white hover:border-neutral-300 hover:bg-neutral-50',
+                          : 'border-neutral-200 bg-superficie hover:border-neutral-300 hover:bg-neutral-50',
                       )}
                     >
                       <input

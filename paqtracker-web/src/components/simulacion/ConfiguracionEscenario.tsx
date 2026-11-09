@@ -86,7 +86,7 @@ const RanuraArchivo: React.FC<{
       <div
         className={cn(
           'flex h-8 w-full max-w-md items-center gap-2.5 rounded-control pl-2.5 pr-0.5 text-body-sm',
-          archivo ? 'border border-neutral-300 bg-white' : 'border border-dashed border-neutral-400 bg-neutral-50',
+          archivo ? 'border border-neutral-300 bg-superficie' : 'border border-dashed border-neutral-400 bg-neutral-50',
         )}
       >
         {subiendo ? (
@@ -262,7 +262,7 @@ export const ConfiguracionEscenario: React.FC<ConfiguracionEscenarioProps> = ({ 
     <div className="flex min-h-0 flex-1 flex-col">
       <EncabezadoPagina titulo="Configuración de escenario" descripcion="Abre una simulación que ya esté en el servidor o configura una nueva." />
 
-      <div className="min-h-0 flex-1 overflow-y-auto bg-white">
+      <div className="min-h-0 flex-1 overflow-y-auto bg-superficie">
         <div className="mx-auto flex w-full max-w-6xl flex-col items-stretch gap-4 p-4 sm:p-6 lg:flex-row lg:items-start">
           <div className="flex min-w-0 flex-1 flex-col gap-4">
             <Pestanas

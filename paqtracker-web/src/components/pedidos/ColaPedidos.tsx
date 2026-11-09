@@ -133,7 +133,7 @@ const SelectFiltro: React.FC<SelectFiltroProps> = ({ label, valor, opciones, act
         'relative inline-flex h-8 items-center gap-1.5 rounded-control border px-2.5 text-body-sm transition-colors cursor-pointer focus-within:border-primary-600 focus-within:ring-2 focus-within:ring-primary-600/20',
         activo
           ? 'border-primary-600/40 bg-primary-50 font-medium text-primary-700'
-          : 'border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-50',
+          : 'border-neutral-300 bg-superficie text-neutral-700 hover:bg-neutral-50',
       )}
     >
       <span className="font-normal text-neutral-600">{label}:</span>
@@ -173,7 +173,7 @@ const FiltroRapido: React.FC<{ activo: boolean; tono: 'critical' | 'primary'; on
         ? tono === 'critical'
           ? 'border-critical-600/40 bg-critical-50 text-critical-600'
           : 'border-primary-600/40 bg-primary-50 text-primary-700'
-        : 'border-neutral-300 bg-white text-neutral-700 hover:bg-neutral-50 hover:text-neutral-900',
+        : 'border-neutral-300 bg-superficie text-neutral-700 hover:bg-neutral-50 hover:text-neutral-900',
     )}
   >
     {children}
@@ -294,7 +294,7 @@ export const ColaPedidos: React.FC<{
       <div className="flex min-h-0 flex-1 flex-col p-4 lg:p-6">
         <Tarjeta sinRelleno className="min-h-0 flex-1 overflow-hidden" cuerpoClassName="flex min-h-0 flex-1 flex-col">
           {/* Filtros y búsqueda */}
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-neutral-200 bg-white px-4 py-3 lg:px-6">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-neutral-200 bg-superficie px-4 py-3 lg:px-6">
             <div className="flex min-w-72 flex-1 flex-wrap items-center gap-2">
               {/* Buscador */}
               <div className="relative w-64 min-w-52">

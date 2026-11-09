@@ -20,13 +20,13 @@ export interface BotonProps extends React.ButtonHTMLAttributes<HTMLButtonElement
 }
 
 const VARIANTES: Record<VarianteBoton, string> = {
-  primario: 'bg-primary-600 text-white font-semibold shadow-xs hover:bg-primary-700 disabled:hover:bg-primary-600',
+  primario: 'bg-primary-600 text-sobre-color font-semibold shadow-xs hover:bg-primary-700 disabled:hover:bg-primary-600',
   secundario:
-    'bg-white border border-neutral-300 text-neutral-700 font-medium hover:bg-neutral-50 hover:text-neutral-900 disabled:hover:bg-white',
+    'bg-superficie border border-neutral-300 text-neutral-700 font-medium hover:bg-neutral-50 hover:text-neutral-900 disabled:hover:bg-superficie',
   fantasma: 'text-neutral-700 font-medium hover:bg-neutral-100 hover:text-neutral-900 disabled:hover:bg-transparent',
-  peligro: 'bg-critical-600 text-white font-semibold hover:bg-critical-700 disabled:hover:bg-critical-600',
+  peligro: 'bg-critical-600 text-sobre-color font-semibold hover:bg-critical-700 disabled:hover:bg-critical-600',
   'peligro-secundario':
-    'bg-white border border-critical-600/40 text-critical-600 font-medium hover:bg-critical-50 disabled:hover:bg-white',
+    'bg-superficie border border-critical-600/40 text-critical-600 font-medium hover:bg-critical-50 disabled:hover:bg-superficie',
 };
 
 const TAMANOS: Record<TamanoBoton, { conTexto: string; soloIcono: string; icono: string }> = {

@@ -48,7 +48,7 @@ export const FooterBar: React.FC<FooterBarProps> = ({
     </>
   );
   return (
-    <footer className="h-[30px] bg-white border-t border-neutral-200 px-4 flex items-center justify-between text-body-sm select-none flex-shrink-0 z-20">
+    <footer className="h-[30px] bg-superficie border-t border-neutral-200 px-4 flex items-center justify-between text-body-sm select-none flex-shrink-0 z-20">
       <div className="flex items-center gap-4 overflow-x-auto">
         {/* Nodo bajo el cursor (solo sobre el lienzo) */}
         {nodoSeleccionado && (

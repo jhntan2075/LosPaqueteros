@@ -39,6 +39,7 @@ const REGLAS: { nombre: string; patron: RegExp; soloFuera?: string[] }[] = [
       /\b(bg|text|border|ring|fill|stroke|divide|outline|from|to|via|accent|caret|decoration|placeholder)-(slate|gray|zinc|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)-\d{2,3}\b/g,
   },
   { nombre: '`font-bold` (la escala usa 400, 500 y 600)', patron: /\bfont-bold\b/g },
+  { nombre: '`bg-white` (usa `bg-superficie`, que cambia con el tema)', patron: /\bbg-white\b/g },
   { nombre: 'color hex como texto fuera del dibujo del dominio', patron: /['"`]#[0-9a-fA-F]{6}\b/g, soloFuera: DIBUJO_DEL_DOMINIO },
 ];
 

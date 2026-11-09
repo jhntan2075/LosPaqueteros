@@ -60,7 +60,7 @@ export const Campo: React.FC<CampoProps> = ({ htmlFor, etiqueta, ayuda, error, o
 type TamanoControl = 'md' | 'lg';
 
 const CONTROL_BASE =
-  'w-full min-w-0 rounded-control border border-neutral-300 bg-white text-body text-neutral-900 outline-none transition-colors placeholder:text-neutral-400 focus:border-primary-600 focus:ring-2 focus:ring-primary-600/20 disabled:cursor-not-allowed disabled:bg-neutral-50 disabled:text-neutral-500 aria-[invalid=true]:border-critical-600 aria-[invalid=true]:focus:ring-critical-600/20';
+  'w-full min-w-0 rounded-control border border-neutral-300 bg-superficie text-body text-neutral-900 outline-none transition-colors placeholder:text-neutral-400 focus:border-primary-600 focus:ring-2 focus:ring-primary-600/20 disabled:cursor-not-allowed disabled:bg-neutral-50 disabled:text-neutral-500 aria-[invalid=true]:border-critical-600 aria-[invalid=true]:focus:ring-critical-600/20';
 const ALTURA: Record<TamanoControl, string> = { md: 'h-8 px-2.5', lg: 'h-10 px-3' };
 
 export interface EntradaProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'size'> {
