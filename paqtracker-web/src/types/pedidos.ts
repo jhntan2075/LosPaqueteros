@@ -1,5 +1,6 @@
 import type { Coordenada } from './domain';
 import type { IdAlmacen, PlazoHoras, TipoUnidad } from '../config/dominio';
+import type { Fraccion } from './operacion';
 
 // Modelos de vista del módulo Pedidos (PE-01, PE-02). Son la forma en que la UI consume los datos;
 // services/servicioPedidos los produce a partir de paqtracker-api.
@@ -36,6 +37,8 @@ export interface PedidoEnCola {
   salida: string | null;
   /** Todas las unidades que lo llevan (un pedido fraccionado va en varias), sin las liberadas por avería. */
   unidades: string[];
+  /** Partes del pedido, una por unidad (sin las liberadas por avería), con su origen, horarios y estado. */
+  fracciones: Fraccion[];
 }
 
 export interface BorradorPedido {
