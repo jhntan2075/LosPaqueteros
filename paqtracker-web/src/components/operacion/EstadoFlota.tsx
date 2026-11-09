@@ -87,10 +87,10 @@ const guardarRangosKm = (rangos: Set<IdRangoKm>) => {
 };
 
 const Leyenda: React.FC<{ color: string; etiqueta: string; valor: number }> = ({ color, etiqueta, valor }) => (
-  <span className="flex items-center gap-[5px] text-[12px] whitespace-nowrap">
-    <span className={`size-[7px] rounded-[1px] ${color}`} />
-    <span className="font-sans text-[#64748B]">{etiqueta}</span>
-    <span className="tabular-nums font-medium text-[#0F172A]">{valor}</span>
+  <span className="flex items-center gap-1.5 text-body-sm whitespace-nowrap">
+    <span className={`size-2 rounded-sm ${color}`} />
+    <span className="font-sans text-neutral-600">{etiqueta}</span>
+    <span className="tabular-nums font-medium text-neutral-900">{valor}</span>
   </span>
 );
 
@@ -114,11 +114,11 @@ export const EstadoFlota: React.FC<EstadoFlotaProps> = ({ onSeleccionar, resalta
   const utilizacion = flota.total === 0 ? 0 : Math.round((flota.enRuta / flota.total) * 100);
   // Cada unidad cae en un solo segmento; los que valen 0 no se dibujan ni aparecen en la leyenda.
   const segmentos = [
-    { clave: 'ruta', etiqueta: 'en ruta', valor: flota.enRuta, color: 'bg-[#1E40AF]' },
-    { clave: 'refr', etiqueta: 'en refrigerio', valor: flota.enRefrigerio.length, color: 'bg-[#93C5FD]' },
-    { clave: 'disp', etiqueta: 'disponibles', valor: flota.disponibles, color: 'bg-[#CBD5E1]' },
-    { clave: 'turno', etiqueta: 'fuera de turno', valor: flota.fueraDeTurno, color: 'bg-[#E2E8F0]' },
-    { clave: 'aver', etiqueta: 'averiadas', valor: flota.averiadas.length, color: 'bg-[#B91C1C]' },
+    { clave: 'ruta', etiqueta: 'en ruta', valor: flota.enRuta, color: 'bg-primary-600' },
+    { clave: 'refr', etiqueta: 'en refrigerio', valor: flota.enRefrigerio.length, color: 'bg-primary-600/40' },
+    { clave: 'disp', etiqueta: 'disponibles', valor: flota.disponibles, color: 'bg-neutral-300' },
+    { clave: 'turno', etiqueta: 'fuera de turno', valor: flota.fueraDeTurno, color: 'bg-neutral-200' },
+    { clave: 'aver', etiqueta: 'averiadas', valor: flota.averiadas.length, color: 'bg-critical-600' },
   ];
   const visibles = segmentos.filter((s) => s.valor > 0 || s.clave === 'ruta' || s.clave === 'disp');
 
@@ -173,20 +173,20 @@ export const EstadoFlota: React.FC<EstadoFlotaProps> = ({ onSeleccionar, resalta
   return (
       <div className="flex-1 min-h-0 overflow-y-auto">
         {/* Resumen */}
-        <section className="px-[12px] pt-[14px] pb-[12px] border-b border-[#E2E8F0] flex flex-col gap-[10px]">
+        <section className="px-3 pt-3.5 pb-3 border-b border-neutral-200 flex flex-col gap-2.5">
           <TituloSeccion derecha={`${utilizacion} % en ruta`}>
             Estado de la flota · {flota.total} unidades
           </TituloSeccion>
           <div
-            className="flex gap-[2px] h-[12px] w-full"
+            className="flex gap-0.5 h-3 w-full"
             role="img"
             aria-label={visibles.map((s) => `${s.valor} ${s.etiqueta}`).join(', ')}
           >
             {visibles.map((s) => (
-              <span key={s.clave} className={`${s.color} rounded-[1px]`} style={{ flexGrow: s.valor, flexBasis: 0 }} />
+              <span key={s.clave} className={`${s.color} rounded-sm`} style={{ flexGrow: s.valor, flexBasis: 0 }} />
             ))}
           </div>
-          <div className="flex flex-wrap gap-x-[16px] gap-y-[4px]">
+          <div className="flex flex-wrap gap-x-4 gap-y-1">
             {visibles.map((s) => (
               <Leyenda key={s.clave} color={s.color} etiqueta={s.etiqueta} valor={s.valor} />
             ))}
@@ -194,28 +194,28 @@ export const EstadoFlota: React.FC<EstadoFlotaProps> = ({ onSeleccionar, resalta
         </section>
 
         {/* Por tipo de unidad */}
-        <section className="px-[12px] pt-[12px] pb-[14px] border-b border-[#E2E8F0] flex flex-col gap-[10px]">
+        <section className="px-3 pt-3 pb-3.5 border-b border-neutral-200 flex flex-col gap-2.5">
           <TituloSeccion derecha="en ruta · carga a bordo">Por tipo de unidad</TituloSeccion>
           {flota.porTipo.map(({ tipo, enRuta, total, carga, capacidad, cargaABordo }) => {
             // La barra y el porcentaje miden lo mismo: la carga a bordo, con el semáforo de carga.
             const nivel = cargaABordo === null ? null : nivelDeOcupacion(carga, capacidad);
             return (
-              <div key={tipo} className="flex flex-col gap-[5px]">
-                <div className="flex items-center gap-[8px] text-[12px]">
-                  <img src={iconoDeCarga(tipo, carga, capacidad).href} alt="" className="block -my-[4px]" />
-                  <span className="font-sans font-semibold text-[#0F172A]">{ETIQUETA[tipo]}</span>
-                  <span className="tabular-nums text-[#64748B]">
+              <div key={tipo} className="flex flex-col gap-1.5">
+                <div className="flex items-center gap-2 text-body-sm">
+                  <img src={iconoDeCarga(tipo, carga, capacidad).href} alt="" className="block -my-1" />
+                  <span className="font-sans font-semibold text-neutral-900">{ETIQUETA[tipo]}</span>
+                  <span className="tabular-nums text-neutral-600">
                     {enRuta} / {total} en ruta
                   </span>
                   <span
-                    className={`ml-auto tabular-nums ${nivel ? TEXTO_SEMAFORO[nivel] : 'text-[#64748B]'}`}
+                    className={`ml-auto tabular-nums ${nivel ? TEXTO_SEMAFORO[nivel] : 'text-neutral-600'}`}
                     title="Paquetes sin entregar sobre la capacidad de las unidades fuera del almacén. Baja a medida que entregan."
                   >
                     {cargaABordo === null ? 'sin unidades fuera' : `carga ${carga}/${capacidad} · ${Math.round(cargaABordo * 100)} %`}
                   </span>
                 </div>
                 <div
-                  className="h-[4px] bg-[#E2E8F0] rounded-full overflow-hidden"
+                  className="h-1 bg-neutral-200 rounded-full overflow-hidden"
                   role="meter"
                   aria-label={`Carga a bordo de ${ETIQUETA[tipo].toLowerCase()}`}
                   aria-valuemin={0}
@@ -229,15 +229,15 @@ export const EstadoFlota: React.FC<EstadoFlotaProps> = ({ onSeleccionar, resalta
               </div>
             );
           })}
-          <p className="text-[11px] text-[#64748B]">
+          <p className="text-caption text-neutral-600">
             Carga: {NIVELES_CARGA.map((n) => `${NOMBRE_CARGA[n].toLowerCase()} ${RANGO_OCUPACION[n]}`).join(' · ')}
           </p>
         </section>
 
         {/* Requiere atención */}
-        <section className="px-[12px] pt-[12px] pb-[14px] border-b border-[#E2E8F0] flex flex-col gap-[12px]">
+        <section className="px-3 pt-3 pb-3.5 border-b border-neutral-200 flex flex-col gap-3">
           <TituloSeccion derecha={atencion.length}>Requiere atención</TituloSeccion>
-          {atencion.length === 0 && <p className="font-sans text-[12px] text-[#64748B]">Ninguna unidad requiere atención.</p>}
+          {atencion.length === 0 && <p className="font-sans text-body-sm text-neutral-600">Ninguna unidad requiere atención.</p>}
           {atencion.map((item) => (
             <FilaConBarra key={item.titulo} color={item.color} titulo={item.titulo} detalle={item.detalle} detalleMono />
           ))}
@@ -246,17 +246,17 @@ export const EstadoFlota: React.FC<EstadoFlotaProps> = ({ onSeleccionar, resalta
         {/* Todas las unidades: lista completa, clicable (abre su detalle), filtrable por estado y por rangos de
             km al destino (E11), ordenable (E13–E17) y con búsqueda por minutos o km al destino o desde el
             origen (E06–E09). */}
-        <section className="px-[12px] pt-[12px] pb-[14px] flex flex-col gap-[8px]" aria-label="Todas las unidades">
+        <section className="px-3 pt-3 pb-3.5 flex flex-col gap-2" aria-label="Todas las unidades">
           <TituloSeccion derecha={`${unidadesFiltradas.length} de ${flota.total}`}>Todas las unidades</TituloSeccion>
-          <div className="flex items-center gap-[6px] text-[12px]">
-            <label htmlFor="orden-unidades" className="font-sans text-[#64748B] whitespace-nowrap">
+          <div className="flex items-center gap-1.5 text-body-sm">
+            <label htmlFor="orden-unidades" className="font-sans text-neutral-600 whitespace-nowrap">
               Ordenar por
             </label>
             <select
               id="orden-unidades"
               value={orden}
               onChange={(e) => cambiarOrden(e.target.value as CriterioOrden)}
-              className="h-[26px] px-[6px] rounded-[4px] border border-[#CBD5E1] bg-white text-[12px] text-[#0F172A]"
+              className="h-7 px-1.5 rounded-control border border-neutral-300 bg-superficie text-body-sm text-neutral-900"
             >
               {CRITERIOS_ORDEN.map(({ valor, etiqueta }) => (
                 <option key={valor} value={valor}>
@@ -269,15 +269,15 @@ export const EstadoFlota: React.FC<EstadoFlotaProps> = ({ onSeleccionar, resalta
               onClick={() => setSentido(sentido === 'ASC' ? 'DESC' : 'ASC')}
               aria-label={sentido === 'ASC' ? 'Orden ascendente; cambiar a descendente' : 'Orden descendente; cambiar a ascendente'}
               title={sentido === 'ASC' ? 'Ascendente' : 'Descendente'}
-              className="h-[26px] px-[8px] rounded-[4px] border border-[#CBD5E1] bg-white text-[#0F172A] hover:bg-[#F8FAFC] flex items-center gap-[4px]"
+              className="h-7 px-2 rounded-control border border-neutral-300 bg-superficie text-neutral-900 hover:bg-neutral-50 flex items-center gap-1"
             >
-              {sentido === 'ASC' ? <ArrowUpNarrowWide className="w-3.5 h-3.5" /> : <ArrowDownWideNarrow className="w-3.5 h-3.5" />}
-              <span className="text-[11px]">{sentido === 'ASC' ? 'Asc.' : 'Desc.'}</span>
+              {sentido === 'ASC' ? <ArrowUpNarrowWide className="size-3.5" /> : <ArrowDownWideNarrow className="size-3.5" />}
+              <span className="text-caption">{sentido === 'ASC' ? 'Asc.' : 'Desc.'}</span>
             </button>
           </div>
-          <fieldset className="flex flex-wrap items-center gap-[6px] text-[12px]">
+          <fieldset className="flex flex-wrap items-center gap-1.5 text-body-sm">
             <legend className="sr-only">Buscar por tiempo o distancia del tramo en curso</legend>
-            <label htmlFor="minutos-unidades" className="font-sans text-[#64748B] whitespace-nowrap">
+            <label htmlFor="minutos-unidades" className="font-sans text-neutral-600 whitespace-nowrap">
               A ≤
             </label>
             <input
@@ -290,9 +290,9 @@ export const EstadoFlota: React.FC<EstadoFlotaProps> = ({ onSeleccionar, resalta
               onChange={(e) => setMinutos(e.target.value)}
               step={magnitud === 'KM' ? 'any' : 1}
               aria-label={magnitud === 'KM' ? 'Kilómetros como máximo' : 'Minutos como máximo'}
-              className="h-[26px] w-[56px] px-[6px] rounded-[4px] border border-[#CBD5E1] bg-white tabular-nums text-[12px] text-[#0F172A]"
+              className="h-7 w-14 px-1.5 rounded-control border border-neutral-300 bg-superficie tabular-nums text-body-sm text-neutral-900"
             />
-            <div role="radiogroup" aria-label="Magnitud de la búsqueda" className="flex rounded-[4px] border border-[#CBD5E1] overflow-hidden">
+            <div role="radiogroup" aria-label="Magnitud de la búsqueda" className="flex rounded-control border border-neutral-300 overflow-hidden">
               {(
                 [
                   ['MIN', 'min'],
@@ -306,16 +306,16 @@ export const EstadoFlota: React.FC<EstadoFlotaProps> = ({ onSeleccionar, resalta
                   aria-checked={magnitud === valor}
                   aria-label={valor === 'MIN' ? 'Minutos' : 'Kilómetros'}
                   onClick={() => setMagnitud(valor)}
-                  className={`h-[24px] px-[8px] text-[11px] font-sans ${
-                    magnitud === valor ? 'bg-[#DBEAFE] text-[#1E40AF] font-medium' : 'bg-white text-[#64748B] hover:bg-[#F8FAFC]'
+                  className={`h-6 px-2 text-caption font-sans ${
+                    magnitud === valor ? 'bg-primary-100 text-primary-700 font-medium' : 'bg-superficie text-neutral-600 hover:bg-neutral-50'
                   }`}
                 >
                   {etiqueta}
                 </button>
               ))}
             </div>
-            <span className="font-sans text-[#64748B]">de la</span>
-            <div role="radiogroup" aria-label="Referencia de tiempo" className="flex rounded-[4px] border border-[#CBD5E1] overflow-hidden">
+            <span className="font-sans text-neutral-600">de la</span>
+            <div role="radiogroup" aria-label="Referencia de tiempo" className="flex rounded-control border border-neutral-300 overflow-hidden">
               {(
                 [
                   ['LLEGADA', 'Llegada al destino'],
@@ -328,8 +328,8 @@ export const EstadoFlota: React.FC<EstadoFlotaProps> = ({ onSeleccionar, resalta
                   role="radio"
                   aria-checked={referencia === valor}
                   onClick={() => setReferencia(valor)}
-                  className={`h-[24px] px-[8px] text-[11px] font-sans ${
-                    referencia === valor ? 'bg-[#DBEAFE] text-[#1E40AF] font-medium' : 'bg-white text-[#64748B] hover:bg-[#F8FAFC]'
+                  className={`h-6 px-2 text-caption font-sans ${
+                    referencia === valor ? 'bg-primary-100 text-primary-700 font-medium' : 'bg-superficie text-neutral-600 hover:bg-neutral-50'
                   }`}
                 >
                   {etiqueta}
@@ -337,41 +337,41 @@ export const EstadoFlota: React.FC<EstadoFlotaProps> = ({ onSeleccionar, resalta
               ))}
             </div>
             {limite !== null && (
-              <button type="button" onClick={() => setMinutos('')} className="text-[11px] text-[#1E40AF] hover:underline">
+              <button type="button" onClick={() => setMinutos('')} className="text-caption text-primary-600 hover:underline">
                 Quitar
               </button>
             )}
           </fieldset>
-          <div className="flex flex-wrap items-center gap-[4px] text-[12px]" role="group" aria-label="Distancia al destino">
-            <span className="font-sans text-[#64748B] mr-[2px]">Al destino:</span>
+          <div className="flex flex-wrap items-center gap-1 text-body-sm" role="group" aria-label="Distancia al destino">
+            <span className="font-sans text-neutral-600 mr-0.5">Al destino:</span>
             {RANGOS_KM.map(({ id, etiqueta }) => (
               <button
                 key={id}
                 type="button"
                 aria-pressed={rangosKm.has(id)}
                 onClick={() => alternarRangoKm(id)}
-                className={`px-[7px] py-[3px] rounded-[4px] text-[12px] font-sans tabular-nums ${
-                  rangosKm.has(id) ? 'bg-[#DBEAFE] text-[#1E40AF] font-medium' : 'bg-white border border-[#E2E8F0] text-[#64748B] hover:border-[#CBD5E1]'
+                className={`px-2 py-1 rounded text-body-sm font-sans tabular-nums ${
+                  rangosKm.has(id) ? 'bg-primary-100 text-primary-700 font-medium' : 'bg-superficie border border-neutral-200 text-neutral-600 hover:border-neutral-300'
                 }`}
               >
                 {etiqueta}
               </button>
             ))}
             {rangosKm.size > 0 && (
-              <button type="button" onClick={() => cambiarRangosKm(new Set())} className="text-[11px] text-[#1E40AF] hover:underline">
+              <button type="button" onClick={() => cambiarRangosKm(new Set())} className="text-caption text-primary-600 hover:underline">
                 Todas las distancias
               </button>
             )}
           </div>
-          <div className="flex flex-wrap gap-[4px]" role="group" aria-label="Filtrar unidades">
+          <div className="flex flex-wrap gap-1" role="group" aria-label="Filtrar unidades">
             {FILTROS_UNIDAD.map(({ valor, etiqueta }) => (
               <button
                 key={valor}
                 type="button"
                 aria-pressed={filtro === valor}
                 onClick={() => setFiltro(valor)}
-                className={`px-[7px] py-[3px] rounded-[4px] text-[12px] font-sans ${
-                  filtro === valor ? 'bg-[#DBEAFE] text-[#1E40AF] font-medium' : 'bg-white border border-[#E2E8F0] text-[#64748B] hover:border-[#CBD5E1]'
+                className={`px-2 py-1 rounded text-body-sm font-sans ${
+                  filtro === valor ? 'bg-primary-100 text-primary-700 font-medium' : 'bg-superficie border border-neutral-200 text-neutral-600 hover:border-neutral-300'
                 }`}
               >
                 {etiqueta}
@@ -379,7 +379,7 @@ export const EstadoFlota: React.FC<EstadoFlotaProps> = ({ onSeleccionar, resalta
             ))}
           </div>
           {unidadesFiltradas.length === 0 && (
-            <p className="font-sans text-[12px] text-[#64748B]">
+            <p className="font-sans text-body-sm text-neutral-600">
               {limite !== null
                 ? magnitud === 'KM'
                   ? 'Ninguna unidad dentro de esa distancia.'
@@ -413,19 +413,19 @@ export const EstadoFlota: React.FC<EstadoFlotaProps> = ({ onSeleccionar, resalta
                   key={u.codigo}
                   data-fila-unidad={u.codigo}
                   aria-current={seleccionada ? 'true' : undefined}
-                  className={`flex items-stretch -mx-[4px] rounded ${seleccionada ? 'bg-[#EFF6FF] ring-1 ring-[#1E40AF]' : ''}`}
+                  className={`flex items-stretch -mx-1 rounded ${seleccionada ? 'bg-primary-50 ring-1 ring-primary-600' : ''}`}
                 >
                   <button
                     type="button"
                     onClick={elegir}
                     data-unidad={u.codigo}
-                    className="flex-1 min-w-0 py-[5px] flex flex-col gap-[1px] text-left text-[12px] hover:bg-[#F8FAFC] px-[4px] rounded"
+                    className="flex-1 min-w-0 py-1.5 flex flex-col gap-px text-left text-body-sm hover:bg-neutral-50 px-1 rounded"
                   >
-                    <span className="flex items-center gap-[8px] w-full">
-                      <img src={iconoDeUnidad(u).href} alt="" className="block -my-[4px]" />
-                      <span className="font-semibold text-[#0F172A]">{u.codigo}</span>
-                      <span className="text-[#64748B] truncate">{ESTADO_UNIDAD[u.estado]}</span>
-                      <span className={`ml-auto flex items-center gap-[5px] tabular-nums whitespace-nowrap ${TEXTO_SEMAFORO[nivel]}`}>
+                    <span className="flex items-center gap-2 w-full">
+                      <img src={iconoDeUnidad(u).href} alt="" className="block -my-1" />
+                      <span className="font-semibold text-neutral-900">{u.codigo}</span>
+                      <span className="text-neutral-600 truncate">{ESTADO_UNIDAD[u.estado]}</span>
+                      <span className={`ml-auto flex items-center gap-1.5 tabular-nums whitespace-nowrap ${TEXTO_SEMAFORO[nivel]}`}>
                         {porcentaje === null ? (
                           '—'
                         ) : (
@@ -436,16 +436,16 @@ export const EstadoFlota: React.FC<EstadoFlotaProps> = ({ onSeleccionar, resalta
                         )}
                       </span>
                     </span>
-                    <span className="pl-[38px] text-[11px] text-[#64748B] tabular-nums truncate">
+                    <span className="pl-10 text-caption text-neutral-600 tabular-nums truncate">
                       {u.tramo && paraLlegar !== null && desdeSalida !== null ? (
                         <>
                           → ({Math.round(u.tramo.destino.x)},{Math.round(u.tramo.destino.y)}) ·{' '}
-                          <span className={referencia === 'SALIDA' ? 'text-[#0F172A] font-medium' : undefined}>
+                          <span className={referencia === 'SALIDA' ? 'text-neutral-900 font-medium' : undefined}>
                             salió {formatearHora(u.tramo.salida)} · hace {formatearDuracion(desdeSalida)}
                             {desdeOrigen !== null && ` · ${formatoKm(desdeOrigen)}`}
                           </span>{' '}
                           ·{' '}
-                          <span className={referencia === 'LLEGADA' ? 'text-[#0F172A] font-medium' : undefined}>
+                          <span className={referencia === 'LLEGADA' ? 'text-neutral-900 font-medium' : undefined}>
                             llega {formatearHora(u.tramo.llegada)} · en {formatearDuracion(paraLlegar)}
                             {alDestino !== null && ` · ${formatoKm(alDestino)}`}
                           </span>
@@ -455,10 +455,10 @@ export const EstadoFlota: React.FC<EstadoFlotaProps> = ({ onSeleccionar, resalta
                       )}
                     </span>
                     {(u.kmPorRecorrer > 0 || u.distanciaRecorridaKm > 0) && (
-                      <span className="pl-[38px] text-[11px] text-[#64748B] tabular-nums truncate">
-                        Ruta: <span className={orden === 'KM_RECORRIDOS' ? 'text-[#0F172A] font-medium' : undefined}>recorrió {formatoKm(u.distanciaRecorridaKm)}</span>
+                      <span className="pl-10 text-caption text-neutral-600 tabular-nums truncate">
+                        Ruta: <span className={orden === 'KM_RECORRIDOS' ? 'text-neutral-900 font-medium' : undefined}>recorrió {formatoKm(u.distanciaRecorridaKm)}</span>
                         {' · '}
-                        <span className={orden === 'KM_POR_RECORRER' ? 'text-[#0F172A] font-medium' : undefined}>faltan {formatoKm(u.kmPorRecorrer)}</span>
+                        <span className={orden === 'KM_POR_RECORRER' ? 'text-neutral-900 font-medium' : undefined}>faltan {formatoKm(u.kmPorRecorrer)}</span>
                       </span>
                     )}
                   </button>
@@ -466,7 +466,7 @@ export const EstadoFlota: React.FC<EstadoFlotaProps> = ({ onSeleccionar, resalta
                     type="button"
                     onClick={() => onSeleccionar(objeto)}
                     aria-label={`Ver detalle de ${u.codigo}`}
-                    className="w-[24px] shrink-0 text-[#64748B] hover:text-[#0F172A]"
+                    className="w-6 shrink-0 text-neutral-600 hover:text-neutral-900"
                   >
                     ›
                   </button>

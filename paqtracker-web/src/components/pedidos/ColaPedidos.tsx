@@ -3,59 +3,39 @@ import {
   Search,
   X,
   ChevronDown,
-  ArrowUp,
-  ArrowDown,
-  ArrowUpDown,
+  ArrowUpNarrowWide,
+  ArrowDownWideNarrow,
   Download,
   Plus,
-  MapPin,
-  Clock,
   RotateCcw,
-  User,
-  Package,
-  Truck,
-  ChevronRight,
+  ArrowRight,
   AlertTriangle,
 } from 'lucide-react';
 import { PLAZOS_HORAS, UNIDADES, esPlazoRegular, type PlazoHoras, type TipoUnidad } from '../../config/dominio';
 import { ESTADO_EN_ESPERA, NOMBRE_HOLGURA, RANGO_HOLGURA, etiquetaPlazo } from '../../config/glosario';
 import { capitalizar, formatearMiles } from '../../lib/formato';
-import { useCerrarConEscape } from '../../hooks/useCerrarConEscape';
-import { useFocoAtrapado } from '../../hooks/useFocoAtrapado';
+import { cn } from '../../lib/clases';
 import { useColaPedidos } from '../../hooks/usePedidos';
 import { useDatosOperacion } from '../../hooks/useDatosOperacion';
-import { useTrazabilidadPedido } from '../../hooks/useTrazabilidadPedido';
 import type { EstadoPedidoCola, NivelHolgura, PedidoEnCola } from '../../types/pedidos';
-import { COLOR_HOLGURA } from './estilos';
+import { Boton, EncabezadoPagina, Entrada, EstadoVacio, Insignia, Tarjeta } from '../ui';
+import { DetallePedido } from './DetallePedido';
+import { COLOR_HOLGURA, TONO_ESTADO } from './estilos';
 import { PuntoHolgura } from './iconos';
 
-const ESTADOS: Record<EstadoPedidoCola, { etiqueta: string; badge: string; dot: string }> = {
-  EN_TRANSITO: {
-    etiqueta: 'En tránsito',
-    badge: 'bg-blue-50 text-blue-700 border-blue-200',
-    dot: 'bg-blue-600',
-  },
-  PLANIFICADO: {
-    etiqueta: 'Planificado',
-    badge: 'bg-indigo-50 text-indigo-700 border-indigo-200',
-    dot: 'bg-indigo-600',
-  },
-  REGISTRADO: {
-    etiqueta: ESTADO_EN_ESPERA,
-    badge: 'bg-slate-100 text-slate-700 border-slate-200',
-    dot: 'bg-slate-500',
-  },
-  ENTREGADO: {
-    etiqueta: 'Entregado',
-    badge: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-    dot: 'bg-emerald-600',
-  },
-  INCUMPLIDO: {
-    etiqueta: 'Incumplido',
-    badge: 'bg-rose-50 text-rose-700 border-rose-200',
-    dot: 'bg-rose-600',
-  },
+const ESTADOS: Record<EstadoPedidoCola, { etiqueta: string }> = {
+  EN_TRANSITO: { etiqueta: 'En tránsito' },
+  PLANIFICADO: { etiqueta: 'Planificado' },
+  REGISTRADO: { etiqueta: ESTADO_EN_ESPERA },
+  ENTREGADO: { etiqueta: 'Entregado' },
+  INCUMPLIDO: { etiqueta: 'Incumplido' },
 };
+
+const InsigniaEstado: React.FC<{ estado: EstadoPedidoCola }> = ({ estado }) => (
+  <Insignia tono={TONO_ESTADO[estado]} punto>
+    {ESTADOS[estado].etiqueta}
+  </Insignia>
+);
 
 const TODOS = 'TODOS';
 const SIN_ASIGNAR = 'SIN_ASIGNAR';
@@ -96,7 +76,13 @@ function comparar(a: PedidoEnCola, b: PedidoEnCola, campo: CampoOrden): number {
   }
 }
 
-/** Encabezado de columna ordenable: clic alterna ascendente → descendente → sin orden. */
+const CELDA = 'py-2 px-4';
+
+/**
+ * Encabezado de columna ordenable: clic alterna ascendente → descendente → sin orden. Sin orden activo
+ * muestra el ícono ascendente atenuado (lo que hará el primer clic); al ordenar, el de la dirección vigente
+ * en azul, como en Flota.
+ */
 const EncabezadoOrdenable: React.FC<{
   campo: CampoOrden;
   orden: Orden | null;
@@ -105,18 +91,24 @@ const EncabezadoOrdenable: React.FC<{
   children: React.ReactNode;
 }> = ({ campo, orden, onOrdenar, alinear, children }) => {
   const activo = orden?.campo === campo;
-  const Icono = activo ? (orden!.asc ? ArrowUp : ArrowDown) : ArrowUpDown;
+  const descendente = activo && !orden!.asc;
+  const Icono = descendente ? ArrowDownWideNarrow : ArrowUpNarrowWide;
   return (
-    <th className={`py-2 px-4 ${alinear === 'right' ? 'text-right' : ''}`}>
+    <th className={cn(CELDA, alinear === 'right' && 'text-right')} aria-sort={activo ? (descendente ? 'descending' : 'ascending') : undefined}>
       <button
         type="button"
         onClick={() => onOrdenar(campo)}
-        className={`inline-flex items-center gap-1 hover:text-slate-900 transition ${
-          alinear === 'right' ? 'flex-row-reverse' : ''
-        } ${activo ? 'text-slate-900' : ''}`}
+        className={cn(
+          'group/orden inline-flex items-center gap-1 uppercase transition-colors hover:text-neutral-900 cursor-pointer',
+          alinear === 'right' && 'flex-row-reverse',
+          activo && 'text-neutral-900',
+        )}
       >
         {children}
-        <Icono className={`w-3 h-3 ${activo ? 'text-blue-700' : 'text-slate-400'}`} />
+        <Icono
+          className={cn('size-3.5 shrink-0', activo ? 'text-primary-600' : 'text-neutral-400 group-hover/orden:text-neutral-600')}
+          aria-hidden="true"
+        />
       </button>
     </th>
   );
@@ -137,20 +129,21 @@ const SelectFiltro: React.FC<SelectFiltroProps> = ({ label, valor, opciones, act
   const etiquetaSeleccionada = opciones.find((o) => o.valor === valor)?.etiqueta ?? 'Todos';
   return (
     <div
-      className={`relative inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg text-xs font-sans border transition cursor-pointer ${
+      className={cn(
+        'relative inline-flex h-8 items-center gap-1.5 rounded-control border px-2.5 text-body-sm transition-colors cursor-pointer focus-within:border-primary-600 focus-within:ring-2 focus-within:ring-primary-600/20',
         activo
-          ? 'bg-blue-50 border-blue-300 text-blue-800 font-medium'
-          : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50'
-      }`}
+          ? 'border-primary-600/40 bg-primary-50 font-medium text-primary-700'
+          : 'border-neutral-300 bg-superficie text-neutral-700 hover:bg-neutral-50',
+      )}
     >
-      <span className="text-slate-500 font-normal">{label}:</span>
-      <span className="truncate max-w-[120px]">{etiquetaSeleccionada}</span>
-      <ChevronDown className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+      <span className="font-normal text-neutral-600">{label}:</span>
+      <span className="max-w-32 truncate">{etiquetaSeleccionada}</span>
+      <ChevronDown className="size-3.5 shrink-0 text-neutral-500" aria-hidden="true" />
       <select
         value={valor}
         onChange={(e) => onCambiar(e.target.value)}
         aria-label={`Filtrar por ${label}`}
-        className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+        className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
       >
         <option value={TODOS}>Todos</option>
         {opciones.map((o) => (
@@ -162,6 +155,30 @@ const SelectFiltro: React.FC<SelectFiltroProps> = ({ label, valor, opciones, act
     </div>
   );
 };
+
+/** Acceso rápido a un filtro (botón de alternar con aria-pressed). */
+const FiltroRapido: React.FC<{ activo: boolean; tono: 'critical' | 'primary'; onClick: () => void; children: React.ReactNode }> = ({
+  activo,
+  tono,
+  onClick,
+  children,
+}) => (
+  <button
+    type="button"
+    aria-pressed={activo}
+    onClick={onClick}
+    className={cn(
+      'h-8 rounded-control border px-2.5 text-body-sm font-medium transition-colors cursor-pointer',
+      activo
+        ? tono === 'critical'
+          ? 'border-critical-600/40 bg-critical-50 text-critical-600'
+          : 'border-primary-600/40 bg-primary-50 text-primary-700'
+        : 'border-neutral-300 bg-superficie text-neutral-700 hover:bg-neutral-50 hover:text-neutral-900',
+    )}
+  >
+    {children}
+  </button>
+);
 
 function exportarCsv(pedidos: PedidoEnCola[]) {
   const encabezado = ['ID', 'Cliente', 'Destino', 'Cantidad', 'Plazo', 'Hora límite', 'Salida', 'Llegada estimada', 'Holgura', 'Vehículo', 'Unidades', 'Estado'];
@@ -183,200 +200,11 @@ function exportarCsv(pedidos: PedidoEnCola[]) {
     .map((fila) => fila.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(','))
     .join('\n');
   const enlace = document.createElement('a');
-  enlace.href = URL.createObjectURL(new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' }));
+  enlace.href = URL.createObjectURL(new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' }));
   enlace.download = `pedidos-paqtracker-${new Date().toISOString().slice(0, 10)}.csv`;
   enlace.click();
   setTimeout(() => URL.revokeObjectURL(enlace.href), 0);
 }
-
-/** Panel lateral con el detalle y la trazabilidad del pedido; se cierra con Esc o tocando fuera. */
-const DrawerDetallePedido: React.FC<{
-  pedido: PedidoEnCola;
-  ejecucionId: string;
-  onCerrar: () => void;
-  onVerEnLienzo?: () => void;
-}> = ({ pedido, ejecucionId, onCerrar, onVerEnLienzo }) => {
-  const hitos = useTrazabilidadPedido(ejecucionId, pedido.codigo, pedido.estado);
-  const estadoInfo = ESTADOS[pedido.estado];
-  const cerrarRef = useRef<HTMLButtonElement>(null);
-  const dialogo = useRef<HTMLElement>(null);
-  useCerrarConEscape(true, onCerrar);
-  useFocoAtrapado(dialogo);
-  useEffect(() => {
-    cerrarRef.current?.focus();
-  }, []);
-
-  return (
-    <>
-      <div className="fixed inset-0 z-30 bg-black/20" onClick={onCerrar} aria-hidden="true" />
-      <aside
-        ref={dialogo}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="detalle-pedido-titulo"
-        className="fixed inset-y-0 right-0 z-40 w-full max-w-md bg-white shadow-2xl border-l border-slate-200 flex flex-col animate-in slide-in-from-right duration-200"
-      >
-        {/* Header Drawer */}
-        <div className="h-16 px-6 border-b border-slate-200 flex items-center justify-between bg-slate-50/50">
-          <div className="flex items-center gap-3">
-            <div className="size-9 rounded-[10px] bg-blue-100/70 border border-blue-200 flex items-center justify-center text-blue-700">
-              <Package className="w-4 h-4" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 id="detalle-pedido-titulo" className="tabular-nums font-bold text-base text-slate-900">
-                  {pedido.codigo}
-                </h3>
-                <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-sans font-medium border ${estadoInfo.badge}`}>
-                  <span className={`size-1.5 rounded-full ${estadoInfo.dot}`} />
-                  {estadoInfo.etiqueta}
-                </span>
-              </div>
-              <p className="text-xs text-slate-600 font-sans">Detalle y trazabilidad en vivo</p>
-            </div>
-          </div>
-          <button
-            ref={cerrarRef}
-            type="button"
-            onClick={onCerrar}
-            className="size-8 rounded-lg border border-slate-200 hover:bg-slate-100 flex items-center justify-center text-slate-500 hover:text-slate-800 transition"
-            title="Cerrar"
-            aria-label="Cerrar detalle del pedido"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-
-        {/* Contenido scrolleable */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-5 text-xs font-sans">
-          {/* Tarjeta de Datos del Cliente & Pedido */}
-          <div className="p-4 rounded-[10px] border border-slate-200 bg-white space-y-3">
-            <h4 className="text-[11px] font-semibold text-slate-500 tracking-wider uppercase">Información del pedido</h4>
-            <div className="space-y-2.5">
-              <div className="flex items-center justify-between">
-                <span className="text-slate-500 flex items-center gap-1.5">
-                  <User className="w-3.5 h-3.5 text-slate-500" />
-                  Cliente
-                </span>
-                <span className="font-medium text-slate-900 text-right">{pedido.cliente}</span>
-              </div>
-              {pedido.destino && (
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-500 flex items-center gap-1.5">
-                    <MapPin className="w-3.5 h-3.5 text-slate-500" />
-                    Destino (malla)
-                  </span>
-                  <span className="tabular-nums font-medium text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
-                    X: {pedido.destino.x} · Y: {pedido.destino.y}
-                  </span>
-                </div>
-              )}
-              <div className="flex items-center justify-between">
-                <span className="text-slate-500 flex items-center gap-1.5">
-                  <Package className="w-3.5 h-3.5 text-slate-500" />
-                  Cantidad
-                </span>
-                <span className="tabular-nums font-medium text-slate-900">{pedido.cantidad} unidades de P</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-slate-500 flex items-center gap-1.5">
-                  <Clock className="w-3.5 h-3.5 text-slate-500" />
-                  Tipo de entrega
-                </span>
-                <span className="font-medium text-slate-900">{etiquetaPlazo(pedido.plazoHoras)}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-slate-500">Hora límite</span>
-                <span className="tabular-nums font-semibold text-slate-900">{pedido.horaLimite}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Tarjeta de transporte y holgura */}
-          <div className="p-4 rounded-[10px] border border-slate-200 bg-slate-50/50 space-y-3">
-            <h4 className="text-[11px] font-semibold text-slate-500 tracking-wider uppercase">Transporte y holgura</h4>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="p-3 bg-white rounded-lg border border-slate-200">
-                <span className="text-[11px] text-slate-500 block mb-1">Vehículo asignado</span>
-                <div className="flex items-center gap-1.5 tabular-nums font-semibold text-slate-900">
-                  <Truck className="w-3.5 h-3.5 text-blue-600" />
-                  {pedido.vehiculo ? etiquetaVehiculo(pedido) : 'Sin asignar'}
-                </div>
-              </div>
-              <div className="p-3 bg-white rounded-lg border border-slate-200">
-                <span className="text-[11px] text-slate-500 block mb-1">Llegada estimada</span>
-                <div className="tabular-nums font-semibold text-slate-900">
-                  {pedido.eta ? pedido.eta : 'Aún sin calcular'}
-                </div>
-              </div>
-            </div>
-
-            <div className="p-3 bg-white rounded-lg border border-slate-200 flex items-center justify-between">
-              <span className="text-slate-600">Holgura restante</span>
-              <div className="flex items-center gap-2">
-                <PuntoHolgura nivel={pedido.nivelHolgura} />
-                <span className={`tabular-nums font-bold text-sm ${COLOR_HOLGURA[pedido.nivelHolgura]}`}>
-                  {pedido.holgura}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Timeline de Trazabilidad */}
-          <div className="space-y-3">
-            <h4 className="text-[11px] font-semibold text-slate-500 tracking-wider uppercase">Trazabilidad</h4>
-            {hitos.length > 0 ? (
-              <div className="relative pl-5 border-l-2 border-slate-200 space-y-4">
-                {hitos.map((hito, idx) => (
-                  <div key={idx} className="relative">
-                    <div
-                      className={`absolute -left-[27px] top-0.5 size-3.5 rounded-full border-2 border-white ${
-                        hito.reciente ? 'bg-blue-600 ring-2 ring-blue-100' : 'bg-slate-300'
-                      }`}
-                    />
-                    <div className="flex items-center justify-between mb-0.5">
-                      <span className="font-semibold text-slate-900">{hito.titulo}</span>
-                      <span className="tabular-nums text-slate-500 text-[11px]">{hito.hora}</span>
-                    </div>
-                    <p className="text-slate-600 leading-relaxed">{hito.detalle}</p>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="p-3.5 bg-slate-50 rounded-lg text-slate-500 text-center">
-                Pedido registrado. Los hitos de ruta aparecerán cuando salga a reparto.
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Footer Acciones */}
-        <div className="p-4 border-t border-slate-200 bg-white flex items-center gap-3">
-          {onVerEnLienzo && (
-            <button
-              type="button"
-              onClick={() => {
-                onCerrar();
-                onVerEnLienzo();
-              }}
-              className="flex-1 h-10 rounded-[6px] bg-[#1E40AF] hover:bg-[#1E3A8A] text-white font-medium text-xs flex items-center justify-center gap-2 shadow-xs transition"
-            >
-              <MapPin className="w-4 h-4" />
-              Ubicar en el mapa en vivo
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={onCerrar}
-            className="h-10 px-4 rounded-[6px] border border-slate-200 hover:bg-slate-50 text-slate-600 font-medium text-xs transition"
-          >
-            Cerrar
-          </button>
-        </div>
-      </aside>
-    </>
-  );
-};
 
 export const ColaPedidos: React.FC<{
   onRegistrar: () => void;
@@ -446,298 +274,245 @@ export const ColaPedidos: React.FC<{
   };
 
   return (
-    <section className="flex-1 min-h-0 flex flex-col bg-white border border-slate-200 rounded-[10px] shadow-xs overflow-hidden">
-      {/* 1. Header Toolbar */}
-      <div className="px-6 py-4 border-b border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white">
-        <div>
-          <div className="flex items-center gap-2.5">
-            <h2 className="font-sans font-bold text-base text-slate-800 tracking-tight">Pedidos</h2>
-            <span className="px-2.5 py-0.5 rounded-full text-xs tabular-nums font-medium bg-slate-100 text-slate-700 border border-slate-200">
-              {formatearMiles(total)} pedidos
-            </span>
-          </div>
-          <p className="text-xs text-slate-500 font-sans mt-0.5">
-            Seguimiento de cada pedido: su holgura, la unidad asignada y su estado.
-          </p>
-        </div>
+    <>
+      <EncabezadoPagina
+        titulo="Pedidos"
+        estado={<Insignia className="tabular-nums">{formatearMiles(total)} pedidos</Insignia>}
+        descripcion="Seguimiento de cada pedido: su holgura, la unidad asignada y su estado."
+        acciones={
+          <>
+            <Boton icono={Download} onClick={() => exportarCsv(visibles)} title="Descargar lista visible en formato CSV">
+              Exportar CSV
+            </Boton>
+            <Boton variante="primario" icono={Plus} onClick={onRegistrar}>
+              Registrar pedido
+            </Boton>
+          </>
+        }
+      />
 
-        <div className="flex items-center gap-2.5">
-          <button
-            type="button"
-            onClick={() => exportarCsv(visibles)}
-            className="h-9 px-3.5 rounded-lg border border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-700 font-sans text-xs font-medium flex items-center gap-2 transition"
-            title="Descargar lista visible en formato CSV"
-          >
-            <Download className="w-3.5 h-3.5 text-slate-500" />
-            <span>Exportar CSV</span>
-          </button>
-          <button
-            type="button"
-            onClick={onRegistrar}
-            className="h-9 px-4 rounded-lg bg-[#1E40AF] hover:bg-[#1E3A8A] text-white font-sans text-xs font-medium flex items-center gap-1.5 shadow-xs transition"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Registrar pedido</span>
-          </button>
-        </div>
-      </div>
+      <div className="flex min-h-0 flex-1 flex-col p-4 lg:p-6">
+        <Tarjeta sinRelleno className="min-h-0 flex-1 overflow-hidden" cuerpoClassName="flex min-h-0 flex-1 flex-col">
+          {/* Filtros y búsqueda */}
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-neutral-200 bg-superficie px-4 py-3 lg:px-6">
+            <div className="flex min-w-72 flex-1 flex-wrap items-center gap-2">
+              {/* Buscador */}
+              <div className="relative w-64 min-w-52">
+                <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-neutral-500" aria-hidden="true" />
+                <Entrada
+                  ref={buscadorRef}
+                  type="text"
+                  placeholder="Buscar por código, cliente, destino o unidad…"
+                  aria-label="Buscar pedidos"
+                  value={busqueda}
+                  onChange={(e) => setBusqueda(e.target.value)}
+                  className="pl-8 pr-7 text-body-sm"
+                />
+                {!busqueda && (
+                  <kbd className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 rounded border border-neutral-200 px-1 font-sans text-caption text-neutral-500">
+                    /
+                  </kbd>
+                )}
+                {busqueda && (
+                  <button
+                    type="button"
+                    onClick={() => setBusqueda('')}
+                    aria-label="Limpiar búsqueda"
+                    className="absolute right-1.5 top-1/2 flex size-5 -translate-y-1/2 items-center justify-center rounded text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900"
+                  >
+                    <X className="size-3" aria-hidden="true" />
+                  </button>
+                )}
+              </div>
 
-      {/* 2. Filtros y Búsqueda */}
-      <div className="px-6 py-3 border-b border-slate-200 bg-slate-50/60 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-2 flex-1 min-w-[280px]">
-          {/* Buscador omnibox */}
-          <div className="relative w-64 min-w-[200px]">
-            <Search className="w-3.5 h-3.5 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
-            <input
-              ref={buscadorRef}
-              type="text"
-              placeholder="Buscar por código, cliente, destino o unidad…"
-              aria-label="Buscar pedidos"
-              value={busqueda}
-              onChange={(e) => setBusqueda(e.target.value)}
-              className="w-full h-8 pl-8 pr-7 text-xs font-sans bg-white border border-slate-200 rounded-lg outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600/30 placeholder:text-slate-400"
-            />
-            {!busqueda && (
-              <kbd className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-sans text-slate-400 border border-slate-200 rounded px-1 pointer-events-none">
-                /
-              </kbd>
-            )}
-            {busqueda && (
-              <button
-                type="button"
-                onClick={() => setBusqueda('')}
-                aria-label="Limpiar búsqueda"
-                className="absolute right-2 top-1/2 -translate-y-1/2 size-4 text-slate-500 hover:text-slate-600"
+              {/* Accesos rápidos a los filtros más usados */}
+              <FiltroRapido
+                tono="critical"
+                activo={filtros.holgura === 'ROJO'}
+                onClick={() => setFiltros({ ...filtros, holgura: filtros.holgura === 'ROJO' ? TODOS : 'ROJO' })}
               >
-                <X className="w-3 h-3" />
-              </button>
-            )}
-          </div>
+                Críticos
+              </FiltroRapido>
+              <FiltroRapido
+                tono="primary"
+                activo={filtros.estado === 'REGISTRADO'}
+                onClick={() => setFiltros({ ...filtros, estado: filtros.estado === 'REGISTRADO' ? TODOS : 'REGISTRADO' })}
+              >
+                {ESTADO_EN_ESPERA}
+              </FiltroRapido>
+              <span className="h-5 w-px bg-neutral-200" aria-hidden="true" />
 
-          {/* Accesos rápidos a los filtros más usados */}
-          <button
-            type="button"
-            aria-pressed={filtros.holgura === 'ROJO'}
-            onClick={() => setFiltros({ ...filtros, holgura: filtros.holgura === 'ROJO' ? TODOS : 'ROJO' })}
-            className={`h-8 px-2.5 rounded-lg text-xs font-sans font-medium border transition ${
-              filtros.holgura === 'ROJO'
-                ? 'bg-rose-100 border-rose-300 text-rose-800'
-                : 'bg-white border-slate-200 text-slate-600 hover:border-rose-200 hover:bg-rose-50'
-            }`}
-          >
-            Críticos
-          </button>
-          <button
-            type="button"
-            aria-pressed={filtros.estado === 'REGISTRADO'}
-            onClick={() => setFiltros({ ...filtros, estado: filtros.estado === 'REGISTRADO' ? TODOS : 'REGISTRADO' })}
-            className={`h-8 px-2.5 rounded-lg text-xs font-sans font-medium border transition ${
-              filtros.estado === 'REGISTRADO'
-                ? 'bg-blue-50 border-blue-300 text-blue-800'
-                : 'bg-white border-slate-200 text-slate-600 hover:border-blue-200 hover:bg-blue-50'
-            }`}
-          >
-            {ESTADO_EN_ESPERA}
-          </button>
-          <span className="w-px h-5 bg-slate-200" aria-hidden="true" />
+              <SelectFiltro
+                label="Estado"
+                valor={filtros.estado}
+                activo={filtros.estado !== TODOS}
+                opciones={Object.entries(ESTADOS).map(([val, { etiqueta }]) => ({ valor: val, etiqueta }))}
+                onCambiar={(val) => setFiltros({ ...filtros, estado: val as Filtros['estado'] })}
+              />
 
-          {/* Filtros Dropdowns */}
-          <SelectFiltro
-            label="Estado"
-            valor={filtros.estado}
-            activo={filtros.estado !== TODOS}
-            opciones={Object.entries(ESTADOS).map(([val, { etiqueta }]) => ({ valor: val, etiqueta }))}
-            onCambiar={(val) => setFiltros({ ...filtros, estado: val as Filtros['estado'] })}
-          />
+              <SelectFiltro
+                label="Holgura"
+                valor={filtros.holgura}
+                activo={filtros.holgura !== TODOS}
+                opciones={[
+                  { valor: 'ROJO', etiqueta: `${NOMBRE_HOLGURA.ROJO} (${RANGO_HOLGURA.ROJO})` },
+                  { valor: 'AMBAR', etiqueta: `${NOMBRE_HOLGURA.AMBAR} (${RANGO_HOLGURA.AMBAR})` },
+                  { valor: 'VERDE', etiqueta: `${NOMBRE_HOLGURA.VERDE} (${RANGO_HOLGURA.VERDE})` },
+                  { valor: 'CERRADO', etiqueta: NOMBRE_HOLGURA.CERRADO },
+                ]}
+                onCambiar={(val) => setFiltros({ ...filtros, holgura: val as Filtros['holgura'] })}
+              />
 
-          <SelectFiltro
-            label="Holgura"
-            valor={filtros.holgura}
-            activo={filtros.holgura !== TODOS}
-            opciones={[
-              { valor: 'ROJO', etiqueta: `${NOMBRE_HOLGURA.ROJO} (${RANGO_HOLGURA.ROJO})` },
-              { valor: 'AMBAR', etiqueta: `${NOMBRE_HOLGURA.AMBAR} (${RANGO_HOLGURA.AMBAR})` },
-              { valor: 'VERDE', etiqueta: `${NOMBRE_HOLGURA.VERDE} (${RANGO_HOLGURA.VERDE})` },
-              { valor: 'CERRADO', etiqueta: NOMBRE_HOLGURA.CERRADO },
-            ]}
-            onCambiar={(val) => setFiltros({ ...filtros, holgura: val as Filtros['holgura'] })}
-          />
+              <SelectFiltro
+                label="Plazo"
+                valor={String(filtros.plazo)}
+                activo={filtros.plazo !== TODOS}
+                opciones={PLAZOS_HORAS.map((p) => ({ valor: String(p), etiqueta: etiquetaPlazo(p) }))}
+                onCambiar={(val) => setFiltros({ ...filtros, plazo: val === TODOS ? TODOS : (Number(val) as PlazoHoras) })}
+              />
 
-          <SelectFiltro
-            label="Plazo"
-            valor={String(filtros.plazo)}
-            activo={filtros.plazo !== TODOS}
-            opciones={PLAZOS_HORAS.map((p) => ({ valor: String(p), etiqueta: etiquetaPlazo(p) }))}
-            onCambiar={(val) => setFiltros({ ...filtros, plazo: val === TODOS ? TODOS : (Number(val) as PlazoHoras) })}
-          />
+              <SelectFiltro
+                label="Vehículo"
+                valor={filtros.vehiculo}
+                activo={filtros.vehiculo !== TODOS}
+                opciones={[
+                  ...(Object.keys(UNIDADES) as TipoUnidad[]).map((t) => ({ valor: t, etiqueta: capitalizar(UNIDADES[t].nombre) })),
+                  { valor: SIN_ASIGNAR, etiqueta: 'Sin asignar' },
+                ]}
+                onCambiar={(val) => setFiltros({ ...filtros, vehiculo: val as Filtros['vehiculo'] })}
+              />
 
-          <SelectFiltro
-            label="Vehículo"
-            valor={filtros.vehiculo}
-            activo={filtros.vehiculo !== TODOS}
-            opciones={[
-              ...(Object.keys(UNIDADES) as TipoUnidad[]).map((t) => ({ valor: t, etiqueta: capitalizar(UNIDADES[t].nombre) })),
-              { valor: SIN_ASIGNAR, etiqueta: 'Sin asignar' },
-            ]}
-            onCambiar={(val) => setFiltros({ ...filtros, vehiculo: val as Filtros['vehiculo'] })}
-          />
-
-          {filtrosActivos > 0 && (
-            <button
-              type="button"
-              onClick={limpiarFiltros}
-              className="inline-flex items-center gap-1 text-xs text-blue-700 hover:text-blue-900 font-medium px-2 py-1 rounded hover:bg-blue-50 transition"
-            >
-              <RotateCcw className="w-3 h-3" />
-              Limpiar filtros ({filtrosActivos})
-            </button>
-          )}
-        </div>
-
-        <div className="text-xs text-slate-500 font-sans">
-          Mostrando <span className="tabular-nums font-semibold text-slate-800">{visibles.length}</span> de{' '}
-          <span className="tabular-nums text-slate-700">{formatearMiles(total)}</span>
-        </div>
-      </div>
-
-      {/* 3. Data Table */}
-      <div className="flex-1 min-h-0 overflow-auto">
-        <table className="w-full table-auto text-left text-xs font-sans border-collapse whitespace-nowrap">
-          <thead className="sticky top-0 bg-slate-50 border-b border-slate-200 z-10 text-slate-600 font-semibold tracking-wider text-[11px] uppercase">
-            <tr>
-              <EncabezadoOrdenable campo="codigo" orden={orden} onOrdenar={alternarOrden}>Código</EncabezadoOrdenable>
-              <EncabezadoOrdenable campo="cliente" orden={orden} onOrdenar={alternarOrden}>Cliente</EncabezadoOrdenable>
-              <th className="py-2 px-4">Destino</th>
-              <EncabezadoOrdenable campo="cantidad" orden={orden} onOrdenar={alternarOrden} alinear="right">Cant.</EncabezadoOrdenable>
-              <th className="py-2 px-4">Plazo</th>
-              <EncabezadoOrdenable campo="horaLimite" orden={orden} onOrdenar={alternarOrden}>Hora límite</EncabezadoOrdenable>
-              <th className="py-2 px-4">Salida</th>
-              <th className="py-2 px-4">Llegada estimada</th>
-              <EncabezadoOrdenable campo="holgura" orden={orden} onOrdenar={alternarOrden}>Holgura</EncabezadoOrdenable>
-              <th className="py-2 px-4">Vehículo</th>
-              <EncabezadoOrdenable campo="estado" orden={orden} onOrdenar={alternarOrden}>Estado</EncabezadoOrdenable>
-              <th className="py-2 px-3 w-10 text-center">
-                <span className="sr-only">Abrir detalle</span>
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {visibles.map((pedido) => {
-              const estado = ESTADOS[pedido.estado];
-              const regular = esPlazoRegular(pedido.plazoHoras);
-              return (
-                <tr
-                  key={pedido.codigo}
-                  onClick={() => setCodigoSeleccionado(pedido.codigo)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      setCodigoSeleccionado(pedido.codigo);
-                    }
-                  }}
-                  tabIndex={0}
-                  className="hover:bg-blue-50/40 focus-visible:bg-blue-50/60 cursor-pointer transition-colors group"
+              {filtrosActivos > 0 && (
+                <Boton
+                  variante="fantasma"
+                  tamano="sm"
+                  icono={RotateCcw}
+                  onClick={limpiarFiltros}
+                  className="text-primary-700 hover:bg-primary-50 hover:text-primary-700"
                 >
-                  <td className="py-2 px-4 tabular-nums font-semibold text-slate-900 group-hover:text-blue-700">
-                    {pedido.codigo}
-                  </td>
-                  <td className="py-2 px-4 font-medium text-slate-800" title={pedido.cliente}>
-                    <div className="max-w-[260px] truncate">{pedido.cliente}</div>
-                  </td>
-                  <td className="py-2 px-4 tabular-nums text-slate-500">
-                    {pedido.destino ? `(${pedido.destino.x}, ${pedido.destino.y})` : '—'}
-                  </td>
-                  <td className="py-2 px-4 tabular-nums text-right text-slate-700 font-medium">
-                    {pedido.cantidad} u.
-                  </td>
-                  <td className="py-2 px-4">
-                    <span
-                      className={`inline-block px-2 py-0.5 rounded text-[11px] font-sans font-medium ${
-                        regular ? 'bg-slate-100 text-slate-700' : 'bg-amber-50 text-amber-800 border border-amber-200'
-                      }`}
-                    >
-                      {etiquetaPlazo(pedido.plazoHoras)}
-                    </span>
-                  </td>
-                  <td className="py-2 px-4 tabular-nums text-slate-600">{pedido.horaLimite}</td>
-                  <td className="py-2 px-4 tabular-nums text-slate-600">{pedido.salida ?? '—'}</td>
-                  <td className="py-2 px-4 tabular-nums text-slate-700 font-medium">{pedido.eta ?? '—'}</td>
-                  <td className="py-2 px-4">
-                    <span className="inline-flex items-center gap-1.5 tabular-nums font-medium">
-                      <PuntoHolgura nivel={pedido.nivelHolgura} />
-                      <span className={COLOR_HOLGURA[pedido.nivelHolgura]}>{pedido.holgura}</span>
-                    </span>
-                  </td>
-                  <td className="py-2 px-4 tabular-nums text-slate-700">
-                    {pedido.vehiculo ? (
-                      // Fraccionado: la unidad principal y cuántas más; el título nombra todas.
-                      <span className="font-medium text-blue-700" title={pedido.unidades.length > 1 ? `Va en ${pedido.unidades.join(', ')}` : undefined}>
-                        {etiquetaVehiculo(pedido)}
-                        {pedido.unidades.length > 1 && <span className="text-slate-500 font-normal"> +{pedido.unidades.length - 1}</span>}
-                      </span>
-                    ) : (
-                      <span className="text-slate-500">Sin asignar</span>
-                    )}
-                  </td>
-                  <td className="py-2 px-4">
-                    <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium border ${estado.badge}`}>
-                      <span className={`size-1.5 rounded-full ${estado.dot}`} />
-                      {estado.etiqueta}
-                    </span>
-                  </td>
-                  <td className="py-2 px-3 text-center text-slate-300 group-hover:text-blue-600 transition">
-                    <ChevronRight className="w-4 h-4 inline-block" />
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+                  Limpiar filtros ({filtrosActivos})
+                </Boton>
+              )}
+            </div>
 
-        {/* Estados de error o vacío */}
-        {error && (
-          <div className="p-8 text-center space-y-2">
-            <AlertTriangle className="w-8 h-8 text-rose-500 mx-auto" />
-            <p className="text-rose-700 font-medium">{error}</p>
+            <div className="text-body-sm text-neutral-600">
+              Mostrando <span className="font-semibold tabular-nums text-neutral-900">{visibles.length}</span> de{' '}
+              <span className="tabular-nums text-neutral-700">{formatearMiles(total)}</span>
+            </div>
           </div>
-        )}
 
-        {!error && visibles.length === 0 && (
-          <div className="p-12 text-center space-y-3">
-            <div className="size-12 rounded-full bg-slate-100 flex items-center justify-center mx-auto text-slate-500">
-              <Search className="w-5 h-5" />
-            </div>
-            <div>
-              <p className="text-slate-800 font-semibold text-sm">
-                {cargando
-                  ? 'Cargando cola de pedidos…'
-                  : pedidos.length === 0
-                  ? 'No hay pedidos registrados en este momento'
-                  : 'Ningún pedido coincide con la búsqueda o filtros aplicados'}
-              </p>
-              <p className="text-slate-500 text-xs mt-1">
-                {filtrosActivos > 0 ? 'Intenta modificar o limpiar los filtros seleccionados.' : 'Registra un nuevo pedido para iniciar la planificación.'}
-              </p>
-            </div>
-            {filtrosActivos > 0 && (
-              <button
-                type="button"
-                onClick={limpiarFiltros}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-xs text-slate-700 font-medium transition"
-              >
-                <RotateCcw className="w-3.5 h-3.5" />
-                Restablecer búsqueda y filtros
-              </button>
+          {/* Tabla */}
+          <div className="min-h-0 flex-1 overflow-auto">
+            <table className="w-full table-auto border-collapse whitespace-nowrap text-left text-body-sm">
+              <thead className="sticky top-0 z-10 border-b border-neutral-200 bg-neutral-50 text-overline uppercase text-neutral-600 [&_th]:font-semibold">
+                <tr>
+                  <EncabezadoOrdenable campo="codigo" orden={orden} onOrdenar={alternarOrden}>Código</EncabezadoOrdenable>
+                  <EncabezadoOrdenable campo="cliente" orden={orden} onOrdenar={alternarOrden}>Cliente</EncabezadoOrdenable>
+                  <th className={CELDA}>Destino</th>
+                  <EncabezadoOrdenable campo="cantidad" orden={orden} onOrdenar={alternarOrden} alinear="right">Cant.</EncabezadoOrdenable>
+                  <th className={CELDA}>Plazo</th>
+                  <EncabezadoOrdenable campo="horaLimite" orden={orden} onOrdenar={alternarOrden}>Hora límite</EncabezadoOrdenable>
+                  <th className={CELDA}>Salida</th>
+                  <th className={CELDA}>Llegada estimada</th>
+                  <EncabezadoOrdenable campo="holgura" orden={orden} onOrdenar={alternarOrden}>Holgura</EncabezadoOrdenable>
+                  <th className={CELDA}>Vehículo</th>
+                  <EncabezadoOrdenable campo="estado" orden={orden} onOrdenar={alternarOrden}>Estado</EncabezadoOrdenable>
+                  <th className="w-10 px-3 py-2 text-center">
+                    <span className="sr-only">Abrir detalle</span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-neutral-100">
+                {visibles.map((pedido) => (
+                  <tr
+                    key={pedido.codigo}
+                    onClick={() => setCodigoSeleccionado(pedido.codigo)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        setCodigoSeleccionado(pedido.codigo);
+                      }
+                    }}
+                    tabIndex={0}
+                    className="group cursor-pointer outline-none transition-colors hover:bg-neutral-100 focus-visible:bg-primary-50 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-600/40"
+                  >
+                    <td className={cn(CELDA, 'font-semibold tabular-nums text-neutral-900 group-hover:text-primary-700')}>{pedido.codigo}</td>
+                    <td className={cn(CELDA, 'font-medium text-neutral-900')} title={pedido.cliente}>
+                      <div className="max-w-64 truncate">{pedido.cliente}</div>
+                    </td>
+                    <td className={cn(CELDA, 'tabular-nums text-neutral-600')}>
+                      {pedido.destino ? `(${pedido.destino.x}, ${pedido.destino.y})` : '—'}
+                    </td>
+                    <td className={cn(CELDA, 'text-right font-medium tabular-nums text-neutral-700')}>{pedido.cantidad} u.</td>
+                    <td className={CELDA}>
+                      <Insignia tono={esPlazoRegular(pedido.plazoHoras) ? 'neutral' : 'warn'}>{etiquetaPlazo(pedido.plazoHoras)}</Insignia>
+                    </td>
+                    <td className={cn(CELDA, 'tabular-nums text-neutral-600')}>{pedido.horaLimite}</td>
+                    <td className={cn(CELDA, 'tabular-nums text-neutral-600')}>{pedido.salida ?? '—'}</td>
+                    <td className={cn(CELDA, 'font-medium tabular-nums text-neutral-700')}>{pedido.eta ?? '—'}</td>
+                    <td className={CELDA}>
+                      <span className="inline-flex items-center gap-1.5 font-medium tabular-nums">
+                        <PuntoHolgura nivel={pedido.nivelHolgura} />
+                        <span className={COLOR_HOLGURA[pedido.nivelHolgura]}>{pedido.holgura}</span>
+                      </span>
+                    </td>
+                    <td className={cn(CELDA, 'tabular-nums text-neutral-700')}>
+                      {pedido.vehiculo ? (
+                        // Fraccionado: la unidad principal y cuántas más; el título nombra todas.
+                        <span className="font-medium text-neutral-900" title={pedido.unidades.length > 1 ? `Va en ${pedido.unidades.join(', ')}` : undefined}>
+                          {etiquetaVehiculo(pedido)}
+                          {pedido.unidades.length > 1 && <span className="font-normal text-neutral-600"> +{pedido.unidades.length - 1}</span>}
+                        </span>
+                      ) : (
+                        <span className="text-neutral-600">Sin asignar</span>
+                      )}
+                    </td>
+                    <td className={CELDA}>
+                      <InsigniaEstado estado={pedido.estado} />
+                    </td>
+                    <td className="px-3 py-2 text-center text-neutral-400 transition-colors group-hover:text-primary-600">
+                      <ArrowRight className="inline-block size-3.5" aria-hidden="true" />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            {/* Estados de error o vacío */}
+            {error && <EstadoVacio tono="critical" icono={AlertTriangle} titulo={error} />}
+
+            {!error && visibles.length === 0 && (
+              <EstadoVacio
+                icono={Search}
+                titulo={
+                  cargando
+                    ? 'Cargando cola de pedidos…'
+                    : pedidos.length === 0
+                      ? 'No hay pedidos registrados en este momento'
+                      : 'Ningún pedido coincide con la búsqueda o filtros aplicados'
+                }
+                descripcion={
+                  filtrosActivos > 0 ? 'Intenta modificar o limpiar los filtros seleccionados.' : 'Registra un nuevo pedido para iniciar la planificación.'
+                }
+                accion={
+                  filtrosActivos > 0 && (
+                    <Boton tamano="sm" icono={RotateCcw} onClick={limpiarFiltros}>
+                      Restablecer búsqueda y filtros
+                    </Boton>
+                  )
+                }
+              />
             )}
           </div>
-        )}
+        </Tarjeta>
       </div>
 
-      {/* Drawer Lateral si hay pedido seleccionado */}
+      {/* Detalle lateral del pedido seleccionado */}
       {pedidoSeleccionado && (
-        <DrawerDetallePedido
+        <DetallePedido
           pedido={pedidoSeleccionado}
           ejecucionId={datos.ejecucionId}
+          estado={<InsigniaEstado estado={pedidoSeleccionado.estado} />}
           onCerrar={() => setCodigoSeleccionado(null)}
           // Solo se ofrece si el pedido figura en el estado en vivo: si no, no hay nada que ubicar en el mapa.
           onVerEnLienzo={
@@ -745,6 +520,6 @@ export const ColaPedidos: React.FC<{
           }
         />
       )}
-    </section>
+    </>
   );
 };

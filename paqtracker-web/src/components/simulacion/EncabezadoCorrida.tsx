@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
+import { ArrowLeft, Square } from 'lucide-react';
 import { RelojReal } from '../layout/RelojReal';
 import { DialogoConfirmacion } from '../modals/DialogoConfirmacion';
+import { Boton, Insignia } from '../ui';
+import { cn } from '../../lib/clases';
 import { ESTADO_CORRIDA } from './estadoCorrida';
 import { formatearCronometro, formatearDiasHoras, formatearFechaLarga, formatearHora } from '../../lib/formato';
 import type { EscenarioSimulacion, EstadoCorrida, MarcaAvance } from '../../types/simulacion';
@@ -35,29 +38,30 @@ interface EncabezadoCorridaProps {
   conectado?: boolean;
 }
 
+// Jerarquía de los tiempos (C16, la verifica rubrica.tiempos-flota.test.tsx por clase): etiquetas 11 px <
+// transcurridos 14 px < fecha-hora real 16 px < fecha-hora simulada 20 px. Los 11 y 14 px coinciden con
+// `text-caption` y `text-title-sm`; 16 y 20 px no existen en la escala (es el único reloj de ese tamaño).
+const ETIQUETA_TIEMPO = 'text-[11px] leading-4 font-medium text-neutral-600';
+const VALOR_TRANSCURRIDO = 'tabular-nums font-medium text-[14px] leading-5 text-neutral-900';
+
 const Bloque: React.FC<{ etiqueta: string; children: React.ReactNode }> = ({ etiqueta, children }) => (
-  <div className="flex flex-col gap-[1px] whitespace-nowrap">
-    <span className="font-sans font-medium text-[11px] text-[#64748B]">{etiqueta}</span>
+  <div className="flex flex-col gap-px whitespace-nowrap">
+    <span className={ETIQUETA_TIEMPO}>{etiqueta}</span>
     {children}
   </div>
 );
 
-const Separador = () => <div className="bg-[#E2E8F0] h-[36px] w-px shrink-0" />;
+const Separador = () => <div className="h-9 w-px shrink-0 bg-neutral-200" />;
 
 /**
  * Par de tiempos (C12–C16): fecha-hora y transcurrido juntos, del momento simulado o del real. Las dos
  * tarjetas tienen la misma estructura para leerse como pares; la simulada va más destacada.
  */
 const TarjetaTiempo: React.FC<{ titulo: string; children: React.ReactNode }> = ({ titulo, children }) => (
-  <section
-    aria-label={titulo}
-    className="flex items-center gap-x-[16px] rounded-[8px] border border-[#E2E8F0] bg-[#F8FAFC] px-[12px] py-[5px]"
-  >
+  <section aria-label={titulo} className="flex items-center gap-x-4 rounded-control border border-neutral-200 bg-neutral-50 px-3 py-1">
     {children}
   </section>
 );
-
-const VALOR_TRANSCURRIDO = 'tabular-nums font-medium text-[14px] text-[#0F172A]';
 
 export const EncabezadoCorrida: React.FC<EncabezadoCorridaProps> = ({
   escenario,
@@ -92,18 +96,21 @@ export const EncabezadoCorrida: React.FC<EncabezadoCorridaProps> = ({
   const porcentaje = Math.round(progreso * 100);
   const dia = Math.min(diasTotales, Math.floor(simuladoMs / DIA_MS) + 1);
   const pasoRotulo = Math.max(1, Math.ceil(diasTotales / ROTULOS_MAXIMOS));
-  const titulo = colapso ? 'SIMULACIÓN — COLAPSO' : escenario === 'COLAPSO_LOGISTICO' ? 'SIMULACIÓN — HASTA EL COLAPSO' : `SIMULACIÓN ${diasTotales} DÍAS`;
+  const titulo = colapso ? 'Simulación — colapso' : escenario === 'COLAPSO_LOGISTICO' ? 'Simulación — hasta el colapso' : `Simulación ${diasTotales} días`;
+  const estadoCorrida = ESTADO_CORRIDA[estado];
+  /** Color del avance: primario en curso, crítico en el colapso. */
+  const rellenoAvance = colapso ? 'bg-critical-600' : 'bg-primary-600';
 
   return (
-    <div className="shrink-0 leading-[normal]">
+    <div className="shrink-0">
       {/* Banda de modo */}
-      <div className={`h-[24px] px-[16px] flex items-center gap-[8px] text-[12px] text-white ${colapso ? 'bg-[#B91C1C]' : 'bg-[#1E40AF]'}`}>
-        <span className="size-[6px] rounded-full bg-white" />
-        <span className="font-sans font-semibold tracking-[0.5px]">{titulo}</span>
+      <div className={cn('flex h-6 items-center gap-2 px-4 text-body-sm text-sobre-color', colapso ? 'bg-critical-600' : 'bg-primary-600')}>
+        <span aria-hidden="true" className="size-1.5 rounded-full bg-sobre-color" />
+        <span className="font-semibold">{titulo}</span>
         <span className="tabular-nums opacity-80">
           · {formatearFechaLarga(inicio, false)} → {colapso ? `Colapso ${formatearFechaLarga(relojSimulado, false)}` : formatearFechaLarga(fin, false)}
         </span>
-        <span className="ml-auto font-sans opacity-90">
+        <span className="ml-auto opacity-90">
           {colapso
             ? 'Simulación finalizada por colapso logístico'
             : estado === 'COMPLETADA'
@@ -116,20 +123,16 @@ export const EncabezadoCorrida: React.FC<EncabezadoCorridaProps> = ({
 
       {/* Encabezado de corrida. flex-wrap: a lo ancho justo (~1366 px con "Detener simulación" visible)
           pasa a una segunda línea en vez de cortar los botones de la derecha. */}
-      <header className="min-h-[56px] bg-white border-b border-[#E2E8F0] px-[16px] py-[10px] flex flex-wrap items-center gap-x-[20px] gap-y-[10px]">
+      <header className="flex min-h-14 flex-wrap items-center gap-x-5 gap-y-2.5 border-b border-neutral-200 bg-superficie px-4 py-2.5">
         <TarjetaTiempo titulo="Simulado">
           <Bloque etiqueta={colapso ? 'Instante del colapso' : 'Fecha y hora simulada'}>
-            <span className="flex items-center gap-[8px]">
-              <span className={`tabular-nums font-semibold text-[20px] leading-[24px] ${colapso ? 'text-[#B91C1C]' : 'text-[#0F172A]'}`}>
+            <span className="flex items-center gap-2">
+              <span className={cn('text-[20px] font-semibold leading-6 tabular-nums', colapso ? 'text-critical-600' : 'text-neutral-900')}>
                 {formatearFechaLarga(relojSimulado)}
               </span>
-              <span
-                className={`rounded-[4px] px-[6px] py-[2px] tabular-nums font-medium text-[11px] whitespace-nowrap ${
-                  colapso ? 'border border-[#B91C1C] text-[#B91C1C]' : 'bg-[#DBEAFE] text-[#1E40AF]'
-                }`}
-              >
+              <Insignia tono={colapso ? 'critical' : 'primary'} contorno={colapso} className="tabular-nums">
                 {colapso ? `Día simulado ${dia}` : `Día ${dia} de ${diasTotales}`}
-              </span>
+              </Insignia>
             </span>
           </Bloque>
           <Bloque etiqueta="Tiempo simulado transcurrido">
@@ -138,12 +141,12 @@ export const EncabezadoCorrida: React.FC<EncabezadoCorridaProps> = ({
         </TarjetaTiempo>
         <TarjetaTiempo titulo="Real">
           <Bloque etiqueta="Fecha y hora real">
-            <RelojReal className="tabular-nums font-semibold text-[16px] leading-[24px] text-[#0F172A]" />
+            <RelojReal className="text-[16px] font-semibold leading-6 tabular-nums text-neutral-900" />
           </Bloque>
           <Bloque etiqueta={colapso || terminada ? 'Tiempo real / Estado' : 'Tiempo real transcurrido / Restante'}>
             <span className={VALOR_TRANSCURRIDO}>
               {formatearCronometro(transcurridoRealMs)}
-              <span className="font-normal text-[#64748B]"> · {colapso || terminada ? 'terminada' : `~${formatearCronometro(restanteRealMs)} restante`}</span>
+              <span className="font-normal text-neutral-600"> · {colapso || terminada ? 'terminada' : `~${formatearCronometro(restanteRealMs)} restante`}</span>
             </span>
           </Bloque>
         </TarjetaTiempo>
@@ -151,49 +154,39 @@ export const EncabezadoCorrida: React.FC<EncabezadoCorridaProps> = ({
           <>
             <Separador />
             <Bloque etiqueta={`Ventana de ejecución ${VENTANA_EJECUCION_MIN.minima}–${VENTANA_EJECUCION_MIN.maxima} min`}>
-              <span className={`tabular-nums text-[12px] ${enVentana ? 'text-[#15803D]' : 'text-[#B45309]'}`}>
+              <span className={cn('text-body-sm tabular-nums', enVentana ? 'text-ok-700' : 'text-warn-700')}>
                 {formatearCronometro(estimadoTotalRealMs)} estimado {enVentana ? '✓' : '· fuera de la ventana'}
               </span>
             </Bloque>
           </>
         )}
         <div className="flex-1" />
-        <button type="button" onClick={onSalir} className="font-sans text-[12px] text-[#64748B] hover:text-[#0F172A] hover:underline">
-          ‹ Otras simulaciones
-        </button>
+        <Boton variante="fantasma" tamano="sm" icono={ArrowLeft} onClick={onSalir} className="text-neutral-600">
+          Otras simulaciones
+        </Boton>
         {estado === 'EJECUCION' && (
           <>
             {/* Separado de la navegación y con confirmación: detener afecta a todos los que observan. */}
             <Separador />
-            <button
-              type="button"
+            <Boton
+              variante="peligro-secundario"
+              tamano="sm"
+              icono={Square}
               onClick={() => setConfirmandoDetener(true)}
               disabled={!conectado}
               title={conectado ? undefined : 'Sin conexión con el servidor: espera a reconectar'}
-              className="h-[30px] px-[12px] rounded-[6px] border border-[#FECACA] font-sans font-medium text-[12px] text-[#B91C1C] hover:bg-[#FEF2F2] whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent"
             >
               Detener simulación
-            </button>
-            <span className="bg-[#DBEAFE] rounded-[4px] px-[10px] py-[5px] flex items-center gap-[6px] font-sans font-semibold text-[12px] tracking-[0.5px] text-[#1E40AF] whitespace-nowrap">
-              <span className="size-[6px] rounded-full bg-[#1E40AF] animate-pulse" /> EN EJECUCIÓN
-            </span>
+            </Boton>
           </>
         )}
+        <Insignia tamano="md" tono={estadoCorrida.tono} punto={estadoCorrida.punto} contorno={estadoCorrida.contorno}>
+          {estadoCorrida.texto}
+        </Insignia>
         {estado !== 'EJECUCION' && (
-          <>
-            <span
-              className={`rounded-[4px] px-[10px] py-[5px] flex items-center gap-[6px] font-sans font-semibold text-[12px] tracking-[0.5px] whitespace-nowrap ${ESTADO_CORRIDA[estado].clase}`}
-            >
-              <span className={`size-[6px] rounded-full ${ESTADO_CORRIDA[estado].punto}`} /> {ESTADO_CORRIDA[estado].texto}
-            </span>
-            <button
-              type="button"
-              onClick={onVerInforme}
-              className="h-[32px] px-[16px] rounded-[6px] bg-[#1E40AF] hover:bg-[#1E3A8A] text-white font-sans font-semibold text-[12px] whitespace-nowrap"
-            >
-              Ver informe de la corrida
-            </button>
-          </>
+          <Boton variante="primario" onClick={onVerInforme}>
+            Ver informe de la corrida
+          </Boton>
         )}
       </header>
 
@@ -220,31 +213,35 @@ export const EncabezadoCorrida: React.FC<EncabezadoCorridaProps> = ({
       />
 
       {/* Avance de la corrida */}
-      <div className="h-[44px] bg-white border-b border-[#E2E8F0] px-[16px] flex items-center gap-[16px] text-[12px]">
-        <span className="font-sans text-[#64748B] whitespace-nowrap w-[110px] shrink-0">Avance de la corrida</span>
+      <div className="flex h-11 items-center gap-4 border-b border-neutral-200 bg-superficie px-4 text-body-sm">
+        <span className="w-28 shrink-0 whitespace-nowrap text-neutral-600">Avance de la corrida</span>
         {sinHorizonteFijo ? (
           <>
-            <div className="relative flex-1 h-full flex items-center" role="status" aria-label="Avance de la corrida: sin horizonte fijo, corre hasta el colapso">
-              <div className="absolute left-0 right-0 h-[4px] rounded-full bg-[#E2E8F0]" />
+            <div className="relative flex h-full flex-1 items-center" role="status" aria-label="Avance de la corrida: sin horizonte fijo, corre hasta el colapso">
+              <div className="absolute inset-x-0 h-1 rounded-full bg-neutral-200" />
               <div
-                className={`absolute h-[4px] rounded-full ${colapso ? 'bg-[#B91C1C] left-0 right-0' : terminada ? 'bg-[#94A3B8] left-0 right-0' : 'bg-[#1E40AF] left-0 w-1/3 animate-pulse'}`}
+                className={cn(
+                  'absolute h-1 rounded-full',
+                  colapso ? 'inset-x-0 bg-critical-600' : terminada ? 'inset-x-0 bg-neutral-400' : 'left-0 w-1/3 bg-primary-600 motion-safe:animate-pulse',
+                )}
               />
             </div>
-            <span className="tabular-nums font-medium text-[#0F172A] whitespace-nowrap">
+            <span className="whitespace-nowrap font-medium tabular-nums text-neutral-900">
               {colapso ? `Colapsó en el día simulado ${dia}` : estado === 'DETENIDA' ? `Detenida en el día simulado ${dia}` : `Día simulado ${dia} · sin horizonte fijo`}
             </span>
           </>
         ) : (
           <>
-            <div className="relative flex-1 h-full" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={porcentaje} aria-label="Avance de la corrida">
-              <div className="absolute left-0 right-0 top-[20px] h-[2px] bg-[#CBD5E1]" />
-              <div className={`absolute left-0 top-[19px] h-[4px] ${colapso ? 'bg-[#B91C1C]' : 'bg-[#1E40AF]'}`} style={{ width: `${progreso * 100}%` }} />
+            {/* Geometría del eje (44 px de alto): pista a 20 px, rótulos de día debajo y marcas encima. */}
+            <div className="relative h-full flex-1" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={porcentaje} aria-label="Avance de la corrida">
+              <div className="absolute inset-x-0 top-5 h-0.5 bg-neutral-300" />
+              <div className={cn('absolute left-0 top-5 h-1 -translate-y-px', rellenoAvance)} style={{ width: `${progreso * 100}%` }} />
               {Array.from({ length: diasTotales }, (_, i) => i)
                 .filter((i) => i % pasoRotulo === 0)
                 .map((i) => (
-                  <div key={i} className="absolute top-[16px]" style={{ left: `${(i / diasTotales) * 100}%` }}>
-                    <div className="w-px h-[10px] bg-[#94A3B8]" />
-                    <span className="absolute top-[12px] left-[2px] tabular-nums text-[11px] text-[#64748B]">D{i + 1}</span>
+                  <div key={i} className="absolute top-4" style={{ left: `${(i / diasTotales) * 100}%` }}>
+                    <div className="h-2.5 w-px bg-neutral-400" />
+                    <span className="absolute left-0.5 top-3 text-caption tabular-nums text-neutral-600">D{i + 1}</span>
                   </div>
                 ))}
               {/* Marcas de incidencias y del planificador ya ocurridas */}
@@ -254,26 +251,29 @@ export const EncabezadoCorrida: React.FC<EncabezadoCorridaProps> = ({
                   <span
                     key={m.id}
                     title={m.tipo === 'INCIDENCIA' ? 'Incidencia' : 'Planificador'}
-                    className={`absolute ${m.tipo === 'INCIDENCIA' ? 'top-[7px] size-[4px] bg-[#64748B]' : 'top-[7px] w-px h-[7px] bg-[#94A3B8]'}`}
+                    className={cn('absolute top-1.5', m.tipo === 'INCIDENCIA' ? 'size-1 bg-neutral-600' : 'h-2 w-px bg-neutral-400')}
                     style={{ left: `${Math.min(100, ((m.minuto * 60_000) / duracionMs) * 100)}%` }}
                   />
                 ))}
-              <div className="absolute top-[12px]" style={{ left: `${progreso * 100}%` }}>
-                <div className={`w-[2px] h-[18px] ${colapso ? 'bg-[#B91C1C]' : 'bg-[#1E40AF]'}`} />
+              <div className="absolute top-2.5" style={{ left: `${progreso * 100}%` }}>
+                <div className={cn('h-5 w-0.5', rellenoAvance)} />
                 <span
-                  className={`absolute -top-[10px] left-[6px] tabular-nums font-medium text-[12px] whitespace-nowrap ${colapso ? 'text-[#B91C1C]' : 'text-[#1E40AF]'} ${
-                    progreso > 0.85 ? '-translate-x-[calc(100%+12px)]' : ''
-                  }`}
+                  className={cn(
+                    'absolute -top-2 whitespace-nowrap font-medium tabular-nums',
+                    colapso ? 'text-critical-600' : 'text-primary-700',
+                    // Cerca del final el rótulo pasa a la izquierda del cursor para no salirse del eje.
+                    progreso > 0.85 ? 'right-1.5' : 'left-1.5',
+                  )}
                 >
                   D{dia} · {formatearHora(relojSimulado)}
                   {colapso && ' · Colapso'}
                 </span>
               </div>
             </div>
-            <span className="flex items-center gap-[6px] font-sans text-[#64748B] whitespace-nowrap">
-              <span className="size-[5px] bg-[#64748B]" /> Incidencia <span className="w-px h-[9px] bg-[#94A3B8]" /> Planificador
+            <span className="flex items-center gap-1.5 whitespace-nowrap text-neutral-600">
+              <span aria-hidden="true" className="size-1 bg-neutral-600" /> Incidencia <span aria-hidden="true" className="h-2 w-px bg-neutral-400" /> Planificador
             </span>
-            <span className="tabular-nums font-medium text-[#0F172A] whitespace-nowrap">
+            <span className="whitespace-nowrap font-medium tabular-nums text-neutral-900">
               {colapso || estado === 'DETENIDA' ? `Detenida en ${porcentaje} %` : `${porcentaje} % completado`}
             </span>
           </>

@@ -24,7 +24,7 @@ interface ListaAlmacenesProps {
 
 /** Contadores compactos de una fila: lo que va en camino, lo que sale pronto y lo entregado. */
 const Contadores: React.FC<{ enCamino: number; porSalir: number; entregadas: number }> = ({ enCamino, porSalir, entregadas }) => (
-  <span className="text-[11px] text-[#64748B] tabular-nums">
+  <span className="text-caption text-neutral-600 tabular-nums">
     ↗ {enCamino} en camino · ⏱ {porSalir} por salir · ✓ {entregadas} entregados
   </span>
 );
@@ -41,9 +41,9 @@ export const ListaAlmacenes: React.FC<ListaAlmacenesProps> = ({ resaltado, onRes
 
   return (
     <div className="flex-1 min-h-0 overflow-y-auto">
-      <section aria-label="Lista de almacenes" className="px-[12px] pt-[9px] pb-[6px] flex flex-col gap-[6px]">
+      <section aria-label="Lista de almacenes" className="px-3 pt-2.5 pb-1.5 flex flex-col gap-1.5">
         <TituloSeccion derecha={`envíos · ${VENTANA_PANEL_HORAS} h`}>Stock y envíos</TituloSeccion>
-        <ul ref={listaRef} className="flex flex-col gap-[4px]">
+        <ul ref={listaRef} className="flex flex-col gap-1">
           {ALMACENES.map((almacen) => {
             const estado = datos.almacenes.find((a) => a.id === almacen.id);
             const central = almacen.id === 'CENTRAL';
@@ -58,7 +58,7 @@ export const ListaAlmacenes: React.FC<ListaAlmacenesProps> = ({ resaltado, onRes
                 key={almacen.id}
                 data-almacen={almacen.id}
                 aria-current={seleccionado ? 'true' : undefined}
-                className={`flex items-stretch rounded-[6px] border ${seleccionado ? 'border-[#1E40AF] bg-[#EFF6FF]' : 'border-[#E2E8F0]'}`}
+                className={`flex items-stretch rounded-control border ${seleccionado ? 'border-primary-600 bg-primary-50' : 'border-neutral-200'}`}
               >
                 <button
                   type="button"
@@ -70,37 +70,37 @@ export const ListaAlmacenes: React.FC<ListaAlmacenesProps> = ({ resaltado, onRes
                       onCentrar(almacen.ubicacion);
                     }
                   }}
-                  className="flex-1 min-w-0 px-[10px] py-[7px] flex flex-col gap-[4px] text-left text-[12px] rounded-l-[6px] hover:bg-[#F8FAFC]"
+                  className="flex-1 min-w-0 px-2.5 py-2 flex flex-col gap-1 text-left text-body-sm rounded-l-control hover:bg-neutral-50"
                 >
-                  <span className="flex items-center gap-[8px] w-full">
+                  <span className="flex items-center gap-2 w-full">
                     {conStock && nivel ? (
                       <MarcaSemaforo nivel={nivel} titulo={NOMBRE_CARGA[nivel]} />
                     ) : (
-                      <span aria-hidden="true" className="size-[9px] rounded-[2px] bg-[#0F172A] shrink-0" />
+                      <span aria-hidden="true" className="size-2 rounded-sm bg-neutral-900 shrink-0" />
                     )}
-                    <span className="font-semibold text-[#0F172A]">{almacen.nombre}</span>
-                    <span className="text-[#64748B]">{central ? 'Central' : 'Intermedio'}</span>
-                    <span className={`ml-auto tabular-nums whitespace-nowrap ${conStock && nivel ? TEXTO_SEMAFORO[nivel] : 'text-[#64748B]'}`}>
+                    <span className="font-semibold text-neutral-900">{almacen.nombre}</span>
+                    <span className="text-neutral-600">{central ? 'Central' : 'Intermedio'}</span>
+                    <span className={`ml-auto tabular-nums whitespace-nowrap ${conStock && nivel ? TEXTO_SEMAFORO[nivel] : 'text-neutral-600'}`}>
                       {conStock ? `${estado.stock}/${estado.capacidad} · ${porcentaje} %` : central ? 'Sin tope' : '—'}
                     </span>
                   </span>
                   {conStock && nivel ? (
-                    <span className="h-[4px] bg-[#E2E8F0] rounded-full overflow-hidden" aria-hidden="true">
+                    <span className="h-1 bg-neutral-200 rounded-full overflow-hidden" aria-hidden="true">
                       <span className={`block h-full rounded-full ${FONDO_SEMAFORO[nivel]}`} style={{ width: `${Math.min(100, porcentaje ?? 0)}%` }} />
                     </span>
                   ) : (
-                    central && <span className="text-[11px] text-[#64748B]">{STOCK_CENTRAL}</span>
+                    central && <span className="text-caption text-neutral-600">{STOCK_CENTRAL}</span>
                   )}
-                  <span className="flex items-center gap-[8px]">
+                  <span className="flex items-center gap-2">
                     <Contadores enCamino={enCamino.length} porSalir={porSalir.length} entregadas={entregadas.length} />
-                    {estado?.stockBajo && <span className="ml-auto text-[11px] font-medium text-[#0F172A]">! {alertaStockBajo()}</span>}
+                    {estado?.stockBajo && <span className="ml-auto text-caption font-medium text-neutral-900">! {alertaStockBajo()}</span>}
                   </span>
                 </button>
                 <button
                   type="button"
                   onClick={() => onSeleccionar(objeto)}
                   aria-label={`Ver detalle del almacén ${almacen.nombre}`}
-                  className="w-[28px] shrink-0 flex items-center justify-center text-[#64748B] hover:text-[#0F172A] hover:bg-[#F8FAFC] rounded-r-[6px] border-l border-[#E2E8F0]"
+                  className="w-7 shrink-0 flex items-center justify-center text-neutral-600 hover:text-neutral-900 hover:bg-neutral-50 rounded-r-control border-l border-neutral-200"
                 >
                   ›
                 </button>
@@ -108,7 +108,7 @@ export const ListaAlmacenes: React.FC<ListaAlmacenesProps> = ({ resaltado, onRes
             );
           })}
         </ul>
-        <p className="text-[11px] text-[#64748B]">Un clic marca el almacén en el mapa; otro clic, o ›, abre su detalle.</p>
+        <p className="text-caption text-neutral-600">Un clic marca el almacén en el mapa; otro clic, o ›, abre su detalle.</p>
       </section>
     </div>
   );
@@ -143,8 +143,8 @@ export const EnviosAlmacen: React.FC<{ almacen: IdAlmacen; onSeleccionar: (selec
     { valor: 'entregadas', etiqueta: `Entregados · ${VENTANA_PANEL_HORAS} h (${envios.entregadas.length})` },
   ];
   return (
-    <section aria-label="Envíos del almacén" className="border-b border-[#E2E8F0]">
-      <div className="h-[29px] px-[12px] flex items-center gap-[12px] border-b border-[#E2E8F0] text-[12px] overflow-x-auto" role="tablist" aria-label="Envíos del almacén">
+    <section aria-label="Envíos del almacén" className="border-b border-neutral-200">
+      <div className="h-7 px-3 flex items-center gap-3 border-b border-neutral-200 text-body-sm overflow-x-auto" role="tablist" aria-label="Envíos del almacén">
         {opciones.map(({ valor, etiqueta }) => (
           <button
             key={valor}
@@ -152,15 +152,15 @@ export const EnviosAlmacen: React.FC<{ almacen: IdAlmacen; onSeleccionar: (selec
             role="tab"
             aria-selected={vista === valor}
             onClick={() => setVista(valor)}
-            className={`font-sans whitespace-nowrap ${vista === valor ? 'font-semibold text-[#0F172A]' : 'text-[#64748B] hover:text-[#0F172A]'}`}
+            className={`font-sans whitespace-nowrap ${vista === valor ? 'font-semibold text-neutral-900' : 'text-neutral-600 hover:text-neutral-900'}`}
           >
             {etiqueta}
           </button>
         ))}
       </div>
-      <div role="tabpanel" className="px-[12px] py-[6px]">
+      <div role="tabpanel" className="px-3 py-1.5">
         {lista.length === 0 ? (
-          <p className="text-[12px] text-[#64748B]">{VACIO[vista](desde)}</p>
+          <p className="text-body-sm text-neutral-600">{VACIO[vista](desde)}</p>
         ) : (
           <ul className="flex flex-col">
             {lista.map((f) => {

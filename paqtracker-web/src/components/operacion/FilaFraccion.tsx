@@ -13,10 +13,10 @@ import type { EstadoFraccion, Fraccion } from '../../types/operacion';
 export type ContextoFraccion = 'salida' | 'llegada' | 'entrega' | 'ruta';
 
 const COLOR_ESTADO: Record<EstadoFraccion, string> = {
-  PROGRAMADA: 'text-[#0F172A]',
-  EN_CAMINO: 'text-[#1E40AF]',
-  ENTREGADA: 'text-[#15803D]',
-  LIBERADA: 'text-[#64748B]',
+  PROGRAMADA: 'text-neutral-900',
+  EN_CAMINO: 'text-primary-600',
+  ENTREGADA: 'text-ok-700',
+  LIBERADA: 'text-neutral-600',
 };
 
 const nombreAlmacen = (id: Fraccion['origen']) => ALMACENES.find((a) => a.id === id)?.nombre ?? id;
@@ -44,29 +44,41 @@ interface FilaFraccionProps {
   ahora: Date;
   destino?: Coordenada;
   resaltada?: boolean;
-  onElegir: (fraccion: Fraccion) => void;
+  /** Sin valor, la fila es de solo lectura. */
+  onElegir?: (fraccion: Fraccion) => void;
 }
 
-export const FilaFraccion: React.FC<FilaFraccionProps> = ({ fraccion: f, total, contexto, ahora, destino, resaltada = false, onElegir }) => (
-  <li data-fraccion={f.codigo} aria-current={resaltada ? 'true' : undefined}>
-    <button
-      type="button"
-      onClick={() => onElegir(f)}
-      className={`w-full py-[4px] -mx-[4px] px-[4px] rounded flex flex-col gap-[1px] text-left text-[12px] ${
-        resaltada ? 'bg-[#EFF6FF] ring-1 ring-[#1E40AF]' : 'hover:bg-[#F8FAFC]'
-      }`}
-    >
-      <span className="flex items-center gap-[6px] w-full">
-        <span aria-hidden="true" className={`w-[12px] text-center ${COLOR_ESTADO[f.estado]}`}>
+export const FilaFraccion: React.FC<FilaFraccionProps> = ({ fraccion: f, total, contexto, ahora, destino, resaltada = false, onElegir }) => {
+  const contenido = (
+    <>
+      <span className="flex items-center gap-1.5 w-full">
+        <span aria-hidden="true" className={`w-3.5 text-center ${COLOR_ESTADO[f.estado]}`}>
           {MARCA_ESTADO_FRACCION[f.estado]}
         </span>
-        <span className="tabular-nums font-semibold text-[#0F172A]">{total > 1 ? f.codigo : f.pedido}</span>
-        <span className="tabular-nums text-[#64748B] truncate">
+        <span className="tabular-nums font-semibold text-neutral-900">{total > 1 ? f.codigo : f.pedido}</span>
+        <span className="tabular-nums text-neutral-600 truncate">
           · {f.cantidad} paq. · {f.unidad}
         </span>
         <span className={`ml-auto whitespace-nowrap ${COLOR_ESTADO[f.estado]}`}>{NOMBRE_ESTADO_FRACCION[f.estado]}</span>
       </span>
-      <span className="pl-[18px] text-[11px] text-[#64748B] tabular-nums truncate">{segundaLinea(f, contexto, ahora, destino)}</span>
-    </button>
-  </li>
-);
+      <span className="pl-5 text-caption text-neutral-600 tabular-nums truncate">{segundaLinea(f, contexto, ahora, destino)}</span>
+    </>
+  );
+  const base = 'w-full py-1 -mx-1 px-1 rounded flex flex-col gap-px text-left text-body-sm';
+  return (
+    <li data-fraccion={f.codigo} aria-current={resaltada ? 'true' : undefined}>
+      {onElegir ? (
+        <button
+          type="button"
+          onClick={() => onElegir(f)}
+          className={`${base} ${resaltada ? 'bg-primary-50 ring-1 ring-primary-600' : 'hover:bg-neutral-50'}`}
+        >
+          {contenido}
+        </button>
+      ) : (
+        // Solo lectura (detalle de Pedidos): sin acción, no se presenta como botón.
+        <div className={base}>{contenido}</div>
+      )}
+    </li>
+  );
+};

@@ -3,6 +3,7 @@ import { formatearDiaMesHora, formatearHolgura } from '../lib/formato';
 import type { PedidoApi } from '../types/api';
 import type { DatosOperacion } from '../types/operacion';
 import type { BorradorPedido, EstadoPedidoCola, PedidoEnCola, PedidoRegistrado, VehiculoAsignado } from '../types/pedidos';
+import { adaptarFraccion } from './adaptadorOperacion';
 import { clienteApi } from './clienteApi';
 
 // Pedidos (CU-01, CU-04) sobre paqtracker-api, adaptados a los modelos de vista del módulo Pedidos.
@@ -45,6 +46,7 @@ export function adaptarPedidoEnCola(pedido: PedidoApi, reloj: Date): PedidoEnCol
     estado: estadoEnCola(pedido),
     salida: salidaMs === null ? null : formatearDiaMesHora(new Date(salidaMs)),
     unidades: unidades.length > 0 ? unidades : pedido.unidad ? [pedido.unidad] : [],
+    fracciones: vigentes.map((f) => adaptarFraccion(pedido.codigo, f, reloj.getTime())),
   };
 }
 

@@ -1,6 +1,6 @@
 type Escala = Record<number, string>
 
-export declare const paleta: {
+type Paleta = {
   neutral: Escala
   primary: Escala
   info: Escala
@@ -8,6 +8,12 @@ export declare const paleta: {
   ok: Escala
   critical: Escala
 }
+
+type Funciones = Record<'fondo' | 'superficie' | 'inverso' | 'sobre-inverso' | 'sobre-color' | 'velo' | 'sombra', string>
+
+export declare const paleta: Paleta
+export declare const paletaOscura: Paleta
+export declare const semanticos: { claro: Funciones; oscuro: Funciones }
 
 declare const config: import('tailwindcss').Config
 export default config

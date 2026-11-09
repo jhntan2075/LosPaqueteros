@@ -1,8 +1,10 @@
 import React from 'react';
 import logo from '../../assets/marca/logo.svg';
-import { LayoutGrid, Package, PlayCircle, BarChart3, Clock, Radio, Settings, LogOut } from 'lucide-react';
-import { RelojReal } from './RelojReal';
+import { LayoutGrid, Package, PlayCircle, BarChart3, Radio, Settings, LogOut } from 'lucide-react';
+import { RelojesBarra } from './RelojesBarra';
+import { SelectorTema } from './SelectorTema';
 import { useSesion } from '../sesion/contextoSesion';
+import { Boton, Insignia } from '../ui';
 
 export type TabModulo = 'operacion' | 'pedidos' | 'simulacion' | 'metricas' | 'configuracion';
 
@@ -32,19 +34,19 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
   ];
 
   return (
-    <header className="h-[52px] bg-white border-b border-[#CBD5E1] px-3 md:px-4 flex items-center justify-between z-30 select-none shadow-xs shrink-0">
+    <header className="h-[52px] bg-superficie border-b border-neutral-300 px-3 md:px-4 flex items-center justify-between z-30 select-none shadow-xs shrink-0">
       {/* 1. Lado Izquierdo: Marca + Pestañas de Módulos */}
       <div className="flex items-center gap-2 sm:gap-3 overflow-x-auto no-scrollbar">
         {/* Isotipo y Nombre */}
         <div className="flex items-center gap-2 shrink-0">
           <img src={logo} alt="" aria-hidden="true" className="h-[30px] w-auto" />
-          <span className="font-sans font-bold text-[14px] text-slate-900 tracking-tight hidden sm:inline">
+          <span className="font-sans font-semibold text-title-sm text-neutral-900 tracking-tight hidden sm:inline">
             PaqTracker
           </span>
         </div>
 
         {/* Separador vertical */}
-        <div className="h-5 w-[1px] bg-[#E2E8F0] shrink-0 mx-1" />
+        <div className="h-5 w-px bg-neutral-200 shrink-0 mx-1" />
 
         {/* Pestañas Principales (Segmented Navigation) */}
         <nav className="flex items-center gap-1 shrink-0" aria-label="Navegación principal">
@@ -56,14 +58,14 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
                 key={item.id}
                 onClick={() => onCambiarTab(item.id)}
                 aria-current={esActivo ? 'page' : undefined}
-                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-[6px] text-[12px] tabular-nums font-medium transition cursor-pointer ${
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-control text-body-sm tabular-nums font-medium transition cursor-pointer ${
                   esActivo
-                    ? 'bg-[#DBEAFE] text-[#1E40AF] shadow-xs font-semibold'
-                    : 'text-[#64748B] hover:text-[#0F172A] hover:bg-slate-100'
+                    ? 'bg-primary-100 text-primary-600 shadow-xs font-semibold'
+                    : 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-100'
                 }`}
               >
                 <Icon
-                  className={`w-4 h-4 shrink-0 ${esActivo ? 'text-[#1E40AF]' : 'text-[#64748B]'}`}
+                  className={`size-4 shrink-0 ${esActivo ? 'text-primary-600' : 'text-neutral-600'}`}
                   strokeWidth={esActivo ? 2.2 : 1.8}
                 />
                 <span>{item.label}</span>
@@ -73,66 +75,44 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
         </nav>
       </div>
 
-      {/* 2. Lado Derecho: Reloj, Turno, Estado de Conexión y Salir */}
+      {/* 2. Lado Derecho: Reloj, Turno, Estado de Conexión, Tema y Salir */}
       <div className="flex items-center gap-2 sm:gap-3 shrink-0 ml-2">
-        {/* Reloj de la operación día a día (oculto en Simulación, que muestra el de su corrida) */}
-        {relojSimulado && (
-          <div
-            className="flex items-center gap-1.5 bg-[#F8FAFC] border border-[#E2E8F0] rounded-[6px] px-2.5 py-1 shrink-0"
-            title="Reloj de la operación día a día"
-          >
-            <Clock className="w-3.5 h-3.5 text-[#64748B]" />
-            <span className="tabular-nums font-semibold text-[12px] sm:text-[13px] text-[#0F172A]">
-              {relojSimulado}
-            </span>
-          </div>
-        )}
-
-        {/* Fecha y hora real del equipo, junto al reloj de la operación (en Simulación va en su encabezado) */}
-        {relojSimulado && (
-          <div
-            role="group"
-            aria-label="Fecha y hora real"
-            className="items-center gap-1.5 px-1 shrink-0 hidden md:flex"
-            title="Fecha y hora real"
-          >
-            <span className="font-sans text-[11px] text-[#64748B]">Real</span>
-            {/* En pantallas medianas solo la hora, para no empujar la navegación; desde lg, fecha y hora. */}
-            <RelojReal soloHora className="tabular-nums text-[12px] text-[#0F172A] lg:hidden" />
-            <RelojReal className="tabular-nums text-[12px] text-[#0F172A] hidden lg:inline" />
-          </div>
-        )}
+        {/* Relojes de la operación día a día y real (en Simulación van en el encabezado de la corrida) */}
+        {relojSimulado && <RelojesBarra operacion={relojSimulado} />}
 
         {/* Turno */}
         {turno && (
-          <span className="bg-[#DBEAFE] text-[#1E40AF] rounded-[4px] px-2 py-1 tabular-nums font-medium text-[11px] shrink-0 hidden md:inline">
+          <Insignia tono="primary" className="py-1 tabular-nums shrink-0 hidden md:inline-flex">
             Turno {turno}
-          </span>
+          </Insignia>
         )}
 
         {/* Conexión con el servidor */}
-        <span
+        <Insignia
+          tono={conectado ? 'primary' : 'critical'}
           title={conectado ? 'Conectado: el estado llega en vivo desde el servidor' : 'Sin conexión con el servidor: reintentando'}
-          className={`rounded-[4px] px-2.5 py-1 flex items-center gap-1.5 font-sans font-semibold text-[11px] tracking-wider shrink-0 ${
-            conectado ? 'bg-[#DBEAFE] text-[#1E40AF]' : 'bg-[#FEF2F2] text-[#B91C1C]'
-          }`}
+          className="px-2.5 py-1 font-sans font-semibold shrink-0"
         >
-          <Radio className={`w-3 h-3 ${conectado ? 'text-[#1E40AF] animate-pulse' : 'text-[#B91C1C]'}`} />
-          <span className="hidden sm:inline">{conectado ? 'CONECTADO' : 'SIN CONEXIÓN'}</span>
-        </span>
+          <Radio className={`size-3 ${conectado ? 'text-primary-700 animate-pulse' : 'text-critical-600'}`} />
+          <span className="hidden sm:inline">{conectado ? 'Conectado' : 'Sin conexión'}</span>
+        </Insignia>
+
+        {/* Tema: claro, oscuro o automático */}
+        <SelectorTema />
 
         {/* Cerrar sesión: en el celular solo el ícono */}
         {sesion && (
-          <button
-            type="button"
+          <Boton
+            tamano="sm"
+            variante="secundario"
+            icono={LogOut}
             onClick={sesion.cerrarSesion}
             title={`Cerrar la sesión de ${sesion.usuario}`}
             aria-label="Cerrar sesión"
-            className="h-[28px] px-2 sm:px-2.5 rounded-[6px] border border-[#CBD5E1] bg-white text-[#334155] hover:bg-slate-100 hover:text-[#0F172A] flex items-center gap-1.5 text-[12px] font-medium shrink-0 cursor-pointer transition"
+            className="px-2 sm:px-2.5"
           >
-            <LogOut className="w-3.5 h-3.5" aria-hidden="true" />
             <span className="hidden sm:inline">Salir</span>
-          </button>
+          </Boton>
         )}
       </div>
     </header>

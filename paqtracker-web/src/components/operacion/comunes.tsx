@@ -1,20 +1,19 @@
 import React from 'react';
+import { TituloGrupo } from '../ui';
 
 // Piezas compartidas por los paneles de Operación (flota, bitácora, incidencias, detalles).
 
 export const TituloSeccion: React.FC<{ children: React.ReactNode; derecha?: React.ReactNode }> = ({ children, derecha }) => (
-  <div className="flex items-center gap-[12px] leading-[normal]">
-    <h2 className="font-sans font-semibold text-[12px] text-[#64748B] tracking-[0.7px] uppercase">{children}</h2>
-    <div className="flex-1" />
-    {derecha && <span className="tabular-nums text-[12px] text-[#64748B] whitespace-nowrap">{derecha}</span>}
-  </div>
+  <TituloGrupo nivel={2} derecha={derecha} className="gap-3">
+    {children}
+  </TituloGrupo>
 );
 
 const COLOR_BARRA = {
-  rojo: 'bg-[#B91C1C]',
-  ambar: 'bg-[#B45309]',
-  azul: 'bg-[#1E40AF]',
-  gris: 'bg-[#94A3B8]',
+  rojo: 'bg-critical-600',
+  ambar: 'bg-warn-500',
+  azul: 'bg-primary-600',
+  gris: 'bg-neutral-400',
 } as const;
 
 /** Fila con barra de color a la izquierda: usada por "Requiere atención", bitácora e incidencias. */
@@ -29,17 +28,17 @@ export const FilaConBarra: React.FC<{
 }> = ({ color, titulo, detalle, detalleMono = false, derecha, onClick, className = '' }) => {
   const contenido = (
     <>
-      <span className={`w-[3px] self-stretch rounded-[1px] shrink-0 ${COLOR_BARRA[color]}`} />
-      <span className="flex-1 min-w-0 flex flex-col gap-[2px] text-left">
-        <span className="font-sans font-semibold text-[12px] text-[#0F172A] truncate">{titulo}</span>
-        <span className={`text-[12px] text-[#64748B] truncate ${detalleMono ? 'tabular-nums' : 'font-sans'}`}>{detalle}</span>
+      <span className={`w-1 self-stretch rounded-full shrink-0 ${COLOR_BARRA[color]}`} />
+      <span className="flex-1 min-w-0 flex flex-col gap-0.5 text-left">
+        <span className="font-sans font-semibold text-body-sm text-neutral-900 truncate">{titulo}</span>
+        <span className={`text-body-sm text-neutral-600 truncate ${detalleMono ? 'tabular-nums' : 'font-sans'}`}>{detalle}</span>
       </span>
       {derecha}
     </>
   );
-  const clases = `flex items-stretch gap-[9px] leading-[normal] ${className}`;
+  const clases = `flex items-stretch gap-2.5 ${className}`;
   return onClick ? (
-    <button type="button" onClick={onClick} className={`${clases} w-full hover:bg-[#F8FAFC] transition`}>
+    <button type="button" onClick={onClick} className={`${clases} w-full hover:bg-neutral-50 transition`}>
       {contenido}
     </button>
   ) : (

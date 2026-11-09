@@ -21,16 +21,16 @@ export const ProveedorAvisos: React.FC<{ children: React.ReactNode }> = ({ child
   return (
     <ContextoAvisos.Provider value={mostrar}>
       {children}
-      <div role="status" aria-live="polite" className="fixed left-1/2 -translate-x-1/2 bottom-[44px] z-50 pointer-events-none">
+      <div role="status" aria-live="polite" className="fixed left-1/2 -translate-x-1/2 bottom-11 z-50 pointer-events-none">
         {aviso && (
           <div
             key={aviso.id}
-            className="pointer-events-auto flex items-center gap-[12px] bg-[#0F172A] text-white rounded-[6px] pl-[12px] pr-[6px] py-[8px] shadow-lg text-[13px] leading-[normal] max-w-[calc(100vw-32px)]"
+            className="pointer-events-auto flex items-center gap-3 bg-inverso text-sobre-inverso rounded-control pl-3 pr-1.5 py-2 shadow-overlay text-body max-w-[calc(100vw-32px)]"
           >
             {aviso.tipo === 'error' ? (
-              <AlertTriangle className="w-4 h-4 text-[#FCA5A5] shrink-0" aria-hidden="true" />
+              <AlertTriangle className="size-4 text-critical-600 shrink-0" aria-hidden="true" />
             ) : (
-              <CheckCircle2 className="w-4 h-4 text-[#4ADE80] shrink-0" aria-hidden="true" />
+              <CheckCircle2 className="size-4 text-ok-600 shrink-0" aria-hidden="true" />
             )}
             <span>{aviso.texto}</span>
             {aviso.accion && (
@@ -40,7 +40,7 @@ export const ProveedorAvisos: React.FC<{ children: React.ReactNode }> = ({ child
                   aviso.accion?.alHacer();
                   setAviso(null);
                 }}
-                className="font-semibold text-[#93C5FD] hover:text-white whitespace-nowrap"
+                className="font-semibold text-primary-100 hover:text-sobre-inverso whitespace-nowrap"
               >
                 {aviso.accion.etiqueta}
               </button>
@@ -49,9 +49,9 @@ export const ProveedorAvisos: React.FC<{ children: React.ReactNode }> = ({ child
               type="button"
               onClick={() => setAviso(null)}
               aria-label="Cerrar aviso"
-              className="size-[24px] flex items-center justify-center rounded text-[#CBD5E1] hover:text-white hover:bg-white/10"
+              className="size-6 flex items-center justify-center rounded-control text-neutral-300 hover:text-sobre-inverso hover:bg-sobre-inverso/10"
             >
-              <X className="w-3.5 h-3.5" />
+              <X className="size-3.5" />
             </button>
           </div>
         )}

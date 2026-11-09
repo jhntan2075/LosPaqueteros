@@ -90,7 +90,7 @@ export const ListaPedidos: React.FC<ListaPedidosProps> = ({ resaltado, onResalta
 
   return (
     <div className="flex-1 min-h-0 overflow-y-auto">
-      <section aria-label="Lista de pedidos" className="px-[12px] pt-[9px] pb-[6px] flex flex-col gap-[6px]">
+      <section aria-label="Lista de pedidos" className="px-3 pt-2.5 pb-1.5 flex flex-col gap-1.5">
         <TituloSeccion derecha={`${pedidos.length}`}>Pedidos</TituloSeccion>
         <input
           type="search"
@@ -98,29 +98,29 @@ export const ListaPedidos: React.FC<ListaPedidosProps> = ({ resaltado, onResalta
           onChange={(e) => setTermino(e.target.value)}
           placeholder="Buscar por pedido, cliente o unidad"
           aria-label="Buscar en la lista de pedidos"
-          className="h-[28px] px-[8px] rounded-[4px] border border-[#E2E8F0] text-[12px] focus:outline-none focus:ring-1 focus:ring-[#1E40AF]"
+          className="h-7 px-2 rounded-control border border-neutral-300 text-body-sm focus:outline-none focus:ring-1 focus:ring-primary-600"
         />
-        <div className="flex flex-wrap gap-[4px]" role="group" aria-label="Filtrar pedidos">
+        <div className="flex flex-wrap gap-1" role="group" aria-label="Filtrar pedidos">
           {FILTROS.map(({ valor, etiqueta }) => (
             <button
               key={valor}
               type="button"
               aria-pressed={filtro === valor}
               onClick={() => setFiltro(valor)}
-              className={`px-[7px] py-[3px] rounded-[4px] text-[12px] font-sans ${
-                filtro === valor ? 'bg-[#DBEAFE] text-[#1E40AF] font-medium' : 'bg-white border border-[#E2E8F0] text-[#64748B] hover:border-[#CBD5E1]'
+              className={`px-2 py-1 rounded text-body-sm font-sans ${
+                filtro === valor ? 'bg-primary-100 text-primary-700 font-medium' : 'bg-superficie border border-neutral-200 text-neutral-600 hover:border-neutral-300'
               }`}
             >
               {etiqueta}
             </button>
           ))}
         </div>
-        <label className="flex items-center gap-[6px] text-[12px] text-[#64748B]">
+        <label className="flex items-center gap-1.5 text-body-sm text-neutral-600">
           Ordenar por
           <select
             value={orden}
             onChange={(e) => setOrden(e.target.value as OrdenPedidos)}
-            className="h-[24px] px-[4px] rounded-[4px] border border-[#E2E8F0] text-[12px] text-[#0F172A] bg-white"
+            className="h-6 px-1 rounded-control border border-neutral-300 text-body-sm text-neutral-900 bg-superficie"
           >
             {ORDENES.map(({ valor, etiqueta }) => (
               <option key={valor} value={valor}>
@@ -129,15 +129,15 @@ export const ListaPedidos: React.FC<ListaPedidosProps> = ({ resaltado, onResalta
             ))}
           </select>
         </label>
-        {pedidos.length === 0 && <p className="text-[12px] text-[#64748B]">{termino.trim() ? 'Ningún pedido coincide con la búsqueda.' : VACIO[filtro]}</p>}
+        {pedidos.length === 0 && <p className="text-body-sm text-neutral-600">{termino.trim() ? 'Ningún pedido coincide con la búsqueda.' : VACIO[filtro]}</p>}
         <ul ref={listaRef} className="flex flex-col">
           {pedidos.map((p) => {
             const seleccionado = pedidoResaltado === p.codigo && resaltado?.tipo === 'pedido';
             const fracciones = p.fracciones;
             const objeto: SeleccionResaltable = { tipo: 'pedido', codigo: p.codigo };
             return (
-              <li key={p.codigo} data-pedido={p.codigo} aria-current={seleccionado ? 'true' : undefined} className="border-b border-[#F1F5F9] last:border-b-0">
-                <div className={`flex items-stretch rounded ${seleccionado ? 'bg-[#EFF6FF] ring-1 ring-[#1E40AF]' : ''}`}>
+              <li key={p.codigo} data-pedido={p.codigo} aria-current={seleccionado ? 'true' : undefined} className="border-b border-neutral-100 last:border-b-0">
+                <div className={`flex items-stretch rounded ${seleccionado ? 'bg-primary-50 ring-1 ring-primary-600' : ''}`}>
                   <button
                     type="button"
                     // Primer clic: resalta todas sus rutas (F03) y centra el destino; con el pedido ya marcado, abre su detalle.
@@ -148,30 +148,30 @@ export const ListaPedidos: React.FC<ListaPedidosProps> = ({ resaltado, onResalta
                         onCentrar(p.destino);
                       }
                     }}
-                    className="flex-1 min-w-0 py-[5px] px-[4px] flex flex-col gap-[1px] text-left text-[12px] hover:bg-[#F8FAFC] rounded"
+                    className="flex-1 min-w-0 py-1.5 px-1 flex flex-col gap-px text-left text-body-sm hover:bg-neutral-50 rounded"
                   >
-                    <span className="flex items-center gap-[7px] w-full">
+                    <span className="flex items-center gap-2 w-full">
                       <PuntoHolgura nivel={p.nivel} />
                       <span className="sr-only">{NOMBRE_HOLGURA[p.nivel]}</span>
-                      <span className="tabular-nums font-semibold text-[#0F172A]">{p.codigo}</span>
-                      <span className="tabular-nums text-[#64748B] truncate">
+                      <span className="tabular-nums font-semibold text-neutral-900">{p.codigo}</span>
+                      <span className="tabular-nums text-neutral-600 truncate">
                         → ({p.destino.x},{p.destino.y}) · {p.cantidad} paq.
                       </span>
-                      <span className="ml-auto text-[#64748B] whitespace-nowrap">{p.estado}</span>
+                      <span className="ml-auto text-neutral-600 whitespace-nowrap">{p.estado}</span>
                     </span>
-                    <span className="pl-[14px] text-[11px] text-[#64748B] tabular-nums truncate">{resumenRuta(p)}</span>
+                    <span className="pl-3.5 text-caption text-neutral-600 tabular-nums truncate">{resumenRuta(p)}</span>
                   </button>
                   <button
                     type="button"
                     onClick={() => onSeleccionar(objeto)}
                     aria-label={`Ver detalle del pedido ${p.codigo}`}
-                    className="w-[24px] shrink-0 text-[#64748B] hover:text-[#0F172A]"
+                    className="w-6 shrink-0 text-neutral-600 hover:text-neutral-900"
                   >
                     ›
                   </button>
                 </div>
                 {fracciones.length > 1 && (
-                  <ul aria-label={`Fracciones del pedido ${p.codigo}`} className="pl-[14px] pb-[4px] flex flex-col">
+                  <ul aria-label={`Fracciones del pedido ${p.codigo}`} className="pl-3.5 pb-1 flex flex-col">
                     {fracciones.map((f) => (
                       <FilaFraccion
                         key={f.codigo}
@@ -189,7 +189,7 @@ export const ListaPedidos: React.FC<ListaPedidosProps> = ({ resaltado, onResalta
             );
           })}
         </ul>
-        <p className="text-[11px] text-[#64748B]">
+        <p className="text-caption text-neutral-600">
           Un clic resalta en el mapa las rutas del pedido; en un pedido fraccionado, cada fracción resalta solo la ruta de su unidad. Otro clic, o ›,
           abre el detalle.
         </p>

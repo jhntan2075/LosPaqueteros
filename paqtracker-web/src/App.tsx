@@ -7,22 +7,20 @@ import { ModuloOperacion } from './components/operacion/ModuloOperacion';
 import { ModuloPedidos } from './components/pedidos/ModuloPedidos';
 import { ModuloSimulacion } from './components/simulacion/ModuloSimulacion';
 import { ModuloConfiguracion } from './components/configuracion/ModuloConfiguracion';
+import { ModuloMetricas } from './components/metricas/ModuloMetricas';
 import { ContextoDatosOperacion, useEjecucionEnVivo } from './hooks/useDatosOperacion';
 import { ProveedorAverias } from './components/layout/ProveedorAverias';
 import { useConexionStomp } from './hooks/useConexionStomp';
 import { useParametroUrlCerrado } from './hooks/useParametroUrl';
 import { useSegundosDesde } from './hooks/useSegundosDesde';
-import { ALMACENES, CORTE_INVENTARIO, UNIDADES } from './config/dominio';
 import { useRangosSemaforoGlobales } from './hooks/useRangosSemaforo';
 import { useParametrosDominioGlobales } from './hooks/useParametrosDominio';
-import { capitalizar, formatearFechaNumerica, formatearMiles } from './lib/formato';
+import { formatearFechaLarga } from './lib/formato';
 import { turnoVigente } from './lib/turnos';
-import { cantidadBloqueos, estadoFlota, pedidosEnRiesgo } from './lib/operacion';
+import { cantidadBloqueos, pedidosEnRiesgo } from './lib/operacion';
 import { ID_DIA_A_DIA } from './services/clienteApi';
-import type { DatosOperacion, SubvistaOperacion } from './types/operacion';
-import type { NivelHolgura, VistaPedidos } from './types/pedidos';
-
-const formatoPorcentaje = (valor: number) => `${valor.toFixed(1).replace('.', ',')} %`;
+import type { SubvistaOperacion } from './types/operacion';
+import type { VistaPedidos } from './types/pedidos';
 
 // Qué pantalla se ve se refleja en la URL (?tab=…&panel=…&vista=…): se puede recargar, compartir o
 // deshacer con el botón atrás. Un valor fuera de este conjunto (enlace viejo, URL escrita a mano) cae
@@ -30,139 +28,6 @@ const formatoPorcentaje = (valor: number) => `${valor.toFixed(1).replace('.', ',
 const TABS_VALIDAS: TabModulo[] = ['operacion', 'pedidos', 'simulacion', 'metricas', 'configuracion'];
 const SUBVISTAS_VALIDAS: SubvistaOperacion[] = ['vivo', 'resumen', 'incidencias', 'pedidos', 'flota', 'almacenes', 'bitacora'];
 const VISTAS_PEDIDOS_VALIDAS: VistaPedidos[] = ['cola', 'registrar', 'registrado'];
-
-const Indicador: React.FC<{ etiqueta: string; valor: string; detalle?: string; color?: string }> = ({
-  etiqueta,
-  valor,
-  detalle,
-  color = 'text-slate-800',
-}) => (
-  <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg flex flex-col gap-0.5">
-    <span className="text-slate-600 text-xs">{etiqueta}</span>
-    <span className={`text-base font-bold tabular-nums ${color}`}>{valor}</span>
-    {detalle && <span className="text-slate-600 text-xs">{detalle}</span>}
-  </div>
-);
-
-const NOMBRE_NIVEL: Record<NivelHolgura, string> = { ROJO: 'Crítico', AMBAR: 'Ajustado', VERDE: 'Holgado', CERRADO: 'Resuelto' };
-const COLOR_BARRA_NIVEL: Record<NivelHolgura, string> = { ROJO: 'bg-red-500', AMBAR: 'bg-amber-500', VERDE: 'bg-green-500', CERRADO: 'bg-slate-400' };
-/** Alerta de stock bajo (LE-078) con los cortes de inventario vigentes. */
-const COLOR_BARRA_STOCK = (porcentaje: number) =>
-  porcentaje < CORTE_INVENTARIO.rojo * 100 ? 'bg-red-500' : porcentaje < CORTE_INVENTARIO.ambar * 100 ? 'bg-amber-500' : 'bg-green-500';
-
-const BarraDistribucion: React.FC<{ etiqueta: string; pct: number; detalle: string; color: string }> = ({ etiqueta, pct, detalle, color }) => (
-  <div className="flex items-center gap-3 text-xs">
-    <span className="w-20 shrink-0 text-slate-600">{etiqueta}</span>
-    <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
-      <div className={`h-full ${color}`} style={{ width: `${pct}%` }} />
-    </div>
-    <span className="w-20 shrink-0 text-right tabular-nums font-medium text-slate-800">{detalle}</span>
-  </div>
-);
-
-/** Indicadores de la operación día a día: cumplimiento, flota y planificador, con desagregados que no
- * se ven en ningún otro panel (por tipo de unidad, por nivel de holgura y por almacén). */
-const PanelMetricas: React.FC<{ datos: DatosOperacion }> = ({ datos }) => {
-  const { indicadores, resumen, flota, almacenes } = datos;
-  const enRuta = flota.filter((u) => u.estado === 'EN_RUTA').length;
-  const porTipo = estadoFlota(datos).porTipo;
-  const pedidosActivos = Object.values(datos.pedidos);
-  const porNivel = (['ROJO', 'AMBAR', 'VERDE', 'CERRADO'] as NivelHolgura[]).map((nivel) => ({
-    nivel,
-    cantidad: pedidosActivos.filter((p) => p.nivel === nivel).length,
-  }));
-  const almacenesOrdenados = [...almacenes].filter((a) => a.porcentajeStock !== null).sort((a, b) => (a.porcentajeStock ?? 0) - (b.porcentajeStock ?? 0));
-
-  return (
-    <div className="flex-1 p-6 overflow-y-auto max-w-4xl mx-auto w-full space-y-4">
-      <section className="bg-white p-6 rounded-xl border border-[#CBD5E1] shadow-xs">
-        <h1 className="text-base font-bold text-slate-800 mb-1">Métricas de la operación</h1>
-        <p className="text-xs text-slate-600 mb-4">Indicadores en vivo de la operación día a día.</p>
-        <h2 className="text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2">Entregas y flota</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
-          <Indicador
-            etiqueta="Entregas en plazo"
-            valor={formatoPorcentaje(indicadores.porcentajeCumplimiento)}
-            detalle={`${resumen.enPlazo} de ${resumen.entregados} entregados`}
-            color="text-green-700"
-          />
-          <Indicador
-            etiqueta="Unidades en ruta"
-            valor={`${enRuta} / ${flota.length}`}
-            detalle={formatoPorcentaje(flota.length === 0 ? 0 : (enRuta / flota.length) * 100)}
-            color="text-[#1E40AF]"
-          />
-          <Indicador etiqueta="Tiempo promedio de entrega" valor={`${Math.round(indicadores.tiempoPromedioEntregaMinutos)} min`} />
-        </div>
-        <h2 className="text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2">Planificador</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <Indicador etiqueta="Planificaciones ejecutadas" valor={formatearMiles(indicadores.replanificaciones)} />
-          <Indicador etiqueta="Tiempo de la última planificación" valor={`${indicadores.tiempoComputoUltimoTaMs} ms`} color="text-[#1E40AF]" />
-          <Indicador etiqueta="Distancia recorrida" valor={`${formatearMiles(Math.round(indicadores.distanciaTotalKm))} km`} />
-        </div>
-      </section>
-
-      <section className="bg-white p-6 rounded-xl border border-[#CBD5E1] shadow-xs">
-        <h2 className="text-xs font-semibold text-slate-600 uppercase tracking-wider mb-3">Flota por tipo de unidad</h2>
-        <table className="w-full text-xs">
-          <thead>
-            <tr className="text-slate-500 text-left border-b border-slate-200">
-              <th className="py-1.5 font-medium">Tipo</th>
-              <th className="py-1.5 font-medium text-right">En ruta</th>
-              <th className="py-1.5 font-medium text-right">Total</th>
-              <th className="py-1.5 font-medium text-right">Carga a bordo</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {porTipo.map((t) => (
-              <tr key={t.tipo}>
-                <td className="py-1.5 text-slate-800 font-medium">{capitalizar(UNIDADES[t.tipo].nombre)}</td>
-                <td className="py-1.5 text-right tabular-nums">{t.enRuta}</td>
-                <td className="py-1.5 text-right tabular-nums">{t.total}</td>
-                <td className="py-1.5 text-right tabular-nums">{t.cargaABordo === null ? '—' : formatoPorcentaje(t.cargaABordo * 100)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </section>
-
-      <section className="bg-white p-6 rounded-xl border border-[#CBD5E1] shadow-xs">
-        <h2 className="text-xs font-semibold text-slate-600 uppercase tracking-wider mb-3">Pedidos por nivel de holgura</h2>
-        <div className="flex flex-col gap-2">
-          {porNivel.map(({ nivel, cantidad }) => {
-            const pct = pedidosActivos.length === 0 ? 0 : (cantidad / pedidosActivos.length) * 100;
-            return (
-              <BarraDistribucion
-                key={nivel}
-                etiqueta={NOMBRE_NIVEL[nivel]}
-                pct={pct}
-                detalle={`${cantidad} (${pct.toFixed(0)} %)`}
-                color={COLOR_BARRA_NIVEL[nivel]}
-              />
-            );
-          })}
-        </div>
-      </section>
-
-      {almacenesOrdenados.length > 0 && (
-        <section className="bg-white p-6 rounded-xl border border-[#CBD5E1] shadow-xs">
-          <h2 className="text-xs font-semibold text-slate-600 uppercase tracking-wider mb-3">Stock por almacén</h2>
-          <div className="flex flex-col gap-2">
-            {almacenesOrdenados.map((a) => (
-              <BarraDistribucion
-                key={a.id}
-                etiqueta={ALMACENES.find((x) => x.id === a.id)?.nombreCorto ?? a.id}
-                pct={a.porcentajeStock ?? 0}
-                detalle={formatoPorcentaje(a.porcentajeStock ?? 0)}
-                color={COLOR_BARRA_STOCK(a.porcentajeStock ?? 0)}
-              />
-            ))}
-          </div>
-        </section>
-      )}
-    </div>
-  );
-};
 
 export default function App() {
   // Rangos del semáforo guardados en la API: al cambiarlos, toda la pantalla se vuelve a dibujar con ellos.
@@ -216,18 +81,18 @@ export default function App() {
   return (
     <ProveedorAvisos>
       <ProveedorAverias>
-        <div className="flex flex-col h-screen w-screen overflow-hidden bg-[#F8FAFC]">
+        <div className="flex flex-col h-screen w-screen overflow-hidden bg-superficie">
           <TopNavbar
             tabActiva={tabActiva}
             onCambiarTab={(tab) => (tab === 'pedidos' ? abrirPedidos('cola') : setTabActiva(tab))}
-            relojSimulado={relojDiaADia ? formatearFechaNumerica(relojDiaADia, true) : undefined}
+            relojSimulado={relojDiaADia ? formatearFechaLarga(relojDiaADia) : undefined}
             turno={relojDiaADia ? turnoVigente(relojDiaADia).actual : undefined}
             conectado={conectado}
           />
 
           <ContextoDatosOperacion.Provider value={datos}>
             <div className="flex-1 flex flex-col min-h-0 min-w-0 overflow-hidden">
-              <main className="flex-1 relative flex overflow-hidden bg-[#F8FAFC]">
+              <main className="flex-1 relative flex overflow-hidden bg-superficie">
                 {/* Operación queda montada aunque se cambie de pestaña, como la corrida de Simulación:
                     el zoom, el objeto abierto en el panel y las capas visibles del mapa no se pierden
                     al volver. Antes de la primera instantánea no hay nada que montar. */}
@@ -256,7 +121,7 @@ export default function App() {
                   <ModuloSimulacion />
                 </div>
 
-                {tabActiva === 'metricas' && (datos ? <PanelMetricas datos={datos} /> : sinDatos)}
+                {tabActiva === 'metricas' && (datos ? <ModuloMetricas datos={datos} /> : sinDatos)}
 
                 {tabActiva === 'configuracion' && <ModuloConfiguracion />}
               </main>

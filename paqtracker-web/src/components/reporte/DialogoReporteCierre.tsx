@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { useCerrarConEscape } from '../../hooks/useCerrarConEscape';
 import { useFocoAtrapado } from '../../hooks/useFocoAtrapado';
 import { formatearFechaLarga } from '../../lib/formato';
+import { Boton } from '../ui';
 import { ReportePlanificacion } from './ReportePlanificacion';
 
 // Reporte de cierre de la operación día a día (rúbrica 91.EvaSw G09): la última planificación estable en un
@@ -22,28 +23,28 @@ export const DialogoReporteCierre: React.FC<DialogoReporteCierreProps> = ({ ejec
   useFocoAtrapado(dialogo);
   useCerrarConEscape(true, onCerrar);
   return createPortal(
-    <div className="fixed inset-0 z-50 bg-[#0F172A]/40 flex items-stretch justify-center p-[24px]" data-sin-zoom>
+    <div className="fixed inset-0 z-50 flex items-stretch justify-center bg-velo/40 p-6" data-sin-zoom>
       <div
         ref={dialogo}
         role="dialog"
         aria-modal="true"
         aria-labelledby="titulo-reporte-cierre"
-        className="w-full max-w-[1100px] bg-[#F8FAFC] rounded-[10px] shadow-[0px_8px_32px_rgba(0,0,0,0.25)] flex flex-col overflow-hidden"
+        className="flex w-full max-w-6xl flex-col overflow-hidden rounded-card bg-superficie shadow-overlay"
       >
-        <header className="h-[64px] bg-white border-b border-[#E2E8F0] px-[24px] flex items-center gap-[12px] shrink-0" data-no-imprimir>
-          <div className="flex flex-col">
-            <h1 id="titulo-reporte-cierre" className="font-semibold text-[16px] text-[#0F172A]">
+        <header className="flex min-h-16 shrink-0 items-center gap-3 border-b border-neutral-200 bg-superficie px-6 py-3" data-no-imprimir>
+          <div className="flex flex-col gap-0.5">
+            <h1 id="titulo-reporte-cierre" className="text-title text-neutral-900">
               {diaADia ? 'Reporte de cierre · operación día a día' : 'Última planificación estable'}
             </h1>
-            <p className="text-[12px] text-[#64748B]">
+            <p className="text-body-sm text-neutral-600">
               Generado {formatearFechaLarga(reloj, false)}. {diaADia ? 'No detiene la operación.' : 'No detiene la simulación.'}
             </p>
           </div>
-          <button type="button" onClick={onCerrar} autoFocus className="ml-auto h-[32px] px-[14px] rounded-[6px] bg-[#1E40AF] hover:bg-[#1E3A8A] text-white text-[12px] font-semibold">
+          <Boton variante="primario" onClick={onCerrar} autoFocus className="ml-auto">
             Cerrar
-          </button>
+          </Boton>
         </header>
-        <div className="flex-1 min-h-0 overflow-y-auto">
+        <div className="min-h-0 flex-1 overflow-y-auto">
           <ReportePlanificacion ejecucionId={ejecucionId} actualizable />
         </div>
       </div>
