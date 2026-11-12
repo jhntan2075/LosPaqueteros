@@ -15,6 +15,8 @@ import pe.pucp.paqtracker.modulos.difusion.aplicacion.servicio.CodigosFlota;
 import pe.pucp.paqtracker.modulos.difusion.aplicacion.servicio.NomenclaturaOperacion;
 import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.dto.DetallePedido;
 import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.dto.HitoPedido;
+import pe.pucp.paqtracker.modulos.ejecucion.dominio.AvancePedido;
+import pe.pucp.paqtracker.modulos.ejecucion.dominio.EstadoAvance;
 import pe.pucp.paqtracker.modulos.ejecucion.dominio.EstadoPedido;
 import pe.pucp.paqtracker.simulacion.AveriaAplicada;
 import pe.pucp.paqtracker.simulacion.ResultadoPaso;
@@ -24,6 +26,7 @@ import pe.pucp.paqtracker.simulacion.UnidadEnTransito;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -54,6 +57,10 @@ public final class SeguimientoPedidos {
     private final FuenteRangosSemaforo semaforo;
     private final CodigosFlota codigosFlota;
     private final Map<Integer, Seguimiento> pedidos = new LinkedHashMap<>();
+    /** Paquetes de cada pedido entregados antes de un reinicio del dia a dia. */
+    private final Map<Integer, Integer> entregadasPrevias;
+    /** Pedidos cuyo avance cambio desde la ultima vez que se tomaron los cambios. */
+    private final Set<Integer> cambiados = new LinkedHashSet<>();
     private int siguienteId;
     private long ultimoTaMs;
 
@@ -65,10 +72,23 @@ public final class SeguimientoPedidos {
      */
     public SeguimientoPedidos(LineaTiempo lineaTiempo, FuenteRangosSemaforo semaforo,
                               CodigosFlota codigosFlota, int primerIdLibre) {
+        this(lineaTiempo, semaforo, codigosFlota, primerIdLibre, Map.of());
+    }
+
+    /**
+     * @param lineaTiempo       relacion entre minutos simulados y fechas
+     * @param semaforo          rangos del semaforo vigentes; se consultan en cada calculo de nivel
+     * @param codigosFlota      codigos visibles de las unidades de la ejecucion
+     * @param primerIdLibre     primer identificador que no usa ningun pedido cargado
+     * @param entregadasPrevias paquetes de cada pedido entregados antes de un reinicio del dia a dia
+     */
+    public SeguimientoPedidos(LineaTiempo lineaTiempo, FuenteRangosSemaforo semaforo,
+                              CodigosFlota codigosFlota, int primerIdLibre, Map<Integer, Integer> entregadasPrevias) {
         this.lineaTiempo = lineaTiempo;
         this.semaforo = semaforo;
         this.codigosFlota = codigosFlota;
         this.siguienteId = primerIdLibre;
+        this.entregadasPrevias = Map.copyOf(entregadasPrevias);
     }
 
     /**
@@ -90,7 +110,26 @@ public final class SeguimientoPedidos {
             seguimiento.hito(pedido.getInstanteRegistro(), "Registrado", pedido.getCantidad() + " paquetes a "
                     + pedido.getDestino() + ", plazo " + pedido.getPlazo() / MINUTOS_POR_HORA + " h");
             pedidos.put(pedido.getId(), seguimiento);
+            cambiados.add(pedido.getId());
         }
+    }
+
+    /**
+     * Avance de los pedidos que cambiaron desde la llamada anterior, para guardarlo (solo el dia a dia lo
+     * usa). Vacia la lista de cambios.
+     *
+     * @return un avance por pedido cambiado, con lo entregado antes de un reinicio incluido
+     */
+    public List<AvancePedido> tomarCambios() {
+        List<AvancePedido> avances = new ArrayList<>();
+        for (Integer id : cambiados) {
+            Seguimiento seguimiento = pedidos.get(id);
+            if (seguimiento != null) {
+                avances.add(seguimiento.avance());
+            }
+        }
+        cambiados.clear();
+        return avances;
     }
 
     /**
@@ -225,6 +264,7 @@ public final class SeguimientoPedidos {
         }
         seguimiento.partesEnCamino--;
         seguimiento.entregarFraccion(tramo);
+        cambiados.add(tramo.getIdPedido());
         if (seguimiento.partesEnCamino > 0) {
             seguimiento.hito(tramo.getLlegada(), "Entrega parcial", tramo.getCantidad() + " paquetes entregados");
             return false;
@@ -288,6 +328,7 @@ public final class SeguimientoPedidos {
             return;
         }
         seguimiento.fraccionActiva(codigoUnidad).ifPresent(fraccion -> fraccion.estado = EstadoFraccion.LIBERADA);
+        cambiados.add(entrega.getIdPedido());
         seguimiento.partesEnCamino = Math.max(0, seguimiento.partesEnCamino - 1);
         if (seguimiento.partesEnCamino == 0) {
             seguimiento.estado = EstadoPedido.REGISTRADO;
@@ -341,6 +382,7 @@ public final class SeguimientoPedidos {
                 continue;
             }
             seguimiento.estado = EstadoPedido.EN_TRANSITO;
+            cambiados.add(tramo.getIdPedido());
             seguimiento.unidad = codigo;
             seguimiento.eta = Math.max(seguimiento.eta, tramo.getLlegada());
             seguimiento.partesEnCamino++;
@@ -450,6 +492,19 @@ public final class SeguimientoPedidos {
                         fraccion.estado = EstadoFraccion.ENTREGADA;
                         fraccion.llegada = tramo.getLlegada();
                     });
+        }
+
+        /** Avance para guardar: lo entregado suma lo de antes de un reinicio. */
+        private AvancePedido avance() {
+            int entregada = entregadasPrevias.getOrDefault(pedido.getId(), 0) + fracciones.stream()
+                    .filter(f -> f.estado == EstadoFraccion.ENTREGADA).mapToInt(f -> f.cantidad).sum();
+            if (estado != EstadoPedido.ENTREGADO) {
+                EstadoAvance avance = estado == EstadoPedido.EN_TRANSITO ? EstadoAvance.EN_TRANSITO
+                        : EstadoAvance.REGISTRADO;
+                return new AvancePedido(pedido.getId(), avance, entregada, null, null);
+            }
+            return new AvancePedido(pedido.getId(), EstadoAvance.ENTREGADO, entregada,
+                    lineaTiempo.aFecha(entregaReal).toInstant(), Math.max(0, entregaReal - pedido.getHoraLimite()));
         }
 
         private void hito(int minuto, String titulo, String detalle) {

@@ -138,6 +138,34 @@ public final class ResultadoSimulacion {
     }
 
     /**
+     * @return entregas previstas despues de su hora limite
+     */
+    public int getEntregasTarde() {
+        return entregasTarde;
+    }
+
+    /**
+     * @return minutos de retraso sumados sobre las entregas tarde
+     */
+    public long getRetrasoTotalMinutos() {
+        return retrasoTotalMinutos;
+    }
+
+    /**
+     * @return minutos de retraso por producto, sumados sobre las entregas tarde
+     */
+    public long getRetrasoPonderadoPorProductos() {
+        return retrasoPonderadoPorProductos;
+    }
+
+    /**
+     * @return planificaciones cuyo tiempo de computo se midio
+     */
+    public int getEjecucionesMedidas() {
+        return ejecucionesMedidas;
+    }
+
+    /**
      * @return unidades de producto despachadas, contadas sobre las entregas que
      *         salieron en una ruta
      */

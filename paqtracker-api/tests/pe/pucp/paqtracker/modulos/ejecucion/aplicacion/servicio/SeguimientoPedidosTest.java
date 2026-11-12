@@ -23,10 +23,14 @@ import pe.pucp.paqtracker.modulos.planificacion.dominio.AlgoritmoPlanificacion;
 import pe.pucp.paqtracker.simulacion.ResultadoPaso;
 import pe.pucp.paqtracker.simulacion.SimulacionEnCurso;
 import pe.pucp.paqtracker.soporte.PropiedadesPrueba;
+import pe.pucp.paqtracker.modulos.ejecucion.dominio.AvancePedido;
+import pe.pucp.paqtracker.modulos.ejecucion.dominio.EstadoAvance;
 import java.time.Duration;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
@@ -61,6 +65,28 @@ class SeguimientoPedidosTest {
         assertEquals(0, indicadores.pedidosPendientes());
         assertEquals(100.0, indicadores.porcentajeCumplimiento());
         assertEquals(0, seguimiento.pedidosActivos(1440).size());
+    }
+
+    @Test
+    void tomarCambios_pedidoEntregado_informaSuAvanceUnaSolaVezConLoEntregadoAntes() {
+        List<Pedido> pedidos = List.of(new Pedido(1, new Nodo(30, 18), 3, 0, 2160));
+        SimulacionEnCurso simulacion = simulacion(pedidos);
+        // Antes de un reinicio ya se habian entregado 2 paquetes de este pedido.
+        SeguimientoPedidos seguimiento = new SeguimientoPedidos(LINEA, SEMAFORO,
+                CodigosFlota.de(simulacion.getFlota()), 10, Map.of(1, 2));
+
+        List<AvancePedido> avances = new ArrayList<>();
+        for (int instante = 0; instante <= 1440; instante += SA) {
+            seguimiento.aplicar(simulacion.avanzar(instante));
+            avances.addAll(seguimiento.tomarCambios());
+        }
+
+        AvancePedido ultimo = avances.get(avances.size() - 1);
+        assertEquals(EstadoAvance.ENTREGADO, ultimo.estado());
+        assertEquals(2 + 3, ultimo.cantidadEntregada());
+        assertEquals(0, ultimo.retrasoMinutos());
+        assertTrue(avances.stream().anyMatch(avance -> avance.estado() == EstadoAvance.EN_TRANSITO));
+        assertTrue(seguimiento.tomarCambios().isEmpty(), "sin cambios nuevos no hay avance que guardar");
     }
 
     @Test

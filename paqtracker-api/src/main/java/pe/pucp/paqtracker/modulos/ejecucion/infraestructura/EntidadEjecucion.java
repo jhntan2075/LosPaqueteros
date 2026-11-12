@@ -1,16 +1,21 @@
 package pe.pucp.paqtracker.modulos.ejecucion.infraestructura;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import pe.pucp.paqtracker.modulos.ejecucion.dominio.EstadoEjecucion;
+import pe.pucp.paqtracker.modulos.ejecucion.dominio.RegistroEjecucion;
+import pe.pucp.paqtracker.modulos.ejecucion.dominio.ResultadoEjecucion;
+import pe.pucp.paqtracker.modulos.ejecucion.dominio.TipoEscenario;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 
 /**
- * Fila de la tabla {@code ejecucion}. Los enums se guardan como texto y los instantes como fecha y
- * hora en UTC; la conversion vive en {@link RepositorioEjecucionJpa}.
+ * Fila de la tabla {@code ejecucion}. Los enums se guardan como texto y los instantes como fecha y hora en
+ * UTC. Las metricas y el colapso van en columnas embebidas; la conversion con el dominio vive en esta capa.
  */
 @Entity
 @Table(name = "ejecucion")
@@ -19,6 +24,9 @@ public class EntidadEjecucion {
     @Id
     @Column(name = "id", length = 40)
     private String id;
+
+    @Column(name = "nombre", length = 120)
+    private String nombre;
 
     @Column(name = "tipo_escenario", length = 30, nullable = false)
     private String tipoEscenario;
@@ -47,15 +55,6 @@ public class EntidadEjecucion {
     @Column(name = "finalizada_en")
     private LocalDateTime finalizadaEn;
 
-    @Column(name = "entregas", nullable = false)
-    private int entregas;
-
-    @Column(name = "incumplimientos", nullable = false)
-    private int incumplimientos;
-
-    @Column(name = "fecha_colapso")
-    private LocalDateTime fechaColapso;
-
     @Column(name = "autos", nullable = false)
     private int autos;
 
@@ -65,111 +64,69 @@ public class EntidadEjecucion {
     @Column(name = "bicicletas", nullable = false)
     private int bicicletas;
 
+    @Embedded
+    private ColumnasResultado resultado;
+
+    @Embedded
+    private ColumnasColapso colapso;
+
+    @Column(name = "origen_datos", length = 20, nullable = false)
+    private String origenDatos;
+
+    @Column(name = "semilla")
+    private Long semilla;
+
+    @Column(name = "parametros", length = 4000)
+    private String parametros;
+
+    @Column(name = "reloj_alcanzado")
+    private LocalDateTime relojAlcanzado;
+
     /** Constructor requerido por JPA. */
     protected EntidadEjecucion() {
     }
 
     /**
-     * @param id                identificador
-     * @param tipoEscenario     escenario
-     * @param estado            estado
-     * @param algoritmo         algoritmo
-     * @param fechaInicio       primer dia del horizonte
-     * @param horaInicio        hora del primer dia en la que arranca el reloj
-     * @param dias              dias del horizonte
-     * @param factorAceleracion factor k
-     * @param creadaEn          creacion, UTC
-     * @param finalizadaEn      termino, UTC, o null
-     * @param entregas          entregas realizadas
-     * @param incumplimientos   entregas fuera de plazo
-     * @param fechaColapso      fecha simulada del colapso, UTC, o null
-     * @param autos             autos de la flota
-     * @param motos             motocicletas de la flota
-     * @param bicicletas        bicicletas de la flota
+     * @param registro ejecucion a guardar
+     * @param creadaEn instante de creacion que conserva la fila, UTC
      */
-    public EntidadEjecucion(String id, String tipoEscenario, String estado, String algoritmo, LocalDate fechaInicio,
-                            LocalTime horaInicio, int dias, double factorAceleracion, LocalDateTime creadaEn, LocalDateTime finalizadaEn,
-                            int entregas, int incumplimientos, LocalDateTime fechaColapso, int autos, int motos,
-                            int bicicletas) {
-        this.autos = autos;
-        this.motos = motos;
-        this.bicicletas = bicicletas;
-        this.id = id;
-        this.tipoEscenario = tipoEscenario;
-        this.estado = estado;
-        this.algoritmo = algoritmo;
-        this.fechaInicio = fechaInicio;
-        this.horaInicio = horaInicio;
-        this.dias = dias;
-        this.factorAceleracion = factorAceleracion;
+    public EntidadEjecucion(RegistroEjecucion registro, LocalDateTime creadaEn) {
+        this.id = registro.id();
+        this.nombre = registro.nombre();
+        this.tipoEscenario = registro.tipoEscenario().name();
+        this.estado = registro.estado().name();
+        this.algoritmo = registro.algoritmo();
+        this.fechaInicio = registro.fechaInicio();
+        this.horaInicio = registro.horaInicio();
+        this.dias = registro.dias();
+        this.factorAceleracion = registro.factorAceleracion();
         this.creadaEn = creadaEn;
-        this.finalizadaEn = finalizadaEn;
-        this.entregas = entregas;
-        this.incumplimientos = incumplimientos;
-        this.fechaColapso = fechaColapso;
-    }
-
-    public String getId() {
-        return id;
-    }
-
-    public String getTipoEscenario() {
-        return tipoEscenario;
-    }
-
-    public String getEstado() {
-        return estado;
-    }
-
-    public String getAlgoritmo() {
-        return algoritmo;
-    }
-
-    public LocalDate getFechaInicio() {
-        return fechaInicio;
-    }
-
-    public LocalTime getHoraInicio() {
-        return horaInicio;
-    }
-
-    public int getDias() {
-        return dias;
-    }
-
-    public double getFactorAceleracion() {
-        return factorAceleracion;
+        this.finalizadaEn = ColumnasColapso.aUtc(registro.finalizadaEn());
+        this.autos = registro.autos();
+        this.motos = registro.motos();
+        this.bicicletas = registro.bicicletas();
+        this.resultado = new ColumnasResultado(registro.resultado());
+        this.colapso = new ColumnasColapso(registro.colapso());
+        this.origenDatos = registro.origenDatos();
+        this.semilla = registro.semilla();
+        this.parametros = registro.parametros();
+        this.relojAlcanzado = ColumnasColapso.aUtc(registro.relojAlcanzado());
     }
 
     public LocalDateTime getCreadaEn() {
         return creadaEn;
     }
 
-    public LocalDateTime getFinalizadaEn() {
-        return finalizadaEn;
-    }
-
-    public int getEntregas() {
-        return entregas;
-    }
-
-    public int getIncumplimientos() {
-        return incumplimientos;
-    }
-
-    public LocalDateTime getFechaColapso() {
-        return fechaColapso;
-    }
-
-    public int getAutos() {
-        return autos;
-    }
-
-    public int getMotos() {
-        return motos;
-    }
-
-    public int getBicicletas() {
-        return bicicletas;
+    /**
+     * @return la ejecucion guardada
+     */
+    public RegistroEjecucion aDominio() {
+        // Hibernate deja en null una columna embebida cuyos campos son todos nulos (sin colapso).
+        return new RegistroEjecucion(id, nombre, TipoEscenario.valueOf(tipoEscenario),
+                EstadoEjecucion.valueOf(estado), algoritmo, fechaInicio, horaInicio, dias, factorAceleracion,
+                ColumnasColapso.aInstante(creadaEn), ColumnasColapso.aInstante(finalizadaEn), autos, motos,
+                bicicletas, resultado == null ? ResultadoEjecucion.VACIO : resultado.aDominio(),
+                colapso == null ? null : colapso.aDominio(), origenDatos, semilla, parametros,
+                ColumnasColapso.aInstante(relojAlcanzado));
     }
 }

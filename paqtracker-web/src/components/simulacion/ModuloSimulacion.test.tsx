@@ -25,6 +25,8 @@ const ejecucion: EjecucionApi = {
   parametros: { saltoConsumoScSegundos: 1, saltoAlgoritmoSaMinutos: 30, factorAceleracionK: 180, fraccionSemaforoRojo: 0.15, fraccionSemaforoAmbar: 0.4 },
   indicadores: null,
   flota: { autos: 10, motos: 15, bicicletas: 12 },
+  historica: false,
+  resultado: null,
 };
 
 beforeEach(() => {
@@ -89,5 +91,78 @@ describe('ModuloSimulacion · abrir por URL', () => {
     expect(window.location.search).toBe('?ejecucion=sim-1');
     // ConfiguracionEscenario entrega la ejecución completa: no hace falta volver a pedirla por id.
     expect(consultar).not.toHaveBeenCalled();
+  });
+});
+
+describe('ModuloSimulacion · corridas guardadas', () => {
+  const historica: EjecucionApi = {
+    ...ejecucion,
+    id: 'colapso-viejo',
+    nombre: 'Simulación hasta el colapso desde 2026-03-03',
+    tipoEscenario: 'COLAPSO_LOGISTICO',
+    estado: 'COLAPSADA',
+    relojSimulado: '05/03/2026 14:20:00',
+    parametros: null,
+    historica: true,
+    resultado: {
+      metricas: {
+        entregas: 1520,
+        incumplimientos: 1,
+        entregasTarde: 1,
+        distanciaKm: 18234.4,
+        costoTotal: 41200,
+        productosEntregados: 4800,
+        productosFueraPlazo: 3,
+        retrasoTotalMin: 25,
+        retrasoPonderado: 75,
+        replanificaciones: 130,
+        tiempoComputoMaxMs: 950,
+        tiempoComputoTotalMs: 52000,
+        planificacionesMedidas: 130,
+        picoUnidades: 33,
+        usoAutos: 210,
+        usoMotos: 330,
+        usoBicicletas: 120,
+        averiasAtendidas: 0,
+      },
+      tiempoComputoPromedioMs: 400,
+      colapso: {
+        fecha: '2026-03-05T19:20:00Z',
+        causa: 'ENTREGA_TARDIA',
+        pedido: 'P-123456',
+        unidad: 'M-07',
+        horaLimite: '2026-03-05T19:00:00Z',
+        llegadaEstimada: '2026-03-05T19:25:00Z',
+      },
+      origenDatos: 'ARCHIVO',
+      semilla: 1,
+      relojAlcanzado: '2026-03-05T19:20:00Z',
+      creadaEn: '2026-11-10T15:00:00Z',
+      finalizadaEn: '2026-11-10T15:40:00Z',
+    },
+  };
+
+  it('en la lista, una corrida guardada se abre para ver su resultado', async () => {
+    vi.spyOn(clienteApi, 'listarEjecuciones').mockResolvedValue([historica]);
+    render(<ModuloSimulacion />);
+
+    fireEvent.click(await screen.findByRole('tab', { name: /Simulaciones existentes/ }));
+    fireEvent.click(await screen.findByRole('button', { name: /Ver resultado/ }));
+
+    expect(await screen.findByText('Corrida guardada: se conserva su resultado, no el mapa.')).toBeTruthy();
+    expect(screen.getByText('P-123456')).toBeTruthy();
+    expect(screen.getByText('Entrega fuera de plazo')).toBeTruthy();
+    expect(screen.getByText('Archivo subido para esta corrida')).toBeTruthy();
+    expect(screen.getByText('18 234 km')).toBeTruthy();
+  });
+
+  it('una corrida guardada no pide su estado en vivo', async () => {
+    window.history.replaceState(null, '', '/?tab=simulacion&ejecucion=colapso-viejo');
+    vi.spyOn(clienteApi, 'consultarEjecucion').mockResolvedValue(historica);
+    render(<ModuloSimulacion />);
+
+    expect(await screen.findByText('Corrida guardada: se conserva su resultado, no el mapa.')).toBeTruthy();
+    expect(clienteApi.estado).not.toHaveBeenCalled();
+    expect(clienteStomp.suscribir).not.toHaveBeenCalled();
   });
 });

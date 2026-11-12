@@ -21,9 +21,12 @@ import java.time.LocalTime;
  * @param parametros    parametros con los que corre
  * @param indicadores   KPI de la ultima instantanea, o null si aun no corre
  * @param flota         composicion de la flota
+ * @param historica     verdadero si ya no esta en memoria (corrida pasada o de antes de un reinicio): solo hay
+ *                      su resultado guardado, sin mapa ni instantaneas
+ * @param resultado     resultado guardado; solo en las historicas
  */
 public record RespuestaEjecucion(String id, String nombre, String tipoEscenario, String estado, String algoritmo,
                                  LocalDate fechaInicio, LocalTime horaInicio, int dias, String relojSimulado, String relojReal,
                                  ParametrosEjecucion parametros, IndicadoresOperacion indicadores,
-                                 ComposicionFlota flota) {
+                                 ComposicionFlota flota, boolean historica, ResultadoGuardado resultado) {
 }

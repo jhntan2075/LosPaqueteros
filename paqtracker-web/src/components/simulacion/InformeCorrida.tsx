@@ -9,6 +9,22 @@ import type { EstadoCorrida } from '../../types/simulacion';
 import { Boton, EncabezadoPagina, FilaDato, Insignia, Pestanas, Tarjeta, type Tono } from '../ui';
 import { ESTADO_CORRIDA } from './estadoCorrida';
 
+/** Reloj y semáforo con los que corre; una ejecución histórica no los tiene y no muestra estas filas. */
+function filasParametros(ejecucion: EjecucionApi): [string, string][] {
+  const parametros = ejecucion.parametros;
+  if (!parametros) return [];
+  const pct = (fraccion: number) => Math.round(fraccion * 100);
+  return [
+    ['Factor de aceleración (k)', `×${parametros.factorAceleracionK}`],
+    ['Planifica cada', `${parametros.saltoAlgoritmoSaMinutos} min simulados`],
+    ['Actualiza la vista cada', `${parametros.saltoConsumoScSegundos} s reales`],
+    [
+      'Semáforo de holgura',
+      `ajustado < ${pct(parametros.fraccionSemaforoAmbar)} % · crítico < ${pct(parametros.fraccionSemaforoRojo)} %`,
+    ],
+  ];
+}
+
 /** Mismas filas que las tres tarjetas del informe, para que la descarga audite exactamente lo que se ve en pantalla. */
 function exportarCsv(ejecucion: EjecucionApi, estado: EstadoCorrida, datos: DatosOperacion) {
   const { resumen, indicadores } = datos;
@@ -31,10 +47,7 @@ function exportarCsv(ejecucion: EjecucionApi, estado: EstadoCorrida, datos: Dato
     ['Inicio', formatearFechaLarga(datos.relojInicio, false)],
     ['Algoritmo', ejecucion.algoritmo],
     ['Flota', `${ejecucion.flota.autos} A · ${ejecucion.flota.motos} M · ${ejecucion.flota.bicicletas} B`],
-    ['Factor de aceleración (k)', `×${ejecucion.parametros.factorAceleracionK}`],
-    ['Planifica cada', `${ejecucion.parametros.saltoAlgoritmoSaMinutos} min simulados`],
-    ['Actualiza la vista cada', `${ejecucion.parametros.saltoConsumoScSegundos} s reales`],
-    ['Semáforo de holgura', `ajustado < ${Math.round(ejecucion.parametros.fraccionSemaforoAmbar * 100)} % · crítico < ${Math.round(ejecucion.parametros.fraccionSemaforoRojo * 100)} %`],
+    ...filasParametros(ejecucion),
   ];
   const csv = [['Indicador', 'Valor'], ...filas]
     .map((fila) => fila.map((c) => `"${c.replace(/"/g, '""')}"`).join(','))
@@ -149,13 +162,9 @@ export const InformeCorrida: React.FC<InformeCorridaProps> = ({ ejecucion, estad
                 <Fila etiqueta="Inicio" valor={formatearFechaLarga(datos.relojInicio, false)} />
                 <Fila etiqueta="Algoritmo" valor={ejecucion.algoritmo} />
                 <Fila etiqueta="Flota" valor={`${ejecucion.flota.autos} A · ${ejecucion.flota.motos} M · ${ejecucion.flota.bicicletas} B`} />
-                <Fila etiqueta="Factor de aceleración (k)" valor={`×${ejecucion.parametros.factorAceleracionK}`} />
-                <Fila etiqueta="Planifica cada" valor={`${ejecucion.parametros.saltoAlgoritmoSaMinutos} min simulados`} />
-                <Fila etiqueta="Actualiza la vista cada" valor={`${ejecucion.parametros.saltoConsumoScSegundos} s reales`} />
-                <Fila
-                  etiqueta="Semáforo de holgura"
-                  valor={`ajustado < ${Math.round(ejecucion.parametros.fraccionSemaforoAmbar * 100)} % · crítico < ${Math.round(ejecucion.parametros.fraccionSemaforoRojo * 100)} %`}
-                />
+                {filasParametros(ejecucion).map(([etiqueta, valor]) => (
+                  <Fila key={etiqueta} etiqueta={etiqueta} valor={valor} />
+                ))}
               </SeccionInforme>
             </div>
           )}

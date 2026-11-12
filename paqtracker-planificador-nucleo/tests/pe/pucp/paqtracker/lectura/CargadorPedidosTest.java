@@ -51,4 +51,20 @@ class CargadorPedidosTest {
 
         assertEquals("c4910", pedidos.get(0).getCliente());
     }
+
+    @Test
+    void leer_lineasConComentarios_numeraEnOrdenYUbicaEnElMes() {
+        List<Pedido> pedidos = CargadorPedidos.leer(List.of(
+                "# encabezado",
+                "01d01h30m:56,30,c4910,02,36",
+                "",
+                "02d00h05m:10,12,c0001,04,08"));
+
+        assertEquals(2, pedidos.size());
+        assertEquals(List.of(0, 1), pedidos.stream().map(Pedido::getId).toList());
+        assertEquals(90, pedidos.get(0).getInstanteRegistro());
+        assertEquals(1445, pedidos.get(1).getInstanteRegistro());
+        assertEquals(480, pedidos.get(1).getPlazo());
+        assertEquals("c0001", pedidos.get(1).getCliente());
+    }
 }

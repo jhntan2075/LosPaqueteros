@@ -9,7 +9,8 @@ import jakarta.persistence.Table;
 import java.time.LocalDateTime;
 
 /**
- * Fila de la tabla {@code pedido}: pedidos registrados manualmente. Los instantes se guardan en UTC.
+ * Fila de la tabla {@code pedido}. Los instantes se guardan en UTC. Los pedidos de archivo se insertan por
+ * lotes con JDBC ({@link RepositorioPedidoJpa}); esta entidad sirve para leerlos y para los manuales.
  */
 @Entity
 @Table(name = "pedido")
@@ -20,13 +21,22 @@ public class EntidadPedido {
     @Column(name = "id")
     private Long id;
 
-    @Column(name = "ejecucion_id", length = 40, nullable = false)
+    @Column(name = "origen", length = 20, nullable = false)
+    private String origen;
+
+    @Column(name = "lote", length = 40)
+    private String lote;
+
+    @Column(name = "mes_archivo", length = 6)
+    private String mesArchivo;
+
+    @Column(name = "orden")
+    private Integer orden;
+
+    @Column(name = "ejecucion_id", length = 40)
     private String ejecucionId;
 
-    @Column(name = "id_en_ejecucion", nullable = false)
-    private int idEnEjecucion;
-
-    @Column(name = "cliente", length = 80, nullable = false)
+    @Column(name = "cliente", length = 80)
     private String cliente;
 
     @Column(name = "destino_x", nullable = false)
@@ -47,25 +57,38 @@ public class EntidadPedido {
     @Column(name = "hora_limite", nullable = false)
     private LocalDateTime horaLimite;
 
+    @Column(name = "estado", length = 20)
+    private String estado;
+
+    @Column(name = "cantidad_entregada", nullable = false)
+    private int cantidadEntregada;
+
+    @Column(name = "entregado_en")
+    private LocalDateTime entregadoEn;
+
+    @Column(name = "retraso_minutos")
+    private Integer retrasoMinutos;
+
     /** Constructor requerido por JPA. */
     protected EntidadPedido() {
     }
 
     /**
-     * @param ejecucionId   ejecucion
-     * @param idEnEjecucion identificador del pedido en la ejecucion
-     * @param cliente       cliente
-     * @param destinoX      coordenada horizontal del destino
-     * @param destinoY      coordenada vertical del destino
-     * @param cantidad      paquetes
-     * @param plazoHoras    plazo de entrega
-     * @param registradoEn  registro simulado, UTC
-     * @param horaLimite    hora limite simulada, UTC
+     * Pedido manual, recien registrado.
+     *
+     * @param ejecucionId ejecucion del dia a dia en la que entra
+     * @param cliente     cliente
+     * @param destinoX    coordenada horizontal del destino
+     * @param destinoY    coordenada vertical del destino
+     * @param cantidad    paquetes
+     * @param plazoHoras  plazo de entrega
+     * @param registradoEn registro, UTC
+     * @param horaLimite  hora limite, UTC
      */
-    public EntidadPedido(String ejecucionId, int idEnEjecucion, String cliente, int destinoX, int destinoY,
-                         int cantidad, int plazoHoras, LocalDateTime registradoEn, LocalDateTime horaLimite) {
+    public EntidadPedido(String ejecucionId, String cliente, int destinoX, int destinoY, int cantidad,
+                         int plazoHoras, LocalDateTime registradoEn, LocalDateTime horaLimite) {
+        this.origen = "MANUAL";
         this.ejecucionId = ejecucionId;
-        this.idEnEjecucion = idEnEjecucion;
         this.cliente = cliente;
         this.destinoX = destinoX;
         this.destinoY = destinoY;
@@ -79,12 +102,24 @@ public class EntidadPedido {
         return id;
     }
 
-    public String getEjecucionId() {
-        return ejecucionId;
+    public String getOrigen() {
+        return origen;
     }
 
-    public int getIdEnEjecucion() {
-        return idEnEjecucion;
+    public String getLote() {
+        return lote;
+    }
+
+    public String getMesArchivo() {
+        return mesArchivo;
+    }
+
+    public Integer getOrden() {
+        return orden;
+    }
+
+    public String getEjecucionId() {
+        return ejecucionId;
     }
 
     public String getCliente() {
@@ -113,5 +148,21 @@ public class EntidadPedido {
 
     public LocalDateTime getHoraLimite() {
         return horaLimite;
+    }
+
+    public String getEstado() {
+        return estado;
+    }
+
+    public int getCantidadEntregada() {
+        return cantidadEntregada;
+    }
+
+    public LocalDateTime getEntregadoEn() {
+        return entregadoEn;
+    }
+
+    public Integer getRetrasoMinutos() {
+        return retrasoMinutos;
     }
 }

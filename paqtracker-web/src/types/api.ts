@@ -212,15 +212,65 @@ export interface EjecucionApi {
   dias: number;
   relojSimulado: string | null;
   relojReal: string | null;
+  /** Null en una ejecución histórica: la base no guarda los saltos del reloj. */
   parametros: {
     saltoConsumoScSegundos: number;
     saltoAlgoritmoSaMinutos: number;
     factorAceleracionK: number;
     fraccionSemaforoRojo: number;
     fraccionSemaforoAmbar: number;
-  };
+  } | null;
   indicadores: IndicadoresApi | null;
   flota: ComposicionFlotaApi;
+  /** Ya no está en memoria (corrida pasada o de antes de un reinicio): solo queda su resultado guardado. */
+  historica: boolean;
+  /** Resultado guardado; solo en las históricas. */
+  resultado: ResultadoGuardadoApi | null;
+}
+
+/** Métricas que la base guarda de cada ejecución (RAN-04: calidad de la solución y tiempo de cómputo). */
+export interface MetricasEjecucionApi {
+  entregas: number;
+  incumplimientos: number;
+  entregasTarde: number;
+  distanciaKm: number;
+  costoTotal: number;
+  productosEntregados: number;
+  productosFueraPlazo: number;
+  retrasoTotalMin: number;
+  retrasoPonderado: number;
+  replanificaciones: number;
+  tiempoComputoMaxMs: number;
+  tiempoComputoTotalMs: number;
+  planificacionesMedidas: number;
+  picoUnidades: number;
+  usoAutos: number;
+  usoMotos: number;
+  usoBicicletas: number;
+  averiasAtendidas: number;
+}
+
+export interface ColapsoGuardadoApi {
+  /** Instantes ISO-8601 (UTC). */
+  fecha: string;
+  causa: 'ENTREGA_TARDIA' | 'PLAZO_VENCIDO_SIN_DESPACHO';
+  pedido: string;
+  unidad: string | null;
+  horaLimite: string;
+  llegadaEstimada: string | null;
+}
+
+export interface ResultadoGuardadoApi {
+  metricas: MetricasEjecucionApi;
+  tiempoComputoPromedioMs: number;
+  colapso: ColapsoGuardadoApi | null;
+  /** SISTEMA: pedidos de los archivos del sistema. ARCHIVO: un archivo subido para esta corrida. */
+  origenDatos: 'SISTEMA' | 'ARCHIVO';
+  semilla: number | null;
+  /** Instantes ISO-8601 (UTC). */
+  relojAlcanzado: string | null;
+  creadaEn: string;
+  finalizadaEn: string | null;
 }
 
 export interface SolicitudEjecucionApi {
@@ -232,6 +282,8 @@ export interface SolicitudEjecucionApi {
   dias?: number;
   algoritmo?: 'GA' | 'IACO';
   flota?: ComposicionFlotaApi;
+  /** Lote del archivo de pedidos subido para esta corrida; sin él, solo pedidos del sistema. */
+  lotePedidos?: string;
 }
 
 export interface PedidoApi {
@@ -311,6 +363,8 @@ export interface ImportacionApi {
   errores: string[];
   lineasInvalidas: number[];
   guardado: boolean;
+  /** Pedidos: lote para enviarlo al crear la simulación. Null en bloqueos o si no se guardó. */
+  lote: string | null;
 }
 
 export interface ErrorApi {

@@ -16,10 +16,12 @@ import java.time.LocalTime;
  * @param algoritmo     GA o IACO (por defecto el configurado)
  * @param flota         composicion de la flota (por defecto la del dominio: 10 autos, 15 motos, 12 bicicletas)
  * @param horaInicio    hora del primer dia en la que arranca el reloj (por defecto 00:00)
+ * @param lotePedidos   lote del archivo de pedidos subido para esta corrida (POST /api/archivos/pedidos), o null
+ *                      para usar solo los pedidos del sistema
  */
 public record SolicitudCreacionEjecucion(@NotNull String tipoEscenario, @NotNull LocalDate fechaInicio,
                                          @Positive Integer dias, String algoritmo, @Valid ComposicionFlota flota,
-                                         LocalTime horaInicio) {
+                                         LocalTime horaInicio, String lotePedidos) {
 
     /**
      * @return la flota pedida, o la del dominio si no se indico

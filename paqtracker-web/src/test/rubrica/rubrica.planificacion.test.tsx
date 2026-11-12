@@ -25,6 +25,8 @@ const ejecucion: EjecucionApi = {
   parametros: { saltoConsumoScSegundos: 1, saltoAlgoritmoSaMinutos: 30, factorAceleracionK: 180, fraccionSemaforoRojo: 0.15, fraccionSemaforoAmbar: 0.4 },
   indicadores: null,
   flota: { autos: 10, motos: 15, bicicletas: 12 },
+  historica: false,
+  resultado: null,
 };
 
 const plan = (sobrescribir: Partial<PlanEstableApi> = {}): PlanEstableApi => ({

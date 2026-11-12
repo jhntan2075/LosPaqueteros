@@ -2,8 +2,9 @@ import { clienteApi } from './clienteApi';
 import type { ArchivoCargado, TipoArchivo } from '../types/simulacion';
 
 // Archivos de entrada de una simulación. Se suben a paqtracker-api, que los valida línea por línea
-// (CU-02) con el mismo lector del planificador y los guarda solo si no tienen errores. Cada archivo
-// corresponde a un mes:
+// (CU-02) con el mismo lector del planificador y los guarda solo si no tienen errores. Los pedidos quedan
+// en la base como un lote que usa solo la corrida que se crea con él; los bloqueos reemplazan el archivo
+// del mes. Cada archivo corresponde a un mes:
 //   pedidos:  ventas.YYYYMM.txt    líneas ##d##h##m:x,y,cCLIENTE,cantidad,plazoHoras
 //   bloqueos: bloqueo.YYMM.txt     líneas ##d##h##m-##d##h##m:x1,y1,x2,y2[,...]
 
@@ -32,5 +33,6 @@ export async function subirArchivo(tipo: TipoArchivo, archivo: File, mes: string
     registros: respuesta.registrosValidos,
     lineasInvalidas: respuesta.lineasInvalidas,
     guardado: respuesta.guardado,
+    lote: respuesta.lote,
   };
 }

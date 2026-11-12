@@ -45,6 +45,6 @@ public class CasoUsoImportarBloqueos {
             almacenArchivos.guardarBloqueos(mesArchivo, contenido);
         }
         return new RespuestaImportacion(mes, validacion.getRegistrosValidos(), validacion.getErrores(),
-                validacion.getLineasInvalidas(), guardar);
+                validacion.getLineasInvalidas(), guardar, null);
     }
 }

@@ -14,6 +14,11 @@ import java.util.List;
 public interface RepositorioEjecucionSpringData extends JpaRepository<EntidadEjecucion, String> {
 
     /**
+     * @return todas las filas, de la mas antigua a la mas nueva
+     */
+    List<EntidadEjecucion> findAllByOrderByCreadaEnAsc();
+
+    /**
      * @param estadoFinal  estado con el que se cierran
      * @param finalizadaEn instante del cierre, UTC
      * @param terminales   estados que ya estan cerrados y no se tocan

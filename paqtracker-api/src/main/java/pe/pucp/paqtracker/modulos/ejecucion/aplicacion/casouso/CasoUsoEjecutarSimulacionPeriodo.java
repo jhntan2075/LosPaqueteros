@@ -9,6 +9,7 @@ import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.mapeador.MapeadorEjecucio
 import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.servicio.CargadorDatosEscenario;
 import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.servicio.CreadorEjecucion;
 import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.servicio.MotorEjecucion;
+import pe.pucp.paqtracker.modulos.ejecucion.dominio.PuertoPedidos;
 import pe.pucp.paqtracker.modulos.ejecucion.dominio.TipoEscenario;
 import pe.pucp.paqtracker.modulos.planificacion.dominio.AlgoritmoPlanificacion;
 import java.util.UUID;
@@ -27,19 +28,23 @@ public class CasoUsoEjecutarSimulacionPeriodo {
     private final CreadorEjecucion creador;
     private final MapeadorEjecucion mapeador;
     private final PropiedadesDominio propiedades;
+    private final PuertoPedidos pedidos;
 
     /**
      * @param cargadorDatos lector de los datos del periodo
      * @param creador       alta comun de ejecuciones
      * @param mapeador      conversion a DTO
      * @param propiedades   parametros de la operacion
+     * @param pedidos       pedidos guardados, donde el lote subido queda atado a la corrida
      */
     public CasoUsoEjecutarSimulacionPeriodo(CargadorDatosEscenario cargadorDatos, CreadorEjecucion creador,
-                                            MapeadorEjecucion mapeador, PropiedadesDominio propiedades) {
+                                            MapeadorEjecucion mapeador, PropiedadesDominio propiedades,
+                                            PuertoPedidos pedidos) {
         this.cargadorDatos = cargadorDatos;
         this.creador = creador;
         this.mapeador = mapeador;
         this.propiedades = propiedades;
+        this.pedidos = pedidos;
     }
 
     /**
@@ -53,15 +58,20 @@ public class CasoUsoEjecutarSimulacionPeriodo {
         if (dias > maximo) {
             throw new SolicitudInvalidaException("El periodo admite hasta " + maximo + " días: " + dias);
         }
-        cargadorDatos.exigirVentasDelRango(solicitud.fechaInicio(), solicitud.horaInicioOMedianoche(), dias);
+        cargadorDatos.exigirVentasDelRango(solicitud.fechaInicio(), solicitud.horaInicioOMedianoche(), dias,
+                solicitud.lotePedidos());
         AlgoritmoPlanificacion algoritmo = AlgoritmoPlanificacion.desde(solicitud.algoritmo() == null
                 ? propiedades.planificador().algoritmo() : solicitud.algoritmo());
         String id = "periodo-" + UUID.randomUUID().toString().substring(0, LONGITUD_ID);
         MotorEjecucion motor = creador.crear(id, "Simulación de " + dias + " días desde " + solicitud.descripcionInicio(),
                 TipoEscenario.SIMULACION_PERIODO, algoritmo, solicitud.fechaInicio(),
                 solicitud.horaInicioOMedianoche(), dias,
-                propiedades.ejecucion().factorPeriodo(), cargadorDatos.cargarRango(solicitud.fechaInicio(), solicitud.horaInicioOMedianoche(), dias),
+                propiedades.ejecucion().factorPeriodo(), cargadorDatos.cargarRango(solicitud.fechaInicio(),
+                        solicitud.horaInicioOMedianoche(), dias, solicitud.lotePedidos()),
                 solicitud.flotaOPorDefecto());
+        if (solicitud.lotePedidos() != null) {
+            pedidos.vincularLote(solicitud.lotePedidos(), id);
+        }
         return mapeador.aRespuesta(motor);
     }
 }

@@ -26,6 +26,8 @@ const ejecucion: EjecucionApi = {
   parametros: { saltoConsumoScSegundos: 1, saltoAlgoritmoSaMinutos: 30, factorAceleracionK: 180, fraccionSemaforoRojo: 0.15, fraccionSemaforoAmbar: 0.4 },
   indicadores: null,
   flota: { autos: 10, motos: 15, bicicletas: 12 },
+  historica: false,
+  resultado: null,
 };
 
 beforeEach(() => {
@@ -70,14 +72,42 @@ describe('Rúbrica · inicio de la simulación semanal', () => {
 
 describe('Rúbrica · carga de datos por GUI', () => {
   it('G11 · los pedidos (ventas.AAAAMM.txt) se suben desde la interfaz y el servidor los valida', async () => {
-    const subir = vi.spyOn(clienteApi, 'subirVentas').mockResolvedValue({ mes: '202603', registrosValidos: 1234, lineasInvalidas: [], guardado: true } as never);
+    const subir = vi
+      .spyOn(clienteApi, 'subirVentas')
+      .mockResolvedValue({ mes: '202603', registrosValidos: 1234, lineasInvalidas: [], guardado: true, lote: 'corrida-abc' } as never);
     render(<ConfiguracionEscenario onAbrir={() => {}} />);
     const archivo = new File(['01d00h05m:10,20,c001,3,24\n'], 'ventas.202603.txt', { type: 'text/plain' });
     fireEvent.change(screen.getByLabelText('Pedidos (ventas.AAAAMM.txt)'), { target: { files: [archivo] } });
 
     await waitFor(() => expect(subir).toHaveBeenCalledWith(archivo, '202603'));
-    expect(await screen.findByText('Guardado para el mes 202603.')).toBeTruthy();
+    expect(await screen.findByText(/Listo para esta simulación \(mes 202603\); no reemplaza los pedidos del sistema/)).toBeTruthy();
     expect(screen.getByText(/1 234 pedidos · 202603/)).toBeTruthy();
+  });
+
+  it('G11 · el archivo de pedidos subido se usa solo en la corrida que se crea con él', async () => {
+    vi.spyOn(clienteApi, 'subirVentas').mockResolvedValue({
+      mes: '202603',
+      registrosValidos: 2,
+      lineasInvalidas: [],
+      guardado: true,
+      lote: 'corrida-abc',
+    } as never);
+    render(<ConfiguracionEscenario onAbrir={() => {}} />);
+    fireEvent.change(screen.getByLabelText('Pedidos (ventas.AAAAMM.txt)'), { target: { files: [new File(['x'], 'ventas.202603.txt')] } });
+    await screen.findByText(/Listo para esta simulación/);
+    fireEvent.change(screen.getByLabelText(/Fecha de inicio/), { target: { value: '2026-03-03' } });
+    fireEvent.click(botonEjecutar());
+    await waitFor(() =>
+      expect(clienteApi.crearEjecucion).toHaveBeenCalledWith(expect.objectContaining({ lotePedidos: 'corrida-abc' })),
+    );
+  });
+
+  it('G11 · sin archivo subido la corrida usa los pedidos del sistema (no envía lote)', async () => {
+    render(<ConfiguracionEscenario onAbrir={() => {}} />);
+    fireEvent.change(screen.getByLabelText(/Fecha de inicio/), { target: { value: '2026-03-03' } });
+    fireEvent.click(botonEjecutar());
+    await waitFor(() => expect(clienteApi.crearEjecucion).toHaveBeenCalled());
+    expect(vi.mocked(clienteApi.crearEjecucion).mock.calls[0][0].lotePedidos).toBeUndefined();
   });
 
   it('G11 · un archivo de pedidos con líneas inválidas se informa y no se guarda', async () => {

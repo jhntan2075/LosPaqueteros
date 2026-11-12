@@ -26,24 +26,24 @@ class AlmacenArchivosLocalTest {
     private Path carpeta;
 
     @Test
-    void guardarVentas_carpetaVacia_escribeElArchivoSinDejarTemporales() throws IOException {
+    void guardarBloqueos_carpetaVacia_escribeElArchivoSinDejarTemporales() throws IOException {
         AlmacenArchivosLocal almacen = crearAlmacen();
 
-        almacen.guardarVentas(MES, CONTENIDO);
+        almacen.guardarBloqueos(MES, CONTENIDO);
 
-        assertEquals(List.of("ventas.202610.txt"), nombres(carpeta.resolve("ventas")));
+        assertEquals(List.of("bloqueo.2610.txt"), nombres(carpeta.resolve("bloqueos")));
     }
 
     @Test
-    void guardarVentas_moverFalla_borraElTemporal() throws IOException {
+    void guardarBloqueos_moverFalla_borraElTemporal() throws IOException {
         // Un directorio no vacio con el nombre del destino hace fallar el movimiento en cualquier sistema.
-        Path destino = Files.createDirectories(carpeta.resolve("ventas").resolve("ventas.202610.txt"));
+        Path destino = Files.createDirectories(carpeta.resolve("bloqueos").resolve("bloqueo.2610.txt"));
         Files.createFile(destino.resolve("ocupado.txt"));
         AlmacenArchivosLocal almacen = crearAlmacen();
 
-        assertThrows(UncheckedIOException.class, () -> almacen.guardarVentas(MES, CONTENIDO));
+        assertThrows(UncheckedIOException.class, () -> almacen.guardarBloqueos(MES, CONTENIDO));
 
-        assertEquals(List.of("ventas.202610.txt"), nombres(carpeta.resolve("ventas")));
+        assertEquals(List.of("bloqueo.2610.txt"), nombres(carpeta.resolve("bloqueos")));
     }
 
     private AlmacenArchivosLocal crearAlmacen() {

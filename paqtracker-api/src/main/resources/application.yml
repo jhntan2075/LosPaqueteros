@@ -8,7 +8,7 @@ spring:
   application:
     name: paqtracker-api
   datasource:
-    url: jdbc:mysql://${DB_HOST:127.0.0.1}:${DB_PORT:3306}/${DB_NAME:paqtracker}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+    url: jdbc:mysql://${DB_HOST:127.0.0.1}:${DB_PORT:3306}/${DB_NAME:paqtracker}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&rewriteBatchedStatements=true
     username: ${DB_USER:paq_user}
     password: ${DB_PASSWORD:}
   jpa:
@@ -43,6 +43,8 @@ paqtracker:
     clave-hash: ${APP_CLAVE_HASH:}
     duracion-sesion: ${APP_DURACION_SESION:12h}
   datos:
+    # Ventas: semilla de la base. Al arrancar se cargan a la tabla pedido los meses que aun no tiene; despues el
+    # sistema lee los pedidos de la base. Los archivos subidos (CU-02) van a la base como lote de una corrida.
     ventas: ${APP_DATOS_VENTAS:datos/ventas.v20260909}
     bloqueos: ${APP_DATOS_BLOQUEOS:datos/bloqueos.v20260909}
   ejecucion:
