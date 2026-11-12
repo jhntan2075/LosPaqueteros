@@ -4,6 +4,61 @@ Formato basado en Keep a Changelog; versionado semántico (MAJOR.MINOR.PATCH).
 
 ## [Sin publicar]
 
+### Rendimiento de la malla, despacho ante estrés y correcciones (núcleo y API)
+
+Sale del análisis de rendimiento y de las pruebas de estrés del 12-11-2026 (meses reales hasta el colapso y
+35 escenarios sintéticos de 7 días). No cambia la función objetivo, sus pesos ni los parámetros calibrados
+del GA.
+
+**Rendimiento (mismos resultados, Ta entre 14 y 40 veces menor)**
+- El 97 % del tiempo de cómputo estaba en `Malla.distancia`: cada vez que un bloqueo tocaba el rectángulo de
+  un tramo se lanzaba una búsqueda en amplitud sobre casi toda la malla, y el planificador repite la misma
+  consulta miles de veces por ciclo.
+- `MemoDistancias` (nuevo): guarda la distancia de cada consulta (origen, destino, minuto de salida,
+  velocidad y grupo de refrigerio) y la devuelve cuando se repite. Tabla de tamaño fijo, unos 3 MB por malla
+  con bloqueos.
+- La búsqueda en amplitud de `Malla` consulta los bloqueos en una máscara de bits por tramo de tiempo y usa
+  una cola de enteros.
+- `BusquedaLocal` (2-opt y Or-opt) comprueba primero si el movimiento acorta la ruta y solo entonces la
+  recorre con sus tiempos para contar tardanzas.
+- Medido con entregas, distancia, fitness acumulado e instante de colapso idénticos antes y después: semana
+  real de junio de 2026, Ta promedio de 345 a 8 ms y máximo de 4 467 a 98 ms; 200 pedidos/día con 20
+  bloqueos/día, de 1 386 a 33 ms y de 9 359 a 231 ms. Antes el Ta máximo llegaba a superar Sa/k en una
+  simulación de 5 días en 30 minutos.
+
+**Mecanismos de despacho (retrasan el colapso)**
+- Retención (`FiltroDespacho`, nuevo): una entrega del plan que llegaría fuera de plazo no sale mientras el
+  pedido pueda esperar un ciclo y cumplir con la unidad más rápida desde el almacén más cercano. Antes, con
+  las unidades rápidas en ruta, el plan la mandaba en una bicicleta que llegaba tarde y declaraba el colapso
+  con 13 a 32 unidades libres.
+- Rescate de última oportunidad (`Orquestador.despachar`): un pedido que sigue en la cola se despacha fuera
+  del plan cuando las unidades libres lo entregan a tiempo saliendo ahora pero ya no en el ciclo siguiente,
+  repartido entre varias si no cabe en una (LE-009). Cubre los pedidos de 9 o 10 paquetes, que solo caben en
+  un auto y vencían en la cola con motocicletas y bicicletas libres.
+- Con los datos reales ya no hay colapso de junio a noviembre de 2026 (107 a 167 pedidos/día; antes caía el
+  día 16 de junio). Diciembre de 2026 (227/día) pasa del día 6 al 18 y febrero de 2027 (277/día) del día 2
+  al 4. En sintético aguanta 250 pedidos/día (antes colapsaba el día 3), 200/día con todos los plazos a 4 h
+  y hasta 6 averías por día.
+- Sigue colapsando desde unos 300 pedidos/día (entre 60 y 70 % de los ciclos sin unidades libres), con picos
+  de demanda concentrados en 1 o 2 horas y con plazos de 1 h a destinos lejanos. El rescate adelantó unas
+  horas el colapso en dos meses ya saturados (diciembre de 2026 y marzo de 2027).
+
+**Correcciones**
+- Fragmentos perdidos: `Orquestador.despachar` sacaba el pedido de la cola con cualquier porción despachada
+  y el resto no se entregaba nunca (hasta 11 % del producto con pedidos mayores a 24 paquetes, sin que se
+  declarara incumplimiento). Ahora el pedido sigue en la cola por la cantidad que falta.
+- Tramo sin camino: cuando los bloqueos encerraban un nodo, la malla devolvía `Integer.MAX_VALUE / 4` como
+  distancia y el reloj de la ruta se desbordaba (tardanzas absurdas o `IllegalArgumentException` en
+  `Tramo`). Ahora devuelve `Malla.DISTANCIA_SIN_CAMINO`, acotado, y la entrega sin camino no se despacha:
+  espera en la cola a que se levante el bloqueo.
+- `SeguimientoPedidos` (API): un pedido que sale por partes en ciclos distintos se daba por entregado al
+  llegar la última parte en camino. Ahora exige que lo entregado cubra su cantidad.
+
+**Pendiente**
+- Validar al registrar un pedido (CU-01, CU-02) que su plazo sea alcanzable desde el almacén más cercano.
+- Que el planificador conozca cuándo queda libre cada unidad en ruta.
+- Prueba propia del cambio en `SeguimientoPedidos`.
+
 ### Login con la cuenta del equipo (API y web)
 - Pantalla de login. En escritorio es un panel dividido: a la izquierda la ilustración de la operación (malla,
   almacenes, bloqueo y unidades en movimiento) y a la derecha la tarjeta. En celular queda solo la tarjeta.

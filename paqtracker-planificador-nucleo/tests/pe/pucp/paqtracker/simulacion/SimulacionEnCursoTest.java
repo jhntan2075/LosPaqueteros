@@ -33,6 +33,8 @@ class SimulacionEnCursoTest {
     private static final long SEMILLA = 7L;
     private static final int PLAZO_REGULAR = 2160;
     private static final int HORIZONTE = 2 * 1440;
+    /** La flota por defecto carga 408 paquetes (10 autos de 24, 15 motocicletas de 8 y 12 bicicletas de 4). */
+    private static final int CARGA_MAYOR_QUE_LA_FLOTA = 500;
 
     @Test
     void avanzar_pasosDeSa_igualaLaSimulacionCompleta() {
@@ -125,9 +127,11 @@ class SimulacionEnCursoTest {
 
     @Test
     void avanzar_pedidoQueVenceEnLaColaSinDespacho_declaraColapsoEnSuHoraLimite() {
-        // Plazo mayor al de despacho directo y un planificador que no rutea nada: el pedido queda varado en la cola.
+        // Plazo mayor al de despacho directo y un planificador que no rutea nada: el pedido queda varado en la
+        // cola. Pide mas paquetes de los que carga la flota entera, para que tampoco lo salve el rescate de
+        // ultima oportunidad repartiendolo entre las unidades libres.
         int plazo = ConfiguracionDominio.PLAZO_DESPACHO_DIRECTO_MINUTOS + 4 * SA_MINUTOS;
-        Pedido varado = new Pedido(1, new Nodo(30, 18), 2, 0, plazo);
+        Pedido varado = new Pedido(1, new Nodo(30, 18), CARGA_MAYOR_QUE_LA_FLOTA, 0, plazo);
         SimulacionEnCurso simulacion = crearOrquestador(List.of(varado), semilla -> escenario -> new SolucionRuteo())
                 .iniciar(true);
 

@@ -1,6 +1,6 @@
 # Trazabilidad: exigencias → código → pruebas
 
-Estado al 06-10-2026: núcleo `paqtracker-planificador-nucleo` y API `paqtracker-api`. Ayuda a
+Estado al 12-11-2026: núcleo `paqtracker-planificador-nucleo` y API `paqtracker-api`. Ayuda a
 cerrar DEF-08: cada exigencia apunta a la clase que la implementa y a la prueba que
 la verifica. Donde la exigencia no tiene un id de LE confirmado se cita el caso de
 uso (CU).
@@ -11,7 +11,7 @@ no al núcleo del planificador).
 
 | Exigencia | Descripción | Estado | Implementación | Prueba |
 |---|---|---|---|---|
-| LE-009 | Fragmentación de pedidos por capacidad de unidad | Hecho | `planificador.comun.Fragmentador` | `FragmentadorTest` |
+| LE-009 | Fragmentación de pedidos por capacidad de unidad | Hecho | `planificador.comun.Fragmentador`; `Orquestador.descontarDeLaCola` (el pedido sigue en la cola por la cantidad que falta); `Orquestador.rescatarEnUltimaOportunidad` (reparto entre varias unidades libres); `SeguimientoPedidos` (entregado solo con la cantidad completa) | `FragmentadorTest`, `OrquestadorDespachoTest` |
 | LE-020 | Capacidad por tipo de unidad | Hecho | `ConfiguracionDominio.CAPACIDAD_*`, `TipoVehiculo` | `TipoVehiculoTest` |
 | LE-021 | Velocidad por tipo de unidad | Hecho | `ConfiguracionDominio.VELOCIDAD_*`, `CalculadoraTiempos` | `TipoVehiculoTest`, `CalculadoraTiemposTest` |
 | LE-022 | Costo por km por tipo de unidad | Hecho (solo reporte) | `ConfiguracionDominio.COSTO_KM_*`, `Orquestador.registrarSalida` | `TipoVehiculoTest` |
@@ -19,12 +19,12 @@ no al núcleo del planificador).
 | LE-024 | Refrigerio escalonado | Hecho | `util.CalendarioTurnos`, `Orquestador.actualizarEstadosPorTurno` | `CalendarioTurnosTest` |
 | LE-025 | Tiempo de acondicionamiento por entrega (60 min) | Hecho | `ConfiguracionDominio.TIEMPO_SERVICIO_MINUTOS` | `EvaluadorFitnessTest` (indirecta) |
 | LE-026 | Dos algoritmos metaheurísticos en Java | Hecho | `PlanificadorGA`, `PlanificadorIACO` sobre `AlgoritmoMetaheuristico` | — (falta `PlanificadorGATest`) |
-| LE-032 | Rutas dentro del plazo; colapso si no hay plan factible | Parcial | `EvaluadorFitness` (penalización), `Orquestador` (registro) | `EvaluadorFitnessTest` |
+| LE-032 | Rutas dentro del plazo; colapso si no hay plan factible | Parcial | `EvaluadorFitness` (penalización), `Orquestador` (registro), `simulacion.FiltroDespacho` (retiene la entrega que llegaría tarde mientras el pedido pueda esperar un ciclo) | `EvaluadorFitnessTest`, `OrquestadorDespachoTest` |
 | LE-041 / LE-042 | Reasignación de carga en camino al pedido más crítico | Parcial (solo ante avería) | `GestorTrasbordo`: trasvase de la averiada a unidades en ruta (prefiltro Manhattan, 5 candidatas, A*), por hora límite, sin dejar tarde lo que la receptora llevaba a tiempo; respaldo desde almacén en `Orquestador.despacharRespaldos` | `OrquestadorTest`, `SeguimientoPedidosTest` |
 | LE-055 | Media vuelta ante nodo bloqueado | Motor | `util.Malla` rodea al planificar los bloqueos que la unidad encontraría en el viaje (incluso los que empiezan en tránsito); la media vuelta solo haría falta con bloqueos registrados en vivo | `MallaTest` |
 | LE-057 | Sc: salto del eje de consumo | Hecho | `MotorEjecucion` (tick cada `APP_SC_SEGUNDOS`) | `MotorEjecucionTest` |
 | LE-058 | Sa: salto del algoritmo | Hecho | `Orquestador` (`saMinutos`), `PLANIFICADOR_SA_MINUTOS` | — |
-| LE-059 | Ta: tiempo de cómputo por planificación | Hecho | `Orquestador.simular`, `ResultadoSimulacion.registrarTiempoComputo` | — |
+| LE-059 | Ta: tiempo de cómputo por planificación | Hecho | `Orquestador.simular`, `ResultadoSimulacion.registrarTiempoComputo`; para cumplir Ta < Sa / k: `util.MemoDistancias`, máscara de bloqueos en `Malla` y `BusquedaLocal` (cuenta tardanzas solo si el movimiento acorta) | `MemoDistanciasTest`, `MallaTest` |
 | LE-006 / LE-007 | Carga de archivos con validación | Hecho | `CargadorPedidos.validar`, `CargadorBloqueos.validar`, `CasoUsoImportarPedidos`, `CasoUsoImportarBloqueos` | `CargadorPedidosTest`, `CargadorBloqueosTest`, `CasoUsoImportarPedidosTest` |
 | LE-012 | Registro manual de pedidos en el día a día | Hecho | `CasoUsoRegistrarPedido` (replanifica de inmediato) | `IntegracionPedidosTest`, `MotorEjecucionTest` |
 | LE-019 / LE-051 | Configuración de la flota al inicio | Hecho | `ConfiguracionDominio.crearFlota(central, a, m, b)`, `ComposicionFlota`, `CodigosFlota` | `ConfiguracionDominioTest`, `MotorEjecucionTest`, `IntegracionApiTest` |
@@ -41,7 +41,7 @@ no al núcleo del planificador).
 | LE-101 | Ruta de la unidad de origen tras una reasignación | Parcial (solo ante avería) | `GestorTrasbordo.reanudar` (tipo 1: sigue con lo que le queda o vuelve a su almacén); la receptora se retraza con su carga y la trasvasada | `OrquestadorTest` |
 | CU-11 | Recarga diaria de intermedios a las 23:59:59 | Hecho | `Almacen.descontar` / `recargar`, `Orquestador.recargarAlmacenes` | `AlmacenTest` |
 | CU-11 | Stock de intermedios como restricción dura | Hecho | `Reparador` (fase 2), `InventarioProyectado` | `InventarioProyectadoTest` |
-| CU-12 | Bloqueos programados (nodo no transitable) | Hecho | `modelo.Bloqueo`, `util.Malla` | — |
+| CU-12 | Bloqueos programados (nodo no transitable) | Hecho | `modelo.Bloqueo`, `util.Malla` (`DISTANCIA_SIN_CAMINO` si los bloqueos encierran un nodo), `simulacion.FiltroDespacho` (no despacha una entrega sin camino) | `MallaTest`, `OrquestadorDespachoTest` |
 | CU-13 | Averías tipo 1, 2 y 3 (registro en vivo, disparo por evento) | Parcial (backend) | `Orquestador` (aplicar, liberar, detener, recuperar), `SimulacionEnCurso.agregarAveria`, `UnidadEnTransito.cortarEn`/`detenerEn`, `MotorEjecucion.programarAveria` + `GestorEventos`, `CasoUsoRegistrarAveria`, `ControladorIncidencias`, `GestorTrasbordo` (seguir a bordo en tipo 1, trasvasar a unidades en ruta, respaldo desde almacén o cola) | `OrquestadorTest`, `SimulacionEnCursoTest`, `UnidadEnTransitoTest`, `TramoTest`, `AveriaTest`, `MotorEjecucionTest`, `SeguimientoPedidosTest`, `GestorEventosTest`, `IntegracionIncidenciasTest` |
 
 ## Pruebas que faltan
