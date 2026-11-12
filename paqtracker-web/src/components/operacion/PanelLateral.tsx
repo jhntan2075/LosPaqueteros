@@ -37,6 +37,8 @@ import { ResumenOperacion } from './ResumenOperacion';
 
 export type { SeleccionPanel };
 
+export type SubseccionIncidencias = 'todos' | 'riesgo' | 'averias' | 'bloqueos';
+
 interface PanelLateralProps {
   seleccion: SeleccionPanel;
   onSeleccionar: (seleccion: SeleccionPanel) => void;
@@ -50,6 +52,9 @@ interface PanelLateralProps {
   resaltado?: SeleccionResaltable | null;
   /** Marca un objeto desde una fila de lista, sin salir de la lista. */
   onResaltar?: (objeto: SeleccionResaltable) => void;
+  /** Subsección activa de la pestaña Incidencias ('todos' | 'riesgo' | 'averias' | 'bloqueos'). */
+  subseccionIncidencias?: SubseccionIncidencias;
+  onCambiarSubseccionIncidencias?: (subseccion: SubseccionIncidencias) => void;
 }
 
 /** Mismo punto de 7 px para los cuatro niveles: la forma del semáforo no cambia de una pantalla a otra. */
@@ -524,10 +529,25 @@ const DetalleAlmacen: React.FC<{ codigo: string } & Omit<PanelLateralProps, 'sel
 /** Filas de "Pedidos en riesgo" que se muestran antes de ofrecer "ver más": con 26 en riesgo no tenía sentido listarlos todos de una. */
 const LIMITE_RIESGO_VISIBLE = 8;
 
-const ListaIncidencias: React.FC<Pick<PanelLateralProps, 'onSeleccionar' | 'onCentrar'> & { onRegistrarAveria: AbrirRegistroAveria }> = ({
+const OPCIONES_SUBSECCION: { id: SubseccionIncidencias; etiqueta: string }[] = [
+  { id: 'todos', etiqueta: 'Todas' },
+  { id: 'riesgo', etiqueta: 'En riesgo' },
+  { id: 'averias', etiqueta: 'Averías' },
+  { id: 'bloqueos', etiqueta: 'Bloqueos' },
+];
+
+const ListaIncidencias: React.FC<
+  Pick<PanelLateralProps, 'onSeleccionar' | 'onCentrar'> & {
+    onRegistrarAveria: AbrirRegistroAveria;
+    subseccion?: SubseccionIncidencias;
+    onCambiarSubseccion?: (subseccion: SubseccionIncidencias) => void;
+  }
+> = ({
   onSeleccionar,
   onCentrar,
   onRegistrarAveria,
+  subseccion = 'todos',
+  onCambiarSubseccion,
 }) => {
   const datos = useDatosOperacion();
   const riesgo = pedidosEnRiesgo(datos);
@@ -535,75 +555,123 @@ const ListaIncidencias: React.FC<Pick<PanelLateralProps, 'onSeleccionar' | 'onCe
   const admision = admisionDeAverias(datos);
   const bloqueos = datos.bloqueos;
   const [verTodoElRiesgo, setVerTodoElRiesgo] = useState(false);
+  const [filtroInterno, setFiltroInterno] = useState<SubseccionIncidencias>(subseccion);
+
+  React.useEffect(() => {
+    setFiltroInterno(subseccion);
+  }, [subseccion]);
+
+  const filtro = onCambiarSubseccion ? subseccion : filtroInterno;
+  const cambiarFiltro = (nuevo: SubseccionIncidencias) => {
+    setFiltroInterno(nuevo);
+    onCambiarSubseccion?.(nuevo);
+  };
+
   const riesgoVisible = verTodoElRiesgo ? riesgo : riesgo.slice(0, LIMITE_RIESGO_VISIBLE);
+  const verRiesgo = filtro === 'todos' || filtro === 'riesgo';
+  const verAverias = filtro === 'todos' || filtro === 'averias';
+  const verBloqueos = filtro === 'todos' || filtro === 'bloqueos';
+
   return (
-    <div className="flex-1 min-h-0 overflow-y-auto">
-      <section className="px-3 pt-2.5 pb-2 flex flex-col gap-1 border-b border-neutral-200">
-        <TituloSeccion derecha={riesgo.length}>Pedidos en riesgo · menor holgura</TituloSeccion>
-        {riesgoVisible.map((p) => (
-          <FilaConBarra
-            key={p.codigo}
-            color={p.nivel === 'ROJO' ? 'rojo' : 'ambar'}
-            titulo={`${p.codigo} · ${p.unidad}`}
-            detalle={`holgura ${p.holgura} · llega ${p.eta}`}
-            detalleMono
-            onClick={() => onSeleccionar({ tipo: 'pedido', codigo: p.codigo })}
-            className="py-1.5 rounded"
-          />
-        ))}
-        {riesgo.length > LIMITE_RIESGO_VISIBLE && (
-          <button
-            type="button"
-            onClick={() => setVerTodoElRiesgo(!verTodoElRiesgo)}
-            className="self-start font-sans text-body-sm font-medium text-primary-600 hover:underline"
+    <div className="flex-1 min-h-0 overflow-y-auto flex flex-col">
+      <div className="px-3 py-2 border-b border-neutral-200 flex items-center gap-1.5 overflow-x-auto shrink-0" role="tablist" aria-label="Filtrar incidencias">
+        {OPCIONES_SUBSECCION.map((op) => {
+          const activa = filtro === op.id;
+          return (
+            <button
+              key={op.id}
+              type="button"
+              role="tab"
+              aria-selected={activa}
+              onClick={() => cambiarFiltro(op.id)}
+              className={`px-2.5 py-1 rounded-control text-caption font-sans transition-colors whitespace-nowrap ${
+                activa
+                  ? 'bg-neutral-900 text-superficie font-medium'
+                  : 'bg-neutral-100 text-neutral-600 hover:text-neutral-900 hover:bg-neutral-200'
+              }`}
+            >
+              {op.etiqueta}
+            </button>
+          );
+        })}
+      </div>
+
+      {verRiesgo && (
+        <section className="px-3 pt-2.5 pb-2 flex flex-col gap-1 border-b border-neutral-200">
+          <TituloSeccion derecha={riesgo.length}>Pedidos en riesgo · menor holgura</TituloSeccion>
+          {riesgo.length === 0 && <p className="text-body-sm text-neutral-600">Sin pedidos en riesgo.</p>}
+          {riesgoVisible.map((p) => (
+            <FilaConBarra
+              key={p.codigo}
+              color={p.nivel === 'ROJO' ? 'rojo' : 'ambar'}
+              titulo={`${p.codigo} · ${p.unidad}`}
+              detalle={`holgura ${p.holgura} · llega ${p.eta}`}
+              detalleMono
+              onClick={() => onSeleccionar({ tipo: 'pedido', codigo: p.codigo })}
+              className="py-1.5 rounded"
+            />
+          ))}
+          {riesgo.length > LIMITE_RIESGO_VISIBLE && (
+            <button
+              type="button"
+              onClick={() => setVerTodoElRiesgo(!verTodoElRiesgo)}
+              className="self-start font-sans text-body-sm font-medium text-primary-600 hover:underline"
+            >
+              {verTodoElRiesgo ? 'Ver menos' : `Ver los ${riesgo.length - LIMITE_RIESGO_VISIBLE} restantes`}
+            </button>
+          )}
+        </section>
+      )}
+
+      {verAverias && (
+        <section className="px-3 pt-2.5 pb-2 flex flex-col gap-1 border-b border-neutral-200">
+          <TituloSeccion
+            derecha={
+              <span className="flex items-center gap-2.5">
+                {averiadas.length}
+                {admision.admite && (
+                  <button type="button" onClick={() => onRegistrarAveria()} className="font-sans font-medium text-critical-600 hover:underline">
+                    + Registrar avería
+                  </button>
+                )}
+              </span>
+            }
           >
-            {verTodoElRiesgo ? 'Ver menos' : `Ver los ${riesgo.length - LIMITE_RIESGO_VISIBLE} restantes`}
-          </button>
-        )}
-      </section>
-      <section className="px-3 pt-2.5 pb-2 flex flex-col gap-1 border-b border-neutral-200">
-        <TituloSeccion
-          derecha={
-            <span className="flex items-center gap-2.5">
-              {averiadas.length}
-              {admision.admite && (
-                <button type="button" onClick={() => onRegistrarAveria()} className="font-sans font-medium text-critical-600 hover:underline">
-                  + Registrar avería
-                </button>
-              )}
-            </span>
-          }
-        >
-          Averías activas
-        </TituloSeccion>
-        {!admision.admite && <p className="text-body-sm text-neutral-600">{admision.motivo}</p>}
-        {averiadas.length === 0 && <p className="text-body-sm text-neutral-600">Ninguna unidad averiada.</p>}
-        {averiadas.map((u) => (
-          <FilaConBarra
-            key={u.codigo}
-            color="rojo"
-            titulo={nombreUnidad(u)}
-            detalle={`${
-              u.averia ? `${nombreAveria(u.averia.tipo)} · vuelve ${formatearMomento(u.averia.vuelve, datos.reloj)}` : 'Fuera de servicio'
-            } · (${Math.round(u.posicion.x)},${Math.round(u.posicion.y)})`}
-            onClick={() => onSeleccionar({ tipo: 'vehiculo', codigo: u.codigo })}
-            className="py-1.5 rounded"
-          />
-        ))}
-      </section>
-      <section className="px-3 pt-2.5 pb-2 flex flex-col gap-1">
-        <TituloSeccion derecha={cantidadBloqueos(datos)}>Bloqueos activos</TituloSeccion>
-        {bloqueos.map((b) => (
-          <FilaConBarra
-            key={b.id}
-            color="rojo"
-            titulo={`(${b.desde.x},${b.desde.y})–(${b.hasta.x},${b.hasta.y})`}
-            detalle={`hasta ${b.fin}${b.rutasAfectadas > 0 ? ` · ${b.rutasAfectadas} ruta${b.rutasAfectadas > 1 ? 's' : ''} afectada${b.rutasAfectadas > 1 ? 's' : ''}` : ''}`}
-            onClick={() => onCentrar({ x: (b.desde.x + b.hasta.x) / 2, y: (b.desde.y + b.hasta.y) / 2 })}
-            className="py-1.5 rounded"
-          />
-        ))}
-      </section>
+            Averías activas
+          </TituloSeccion>
+          {!admision.admite && <p className="text-body-sm text-neutral-600">{admision.motivo}</p>}
+          {averiadas.length === 0 && <p className="text-body-sm text-neutral-600">Ninguna unidad averiada.</p>}
+          {averiadas.map((u) => (
+            <FilaConBarra
+              key={u.codigo}
+              color="rojo"
+              titulo={nombreUnidad(u)}
+              detalle={`${
+                u.averia ? `${nombreAveria(u.averia.tipo)} · vuelve ${formatearMomento(u.averia.vuelve, datos.reloj)}` : 'Fuera de servicio'
+              } · (${Math.round(u.posicion.x)},${Math.round(u.posicion.y)})`}
+              onClick={() => onSeleccionar({ tipo: 'vehiculo', codigo: u.codigo })}
+              className="py-1.5 rounded"
+            />
+          ))}
+        </section>
+      )}
+
+      {verBloqueos && (
+        <section className="px-3 pt-2.5 pb-2 flex flex-col gap-1">
+          <TituloSeccion derecha={cantidadBloqueos(datos)}>Bloqueos activos</TituloSeccion>
+          {bloqueos.length === 0 && <p className="text-body-sm text-neutral-600">Sin bloqueos registrados.</p>}
+          {bloqueos.map((b) => (
+            <FilaConBarra
+              key={b.id}
+              color="rojo"
+              titulo={`(${b.desde.x},${b.desde.y})–(${b.hasta.x},${b.hasta.y})`}
+              detalle={`hasta ${b.fin}${b.rutasAfectadas > 0 ? ` · ${b.rutasAfectadas} ruta${b.rutasAfectadas > 1 ? 's' : ''} afectada${b.rutasAfectadas > 1 ? 's' : ''}` : ''}`}
+              onClick={() => onCentrar({ x: (b.desde.x + b.hasta.x) / 2, y: (b.desde.y + b.hasta.y) / 2 })}
+              className="py-1.5 rounded"
+            />
+          ))}
+        </section>
+      )}
     </div>
   );
 };
@@ -617,6 +685,8 @@ export const PanelLateral: React.FC<PanelLateralProps> = ({
   etiquetaVolver,
   resaltado = null,
   onResaltar,
+  subseccionIncidencias,
+  onCambiarSubseccionIncidencias,
 }) => {
   const datos = useDatosOperacion();
   const mostrarAviso = useAvisos();
@@ -642,10 +712,11 @@ export const PanelLateral: React.FC<PanelLateralProps> = ({
   return (
     <aside
       aria-label="Incidencias, flota y bitácora"
-      className="absolute right-3 top-0 bottom-0 z-20 w-[340px] bg-superficie border border-neutral-200 rounded-card shadow-overlay flex flex-col overflow-hidden"
+      className="fixed inset-x-0 bottom-0 top-auto z-40 max-h-[85vh] w-full bg-superficie border-t border-neutral-200 rounded-t-card shadow-overlay flex flex-col overflow-hidden md:absolute md:inset-auto md:right-3 md:top-0 md:bottom-0 md:z-20 md:w-[340px] md:max-h-full md:rounded-card md:border md:shadow-overlay"
       data-sin-zoom
       onPointerDown={(e) => e.stopPropagation()}
     >
+      <div className="mx-auto my-1.5 h-1 w-10 shrink-0 rounded-full bg-neutral-300 md:hidden" aria-hidden="true" />
       {!esDetalle && (
         <div className="h-9 px-3 flex items-center border-b border-neutral-200 shrink-0">
           <h2 className="font-sans text-title-sm text-neutral-900">{TITULO_PESTANA[seleccion.tipo]}</h2>
@@ -691,7 +762,15 @@ export const PanelLateral: React.FC<PanelLateralProps> = ({
         />
       )}
       {seleccion.tipo === 'resumen' && <ResumenOperacion onSeleccionar={onSeleccionar} />}
-      {seleccion.tipo === 'incidencias' && <ListaIncidencias onSeleccionar={onSeleccionar} onCentrar={onCentrar} onRegistrarAveria={abrirRegistro} />}
+      {seleccion.tipo === 'incidencias' && (
+        <ListaIncidencias
+          onSeleccionar={onSeleccionar}
+          onCentrar={onCentrar}
+          onRegistrarAveria={abrirRegistro}
+          subseccion={subseccionIncidencias}
+          onCambiarSubseccion={onCambiarSubseccionIncidencias}
+        />
+      )}
       {seleccion.tipo === 'pedidos' && <ListaPedidos resaltado={resaltado} onResaltar={resaltar} onSeleccionar={onSeleccionar} onCentrar={onCentrar} />}
       {seleccion.tipo === 'flota' && <EstadoFlota onSeleccionar={onSeleccionar} resaltado={resaltado} onResaltar={resaltar} onCentrar={onCentrar} />}
       {seleccion.tipo === 'almacenes' && <ListaAlmacenes resaltado={resaltado} onResaltar={resaltar} onSeleccionar={onSeleccionar} onCentrar={onCentrar} />}

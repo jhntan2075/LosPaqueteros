@@ -111,7 +111,7 @@ const CorridaEnVivo: React.FC<CorridaSimulacionProps & { recibidoEnMs: number }>
         onVerInforme={() => setVerInforme(true)}
         conectado={conectado}
       />
-      <main className="relative flex min-h-0 flex-1 bg-superficie">
+      <main className="relative flex flex-col md:flex-row min-h-0 flex-1 bg-superficie">
         <GridMap
           ref={mapaRef}
           variante="simulacion"

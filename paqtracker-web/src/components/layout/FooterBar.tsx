@@ -103,7 +103,7 @@ export const FooterBar: React.FC<FooterBarProps> = ({
 
       {/* Lado derecho: Leyenda de holguras y estado de actualización */}
       <div className="flex items-center gap-3 flex-shrink-0 pl-2">
-        <div className="flex items-center gap-2 text-body-sm">
+        <div className="hidden lg:flex items-center gap-2 text-body-sm">
           <span className="text-neutral-600 font-sans">holgura</span>
 
           <div className="flex items-center gap-1">
@@ -122,7 +122,7 @@ export const FooterBar: React.FC<FooterBarProps> = ({
           </div>
         </div>
 
-        <div className="w-px h-3.5 bg-neutral-200"></div>
+        <div className="hidden lg:block w-px h-3.5 bg-neutral-200"></div>
 
         {/* Antigüedad del último dato recibido */}
         {estadoAlerta ? (
@@ -134,9 +134,9 @@ export const FooterBar: React.FC<FooterBarProps> = ({
           <div className="flex items-center gap-1.5">{actualizacion}</div>
         )}
 
-        <div className="w-px h-3.5 bg-neutral-200"></div>
+        <div className="hidden md:block w-px h-3.5 bg-neutral-200"></div>
         {/* Versión del front y commit del build (A01): permite comprobar qué versión se está evaluando. */}
-        <span className="text-neutral-600 font-sans text-body-sm tabular-nums" title={`Commit ${__APP_COMMIT__}`}>
+        <span className="hidden md:inline text-neutral-600 font-sans text-body-sm tabular-nums" title={`Commit ${__APP_COMMIT__}`}>
           v{__APP_VERSION__} · {__APP_COMMIT__}
         </span>
       </div>

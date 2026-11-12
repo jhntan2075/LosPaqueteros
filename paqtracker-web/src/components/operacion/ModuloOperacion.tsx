@@ -6,7 +6,7 @@ import { useNavegacionPanel } from '../../hooks/useNavegacionPanel';
 import type { SubvistaOperacion } from '../../types/operacion';
 import { GridMap, type DestinoMapa, type GridMapHandle } from '../map/GridMap';
 import { BarraPaneles } from './BarraPaneles';
-import { PanelLateral } from './PanelLateral';
+import { PanelLateral, type SubseccionIncidencias } from './PanelLateral';
 
 // Operación día a día: mapa en vivo de la ejecución que difunde paqtracker-api. Resumen, Incidencias,
 // Pedidos, Flota, Almacenes y Bitácora son pestañas del panel lateral sobre el mapa, elegidas desde la barra vertical fija
@@ -44,6 +44,7 @@ export const ModuloOperacion: React.FC<ModuloOperacionProps> = ({
   const porCentrarRef = useRef<Coordenada | null>(null);
   // Último pedidoAEnfocar ya abierto: evita reabrirlo en cada render mientras la prop sigue viva.
   const [ultimoPedidoAEnfocar, setUltimoPedidoAEnfocar] = useState<string | null>(null);
+  const [subseccionIncidencias, setSubseccionIncidencias] = useState<SubseccionIncidencias>('todos');
 
   const flota = estadoFlota(datos);
   const riesgo = resumenRiesgo(datos);
@@ -53,6 +54,11 @@ export const ModuloOperacion: React.FC<ModuloOperacionProps> = ({
   );
   const unidadesEnMapa = datos.flota.filter(fueraDelAlmacen);
   const { panelAbierto } = nav;
+
+  const abrirIncidencias = (subseccion: SubseccionIncidencias = 'todos') => {
+    setSubseccionIncidencias(subseccion);
+    nav.seleccionar({ tipo: 'incidencias' });
+  };
 
   // Pedido pedido desde otra pantalla ("Ubicar en el mapa"): se abre en cuanto cambia la prop, no solo
   // al montar (Operación ahora queda montada entre pestañas, para no perder el zoom, el panel y las
@@ -80,7 +86,7 @@ export const ModuloOperacion: React.FC<ModuloOperacionProps> = ({
 
   return (
     <div className="flex-1 flex flex-col min-h-0">
-      <main className="flex-1 relative flex min-h-0 bg-superficie">
+      <main className="flex-1 relative flex flex-col md:flex-row min-h-0 bg-superficie">
         <GridMap
           ref={mapaRef}
           unidades={unidadesEnMapa}
@@ -91,8 +97,8 @@ export const ModuloOperacion: React.FC<ModuloOperacionProps> = ({
           anchoPanelDerecho={panelAbierto ? ANCHO_PANEL_PX : 0}
           riesgo={riesgo}
           onSeleccionar={nav.elegirEnMapa}
-          onAbrirIncidencias={() => nav.seleccionar({ tipo: 'incidencias' })}
-          onAbrirAverias={() => nav.seleccionar({ tipo: 'flota' })}
+          onAbrirIncidencias={abrirIncidencias}
+          onAbrirAverias={() => abrirIncidencias('averias')}
           onAbrirFlota={() => nav.seleccionar({ tipo: 'flota' })}
           onAbrirAlmacenes={() => nav.seleccionar({ tipo: 'almacenes' })}
           onHoverCoordenada={onHoverCoordenada}
@@ -107,6 +113,8 @@ export const ModuloOperacion: React.FC<ModuloOperacionProps> = ({
               etiquetaVolver={nav.etiquetaVolver}
               resaltado={nav.resaltado}
               onResaltar={nav.resaltar}
+              subseccionIncidencias={subseccionIncidencias}
+              onCambiarSubseccionIncidencias={setSubseccionIncidencias}
             />
           )}
         </GridMap>

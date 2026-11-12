@@ -85,7 +85,7 @@ interface GridMapProps {
   /** Pedidos en riesgo por nivel del semáforo de holgura. */
   riesgo: { rojo: number; ambar: number };
   onSeleccionar: (objeto: ObjetoMapa) => void;
-  onAbrirIncidencias: () => void;
+  onAbrirIncidencias?: (subseccion?: 'todos' | 'riesgo' | 'averias' | 'bloqueos') => void;
   /** Píldora de averías: va a la flota, donde se ve el detalle de cada unidad. Sin valor, va a Incidencias. */
   onAbrirAverias?: () => void;
   /** Indicador de ocupación de la flota; sin valor, va adonde va la píldora de averías. */
@@ -194,6 +194,8 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
   const vista = ancho > 0 && alto > 0 ? (vistaUsuario ? limitarVista(vistaUsuario, lienzo) : vistaCompleta(lienzo)) : null;
   const [isDragging, setIsDragging] = useState(false);
   const arrastreRef = useRef({ x: 0, y: 0, inicioX: 0, inicioY: 0, objeto: null as string | null, activo: false });
+  const punterosRef = useRef<Map<number, { clientX: number; clientY: number }>>(new Map());
+  const pellizcoRef = useRef<{ distanciaAnterior: number; centroX: number; centroY: number } | null>(null);
 
   const [terminoBusqueda, setTerminoBusqueda] = useState('');
   const [sinResultados, setSinResultados] = useState(false);
@@ -298,28 +300,63 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
     return () => elemento.removeEventListener('wheel', alGirar);
   }, [anchoPanelDerecho]);
 
-  // Arrastre con captura de puntero: sigue aunque el cursor salga del mapa, como en un visor de mapas.
+  // Arrastre con captura de puntero y zoom por pellizco táctil multitáctil.
   // Con la captura activa el click llega al contenedor, así que un toque sin desplazamiento sobre un
   // elemento [data-objeto] (unidad, pin, almacén) se interpreta como selección.
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     const destino = e.target as HTMLElement;
     if (e.button !== 0 || !vista || destino.closest('button, input, a, [data-sin-zoom]')) return;
     cancelarAnimacion();
-    e.currentTarget.setPointerCapture(e.pointerId);
-    setIsDragging(true);
-    setHover(null);
-    arrastreRef.current = {
-      x: e.clientX - vista.x,
-      y: e.clientY - vista.y,
-      inicioX: e.clientX,
-      inicioY: e.clientY,
-      objeto: destino.closest('[data-objeto]')?.getAttribute('data-objeto') ?? null,
-      activo: true,
-    };
+    punterosRef.current.set(e.pointerId, { clientX: e.clientX, clientY: e.clientY });
+
+    if (punterosRef.current.size === 1) {
+      e.currentTarget.setPointerCapture(e.pointerId);
+      setIsDragging(true);
+      setHover(null);
+      arrastreRef.current = {
+        x: e.clientX - vista.x,
+        y: e.clientY - vista.y,
+        inicioX: e.clientX,
+        inicioY: e.clientY,
+        objeto: destino.closest('[data-objeto]')?.getAttribute('data-objeto') ?? null,
+        activo: true,
+      };
+    } else if (punterosRef.current.size === 2) {
+      // Dos dedos: se desactiva el arrastre/clic simple y se inicia pellizco continuo
+      arrastreRef.current.activo = false;
+      setIsDragging(false);
+      const [p1, p2] = Array.from(punterosRef.current.values());
+      const dist = Math.hypot(p1.clientX - p2.clientX, p1.clientY - p2.clientY);
+      const rect = containerRef.current?.getBoundingClientRect();
+      const centroX = (p1.clientX + p2.clientX) / 2 - (rect?.left ?? 0);
+      const centroY = (p1.clientY + p2.clientY) / 2 - (rect?.top ?? 0);
+      pellizcoRef.current = { distanciaAnterior: dist, centroX, centroY };
+    }
   };
 
   const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
     if (!vista || !containerRef.current) return;
+    if (punterosRef.current.has(e.pointerId)) {
+      punterosRef.current.set(e.pointerId, { clientX: e.clientX, clientY: e.clientY });
+    }
+
+    if (punterosRef.current.size === 2 && pellizcoRef.current) {
+      const [p1, p2] = Array.from(punterosRef.current.values());
+      const nuevaDist = Math.hypot(p1.clientX - p2.clientX, p1.clientY - p2.clientY);
+      const anterior = pellizcoRef.current.distanciaAnterior;
+      if (anterior > 0 && nuevaDist > 0) {
+        const factor = nuevaDist / anterior;
+        const rect = containerRef.current.getBoundingClientRect();
+        const centroX = (p1.clientX + p2.clientX) / 2 - rect.left;
+        const centroY = (p1.clientY + p2.clientY) / 2 - rect.top;
+        pellizcoRef.current = { distanciaAnterior: nuevaDist, centroX, centroY };
+        setVistaUsuario((actual) =>
+          acercarEn(actual ? limitarVista(actual, lienzo) : vistaCompleta(lienzo), factor, centroX, centroY, lienzo),
+        );
+      }
+      return;
+    }
+
     if (isDragging) {
       setVistaUsuario(limitarVista({ ...vista, x: e.clientX - arrastreRef.current.x, y: e.clientY - arrastreRef.current.y }, lienzo));
     }
@@ -340,6 +377,10 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
   };
 
   const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    punterosRef.current.delete(e.pointerId);
+    if (punterosRef.current.size < 2) {
+      pellizcoRef.current = null;
+    }
     if (e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId);
     setIsDragging(false);
     const a = arrastreRef.current;
@@ -402,7 +443,7 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
   const abrirAverias = onAbrirAverias ?? onAbrirIncidencias;
   // Un bloqueo con una polilínea de varios puntos se parte en varios tramos; se cuenta una sola vez.
   const cantidadBloqueos = new Set(bloqueos.map((b) => b.idOriginal)).size;
-  const derechaControles = anchoPanelDerecho > 0 ? anchoPanelDerecho + 24 : 16;
+  const derechaControles = ancho > 768 && anchoPanelDerecho > 0 ? anchoPanelDerecho + 24 : 16;
 
   // Filtros globales: lo seleccionado nunca se oculta, para no perder el contexto de lo que se mira.
   const enMapa = unidades.filter(fueraDelAlmacen);
@@ -492,7 +533,7 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
 
         <button
           type="button"
-          onClick={onAbrirIncidencias}
+          onClick={() => onAbrirIncidencias?.('riesgo')}
           aria-label={`${riesgo.rojo} pedidos críticos y ${riesgo.ambar} ajustados. Ver incidencias`}
           className={`${ESTILO_PILDORA} px-3 gap-1.5 hover:bg-neutral-50`}
         >
@@ -506,7 +547,7 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
         {!enSimulacion && (
         <button
           type="button"
-          onClick={onAbrirIncidencias}
+          onClick={() => onAbrirIncidencias?.('bloqueos')}
           aria-label={`${cantidadBloqueos} bloqueos activos. Ver incidencias`}
           className={`${ESTILO_PILDORA} px-3 gap-1.5 hover:bg-neutral-50`}
         >
@@ -519,8 +560,8 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
         {!enSimulacion && (
         <button
           type="button"
-          onClick={abrirAverias}
-          aria-label={`${averiadas} unidades averiadas. Ver flota`}
+          onClick={() => (onAbrirAverias ? onAbrirAverias() : onAbrirIncidencias?.('averias'))}
+          aria-label={`${averiadas} unidades averiadas. Ver incidencias`}
           className={`${ESTILO_PILDORA} px-3 gap-1.5 hover:bg-neutral-50`}
         >
           <span className="size-2 bg-critical-600 rounded-full"></span>
@@ -677,6 +718,8 @@ interface CapasMapaProps {
 }
 
 /** Fracción de la avería que falta cumplir (1 al empezar, 0 al reincorporarse). */
+/** Factor de reducción de tamaño para los íconos y marcadores sobre el mapa (vehículos, almacenes, pines, bloqueos). */
+const ESCALA_ICONOS_MAPA = 0.75;
 /** Separación vertical (px) entre el símbolo de un almacén y cada averiada que está en él. */
 const DESPLAZAMIENTO_EN_ALMACEN_PX = 28;
 /** Tolerancia (km) para decir que una posición, que puede venir fraccionaria, está sobre un almacén. */
@@ -720,7 +763,7 @@ function contenidoTooltip(
       extra: entregando.length > 0 ? `Entregando ahora · ${entregando.join(', ')}` : undefined,
       color: COLOR_NIVEL[d.nivel],
       punto: d.destino,
-      alzaPx: 30,
+      alzaPx: Math.round(30 * ESCALA_ICONOS_MAPA),
     };
   }
   if (objeto.tipo === 'vehiculo') {
@@ -742,7 +785,7 @@ function contenidoTooltip(
           : SITUACION_UNIDAD[u.situacion],
       color: colorDeUnidad(u),
       punto: u.posicion,
-      alzaPx: 16,
+      alzaPx: Math.round(16 * ESCALA_ICONOS_MAPA),
     };
   }
   if (objeto.tipo === 'almacen') {
@@ -757,7 +800,7 @@ function contenidoTooltip(
       extra: pedidosQueSalen(datos.unidades, a.id),
       color: nivel ? COLOR_SEMAFORO[nivel] : undefined,
       punto: a.ubicacion,
-      alzaPx: 20,
+      alzaPx: Math.round(20 * ESCALA_ICONOS_MAPA),
     };
   }
   const b = datos.bloqueos.find((x) => x.id === objeto.codigo);
@@ -767,7 +810,7 @@ function contenidoTooltip(
     detalle: `Hasta ${b.fin}`,
     color: COLOR_BLOQUEO,
     punto: { x: (b.desde.x + b.hasta.x) / 2, y: (b.desde.y + b.hasta.y) / 2 },
-    alzaPx: 14,
+    alzaPx: Math.round(14 * ESCALA_ICONOS_MAPA),
   };
 }
 
@@ -907,7 +950,7 @@ const CapasMapa: React.FC<CapasMapaProps> = ({
     const seleccionada =
       (seleccion?.tipo === 'vehiculo' && seleccion.codigo === u.codigo) || (seleccion?.tipo === 'fraccion' && seleccion.unidad === u.codigo);
     const icono = iconoDeUnidad(u);
-    const rotuloX = icono.medioAnchoVisible + (seleccionada ? 6 : 4);
+    const rotuloX = Math.round(icono.medioAnchoVisible * ESCALA_ICONOS_MAPA) + (seleccionada ? 5 : 4);
     return (
       // El grupo exterior lo mueve useDeslizamientoUnidades (reescribe su transform); el desplazamiento
       // bajo un almacén va en el grupo interior para no perderse.
@@ -921,15 +964,17 @@ const CapasMapa: React.FC<CapasMapaProps> = ({
         data-ky={u.posicion.y}
       >
         <g transform={desplazamientoY === 0 ? undefined : `translate(0, ${desplazamientoY})`} data-en-almacen={desplazamientoY === 0 ? undefined : true}>
-          {seleccionada && <image href={haloSeleccion} x={-13} y={-13} width={26} height={26} />}
-          <image
-            href={icono.href}
-            x={-icono.centroX}
-            y={-icono.centroY}
-            width={icono.ancho}
-            height={icono.alto}
-            transform={averiada ? undefined : orientacionIcono(u)}
-          />
+          <g transform={`scale(${ESCALA_ICONOS_MAPA})`}>
+            {seleccionada && <image href={haloSeleccion} x={-13} y={-13} width={26} height={26} />}
+            <image
+              href={icono.href}
+              x={-icono.centroX}
+              y={-icono.centroY}
+              width={icono.ancho}
+              height={icono.alto}
+              transform={averiada ? undefined : orientacionIcono(u)}
+            />
+          </g>
           {averiada ? (
             u.averia ? (
               // Ícono · insignia del tipo con el anillo de lo que falta · código y hora de regreso.
@@ -1049,7 +1094,9 @@ const CapasMapa: React.FC<CapasMapaProps> = ({
             <g key={b.id}>
               <line x1={a.x} y1={a.y} x2={z.x} y2={z.y} stroke={COLOR_BLOQUEO} strokeWidth="4" strokeLinecap="round" opacity={OPACIDAD_LINEA_BLOQUEO} />
               <g transform={`translate(${m.x}, ${m.y})`} data-objeto={`bloqueo:${b.id}`}>
-                <MarcaBloqueo />
+                <g transform={`scale(${ESCALA_ICONOS_MAPA})`}>
+                  <MarcaBloqueo />
+                </g>
               </g>
             </g>
           );
@@ -1064,8 +1111,10 @@ const CapasMapa: React.FC<CapasMapaProps> = ({
           const entregando = unidades.some((u) => u.codigo === d.unidad && u.pedidoEnEntrega === d.pedido);
           return (
             <g key={`${d.pedido}-${d.unidad}`} transform={`translate(${x}, ${y})`} className="cursor-pointer" data-objeto={`pedido:${d.pedido}`}>
-              {seleccionado && <circle cx="0" cy={CENTRO_CABEZA_PIN} r="13" fill="none" stroke="#1E40AF" strokeWidth="2" />}
-              <PinDestino color={entregando ? COLOR_EN_ENTREGA : COLOR_NIVEL[d.nivel]} critico={!entregando && d.nivel === 'ROJO'} />
+              <g transform={`scale(${ESCALA_ICONOS_MAPA})`}>
+                {seleccionado && <circle cx="0" cy={CENTRO_CABEZA_PIN} r="13" fill="none" stroke="#1E40AF" strokeWidth="2" />}
+                <PinDestino color={entregando ? COLOR_EN_ENTREGA : COLOR_NIVEL[d.nivel]} critico={!entregando && d.nivel === 'ROJO'} />
+              </g>
             </g>
           );
         })}
@@ -1078,7 +1127,9 @@ const CapasMapa: React.FC<CapasMapaProps> = ({
             const { x, y } = proyectar(vista, u.posicion);
             return (
               <g key={`entrega-${u.codigo}`} transform={`translate(${x}, ${y})`} className="cursor-pointer" data-objeto={`vehiculo:${u.codigo}`}>
-                <PinDestino color={COLOR_EN_ENTREGA} />
+                <g transform={`scale(${ESCALA_ICONOS_MAPA})`}>
+                  <PinDestino color={COLOR_EN_ENTREGA} />
+                </g>
               </g>
             );
           })}
@@ -1100,16 +1151,18 @@ const CapasMapa: React.FC<CapasMapaProps> = ({
           const central = almacen.id === 'CENTRAL';
           return (
             <g key={almacen.id} transform={`translate(${x}, ${y})`} className="cursor-pointer" data-objeto={`almacen:${almacen.id}`}>
-              {seleccion?.tipo === 'almacen' && seleccion.codigo === almacen.id && (
-                <circle r="21" fill="none" stroke="#1E40AF" strokeWidth="2" />
-              )}
-              {central ? <AlmacenCentral /> : <AlmacenIntermedio color={color} fraccionStock={stock === undefined ? undefined : stock / 100} />}
-              {estado?.stockBajo && (
-                <g transform="translate(11, -10)">
-                  <InsigniaStockBajo />
-                </g>
-              )}
-              <text x="24" y="5" fill="#64748B" fontSize="13" fontWeight="500" {...halo}>
+              <g transform={`scale(${ESCALA_ICONOS_MAPA})`}>
+                {seleccion?.tipo === 'almacen' && seleccion.codigo === almacen.id && (
+                  <circle r="21" fill="none" stroke="#1E40AF" strokeWidth="2" />
+                )}
+                {central ? <AlmacenCentral /> : <AlmacenIntermedio color={color} fraccionStock={stock === undefined ? undefined : stock / 100} />}
+                {estado?.stockBajo && (
+                  <g transform="translate(11, -10)">
+                    <InsigniaStockBajo />
+                  </g>
+                )}
+              </g>
+              <text x={Math.round(24 * ESCALA_ICONOS_MAPA + 2)} y="5" fill="#64748B" fontSize="13" fontWeight="500" {...halo}>
                 {etiqueta}
               </text>
             </g>
