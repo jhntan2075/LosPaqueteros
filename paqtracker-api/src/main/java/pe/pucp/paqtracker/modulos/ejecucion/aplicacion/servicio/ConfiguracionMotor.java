@@ -6,6 +6,7 @@ import pe.pucp.paqtracker.modulos.planificacion.dominio.AlgoritmoPlanificacion;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 
 /**
  * Parametros fijos de un motor de ejecucion.
@@ -28,4 +29,26 @@ public record ConfiguracionMotor(String id, String nombre, TipoEscenario tipoEsc
                                  AlgoritmoPlanificacion algoritmo, LocalDate fechaInicio, LocalTime horaInicio, int dias,
                                  double factorAceleracion, int scSegundos, int saMinutos, int maxPasosPorTick,
                                  Instant creadaEn, ComposicionFlota flota) {
+
+    private static final DateTimeFormatter FORMATO_MES = DateTimeFormatter.ofPattern("yyyyMM");
+
+    /**
+     * Fila de la base en la que se guarda. El dia a dia conserva su id en memoria (lo usan la interfaz y los
+     * topicos) pero guarda una fila por mes, para que cada mes tenga su propio historial y un reinicio no la
+     * pise con otro mes.
+     *
+     * @return id de la fila en la tabla de ejecuciones
+     */
+    public String idRegistro() {
+        return tipoEscenario == TipoEscenario.DIA_A_DIA ? idRegistroDiaADia(id, fechaInicio) : id;
+    }
+
+    /**
+     * @param id          id del dia a dia en memoria
+     * @param fechaInicio primer dia del mes que opera
+     * @return id de la fila del mes, p. ej. dia-a-dia-202611
+     */
+    public static String idRegistroDiaADia(String id, LocalDate fechaInicio) {
+        return id + "-" + fechaInicio.format(FORMATO_MES);
+    }
 }

@@ -15,7 +15,10 @@ import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.dto.SolicitudPedidoEnVivo
 import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.mapeador.MapeadorEjecucion;
 import pe.pucp.paqtracker.modulos.ejecucion.dominio.RepositorioEjecucion;
 import java.time.Clock;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Fachada del modulo de ejecucion para consultas y para los demas modulos (el registro de pedidos
@@ -57,18 +60,30 @@ public class ServicioEjecucion {
     }
 
     /**
+     * Las guardadas que ya no estan en memoria (corridas pasadas o de antes de un reinicio) van primero, como
+     * historicas; despues las vivas.
+     *
      * @return resumen de todas las ejecuciones, de la mas antigua a la mas nueva
      */
     public List<RespuestaEjecucion> listar() {
-        return registro.listar().stream().map(mapeador::aRespuesta).toList();
+        List<MotorEjecucion> vivas = registro.listar();
+        Set<String> enMemoria = vivas.stream().map(motor -> motor.getConfiguracion().idRegistro())
+                .collect(Collectors.toSet());
+        List<RespuestaEjecucion> todas = new ArrayList<>(repositorio.listar().stream()
+                .filter(guardada -> !enMemoria.contains(guardada.id())).map(mapeador::aRespuesta).toList());
+        vivas.stream().map(mapeador::aRespuesta).forEach(todas::add);
+        return todas;
     }
 
     /**
      * @param id identificador de la ejecucion
-     * @return resumen de la ejecucion
+     * @return resumen de la ejecucion; si ya no esta en memoria, el guardado (historica)
+     * @throws RecursoNoEncontradoException si no esta en memoria ni guardada
      */
     public RespuestaEjecucion consultar(String id) {
-        return mapeador.aRespuesta(registro.obtener(id));
+        return registro.buscar(id).map(mapeador::aRespuesta)
+                .or(() -> repositorio.buscar(id).map(mapeador::aRespuesta))
+                .orElseThrow(() -> new RecursoNoEncontradoException("ejecución", id));
     }
 
     /**

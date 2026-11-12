@@ -32,8 +32,8 @@ import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.dto.SolicitudAveriaEnVivo
 import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.dto.SolicitudPedidoEnVivo;
 import pe.pucp.paqtracker.modulos.ejecucion.dominio.EstadoEjecucion;
 import pe.pucp.paqtracker.modulos.ejecucion.dominio.RegistroEjecucion;
-import pe.pucp.paqtracker.modulos.ejecucion.dominio.RepositorioEjecucion;
 import pe.pucp.paqtracker.modulos.ejecucion.dominio.TipoEscenario;
+import pe.pucp.paqtracker.modulos.planificacion.aplicacion.dto.ComposicionFlota;
 import pe.pucp.paqtracker.simulacion.AveriaAplicada;
 import pe.pucp.paqtracker.simulacion.ColapsoLogistico;
 import pe.pucp.paqtracker.simulacion.ResultadoPaso;
@@ -43,6 +43,7 @@ import pe.pucp.paqtracker.simulacion.Trasbordo;
 import pe.pucp.paqtracker.simulacion.UnidadEnTransito;
 import java.util.ArrayList;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.util.Arrays;
@@ -73,6 +74,8 @@ public final class MotorEjecucion {
     private static final Logger LOGGER = LoggerFactory.getLogger(MotorEjecucion.class);
     private static final long ESPERA_MAXIMA_SEGUNDOS = 60;
     private static final long SIN_COMPUTO = -1L;
+    /** Cada cuanto tiempo real se guarda el resultado parcial, para no perderlo si la API se cae. */
+    private static final Duration INTERVALO_GUARDADO = Duration.ofMinutes(1);
 
     private final ConfiguracionMotor configuracion;
     private final LineaTiempo lineaTiempo;
@@ -82,7 +85,7 @@ public final class MotorEjecucion {
     private final RelojEjecucion reloj;
     private final Clock relojPared;
     private final ServicioDifusion difusion;
-    private final RepositorioEjecucion repositorio;
+    private final PersistenciaEjecucion persistencia;
     private final ScheduledExecutorService ejecutor;
     private final int minutoInicial;
     private final CodigosFlota codigosFlota;
@@ -96,6 +99,7 @@ public final class MotorEjecucion {
     private volatile PlanEstable planEstable;
     private int siguientePaso;
     private long pasoSc;
+    private Instant ultimoGuardado = Instant.MIN;
 
     /**
      * @param configuracion parametros fijos de la ejecucion
@@ -107,13 +111,13 @@ public final class MotorEjecucion {
      * @param reloj         reloj simulado
      * @param relojPared    reloj real
      * @param difusion      fachada de difusion
-     * @param repositorio   persistencia de la ejecucion
+     * @param persistencia  lo que la ejecucion guarda de si misma
      * @param ejecutor      ejecutor de un solo hilo, propio de esta ejecucion
      */
     public MotorEjecucion(ConfiguracionMotor configuracion, LineaTiempo lineaTiempo, int minutoInicial,
                           int horizonte, SimulacionEnCurso simulacion, SeguimientoPedidos seguimiento,
                           RelojEjecucion reloj, Clock relojPared, ServicioDifusion difusion,
-                          RepositorioEjecucion repositorio, ScheduledExecutorService ejecutor) {
+                          PersistenciaEjecucion persistencia, ScheduledExecutorService ejecutor) {
         this.configuracion = configuracion;
         this.lineaTiempo = lineaTiempo;
         this.horizonte = horizonte;
@@ -122,7 +126,7 @@ public final class MotorEjecucion {
         this.reloj = reloj;
         this.relojPared = relojPared;
         this.difusion = difusion;
-        this.repositorio = repositorio;
+        this.persistencia = persistencia;
         this.ejecutor = ejecutor;
         this.minutoInicial = minutoInicial;
         this.siguientePaso = minutoInicial;
@@ -207,8 +211,9 @@ public final class MotorEjecucion {
                 throw new OperacionNoPermitidaException("La ejecución " + configuracion.id() + " ya terminó");
             }
             int instante = (int) Math.floor(minutoVisible());
-            Pedido pedido = new Pedido(seguimiento.reservarId(), new Nodo(solicitud.x(), solicitud.y()),
-                    solicitud.cantidad(), instante, solicitud.plazoMinutos());
+            int id = solicitud.idPedido() == null ? seguimiento.reservarId() : solicitud.idPedido();
+            Pedido pedido = new Pedido(id, new Nodo(solicitud.x(), solicitud.y()), solicitud.cantidad(), instante,
+                    solicitud.plazoMinutos(), solicitud.cliente());
             simulacion.agregarPedido(pedido);
             seguimiento.registrar(pedido);
             ResultadoPaso paso = null;
@@ -445,6 +450,7 @@ public final class MotorEjecucion {
         } else {
             difundirCambiosDeBloqueos(minuto);
             difundirEstado();
+            guardarSiCorresponde();
         }
     }
 
@@ -486,6 +492,7 @@ public final class MotorEjecucion {
     private ResultadoPaso ejecutarPaso(int instante, boolean planificar) {
         ResultadoPaso paso = simulacion.avanzar(instante, planificar);
         List<Tramo> completados = seguimiento.aplicar(paso);
+        persistencia.avance().accept(seguimiento.tomarCambios());
         if (paso.huboPlanificacion() && !paso.isColapsoDeclarado()) {
             planEstable = construirPlanEstable(paso);
         }
@@ -671,15 +678,27 @@ public final class MotorEjecucion {
         difusion.difundirEvento(configuracion.id(), tipo, mensaje, instanteMs, detalle);
     }
 
+    /** Guarda el resultado parcial si paso el intervalo desde el ultimo guardado. */
+    private void guardarSiCorresponde() {
+        if (!Duration.between(ultimoGuardado, relojPared.instant()).minus(INTERVALO_GUARDADO).isNegative()) {
+            guardar(null);
+        }
+    }
+
+    /**
+     * Guarda la fila de la ejecucion con su resultado; en el dia a dia suma lo operado antes de un reinicio.
+     */
     private void guardar(Instant finalizadaEn) {
         ResultadoSimulacion resultado = simulacion.getResultado();
-        Instant colapso = simulacion.huboColapso()
-                ? lineaTiempo.aFecha(resultado.getInstanteColapso()).toInstant() : null;
-        repositorio.guardar(new RegistroEjecucion(configuracion.id(), configuracion.tipoEscenario(), estado,
-                configuracion.algoritmo().name(), configuracion.fechaInicio(), configuracion.horaInicio(),
-                configuracion.dias(), configuracion.factorAceleracion(), configuracion.creadaEn(), finalizadaEn,
-                resultado.getTotalEntregas(), resultado.getTotalIncumplimientos(), colapso,
-                configuracion.flota().autos(), configuracion.flota().motos(), configuracion.flota().bicicletas()));
+        ComposicionFlota flota = configuracion.flota();
+        persistencia.repositorio().guardar(new RegistroEjecucion(configuracion.idRegistro(), configuracion.nombre(),
+                configuracion.tipoEscenario(), estado, configuracion.algoritmo().name(), configuracion.fechaInicio(),
+                configuracion.horaInicio(), configuracion.dias(), configuracion.factorAceleracion(),
+                configuracion.creadaEn(), finalizadaEn, flota.autos(), flota.motos(), flota.bicicletas(),
+                persistencia.resultadoPrevio().sumar(MetricasEjecucion.de(resultado)),
+                MetricasEjecucion.colapso(resultado, lineaTiempo, codigosFlota), persistencia.origenDatos(),
+                persistencia.semilla(), persistencia.parametros(), lineaTiempo.aFecha(minutoVisible()).toInstant()));
+        ultimoGuardado = relojPared.instant();
     }
 
     /**

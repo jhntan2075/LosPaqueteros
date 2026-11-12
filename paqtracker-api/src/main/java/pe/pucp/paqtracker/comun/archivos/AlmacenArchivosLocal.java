@@ -15,8 +15,8 @@ import java.util.List;
 import java.util.stream.Stream;
 
 /**
- * Guarda los archivos en el sistema de archivos local, en las carpetas de ventas y bloqueos
- * configuradas. Escribe primero a un temporal y lo mueve, para que una ejecucion que lee la carpeta no
+ * Guarda los archivos de bloqueos en el sistema de archivos local, en la carpeta configurada (los pedidos
+ * viven en la base). Escribe primero a un temporal y lo mueve, para que una ejecucion que lee la carpeta no
  * vea un archivo a medias.
  */
 @Component
@@ -26,20 +26,13 @@ public class AlmacenArchivosLocal implements PuertoAlmacenArchivos {
     private static final DateTimeFormatter FORMATO_MES = DateTimeFormatter.ofPattern("yyyyMM");
     private static final DateTimeFormatter FORMATO_MES_CORTO = DateTimeFormatter.ofPattern("yyMM");
 
-    private final Path carpetaVentas;
     private final Path carpetaBloqueos;
 
     /**
-     * @param propiedades parametros de la operacion, con las carpetas de entrada
+     * @param propiedades parametros de la operacion, con la carpeta de bloqueos
      */
     public AlmacenArchivosLocal(PropiedadesDominio propiedades) {
-        this.carpetaVentas = Path.of(propiedades.datos().ventas());
         this.carpetaBloqueos = Path.of(propiedades.datos().bloqueos());
-    }
-
-    @Override
-    public void guardarVentas(YearMonth mes, byte[] contenido) {
-        escribir(carpetaVentas.resolve("ventas." + mes.format(FORMATO_MES) + ".txt"), contenido);
     }
 
     /**

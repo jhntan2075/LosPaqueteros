@@ -1,13 +1,12 @@
 package pe.pucp.paqtracker.modulos.ejecucion.infraestructura;
 
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 import pe.pucp.paqtracker.modulos.ejecucion.dominio.EstadoEjecucion;
 import pe.pucp.paqtracker.modulos.ejecucion.dominio.RegistroEjecucion;
 import pe.pucp.paqtracker.modulos.ejecucion.dominio.RepositorioEjecucion;
-import pe.pucp.paqtracker.modulos.ejecucion.dominio.TipoEscenario;
 import java.time.Instant;
 import java.time.LocalDateTime;
-import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 
@@ -27,35 +26,26 @@ public class RepositorioEjecucionJpa implements RepositorioEjecucion {
     }
 
     @Override
+    @Transactional
     public void guardar(RegistroEjecucion registro) {
-        springData.save(new EntidadEjecucion(registro.id(), registro.tipoEscenario().name(),
-                registro.estado().name(), registro.algoritmo(), registro.fechaInicio(), registro.horaInicio(), registro.dias(),
-                registro.factorAceleracion(), aUtc(registro.creadaEn()), aUtc(registro.finalizadaEn()),
-                registro.entregas(), registro.incumplimientos(), aUtc(registro.fechaColapso()), registro.autos(),
-                registro.motos(), registro.bicicletas()));
+        LocalDateTime creadaEn = springData.findById(registro.id()).map(EntidadEjecucion::getCreadaEn)
+                .orElseGet(() -> ColumnasColapso.aUtc(registro.creadaEn()));
+        springData.save(new EntidadEjecucion(registro, creadaEn));
     }
 
     @Override
     public Optional<RegistroEjecucion> buscar(String id) {
-        return springData.findById(id).map(entidad -> new RegistroEjecucion(entidad.getId(),
-                TipoEscenario.valueOf(entidad.getTipoEscenario()), EstadoEjecucion.valueOf(entidad.getEstado()),
-                entidad.getAlgoritmo(), entidad.getFechaInicio(), entidad.getHoraInicio(), entidad.getDias(), entidad.getFactorAceleracion(),
-                aInstante(entidad.getCreadaEn()), aInstante(entidad.getFinalizadaEn()), entidad.getEntregas(),
-                entidad.getIncumplimientos(), aInstante(entidad.getFechaColapso()), entidad.getAutos(),
-                entidad.getMotos(), entidad.getBicicletas()));
+        return springData.findById(id).map(EntidadEjecucion::aDominio);
+    }
+
+    @Override
+    public List<RegistroEjecucion> listar() {
+        return springData.findAllByOrderByCreadaEnAsc().stream().map(EntidadEjecucion::aDominio).toList();
     }
 
     @Override
     public int cerrarInterrumpidas(Instant finalizadaEn) {
-        return springData.cerrarNoTerminadas(EstadoEjecucion.FINALIZADA.name(), aUtc(finalizadaEn),
+        return springData.cerrarNoTerminadas(EstadoEjecucion.FINALIZADA.name(), ColumnasColapso.aUtc(finalizadaEn),
                 List.of(EstadoEjecucion.FINALIZADA.name(), EstadoEjecucion.COLAPSADA.name()));
-    }
-
-    private static LocalDateTime aUtc(Instant instante) {
-        return instante == null ? null : LocalDateTime.ofInstant(instante, ZoneOffset.UTC);
-    }
-
-    private static Instant aInstante(LocalDateTime fecha) {
-        return fecha == null ? null : fecha.toInstant(ZoneOffset.UTC);
     }
 }

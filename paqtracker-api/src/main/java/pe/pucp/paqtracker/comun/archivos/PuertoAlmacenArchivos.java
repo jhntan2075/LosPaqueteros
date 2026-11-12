@@ -8,14 +8,6 @@ import java.time.YearMonth;
 public interface PuertoAlmacenArchivos {
 
     /**
-     * Guarda el archivo de ventas de un mes donde lo leen las ejecuciones, reemplazando el anterior.
-     *
-     * @param mes       mes de las ventas
-     * @param contenido contenido del archivo ya validado
-     */
-    void guardarVentas(YearMonth mes, byte[] contenido);
-
-    /**
      * Guarda el archivo de bloqueos de un mes donde lo leen las ejecuciones, reemplazando el anterior.
      *
      * @param mes       mes de los bloqueos

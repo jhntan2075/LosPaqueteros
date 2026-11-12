@@ -132,7 +132,9 @@ const RanuraArchivo: React.FC<{
       )}
       {archivo && archivo.guardado && (
         <Aviso tono="ok" compacto>
-          Guardado para el mes {archivo.mes}.
+          {tipo === 'pedidos'
+            ? `Listo para esta simulación (mes ${archivo.mes}); no reemplaza los pedidos del sistema.`
+            : `Guardado para el mes ${archivo.mes}.`}
         </Aviso>
       )}
     </div>
@@ -174,7 +176,7 @@ const ListaEjecuciones: React.FC<{
             <span className="truncate text-neutral-900">{e.nombre}</span>
             <span className="whitespace-nowrap tabular-nums text-neutral-600">{e.relojSimulado ?? ''}</span>
             <Boton variante="secundario" tamano="sm" iconoDerecha={ArrowRight} onClick={() => onAbrir(e)} className="ml-auto">
-              Ver corrida
+              {e.historica ? 'Ver resultado' : 'Ver corrida'}
             </Boton>
           </div>
         ))}
@@ -242,6 +244,7 @@ export const ConfiguracionEscenario: React.FC<ConfiguracionEscenarioProps> = ({ 
         horaInicio: hora,
         dias: escenario === 'SIMULACION_PERIODO' ? DIAS_PERIODO : undefined,
         flota,
+        lotePedidos: archivos.pedidos?.lote ?? undefined,
       });
       onAbrir(ejecucion);
     } catch (e) {

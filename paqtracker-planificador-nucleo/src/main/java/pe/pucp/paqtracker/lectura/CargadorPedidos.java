@@ -103,6 +103,26 @@ public final class CargadorPedidos {
     }
 
     /**
+     * Lee las lineas de un archivo de ventas de un mes ya en memoria, con el mismo formato que la carga
+     * desde carpeta. Sirve para volcar el archivo a otro almacenamiento sin pasar por el disco.
+     *
+     * @param lineas lineas del archivo, en orden
+     * @return pedidos en el orden del archivo, con identificadores 0..n-1 y el registro en minutos desde el
+     *         inicio del mes; ignora lineas vacias y comentarios
+     * @throws IllegalArgumentException si alguna linea no respeta el formato
+     */
+    public static List<Pedido> leer(List<String> lineas) {
+        List<Pedido> pedidos = new ArrayList<>();
+        for (String original : lineas) {
+            String linea = original.trim();
+            if (!linea.isEmpty() && !linea.startsWith("#")) {
+                pedidos.add(parsearLinea(linea, pedidos.size(), Integer.MAX_VALUE, 0));
+            }
+        }
+        return pedidos;
+    }
+
+    /**
      * Valida las lineas de un archivo de ventas sin cortar en la primera
      * invalida, para informar al usuario todas las lineas a corregir (CU-02).
      * Aplica el mismo formato que la carga; ignora lineas vacias y comentarios.

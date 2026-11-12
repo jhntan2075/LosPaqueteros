@@ -19,6 +19,8 @@ import pe.pucp.paqtracker.modulos.pedidos.aplicacion.dto.RespuestaDetallePedido;
 import pe.pucp.paqtracker.modulos.pedidos.aplicacion.dto.RespuestaPedido;
 import pe.pucp.paqtracker.modulos.pedidos.aplicacion.dto.RespuestaRegistroPedido;
 import pe.pucp.paqtracker.modulos.pedidos.aplicacion.dto.SolicitudRegistroPedido;
+import pe.pucp.paqtracker.modulos.pedidos.dominio.PedidoRegistrado;
+import pe.pucp.paqtracker.modulos.pedidos.dominio.RepositorioPedido;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneId;
@@ -36,6 +38,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @SpringBootTest
 @Import(IntegracionPedidosTest.RelojFijo.class)
 class IntegracionPedidosTest {
+
+    private static final String PREFIJO_CODIGO = "P-";
+
+    @Autowired
+    private RepositorioPedido repositorio;
 
     @Autowired
     private CasoUsoEjecutarDiaADia casoUsoDiaADia;
@@ -69,6 +76,12 @@ class IntegracionPedidosTest {
                 respuesta.pedido().codigo());
         assertEquals("Bodega Rosita", detalle.pedido().cliente());
         assertEquals(List.of("Registrado", "Despachado"), detalle.hitos().stream().map(HitoPedido::titulo).toList());
+        long id = Long.parseLong(respuesta.pedido().codigo().substring(PREFIJO_CODIGO.length()));
+        PedidoRegistrado guardado = repositorio.listarManuales(Instant.parse("2026-01-01T05:00:00Z"),
+                Instant.parse("2026-02-01T05:00:00Z")).stream().filter(pedido -> pedido.id() == id).findFirst()
+                .orElseThrow();
+        assertEquals("dia-a-dia-202601", guardado.ejecucionId());
+        assertEquals("EN_TRANSITO", guardado.estado(), "el dia a dia guarda el avance en cada paso");
     }
 
     @Test

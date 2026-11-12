@@ -13,6 +13,8 @@ export interface ArchivoCargado {
   /** Números de línea (1-based) que no respetan el formato; con alguna, el servidor no guarda el archivo. */
   lineasInvalidas: number[];
   guardado: boolean;
+  /** Pedidos: lote en la base que usará solo esta corrida. Null en bloqueos. */
+  lote: string | null;
 }
 
 /**

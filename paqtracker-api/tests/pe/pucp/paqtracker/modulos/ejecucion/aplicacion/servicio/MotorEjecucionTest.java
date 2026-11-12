@@ -144,7 +144,7 @@ class MotorEjecucionTest {
 
         assertEquals(EstadoEjecucion.FINALIZADA, motor.getEstado());
         assertNotNull(guardados.get("prueba").finalizadaEn());
-        assertEquals(pedidos().size(), guardados.get("prueba").entregas());
+        assertEquals(pedidos().size(), guardados.get("prueba").resultado().entregas());
         assertTrue(hayEvento("EJECUCION_FINALIZADA"));
         assertThrows(OperacionNoPermitidaException.class, motor::iniciar);
     }
@@ -207,7 +207,10 @@ class MotorEjecucionTest {
 
         assertEquals(EstadoEjecucion.COLAPSADA, motor.getEstado());
         assertTrue(hayEvento("ALERTA_COLAPSO"));
-        assertNotNull(guardados.get("prueba").fechaColapso());
+        assertNotNull(guardados.get("prueba").colapso());
+        assertNotNull(guardados.get("prueba").colapso().fecha());
+        assertNotNull(guardados.get("prueba").colapso().causa());
+        assertNotNull(guardados.get("prueba").colapso().pedido());
     }
 
     /** Rubrica 91.EvaSw G08: reporte de la ultima planificacion estable al terminar la simulacion. */
@@ -663,13 +666,19 @@ class MotorEjecucionTest {
             }
 
             @Override
+            public List<RegistroEjecucion> listar() {
+                return List.copyOf(guardados.values());
+            }
+
+            @Override
             public int cerrarInterrumpidas(Instant finalizadaEn) {
                 return 0;
             }
         };
         return new MotorEjecucion(configuracion, lineaTiempo, 0, HORIZONTE, simulacion, seguimiento,
                 new RelojEjecucion(pared, 0, FACTOR), pared,
-                new ServicioDifusion(new ConstructorInstantanea(semaforo), puerto), repositorio,
+                new ServicioDifusion(new ConstructorInstantanea(semaforo), puerto),
+                PersistenciaEjecucion.soloRegistro(repositorio),
                 Executors.newSingleThreadScheduledExecutor());
     }
 

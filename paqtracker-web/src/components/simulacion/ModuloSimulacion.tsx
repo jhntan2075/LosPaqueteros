@@ -7,6 +7,7 @@ import type { EjecucionApi } from '../../types/api';
 import { Aviso, Boton, Tarjeta } from '../ui';
 import { ConfiguracionEscenario } from './ConfiguracionEscenario';
 import { CorridaSimulacion } from './CorridaSimulacion';
+import { ResultadoHistorico } from './ResultadoHistorico';
 
 // Flujo de Simulación: configuración de escenario (o elegir una existente) → corrida → informe.
 // La corrida abierta se refleja en la URL (?tab=simulacion&ejecucion=<id>): el enlace se puede
@@ -77,6 +78,10 @@ export const ModuloSimulacion: React.FC = () => {
 
   if (!ejecucion) {
     return <ConfiguracionEscenario onAbrir={abrir} />;
+  }
+  // Una corrida que ya no está en memoria solo tiene su resultado guardado: no hay mapa ni instantáneas.
+  if (ejecucion.historica) {
+    return <ResultadoHistorico ejecucion={ejecucion} onSalir={salir} />;
   }
   return <CorridaSimulacion key={ejecucion.id} ejecucion={ejecucion} onSalir={salir} />;
 };

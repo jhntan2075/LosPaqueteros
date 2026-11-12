@@ -10,7 +10,9 @@ import java.util.List;
  * @param errores          una descripcion por linea invalida
  * @param lineasInvalidas  numeros de las lineas invalidas, empezando en 1
  * @param guardado         verdadero si el archivo quedo disponible para las simulaciones
+ * @param lote             ventas: lote con los pedidos, para enviarlo al crear la simulacion; null si no se
+ *                         guardo o si es un archivo de bloqueos
  */
 public record RespuestaImportacion(String mes, int registrosValidos, List<String> errores,
-                                   List<Integer> lineasInvalidas, boolean guardado) {
+                                   List<Integer> lineasInvalidas, boolean guardado, String lote) {
 }
