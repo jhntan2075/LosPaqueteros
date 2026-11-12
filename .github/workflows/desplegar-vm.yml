@@ -78,4 +78,5 @@ jobs:
         run: ssh vm "echo ${{ github.sha }} > ~/.paqtracker-commit-desplegado"
 
       - name: Verificar el sitio
-        run: curl -fsS -o /dev/null -w "Sitio responde: %{http_code}\n" "https://$VM_HOST/"
+        run: |
+          curl -fsS -o /dev/null -w "Sitio responde: %{http_code}\n" "https://$VM_HOST/"
