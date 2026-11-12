@@ -8,7 +8,9 @@ import pe.pucp.paqtracker.modelo.SolucionRuteo;
 import pe.pucp.paqtracker.util.CalculadoraTiempos;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Busqueda local que convierte el algoritmo en memetico. Aplica dos operadores
@@ -40,6 +42,12 @@ public final class BusquedaLocal {
     private final EscenarioOperativo escenario;
 
     /**
+     * Entregas fuera de plazo de cada ruta en su secuencia vigente, mientras dura una optimizacion.
+     * Se indexa por identidad porque la secuencia de la ruta cambia mientras es clave.
+     */
+    private final Map<Ruta, Integer> tardiasPorRuta = new IdentityHashMap<>();
+
+    /**
      * @param escenario escenario operativo con la malla y el instante de salida de las rutas
      */
     public BusquedaLocal(EscenarioOperativo escenario) {
@@ -52,6 +60,8 @@ public final class BusquedaLocal {
      * @param solucion solucion a optimizar en el lugar
      */
     public void optimizar(SolucionRuteo solucion) {
+        // Las rutas pudieron cambiar fuera de esta clase desde la optimizacion anterior.
+        tardiasPorRuta.clear();
         boolean hayMejora = true;
         int vueltas = 0;
         while (hayMejora && vueltas < MAXIMO_VUELTAS) {
@@ -80,13 +90,16 @@ public final class BusquedaLocal {
             return false;
         }
         boolean hayMejora = false;
+        double costo = costoRuta(ruta);
         for (int i = 0; i < ruta.getSecuencia().size() - 1; i++) {
             for (int j = i + 1; j < ruta.getSecuencia().size(); j++) {
-                double antes = costoRuta(ruta);
-                int tardiasAntes = contarTardias(ruta);
+                int tardiasAntes = tardiasVigentes(ruta);
                 Collections.reverse(ruta.getSecuencia().subList(i, j + 1));
-                if (costoRuta(ruta) < antes - MEJORA_MINIMA && contarTardias(ruta) <= tardiasAntes) {
+                double costoNuevo = costoRuta(ruta);
+                // Recorrer la ruta con sus tiempos es lo caro: solo se hace si el movimiento acorta.
+                if (costoNuevo < costo - MEJORA_MINIMA && confirmarSinMasTardias(tardiasAntes, ruta)) {
                     hayMejora = true;
+                    costo = costoNuevo;
                 } else {
                     Collections.reverse(ruta.getSecuencia().subList(i, j + 1));
                 }
@@ -159,17 +172,57 @@ public final class BusquedaLocal {
                 continue;
             }
             double antes = costoRuta(origen) + costoRuta(destino);
-            int tardiasAntes = contarTardias(origen) + contarTardias(destino);
+            int tardiasAntes = tardiasVigentes(origen) + tardiasVigentes(destino);
             origen.getSecuencia().removeAll(cadena);
             destino.getSecuencia().addAll(cadena);
             boolean acorta = costoRuta(origen) + costoRuta(destino) < antes - MEJORA_MINIMA;
-            if (acorta && contarTardias(origen) + contarTardias(destino) <= tardiasAntes) {
+            if (acorta && confirmarSinMasTardias(tardiasAntes, origen, destino)) {
                 return true;
             }
             destino.getSecuencia().removeAll(cadena);
             origen.getSecuencia().addAll(posicion, cadena);
         }
         return false;
+    }
+
+    /**
+     * Entregas fuera de plazo de la ruta tal como esta ahora, sin recorrerla de nuevo si ya se conto
+     * desde su ultimo cambio.
+     *
+     * @param ruta ruta en su secuencia vigente
+     * @return cantidad de entregas fuera de plazo
+     */
+    private int tardiasVigentes(Ruta ruta) {
+        Integer tardias = tardiasPorRuta.get(ruta);
+        if (tardias == null) {
+            tardias = contarTardias(ruta);
+            tardiasPorRuta.put(ruta, tardias);
+        }
+        return tardias;
+    }
+
+    /**
+     * Comprueba que las rutas recien modificadas no tengan mas entregas fuera de plazo que antes del
+     * movimiento. Si lo cumplen, el movimiento queda aceptado y se anota su nueva cuenta.
+     *
+     * @param tardiasAntes entregas fuera de plazo de esas rutas antes del movimiento
+     * @param modificadas  rutas que el movimiento toco, ya con su nueva secuencia
+     * @return verdadero si el movimiento no aumenta las entregas fuera de plazo
+     */
+    private boolean confirmarSinMasTardias(int tardiasAntes, Ruta... modificadas) {
+        int[] tardias = new int[modificadas.length];
+        int total = 0;
+        for (int i = 0; i < modificadas.length; i++) {
+            tardias[i] = contarTardias(modificadas[i]);
+            total += tardias[i];
+        }
+        if (total > tardiasAntes) {
+            return false;
+        }
+        for (int i = 0; i < modificadas.length; i++) {
+            tardiasPorRuta.put(modificadas[i], tardias[i]);
+        }
+        return true;
     }
 
     /**

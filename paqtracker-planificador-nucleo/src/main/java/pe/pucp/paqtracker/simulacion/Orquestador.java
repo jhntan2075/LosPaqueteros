@@ -27,10 +27,10 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.ListIterator;
 import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
@@ -75,6 +75,9 @@ public final class Orquestador {
     private final ParametrosDominio.ParametrosAveria duracionesAveria;
     /** Mayor capacidad entre las unidades de la flota, con los parametros configurados de cada tipo. */
     private final int capacidadMaxima;
+
+    /** Revisa cada ruta del plan antes de que salga y retiene lo que no conviene despachar. */
+    private final FiltroDespacho filtroDespacho;
     private ObservadorSimulacion observador;
 
     /**
@@ -192,6 +195,7 @@ public final class Orquestador {
         this.plazoMaximo = plazoMaximo;
         this.plazoDespachoDirecto = plazoDespachoDirecto;
         this.semilla = semilla;
+        this.filtroDespacho = new FiltroDespacho(almacenes, flota, saMinutos);
     }
 
     /**
@@ -865,7 +869,9 @@ public final class Orquestador {
         }
         EscenarioOperativo escenario = escenarioDirecto(instante);
         Vehiculo vehiculo = buscarVehiculoDirecto(pedido, instante, escenario);
-        if (vehiculo == null) {
+        if (vehiculo == null || !Malla.hayCamino(CalculadoraTiempos.distancia(escenario,
+                vehiculo.getPosicion().getUbicacion(), pedido.getDestino(), instante, vehiculo))) {
+            // Sin camino por los bloqueos vigentes no se despacha: el pedido espera en la cola.
             return 0;
         }
         despacharFragmento(pedido, vehiculo, pedido.getCantidad(), instante, escenario, enRuta, resultado);
@@ -1204,32 +1210,124 @@ public final class Orquestador {
      */
     void despachar(SolucionRuteo plan, List<Pedido> cola, List<UnidadEnTransito> enRuta,
                            int instante, ResultadoSimulacion resultado, int unidadesUrgentes) {
-        Set<Integer> despachados = new HashSet<>();
+        Map<Integer, Integer> despachadoPorPedido = new HashMap<>();
         int enUso = unidadesUrgentes;
         EscenarioOperativo escenario = construirEscenario(cola, instante);
         for (Ruta ruta : plan.getRutas()) {
+            filtroDespacho.retener(ruta, escenario, instante);
             if (ruta.getSecuencia().isEmpty()) {
                 continue;
             }
             enUso++;
-            resultado.registrarUso(ruta.getVehiculo().getTipo().name());
-            int[] recorrido = CalculadoraTiempos.recorrer(escenario, ruta, instante);
-            resultado.sumarDistancia(recorrido[CalculadoraTiempos.INDICE_DISTANCIA]);
-            registrarSalida(ruta, recorrido[CalculadoraTiempos.INDICE_DISTANCIA], resultado);
-            resultado.sumarIncumplimientos(recorrido[CalculadoraTiempos.INDICE_INCUMPLIMIENTOS]);
-            registrarMargenes(escenario, ruta, instante, resultado);
-            if (recorrido[CalculadoraTiempos.INDICE_INCUMPLIMIENTOS] > 0) {
-                registrarDetalle(escenario, ruta, instante, resultado);
-            }
-            resultado.sumarEntregas(ruta.getSecuencia().size());
+            despacharRutaDelPlan(ruta, escenario, instante, enRuta, resultado);
             for (Entrega entrega : ruta.getSecuencia()) {
-                despachados.add(entrega.getIdPedido());
+                // Las liberadas por averia no estan en la cola: su pedido ya salio de ella.
+                if (entrega.getId() > PRIMER_ID_LIBERADA) {
+                    despachadoPorPedido.merge(entrega.getIdPedido(), entrega.getCantidad(), Integer::sum);
+                }
             }
             liberadas.removeAll(ruta.getSecuencia());
-            ponerEnTransito(ruta, escenario, instante, recorrido[CalculadoraTiempos.INDICE_FIN], enRuta);
         }
+        descontarDeLaCola(cola, despachadoPorPedido);
+        enUso += rescatarEnUltimaOportunidad(cola, enRuta, instante, resultado);
         resultado.actualizarPico(enUso);
-        cola.removeIf(pedido -> despachados.contains(pedido.getId()));
+    }
+
+    /**
+     * Pone en marcha una ruta del plan y registra su distancia, costo, margenes e incumplimientos.
+     *
+     * @param ruta      ruta a despachar, con al menos una entrega
+     * @param escenario escenario del ciclo
+     * @param instante  instante de salida
+     * @param enRuta    unidades en transito (se agrega la despachada)
+     * @param resultado resultado agregado a actualizar
+     */
+    private void despacharRutaDelPlan(Ruta ruta, EscenarioOperativo escenario, int instante,
+                                      List<UnidadEnTransito> enRuta, ResultadoSimulacion resultado) {
+        resultado.registrarUso(ruta.getVehiculo().getTipo().name());
+        int[] recorrido = CalculadoraTiempos.recorrer(escenario, ruta, instante);
+        resultado.sumarDistancia(recorrido[CalculadoraTiempos.INDICE_DISTANCIA]);
+        registrarSalida(ruta, recorrido[CalculadoraTiempos.INDICE_DISTANCIA], resultado);
+        resultado.sumarIncumplimientos(recorrido[CalculadoraTiempos.INDICE_INCUMPLIMIENTOS]);
+        registrarMargenes(escenario, ruta, instante, resultado);
+        if (recorrido[CalculadoraTiempos.INDICE_INCUMPLIMIENTOS] > 0) {
+            registrarDetalle(escenario, ruta, instante, resultado);
+        }
+        resultado.sumarEntregas(ruta.getSecuencia().size());
+        ponerEnTransito(ruta, escenario, instante, recorrido[CalculadoraTiempos.INDICE_FIN], enRuta);
+    }
+
+    /**
+     * Depura la cola con lo que salio en este ciclo. Un pedido deja la cola solo cuando se despacho su
+     * cantidad completa; si salio una parte (una porcion de un pedido fragmentado, o lo que quedo tras
+     * retener una entrega), sigue en la cola por la cantidad que falta. Antes el pedido salia de la
+     * cola con cualquier porcion despachada y el resto no se entregaba nunca.
+     *
+     * @param cola                cola de pedidos; se modifica en el lugar
+     * @param despachadoPorPedido paquetes despachados en este ciclo, por id de pedido
+     */
+    private void descontarDeLaCola(List<Pedido> cola, Map<Integer, Integer> despachadoPorPedido) {
+        ListIterator<Pedido> iterador = cola.listIterator();
+        while (iterador.hasNext()) {
+            Pedido pedido = iterador.next();
+            int despachado = despachadoPorPedido.getOrDefault(pedido.getId(), 0);
+            if (despachado >= pedido.getCantidad()) {
+                iterador.remove();
+            } else if (despachado > 0) {
+                iterador.set(new Pedido(pedido.getId(), pedido.getDestino(), pedido.getCantidad() - despachado,
+                        pedido.getInstanteRegistro(), pedido.getPlazo(), pedido.getCliente()));
+            }
+        }
+    }
+
+    /**
+     * Despacha, fuera del plan, los pedidos que siguen en la cola y estan en su ultima oportunidad: las
+     * unidades que quedaron libres todavia los entregan a tiempo saliendo ahora (una sola, o varias
+     * repartiendose la carga), pero ya no si esperan al ciclo siguiente.
+     *
+     * Cubre el caso que el plan no resuelve: un pedido de 9 o 10 paquetes solo cabe en un auto, y con
+     * todos los autos en ruta se queda en la cola hasta vencer aunque haya motocicletas y bicicletas
+     * libres que, entre varias, lo entregan dentro del plazo (entregas parciales, LE-009).
+     *
+     * @param cola      cola de pedidos tras el despacho del plan; se depura lo rescatado
+     * @param enRuta    unidades en transito (se agregan las despachadas)
+     * @param instante  instante actual del reloj
+     * @param resultado resultado agregado a actualizar
+     * @return cantidad de unidades despachadas por el rescate
+     */
+    private int rescatarEnUltimaOportunidad(List<Pedido> cola, List<UnidadEnTransito> enRuta, int instante,
+                                            ResultadoSimulacion resultado) {
+        List<Pedido> porVencimiento = new ArrayList<>(cola);
+        porVencimiento.sort(Comparator.comparingInt(Pedido::getHoraLimite));
+        int unidades = 0;
+        for (Pedido pedido : porVencimiento) {
+            if (hayDespachoATiempo(pedido, instante + saMinutos)) {
+                continue;
+            }
+            int despachadas = despacharATiempo(pedido, instante, enRuta, resultado);
+            if (despachadas > 0) {
+                cola.remove(pedido);
+                unidades += despachadas;
+            }
+        }
+        return unidades;
+    }
+
+    /**
+     * Indica si las unidades libres en este momento entregarian el pedido dentro del plazo saliendo en
+     * el instante dado, en una sola unidad o repartido entre varias.
+     *
+     * @param pedido pedido a evaluar
+     * @param salida instante de salida supuesto
+     * @return verdadero si alguna combinacion de unidades libres llega a tiempo
+     */
+    private boolean hayDespachoATiempo(Pedido pedido, int salida) {
+        EscenarioOperativo escenario = escenarioDirecto(salida);
+        Vehiculo vehiculo = buscarVehiculoDirecto(pedido, salida, escenario);
+        if (vehiculo != null && estimarLlegada(vehiculo, pedido, salida, escenario) <= pedido.getHoraLimite()) {
+            return true;
+        }
+        return !buscarRepartoATiempo(pedido, salida, escenario).isEmpty();
     }
 
     /**

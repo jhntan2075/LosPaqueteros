@@ -265,8 +265,14 @@ public final class SeguimientoPedidos {
         seguimiento.partesEnCamino--;
         seguimiento.entregarFraccion(tramo);
         cambiados.add(tramo.getIdPedido());
-        if (seguimiento.partesEnCamino > 0) {
+        if (seguimiento.partesEnCamino > 0 || !seguimiento.estaCompleto()) {
             seguimiento.hito(tramo.getLlegada(), "Entrega parcial", tramo.getCantidad() + " paquetes entregados");
+            if (seguimiento.partesEnCamino <= 0) {
+                // Llego todo lo que estaba en camino, pero parte del pedido sigue en la cola del nucleo.
+                seguimiento.estado = EstadoPedido.REGISTRADO;
+                seguimiento.unidad = null;
+                seguimiento.eta = 0;
+            }
             return false;
         }
         seguimiento.estado = EstadoPedido.ENTREGADO;
@@ -492,6 +498,15 @@ public final class SeguimientoPedidos {
                         fraccion.estado = EstadoFraccion.ENTREGADA;
                         fraccion.llegada = tramo.getLlegada();
                     });
+        }
+
+        /**
+         * Un pedido puede salir por partes en ciclos distintos: solo esta completo cuando lo entregado en
+         * esta ejecucion cubre su cantidad (LE-009), no cuando llega la ultima parte que iba en camino.
+         */
+        private boolean estaCompleto() {
+            return fracciones.stream().filter(f -> f.estado == EstadoFraccion.ENTREGADA)
+                    .mapToInt(f -> f.cantidad).sum() >= pedido.getCantidad();
         }
 
         /** Avance para guardar: lo entregado suma lo de antes de un reinicio. */

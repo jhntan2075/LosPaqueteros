@@ -92,6 +92,33 @@ asigna una ruta a un vehículo, ese vehículo arranca en ese mismo minuto. No ha
 camiones esperando su turno. Lo que sí puede pasar es que el algoritmo **decida no asignarle
 ruta a un pedido en esta ronda** y lo deje para la siguiente.
 
+### Dos revisiones al momento de salir (paso 6)
+
+El algoritmo solo ve los vehículos que están libres en esa ronda; no sabe cuáles están por
+volver. Por eso, antes de que cada vehículo salga, el despacho revisa el plan con dos reglas.
+Ninguna cambia el puntaje ni los parámetros del algoritmo: actúan sobre el plan ya elegido.
+
+**Retención.** Si una entrega del plan llegaría tarde, pero el pedido todavía puede esperar
+una ronda y llegar a tiempo con el vehículo más rápido desde el almacén más cercano, esa
+entrega **no sale**: vuelve a la cola y se replanifica en la ronda siguiente.
+
+*¿Por qué?* Con los autos y las motos en ruta, el algoritmo mandaba un pedido de 4 horas en
+una bicicleta que llegaba 15 minutos tarde, y eso declaraba el colapso con 13 vehículos
+libres. Como el colapso es la **primera** entrega tardía, despacharla lo consuma; retenerla
+conserva la posibilidad de cumplir. Con los datos reales esto llevó el primer colapso de
+junio de 2026 (~107 pedidos/día) a diciembre de 2026 (~227 pedidos/día).
+
+**Rescate de última oportunidad.** Si un pedido sigue en la cola y los vehículos libres lo
+entregan a tiempo saliendo ahora, pero ya no si esperan a la ronda siguiente, sale de
+inmediato, **repartido entre varios vehículos** si no cabe en uno.
+
+*¿Por qué?* Un pedido de 9 o 10 paquetes solo cabe en un auto. Con todos los autos en ruta se
+quedaba en la cola hasta vencer aunque hubiera motos libres que, entre dos, lo entregaban
+dentro del plazo.
+
+Además, un pedido solo deja la cola cuando salió **toda** su cantidad. Si salió una parte,
+sigue en la cola por lo que falta.
+
 ---
 
 ## 4. Paso 3: el carril rápido para pedidos urgentes
@@ -391,6 +418,17 @@ dominaba el puntaje y volvía incomparables todas las soluciones.
 
 El arreglo: si el destino está bloqueado, el vehículo **se acerca a la esquina transitable
 más próxima** y se suma ese último paso. El costo vuelve a ser un número realista.
+
+**El caso que quedaba:** si los bloqueos **encierran** un punto por completo (por ejemplo, el
+almacén de salida), no existe ningún camino. La malla devuelve entonces un valor fijo,
+`DISTANCIA_SIN_CAMINO` (1 000 000 km): lo bastante grande para que esa ruta nunca convenga y
+lo bastante chico para que el reloj de la ruta no se desborde. Una entrega sin camino no se
+despacha; espera en la cola a que se levante el bloqueo.
+
+**Por qué esto es rápido:** el algoritmo pregunta la misma distancia miles de veces por ronda
+(mismo origen, destino, minuto de salida y tipo de vehículo). La primera vez se calcula y se
+anota; las siguientes se devuelve lo anotado. El resultado es idéntico y el tiempo de cómputo
+por ronda bajó entre 14 y 40 veces.
 
 ### El tiempo: velocidad según el tipo de vehículo
 

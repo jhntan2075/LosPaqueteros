@@ -4,7 +4,6 @@ import pe.pucp.paqtracker.modelo.Bloqueo;
 import pe.pucp.paqtracker.modelo.ConfiguracionDominio;
 import pe.pucp.paqtracker.modelo.Nodo;
 import pe.pucp.paqtracker.modelo.Vehiculo;
-import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -36,10 +35,27 @@ import java.util.function.IntUnaryOperator;
  * en una corrida de un anio eran 7246 bloqueos recorridos por consulta para
  * descubrir que solo uno estaba vigente, y el planificador hace millones de
  * consultas por ciclo.
+ *
+ * Por la misma razon, la distancia de cada tramo recorrido por una unidad se
+ * guarda en un {@link MemoDistancias} y la busqueda en amplitud consulta los
+ * bloqueos en una mascara de bits por tramo de tiempo. Ninguna de las dos
+ * cosas cambia el valor devuelto.
+ *
+ * La malla no es segura entre hilos: pertenece a una sola ejecucion.
  */
 public final class Malla {
 
-    private static final int SIN_CAMINO = Integer.MAX_VALUE / 4;
+    /**
+     * Distancia que se devuelve cuando los bloqueos no dejan ningun camino entre dos nodos. Es mucho
+     * mayor que cualquier recorrido real de la malla, para que el tramo salga siempre penalizado, y lo
+     * bastante chica para que los minutos de viaje de una ruta entera no desborden un entero: con el
+     * valor anterior (Integer.MAX_VALUE / 4) el reloj de la ruta se volvia negativo.
+     */
+    public static final int DISTANCIA_SIN_CAMINO = 1_000_000;
+
+    /** Bits de un long, para ubicar un nodo dentro de la mascara de bloqueados. */
+    private static final int DESPLAZAMIENTO_PALABRA = 6;
+    private static final int MASCARA_BIT = Long.SIZE - 1;
 
     /** Filas del indice lineal de nodos (x * ALTO_INDICE + y) usado al reconstruir caminos. */
     private static final int ALTO_INDICE = ConfiguracionDominio.MALLA_ALTO + 1;
@@ -56,6 +72,15 @@ public final class Malla {
     /** Conjunto de nodos bloqueados de cada tramo, calculado al pedirlo. */
     private final Map<Integer, Set<Long>> cachePorTramo;
 
+    /** Los mismos nodos bloqueados de cada tramo, como mascara de bits sobre el indice lineal. */
+    private final Map<Integer, long[]> mascaraPorTramo;
+
+    /** Mascara compartida de los instantes sin bloqueos; nunca se modifica. */
+    private final long[] sinBloqueos;
+
+    /** Distancias ya calculadas de los tramos recorridos por una unidad. */
+    private final MemoDistancias memo;
+
     /**
      * @param bloqueos lista de bloqueos programados que afectan la malla
      */
@@ -63,6 +88,9 @@ public final class Malla {
         this.bloqueos = bloqueos;
         this.cambios = calcularCambios(bloqueos);
         this.cachePorTramo = new HashMap<>();
+        this.mascaraPorTramo = new HashMap<>();
+        this.sinBloqueos = nuevaMascara();
+        this.memo = new MemoDistancias();
     }
 
     /**
@@ -156,9 +184,19 @@ public final class Malla {
      * @return distancia real, esquivando los bloqueos que encontraria en el camino
      */
     public int distancia(Nodo origen, Nodo destino, int salida, Vehiculo vehiculo) {
+        if (cambios.length == 0 || origen.equals(destino)) {
+            return origen.distanciaManhattan(destino);
+        }
+        long clave = claveDeConsulta(origen, destino, salida, vehiculo);
+        int guardada = memo.buscar(clave);
+        if (guardada != MemoDistancias.SIN_VALOR) {
+            return guardada;
+        }
         IntUnaryOperator llegada = kilometros -> instanteTrasRecorrer(salida, kilometros, vehiculo);
-        return distancia(origen, destino, salida, llegada.applyAsInt(origen.distanciaManhattan(destino)),
-                llegada);
+        int distancia = distancia(origen, destino, salida,
+                llegada.applyAsInt(origen.distanciaManhattan(destino)), llegada);
+        memo.guardar(clave, distancia);
+        return distancia;
     }
 
     /**
@@ -247,7 +285,17 @@ public final class Malla {
         int[] padre = new int[TOTAL_NODOS];
         int[] pasos = new int[TOTAL_NODOS];
         int ultimo = buscarCaminoMasCorto(origen, destino, llegada, padre, pasos);
-        return ultimo == NO_VISITADO ? SIN_CAMINO : pasos[ultimo] + 1;
+        return ultimo == NO_VISITADO ? DISTANCIA_SIN_CAMINO : pasos[ultimo] + 1;
+    }
+
+    /**
+     * Indica si una distancia devuelta por la malla corresponde a un recorrido posible.
+     *
+     * @param distancia distancia devuelta por alguno de los metodos de distancia
+     * @return falso si los bloqueos no dejaban ningun camino
+     */
+    public static boolean hayCamino(int distancia) {
+        return distancia < DISTANCIA_SIN_CAMINO;
     }
 
     private List<Nodo> camino(Nodo origen, Nodo destino, int desde, int hasta, IntUnaryOperator llegada) {
@@ -289,16 +337,61 @@ public final class Malla {
     }
 
     /**
-     * Union de los nodos bloqueados por los bloqueos vigentes en el instante.
+     * Clave con que se guarda una consulta de distancia. Dos unidades con la misma velocidad y el mismo
+     * grupo de refrigerio recorren el tramo en los mismos minutos, asi que comparten resultado.
+     *
+     * @return clave de la consulta, o MemoDistancias.SIN_CLAVE si no se puede guardar
+     */
+    private long claveDeConsulta(Nodo origen, Nodo destino, int salida, Vehiculo vehiculo) {
+        if (fueraDeMalla(origen.getX(), origen.getY()) || fueraDeMalla(destino.getX(), destino.getY())) {
+            return MemoDistancias.SIN_CLAVE;
+        }
+        return MemoDistancias.clave(indice(origen.getX(), origen.getY()),
+                indice(destino.getX(), destino.getY()), salida, vehiculo.getVelocidad(),
+                Math.floorMod(vehiculo.getId(), ConfiguracionDominio.GRUPOS_REFRIGERIO));
+    }
+
+    /**
+     * Nodos bloqueados en el instante, como mascara de bits sobre el indice lineal de nodos.
      *
      * @param instante minuto absoluto a consultar
-     * @return conjunto de nodos intransitables en ese instante
+     * @return mascara de nodos intransitables en ese instante; no debe modificarse
      */
-    private Set<Long> nodosBloqueadosEn(int instante) {
+    private long[] mascaraBloqueadosEn(int instante) {
         if (cambios.length == 0) {
-            return Set.of();
+            return sinBloqueos;
         }
-        return nodosBloqueadosDelTramo(tramoDe(instante));
+        int tramo = tramoDe(instante);
+        if (tramo < 0) {
+            return sinBloqueos;
+        }
+        long[] mascara = mascaraPorTramo.get(tramo);
+        if (mascara == null) {
+            mascara = construirMascara(nodosBloqueadosDelTramo(tramo));
+            mascaraPorTramo.put(tramo, mascara);
+        }
+        return mascara;
+    }
+
+    private long[] construirMascara(Set<Long> bloqueados) {
+        long[] mascara = nuevaMascara();
+        for (long nodo : bloqueados) {
+            int x = (int) (nodo >>> 20);
+            int y = (int) (nodo & 0xFFFFF);
+            if (!fueraDeMalla(x, y)) {
+                int indice = indice(x, y);
+                mascara[indice >> DESPLAZAMIENTO_PALABRA] |= 1L << (indice & MASCARA_BIT);
+            }
+        }
+        return mascara;
+    }
+
+    private static long[] nuevaMascara() {
+        return new long[(TOTAL_NODOS >> DESPLAZAMIENTO_PALABRA) + 1];
+    }
+
+    private static boolean estaBloqueado(long[] mascara, int indice) {
+        return (mascara[indice >> DESPLAZAMIENTO_PALABRA] >>> (indice & MASCARA_BIT) & 1L) != 0;
     }
 
     /**
@@ -393,17 +486,20 @@ public final class Malla {
     private int buscarCaminoMasCorto(Nodo origen, Nodo destino, IntUnaryOperator llegada, int[] padre,
                                      int[] pasos) {
         Arrays.fill(padre, NO_VISITADO);
-        ArrayDeque<Integer> cola = new ArrayDeque<>();
+        // Cada nodo entra a la cola una sola vez, asi que un arreglo del tamano de la malla alcanza.
+        int[] cola = new int[TOTAL_NODOS];
+        int cabeza = 0;
+        int fin = 0;
         padre[indice(origen.getX(), origen.getY())] = RAIZ;
-        cola.add(indice(origen.getX(), origen.getY()));
+        cola[fin++] = indice(origen.getX(), origen.getY());
         int pasoEvaluado = -1;
-        Set<Long> bloqueados = Set.of();
-        while (!cola.isEmpty()) {
-            int actual = cola.poll();
+        long[] bloqueados = sinBloqueos;
+        while (cabeza < fin) {
+            int actual = cola[cabeza++];
             // La cola sale ordenada por kilometros: el conjunto cambia solo al pasar al siguiente.
             if (pasos[actual] + 1 != pasoEvaluado) {
                 pasoEvaluado = pasos[actual] + 1;
-                bloqueados = nodosBloqueadosEn(llegada.applyAsInt(pasoEvaluado));
+                bloqueados = mascaraBloqueadosEn(llegada.applyAsInt(pasoEvaluado));
             }
             for (int[] direccion : DIRECCIONES) {
                 int nuevoX = actual / ALTO_INDICE + direccion[0];
@@ -412,12 +508,12 @@ public final class Malla {
                     return actual;
                 }
                 if (fueraDeMalla(nuevoX, nuevoY) || padre[indice(nuevoX, nuevoY)] != NO_VISITADO
-                        || bloqueados.contains(codificar(nuevoX, nuevoY))) {
+                        || estaBloqueado(bloqueados, indice(nuevoX, nuevoY))) {
                     continue;
                 }
                 padre[indice(nuevoX, nuevoY)] = actual;
                 pasos[indice(nuevoX, nuevoY)] = pasoEvaluado;
-                cola.add(indice(nuevoX, nuevoY));
+                cola[fin++] = indice(nuevoX, nuevoY);
             }
         }
         return NO_VISITADO;

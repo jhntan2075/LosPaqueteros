@@ -170,6 +170,66 @@ class MallaTest {
         assertEquals(List.of(new Nodo(5, 5)), malla.camino(new Nodo(5, 5), new Nodo(5, 5), 0));
     }
 
+    @Test
+    void distancia_consultaRepetidaConUnidad_coincideConUnaMallaNueva() {
+        Malla malla = new Malla(List.of(bloqueoParcial()));
+        Nodo origen = new Nodo(25, 20);
+        Nodo destino = new Nodo(35, 20);
+        int salida = INICIO - MINUTOS_ANTES_DEL_BLOQUEO;
+
+        int primera = malla.distancia(origen, destino, salida, bicicleta());
+        int repetida = malla.distancia(origen, destino, salida, bicicleta());
+        int sinMemo = new Malla(List.of(bloqueoParcial())).distancia(origen, destino, salida, bicicleta());
+
+        assertEquals(primera, repetida);
+        assertEquals(sinMemo, repetida);
+    }
+
+    @Test
+    void distancia_mismaSalidaConUnidadMasRapida_noReutilizaLaDeLaLenta() {
+        Malla malla = new Malla(List.of(bloqueoParcial()));
+        Nodo origen = new Nodo(25, 20);
+        Nodo destino = new Nodo(35, 20);
+        // El auto cruza x=30 antes de que empiece el bloqueo; la bicicleta no.
+        int salida = INICIO - MINUTOS_ANTES_DEL_BLOQUEO;
+        Vehiculo auto = new Vehiculo(0, TipoVehiculo.AUTO, new Almacen(0, new Nodo(27, 14), true, 0));
+
+        int enBicicleta = malla.distancia(origen, destino, salida, bicicleta());
+        int enAuto = malla.distancia(origen, destino, salida, auto);
+
+        assertTrue(enBicicleta > 10, "la bicicleta deberia rodear, pero dio " + enBicicleta);
+        assertEquals(10, enAuto);
+    }
+
+    @Test
+    void distancia_mismaConsultaEnOtroMinuto_noReutilizaLaAnterior() {
+        Malla malla = new Malla(List.of(bloqueoParcial()));
+        Nodo origen = new Nodo(25, 20);
+        Nodo destino = new Nodo(35, 20);
+
+        int duranteElBloqueo = malla.distancia(origen, destino, INICIO, bicicleta());
+        int despuesDelBloqueo = malla.distancia(origen, destino, FIN + 1, bicicleta());
+
+        assertTrue(duranteElBloqueo > 10, "deberia rodear, pero dio " + duranteElBloqueo);
+        assertEquals(10, despuesDelBloqueo);
+    }
+
+    @Test
+    void distancia_origenEncerradoPorBloqueos_avisaQueNoHayCaminoSinDesbordarElReloj() {
+        Nodo origen = new Nodo(25, 20);
+        Malla malla = new Malla(List.of(
+                new Bloqueo(INICIO, FIN, Malla.nodosDeTramo(26, 20, 26, 20)),
+                new Bloqueo(INICIO, FIN, Malla.nodosDeTramo(24, 20, 24, 20)),
+                new Bloqueo(INICIO, FIN, Malla.nodosDeTramo(25, 21, 25, 21)),
+                new Bloqueo(INICIO, FIN, Malla.nodosDeTramo(25, 19, 25, 19))));
+
+        int distancia = malla.distancia(origen, new Nodo(35, 20), INICIO, bicicleta());
+
+        assertFalse(Malla.hayCamino(distancia));
+        assertTrue(INICIO + CalculadoraTiempos.minutosDeViaje(distancia, bicicleta()) > INICIO,
+                "los minutos de viaje de un tramo sin camino no deben desbordar el reloj");
+    }
+
     private static int longitud(List<Nodo> camino) {
         int total = 0;
         for (int i = 1; i < camino.size(); i++) {
