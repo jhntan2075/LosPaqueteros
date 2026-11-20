@@ -35,7 +35,7 @@
 
 ## Fase 1 · Fundamentos
 
-### Tarea 1: Semáforo con los tokens del tema
+### Task 1: Semáforo con los tokens del tema
 
 **Files:**
 - Modify: `src/lib/semaforo.ts:49-75` (`COLOR_SEMAFORO`, `TEXTO_SEMAFORO`, `BORDE_SEMAFORO`, `FONDO_SEMAFORO`)
@@ -62,7 +62,7 @@ it('el semáforo usa los colores del tema y las clases de token', () => {
 - [ ] **Step 4:** Reemplazar en las pruebas existentes los hex viejos (`#15803D`, `#B45309`, `#B91C1C` y sus `text-[#…]`) por `COLOR_SEMAFORO.*` o la clase de token. `npx vitest run` → PASS. Verificar también `src/config/paleta.test.ts` (contrastes) en verde.
 - [ ] **Step 5:** Commit `refactor: semáforo con los colores del tema`.
 
-### Tarea 2: Una forma por nivel
+### Task 2: Una forma por nivel
 
 **Files:**
 - Modify: `src/components/map/simbolos.tsx` (`MarcaSemaforo` :104, `MarcadorDestino` :59, `RADIO_DESTINO` :51)
@@ -91,7 +91,7 @@ it.each([['VERDE', 'circulo'], ['AMBAR', 'triangulo'], ['ROJO', 'rombo'], ['VACI
 - [ ] **Step 4:** `npx vitest run` → PASS.
 - [ ] **Step 5:** Commit `feat: una forma por nivel del semáforo en todo el sistema`.
 
-### Tarea 3: Formatos únicos (holgura, duración, números, moneda, instante)
+### Task 3: Formatos únicos (holgura, duración, números, moneda, instante)
 
 **Files:**
 - Modify: `src/lib/formato.ts`
@@ -111,7 +111,7 @@ it.each([['VERDE', 'circulo'], ['AMBAR', 'triangulo'], ['ROJO', 'rombo'], ['VACI
 - [ ] **Step 4:** Ejecutar → PASS.
 - [ ] **Step 5:** Commit `feat: funciones de formato legibles (holgura, números, soles, instante)`.
 
-### Tarea 4: Glosario único y textos visibles
+### Task 4: Glosario único y textos visibles
 
 **Files:**
 - Modify: `src/config/glosario.ts` (nuevo `NOMBRE_ESTADO_SIMULACION`; `NOMBRE_HOLGURA.CERRADO = 'Cerrado'`)
@@ -153,7 +153,7 @@ it.each(PROHIBIDOS)('ningún texto visible usa "%s"', (texto) => {
 
 ## Fase 2 · Celular
 
-### Tarea 5: Hook de pantalla angosta y encabezado de página responsive
+### Task 5: Hook de pantalla angosta y encabezado de página responsive
 
 **Files:**
 - Create: `src/hooks/useAnchoAngosto.ts`, `src/hooks/useAnchoAngosto.test.tsx`
@@ -170,7 +170,7 @@ it.each(PROHIBIDOS)('ningún texto visible usa "%s"', (texto) => {
 - [ ] **Step 4:** Ejecutar → PASS. Verificación manual: Pedidos a 390 px, la descripción en una o dos líneas a lo ancho y los botones debajo.
 - [ ] **Step 5:** Commit `fix: encabezado de página usable en celular`.
 
-### Tarea 6: Pedidos en celular: tarjetas y hoja de filtros
+### Task 6: Pedidos en celular: tarjetas y hoja de filtros
 
 **Files:**
 - Create: `src/components/pedidos/TarjetaPedido.tsx`, `src/components/pedidos/HojaFiltrosPedidos.tsx`
@@ -194,7 +194,7 @@ it.each(PROHIBIDOS)('ningún texto visible usa "%s"', (texto) => {
 - [ ] **Step 4:** `npx vitest run` → PASS.
 - [ ] **Step 5:** Commit `feat: pedidos en celular con tarjetas y hoja de filtros`.
 
-### Tarea 7: Configuración: campos legibles y moneda
+### Task 7: Configuración: campos legibles y moneda
 
 **Files:**
 - Modify: `src/components/configuracion/ModuloConfiguracion.tsx:246-330` (filas de almacenes y unidades), `:387-422` (barra de acciones)
@@ -216,7 +216,7 @@ it.each(PROHIBIDOS)('ningún texto visible usa "%s"', (texto) => {
 - [ ] **Step 4:** `npx vitest run` → PASS. Verificación manual a 390 px: se ven todos los valores.
 - [ ] **Step 5:** Commit `fix: configuración legible en celular y montos en soles`.
 
-### Tarea 8: Simulación y Operación en celular
+### Task 8: Simulación y Operación en celular
 
 **Files:**
 - Modify: `src/components/simulacion/ConfiguracionEscenario.tsx` (aside :380-410)
@@ -239,7 +239,7 @@ it.each(PROHIBIDOS)('ningún texto visible usa "%s"', (texto) => {
 
 ## Fase 3 · Componentes de estado y confirmación
 
-### Tarea 9: EstadoCarga y EstadoError
+### Task 9: EstadoCarga y EstadoError
 
 **Files:**
 - Create: `src/components/ui/EstadoCarga.tsx`, `src/components/ui/EstadoError.tsx`; exportar en `src/components/ui/index.ts`
@@ -257,7 +257,7 @@ it.each(PROHIBIDOS)('ningún texto visible usa "%s"', (texto) => {
 - [ ] **Step 4:** `npx vitest run` → PASS.
 - [ ] **Step 5:** Commit `feat: estados de carga y error comunes`.
 
-### Tarea 10: Confirmación con tono y "Descartar cambios" confirmado
+### Task 10: Confirmación con tono y "Descartar cambios" confirmado
 
 **Files:**
 - Modify: `src/components/modals/DialogoConfirmacion.tsx:10-69`
@@ -279,7 +279,7 @@ it.each(PROHIBIDOS)('ningún texto visible usa "%s"', (texto) => {
 
 ## Fase 4 · Formularios
 
-### Tarea 11: Registrar pedido: validación al enviar, mapa grande y un solo estado vacío
+### Task 11: Registrar pedido: validación al enviar, mapa grande y un solo estado vacío
 
 **Files:**
 - Modify: `src/components/pedidos/RegistrarPedido.tsx` (botón :355-373, cantidad :280-295, panel de factibilidad)
@@ -302,7 +302,7 @@ it.each(PROHIBIDOS)('ningún texto visible usa "%s"', (texto) => {
 - [ ] **Step 4:** `npx vitest run` → PASS.
 - [ ] **Step 5:** Commit `feat: registrar pedido con validación al enviar`.
 
-### Tarea 12: Nueva simulación: fecha obligatoria y flota sin correcciones silenciosas
+### Task 12: Nueva simulación: fecha obligatoria y flota sin correcciones silenciosas
 
 **Files:**
 - Modify: `src/components/simulacion/ConfiguracionEscenario.tsx` (Periodo, Flota :257, aviso :407-410)
@@ -322,7 +322,7 @@ it.each(PROHIBIDOS)('ningún texto visible usa "%s"', (texto) => {
 
 ## Fase 5 · Color, tipografía y métricas
 
-### Tarea 13: Métricas con contexto
+### Task 13: Métricas con contexto
 
 **Files:**
 - Modify: `src/components/metricas/ModuloMetricas.tsx`
@@ -346,7 +346,7 @@ it.each(PROHIBIDOS)('ningún texto visible usa "%s"', (texto) => {
 - [ ] **Step 4:** `npx vitest run` → PASS.
 - [ ] **Step 5:** Commit `feat: métricas legibles y con contexto`.
 
-### Tarea 14: Chips neutros, acciones sin rojo y tipografía con tokens
+### Task 14: Chips neutros, acciones sin rojo y tipografía con tokens
 
 **Files:**
 - Modify: `src/components/pedidos/estilos.ts` y donde se pinta el chip de plazo (`ColaPedidos`, `RegistrarPedido`, `DetallePedido`)
@@ -369,7 +369,7 @@ it.each(PROHIBIDOS)('ningún texto visible usa "%s"', (texto) => {
 
 ## Fase 6 · Arquitectura de información
 
-### Tarea 15: Alertas sin duplicar y reporte de cierre al final
+### Task 15: Alertas sin duplicar y reporte de cierre al final
 
 **Files:**
 - Modify: `src/components/operacion/ResumenOperacion.tsx` (acción :70, tarjeta de incidencias, "Saturación" :126)
@@ -389,7 +389,7 @@ it.each(PROHIBIDOS)('ningún texto visible usa "%s"', (texto) => {
 - [ ] **Step 4:** `npx vitest run` → PASS.
 - [ ] **Step 5:** Commit `feat: resumen sin alertas repetidas`.
 
-### Tarea 16: Un panel a la vez y leyenda completa
+### Task 16: Un panel a la vez y leyenda completa
 
 **Files:**
 - Modify: `src/components/operacion/ModuloOperacion.tsx` (apertura de paneles), `src/components/map/ColumnaMapa.tsx` (estado colapsado controlado)
@@ -413,7 +413,7 @@ it.each(PROHIBIDOS)('ningún texto visible usa "%s"', (texto) => {
 
 ## Fase 7 · Mapa: rutas y unidades
 
-### Tarea 17: Utilidades geométricas de ruta
+### Task 17: Utilidades geométricas de ruta
 
 **Files:**
 - Modify: `src/lib/malla.ts`, `src/lib/malla.test.ts`
@@ -429,7 +429,7 @@ it.each(PROHIBIDOS)('ningún texto visible usa "%s"', (texto) => {
 - [ ] **Step 4:** Ejecutar → PASS.
 - [ ] **Step 5:** Commit `feat: puntos de flecha a lo largo de una ruta`.
 
-### Tarea 18: Ruta destacada animada, flechas y rutas tardías
+### Task 18: Ruta destacada animada, flechas y rutas tardías
 
 **Files:**
 - Modify: `src/components/map/GridMap.tsx` (bloque RUTAS, ~:1150-1175)
@@ -456,7 +456,7 @@ it.each(PROHIBIDOS)('ningún texto visible usa "%s"', (texto) => {
 - [ ] **Step 4:** `npx vitest run` → PASS.
 - [ ] **Step 5:** Commit `feat: ruta seleccionada animada, flechas de sentido y rutas tardías`.
 
-### Tarea 19: Paradas numeradas de la ruta destacada
+### Task 19: Paradas numeradas de la ruta destacada
 
 **Files:**
 - Modify: `src/components/map/GridMap.tsx` (después de las rutas, antes de los destinos)
@@ -473,7 +473,7 @@ it.each(PROHIBIDOS)('ningún texto visible usa "%s"', (texto) => {
 - [ ] **Step 4:** `npx vitest run` → PASS.
 - [ ] **Step 5:** Commit `feat: paradas numeradas con hora en la ruta seleccionada`.
 
-### Tarea 20: Modo oscuro del mapa con variables
+### Task 20: Modo oscuro del mapa con variables
 
 **Files:**
 - Modify: `src/index.css:46-59` y los colores que `GridMap` usa para el lienzo (fondo, cuadrícula, borde, rótulos, halo, ruta pendiente y recorrida)
@@ -488,7 +488,7 @@ it.each(PROHIBIDOS)('ningún texto visible usa "%s"', (texto) => {
 - [ ] **Step 4:** `npx vitest run` → PASS. Verificación manual en modo oscuro: cuadrícula tenue y rutas visibles.
 - [ ] **Step 5:** Commit `refactor: colores del mapa con variables de tema`.
 
-### Tarea 21: Unidades agrupadas en la vista lejana
+### Task 21: Unidades agrupadas en la vista lejana
 
 **Files:**
 - Create: `src/lib/agrupacion.ts`, `src/lib/agrupacion.test.ts`
@@ -511,7 +511,7 @@ it.each(PROHIBIDOS)('ningún texto visible usa "%s"', (texto) => {
 
 ## Fase 8 · Documentación
 
-### Tarea 22: Actualizar el sistema de diseño
+### Task 22: Actualizar el sistema de diseño
 
 **Files:**
 - Modify: `docs/design-system.md`:
