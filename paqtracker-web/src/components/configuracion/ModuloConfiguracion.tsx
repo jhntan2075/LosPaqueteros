@@ -1,7 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { RotateCcw, Save, SlidersHorizontal, RefreshCw } from 'lucide-react';
+import { MoreHorizontal, RotateCcw, Save, SlidersHorizontal, RefreshCw } from 'lucide-react';
 import { ALMACENES, formatearDuracion } from '../../config/dominio';
+import { useAnchoAngosto } from '../../hooks/useAnchoAngosto';
 import { useAvisos } from '../../hooks/useAvisos';
+import { useCerrarConEscape } from '../../hooks/useCerrarConEscape';
+import { formatearNumero, leerDecimal } from '../../lib/formato';
 import { proyectar } from '../../lib/malla';
 import { validarParametros } from '../../lib/parametrosDominio';
 import { ErrorDeApi, clienteApi } from '../../services/clienteApi';
@@ -30,7 +33,7 @@ type Formulario = {
 
 const aFormulario = (p: ParametrosDominioApi): Formulario => ({
   almacenes: p.almacenes.map((a) => ({ codigo: a.codigo, x: String(a.x), y: String(a.y), capacidad: a.capacidad === null ? '' : String(a.capacidad) })),
-  unidades: p.unidades.map((u) => ({ tipo: u.tipo, capacidad: String(u.capacidad), velocidadKmH: String(u.velocidadKmH), costoPorKm: String(u.costoPorKm) })),
+  unidades: p.unidades.map((u) => ({ tipo: u.tipo, capacidad: String(u.capacidad), velocidadKmH: String(u.velocidadKmH), costoPorKm: formatearNumero(u.costoPorKm, 2) })),
   averias: {
     tipo1Minutos: String(p.averias.tipo1Minutos),
     permanenciaSitioMinutos: String(p.averias.permanenciaSitioMinutos),
@@ -41,9 +44,12 @@ const aFormulario = (p: ParametrosDominioApi): Formulario => ({
 
 const numero = (texto: string) => (texto.trim() === '' ? Number.NaN : Number(texto.replace(',', '.')));
 
+/** Los costos admiten coma o punto decimal (y el espacio de miles con que se muestran); texto inválido es NaN. */
+const leerCosto = (texto: string) => leerDecimal(texto.replace(/\s/g, '')) ?? Number.NaN;
+
 const aParametros = (f: Formulario): ParametrosDominioApi => ({
   almacenes: f.almacenes.map((a) => ({ codigo: a.codigo, x: numero(a.x), y: numero(a.y), capacidad: a.codigo === 'CENTRAL' ? null : numero(a.capacidad) })),
-  unidades: f.unidades.map((u) => ({ tipo: u.tipo, capacidad: numero(u.capacidad), velocidadKmH: numero(u.velocidadKmH), costoPorKm: numero(u.costoPorKm) })),
+  unidades: f.unidades.map((u) => ({ tipo: u.tipo, capacidad: numero(u.capacidad), velocidadKmH: numero(u.velocidadKmH), costoPorKm: leerCosto(u.costoPorKm) })),
   averias: {
     tipo1Minutos: numero(f.averias.tipo1Minutos),
     permanenciaSitioMinutos: numero(f.averias.permanenciaSitioMinutos),
@@ -58,7 +64,10 @@ interface CampoNumeroProps {
   valor: string;
   error?: string;
   visible: boolean;
+  prefijo?: string;
   sufijo?: string;
+  /** Ancho del input: w-24 para enteros, w-28 para montos. */
+  ancho?: 'w-24' | 'w-28';
   ayuda?: string;
   onCambiar: (valor: string) => void;
   onSalir: () => void;
@@ -68,15 +77,16 @@ interface CampoNumeroProps {
  * Entrada con su unidad a la derecha. `Campo` pasa `aria-describedby` y `aria-invalid` a su hijo
  * directo: este envoltorio los reenvía al input para que la ayuda y el error sigan unidos a él.
  */
-const EntradaConSufijo: React.FC<EntradaProps & { sufijo?: string }> = ({ sufijo, ...resto }) => (
+const EntradaConSufijo: React.FC<EntradaProps & { prefijo?: string; sufijo?: string }> = ({ prefijo, sufijo, ...resto }) => (
   <div className="flex items-center gap-1.5">
+    {prefijo && <span className="shrink-0 text-caption text-neutral-600">{prefijo}</span>}
     <Entrada {...resto} />
     {sufijo && <span className="shrink-0 text-caption text-neutral-600">{sufijo}</span>}
   </div>
 );
 
 /** Campo numérico con su error debajo (se muestra al salir del campo o al intentar guardar). */
-const CampoNumero: React.FC<CampoNumeroProps> = ({ id, etiqueta, valor, error, visible, sufijo, ayuda, onCambiar, onSalir }) => (
+const CampoNumero: React.FC<CampoNumeroProps> = ({ id, etiqueta, valor, error, visible, prefijo, sufijo, ancho = 'w-24', ayuda, onCambiar, onSalir }) => (
   <Campo htmlFor={id} etiqueta={etiqueta} ayuda={ayuda} error={visible && error ? error : undefined}>
     <EntradaConSufijo
       id={id}
@@ -84,16 +94,64 @@ const CampoNumero: React.FC<CampoNumeroProps> = ({ id, etiqueta, valor, error, v
       value={valor}
       onChange={(e) => onCambiar(e.target.value)}
       onBlur={onSalir}
+      prefijo={prefijo}
       sufijo={sufijo}
-      className="tabular-nums"
+      className={`${ancho} tabular-nums`}
     />
   </Campo>
 );
 
 /** Rótulo de la fila (nombre del almacén o de la unidad), alineado con los inputs de su derecha. */
 const RotuloFila: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <span className="mt-5 flex h-8 items-center text-body font-semibold text-neutral-900">{children}</span>
+  <span className="col-span-2 flex h-8 items-center md:col-span-1 md:mt-5 text-body font-semibold text-neutral-900">{children}</span>
 );
+
+/** Menú "Más acciones" de la barra de guardado en celular: lo secundario fuera de la vista principal. */
+const MenuMasAcciones: React.FC<{ puedeDescartar: boolean; deshabilitado: boolean; onDescartar: () => void; onRestablecer: () => void }> = ({
+  puedeDescartar,
+  deshabilitado,
+  onDescartar,
+  onRestablecer,
+}) => {
+  const [abierto, setAbierto] = useState(false);
+  useCerrarConEscape(abierto, () => setAbierto(false));
+  const clase =
+    'flex h-11 w-full cursor-pointer items-center gap-2.5 px-3 text-left text-body text-neutral-900 hover:bg-neutral-50 disabled:cursor-not-allowed disabled:text-neutral-400 disabled:hover:bg-transparent';
+  return (
+    <div className="relative">
+      <Boton icono={MoreHorizontal} aria-label="Más acciones" aria-haspopup="menu" aria-expanded={abierto} onClick={() => setAbierto(!abierto)} className="size-11" />
+      {abierto && (
+        <div role="menu" className="absolute bottom-full right-0 z-30 mb-1 w-64 rounded-card border border-neutral-200 bg-superficie py-1 shadow-overlay">
+          <button
+            type="button"
+            role="menuitem"
+            disabled={!puedeDescartar || deshabilitado}
+            onClick={() => {
+              setAbierto(false);
+              onDescartar();
+            }}
+            className={clase}
+          >
+            Descartar cambios
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            disabled={deshabilitado}
+            onClick={() => {
+              setAbierto(false);
+              onRestablecer();
+            }}
+            className={clase}
+          >
+            <RotateCcw className="size-4" aria-hidden="true" />
+            Restablecer valores por defecto
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};
 
 const CAMPOS_AVERIA: { campo: keyof ParametrosAveriaApi; etiqueta: string; ayuda: string }[] = [
   { campo: 'tipo1Minutos', etiqueta: 'Tipo 1 · detención en el lugar', ayuda: 'Luego sigue su ruta.' },
@@ -128,6 +186,7 @@ const DESCRIPCION =
 
 export const ModuloConfiguracion: React.FC = () => {
   const avisar = useAvisos();
+  const angosto = useAnchoAngosto();
   const [guardados, setGuardados] = useState<ParametrosDominioApi | null>(null);
   const [formulario, setFormulario] = useState<Formulario | null>(null);
   const [errorCarga, setErrorCarga] = useState<string | null>(null);
@@ -262,7 +321,7 @@ export const ModuloConfiguracion: React.FC = () => {
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_280px]">
               <div className="flex flex-col gap-3">
                 {parametros.almacenes.map((a, i) => (
-                  <div key={a.codigo} className="grid grid-cols-[110px_1fr_1fr_1.4fr] items-start gap-2">
+                  <div key={a.codigo} className="grid grid-cols-2 items-start gap-2 md:grid-cols-[110px_repeat(3,auto)] md:justify-start md:gap-x-4">
                     <RotuloFila>{ALMACENES[i]?.nombre ?? a.codigo}</RotuloFila>
                     {(['x', 'y'] as const).map((eje) => (
                       <CampoNumero
@@ -326,7 +385,7 @@ export const ModuloConfiguracion: React.FC = () => {
           >
             <div className="flex flex-col gap-3">
               {parametros.unidades.map((u, i) => (
-                <div key={u.tipo} className="grid grid-cols-[110px_1fr_1fr_1fr] items-start gap-2">
+                <div key={u.tipo} className="grid grid-cols-2 items-start gap-2 md:grid-cols-[110px_repeat(3,auto)] md:justify-start md:gap-x-4">
                   <RotuloFila>{NOMBRE_UNIDAD[u.tipo]}</RotuloFila>
                   <CampoNumero
                     id={`unidad-${i}-capacidad`}
@@ -351,12 +410,17 @@ export const ModuloConfiguracion: React.FC = () => {
                   <CampoNumero
                     id={`unidad-${i}-costo`}
                     etiqueta="Costo por km"
-                    sufijo="S/"
+                    prefijo="S/"
+                    ancho="w-28"
                     valor={formulario.unidades[i].costoPorKm}
                     error={errores[`unidades.${i}.costoPorKm`]}
                     visible={visible(`unidades.${i}.costoPorKm`)}
                     onCambiar={(v) => fijar((f) => ((f.unidades[i].costoPorKm = v), f))}
-                    onSalir={() => tocar(`unidades.${i}.costoPorKm`)}
+                    onSalir={() => {
+                      tocar(`unidades.${i}.costoPorKm`);
+                      const valor = leerCosto(formulario.unidades[i].costoPorKm);
+                      if (!Number.isNaN(valor)) fijar((f) => ((f.unidades[i].costoPorKm = formatearNumero(valor, 2)), f));
+                    }}
                   />
                 </div>
               ))}
@@ -411,20 +475,36 @@ export const ModuloConfiguracion: React.FC = () => {
                 Corrige los campos marcados antes de guardar.
               </Aviso>
             )}
-            <Boton
-              variante="fantasma"
-              icono={RotateCcw}
-              onClick={() => {
-                setConfirmacion('restablecer');
-                setErrorConfirmacion(null);
-              }}
-              disabled={enCurso}
-            >
-              Restablecer valores por defecto
-            </Boton>
-            <Boton variante="secundario" onClick={() => setConfirmacion('descartar')} disabled={!hayCambios || enCurso} className="ml-auto">
-              Descartar cambios
-            </Boton>
+            {angosto ? (
+              <div className="ml-auto">
+                <MenuMasAcciones
+                  puedeDescartar={hayCambios}
+                  deshabilitado={enCurso}
+                  onDescartar={() => setConfirmacion('descartar')}
+                  onRestablecer={() => {
+                    setConfirmacion('restablecer');
+                    setErrorConfirmacion(null);
+                  }}
+                />
+              </div>
+            ) : (
+              <>
+                <Boton
+                  variante="fantasma"
+                  icono={RotateCcw}
+                  onClick={() => {
+                    setConfirmacion('restablecer');
+                    setErrorConfirmacion(null);
+                  }}
+                  disabled={enCurso}
+                >
+                  Restablecer valores por defecto
+                </Boton>
+                <Boton variante="secundario" onClick={() => setConfirmacion('descartar')} disabled={!hayCambios || enCurso} className="ml-auto">
+                  Descartar cambios
+                </Boton>
+              </>
+            )}
             <Boton
               variante="primario"
               icono={Save}

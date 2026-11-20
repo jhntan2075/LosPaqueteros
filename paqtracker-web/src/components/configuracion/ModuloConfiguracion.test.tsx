@@ -137,4 +137,69 @@ describe('ModuloConfiguracion (B02, B04, B07-B09)', () => {
     expect(screen.queryByRole('alertdialog')).toBeNull();
     expect(velocidad.value).toBe('25');
   });
+  it('muestra completos los valores de los campos: X del Central entero y de ancho w-24', async () => {
+    render(<ModuloConfiguracion />);
+    const x = (await screen.findByLabelText('X', { selector: '#almacen-0-x' })) as HTMLInputElement;
+    expect(x).toHaveProperty('value', '27');
+    expect(x.className).toContain('w-24');
+  });
+
+  it('presenta el costo con dos decimales y el prefijo "S/" antes del campo', async () => {
+    render(<ModuloConfiguracion />);
+    const costo = (await screen.findByLabelText('Costo por km', { selector: '#unidad-1-costo' })) as HTMLInputElement;
+    expect(costo.value).toBe('0,60');
+    expect(costo.className).toContain('w-28');
+    const prefijo = screen.getAllByText('S/')[1];
+    expect(prefijo.compareDocumentPosition(costo) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('acepta coma decimal en el costo y envía el número', async () => {
+    const nuevos = porDefecto();
+    nuevos.unidades[1] = { ...nuevos.unidades[1], costoPorKm: 1.5 };
+    const guardar = vi.spyOn(clienteApi, 'guardarParametros').mockResolvedValue(nuevos);
+    render(<ModuloConfiguracion />);
+    const costo = (await screen.findByLabelText('Costo por km', { selector: '#unidad-1-costo' })) as HTMLInputElement;
+    fireEvent.change(costo, { target: { value: '1,5' } });
+    expect(costo.value).toBe('1,5');
+    fireEvent.blur(costo);
+    expect(screen.queryByText('Ingresa un número válido.')).toBeNull();
+    expect(costo.value).toBe('1,50');
+    fireEvent.click(screen.getByRole('button', { name: /Guardar cambios/ }));
+    await waitFor(() => expect(guardar).toHaveBeenCalledWith(nuevos));
+  });
+
+  it('un costo con texto inválido muestra "Ingresa un número válido."', async () => {
+    render(<ModuloConfiguracion />);
+    const costo = await screen.findByLabelText('Costo por km', { selector: '#unidad-1-costo' });
+    fireEvent.change(costo, { target: { value: '1,2,3' } });
+    fireEvent.blur(costo);
+    expect(screen.getByText('Ingresa un número válido.')).toBeTruthy();
+    expect((costo as HTMLInputElement).value).toBe('1,2,3');
+  });
+});
+
+describe('ModuloConfiguracion en celular', () => {
+  beforeEach(() => {
+    vi.stubGlobal('matchMedia', (consulta: string) => ({ matches: true, media: consulta, addEventListener() {}, removeEventListener() {} }));
+  });
+
+  it('la barra deja solo Guardar y "Más acciones" con Descartar y Restablecer', async () => {
+    render(<ModuloConfiguracion />);
+    const velocidad = (await screen.findByLabelText('Velocidad', { selector: '#unidad-1-velocidad' })) as HTMLInputElement;
+    expect(screen.queryByRole('button', { name: 'Descartar cambios' })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Restablecer valores por defecto/ })).toBeNull();
+    expect(screen.getByRole('button', { name: /Guardar cambios/ })).toBeTruthy();
+
+    fireEvent.change(velocidad, { target: { value: '30' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Más acciones' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Descartar cambios' }));
+    expect(screen.getByRole('alertdialog', { name: '¿Descartar los cambios?' })).toBeTruthy();
+    expect(velocidad.value).toBe('30');
+    fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Descartar cambios' }));
+    expect(velocidad.value).toBe('25');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Más acciones' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: /Restablecer valores por defecto/ }));
+    expect(screen.getByRole('alertdialog', { name: '¿Restablecer los valores por defecto?' })).toBeTruthy();
+  });
 });

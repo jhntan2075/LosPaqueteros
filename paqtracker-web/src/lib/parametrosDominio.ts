@@ -35,7 +35,8 @@ export function validarParametros(p: ParametrosDominioApi): Record<string, strin
     const ev = entero(u.velocidadKmH, 1, VELOCIDAD_MAXIMA, 'km/h');
     if (ec) errores[`unidades.${i}.capacidad`] = ec;
     if (ev) errores[`unidades.${i}.velocidadKmH`] = ev;
-    if (!Number.isFinite(u.costoPorKm) || u.costoPorKm < 0) errores[`unidades.${i}.costoPorKm`] = 'Debe ser un número mayor o igual a 0.';
+    if (!Number.isFinite(u.costoPorKm)) errores[`unidades.${i}.costoPorKm`] = 'Ingresa un número válido.';
+    else if (u.costoPorKm < 0) errores[`unidades.${i}.costoPorKm`] = 'Debe ser un número mayor o igual a 0.';
   });
   const av = p.averias;
   (Object.keys(av) as (keyof ParametrosAveriaApi)[]).forEach((campo) => {
