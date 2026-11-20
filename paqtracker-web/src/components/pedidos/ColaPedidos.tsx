@@ -10,11 +10,16 @@ import {
   RotateCcw,
   ArrowRight,
   AlertTriangle,
+  Check,
+  MoreHorizontal,
+  SlidersHorizontal,
 } from 'lucide-react';
-import { PLAZOS_HORAS, UNIDADES, esPlazoRegular, type PlazoHoras, type TipoUnidad } from '../../config/dominio';
-import { ESTADO_EN_ESPERA, NOMBRE_HOLGURA, RANGO_HOLGURA, etiquetaPlazo } from '../../config/glosario';
+import { UNIDADES, esPlazoRegular, type PlazoHoras } from '../../config/dominio';
+import { ESTADO_EN_ESPERA, etiquetaPlazo } from '../../config/glosario';
 import { capitalizar, formatearMiles } from '../../lib/formato';
 import { cn } from '../../lib/clases';
+import { useAnchoAngosto } from '../../hooks/useAnchoAngosto';
+import { useCerrarConEscape } from '../../hooks/useCerrarConEscape';
 import { useColaPedidos } from '../../hooks/usePedidos';
 import { useDatosOperacion } from '../../hooks/useDatosOperacion';
 import type { EstadoPedidoCola, NivelHolgura, PedidoEnCola } from '../../types/pedidos';
@@ -22,37 +27,26 @@ import { Boton, EncabezadoPagina, Entrada, EstadoVacio, Insignia, Tarjeta } from
 import { DetallePedido } from './DetallePedido';
 import { COLOR_HOLGURA, TONO_ESTADO } from './estilos';
 import { PuntoHolgura } from './iconos';
-
-const ESTADOS: Record<EstadoPedidoCola, { etiqueta: string }> = {
-  EN_TRANSITO: { etiqueta: 'En tránsito' },
-  PLANIFICADO: { etiqueta: 'Planificado' },
-  REGISTRADO: { etiqueta: ESTADO_EN_ESPERA },
-  ENTREGADO: { etiqueta: 'Entregado' },
-  INCUMPLIDO: { etiqueta: 'Incumplido' },
-};
+import { HojaFiltrosPedidos } from './HojaFiltrosPedidos';
+import { TarjetaPedido } from './TarjetaPedido';
+import {
+  ESTADOS,
+  OPCIONES_ESTADO,
+  OPCIONES_HOLGURA,
+  OPCIONES_PLAZO,
+  OPCIONES_UNIDAD,
+  SIN_ASIGNAR,
+  SIN_FILTROS,
+  TODOS,
+  contarFiltrosSelector,
+  type Filtros,
+} from './filtrosPedidos';
 
 const InsigniaEstado: React.FC<{ estado: EstadoPedidoCola }> = ({ estado }) => (
   <Insignia tono={TONO_ESTADO[estado]} punto>
     {ESTADOS[estado].etiqueta}
   </Insignia>
 );
-
-const TODOS = 'TODOS';
-const SIN_ASIGNAR = 'SIN_ASIGNAR';
-
-interface Filtros {
-  estado: EstadoPedidoCola | typeof TODOS;
-  plazo: PlazoHoras | typeof TODOS;
-  vehiculo: TipoUnidad | typeof SIN_ASIGNAR | typeof TODOS;
-  holgura: NivelHolgura | typeof TODOS;
-}
-
-const SIN_FILTROS: Filtros = {
-  estado: TODOS,
-  plazo: TODOS,
-  vehiculo: TODOS,
-  holgura: TODOS,
-};
 
 type CampoOrden = 'codigo' | 'cliente' | 'cantidad' | 'horaLimite' | 'holgura' | 'estado';
 type Orden = { campo: CampoOrden; asc: boolean };
@@ -168,7 +162,7 @@ const FiltroRapido: React.FC<{ activo: boolean; tono: 'critical' | 'primary'; on
     aria-pressed={activo}
     onClick={onClick}
     className={cn(
-      'h-8 rounded-control border px-2.5 text-body-sm font-medium transition-colors cursor-pointer',
+      'inline-flex h-8 items-center gap-1 rounded-control border px-2.5 text-body-sm font-medium transition-colors cursor-pointer max-md:min-h-11',
       activo
         ? tono === 'critical'
           ? 'border-critical-600/40 bg-critical-50 text-critical-600'
@@ -176,9 +170,44 @@ const FiltroRapido: React.FC<{ activo: boolean; tono: 'critical' | 'primary'; on
         : 'border-neutral-300 bg-superficie text-neutral-700 hover:bg-neutral-50 hover:text-neutral-900',
     )}
   >
+    {activo && <Check className="size-3.5 shrink-0" aria-hidden="true" />}
     {children}
   </button>
 );
+
+/** Menú "Más acciones" del encabezado en celular: lo secundario fuera de la vista principal. */
+const MenuMasAcciones: React.FC<{ onExportar: () => void }> = ({ onExportar }) => {
+  const [abierto, setAbierto] = useState(false);
+  useCerrarConEscape(abierto, () => setAbierto(false));
+  return (
+    <div className="relative !flex-none">
+      <Boton
+        icono={MoreHorizontal}
+        aria-label="Más acciones"
+        aria-haspopup="menu"
+        aria-expanded={abierto}
+        onClick={() => setAbierto(!abierto)}
+        className="size-11"
+      />
+      {abierto && (
+        <div role="menu" className="absolute right-0 top-full z-30 mt-1 w-48 rounded-card border border-neutral-200 bg-superficie py-1 shadow-overlay">
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              setAbierto(false);
+              onExportar();
+            }}
+            className="flex h-11 w-full cursor-pointer items-center gap-2.5 px-3 text-left text-body text-neutral-900 hover:bg-neutral-50"
+          >
+            <Download className="size-4" aria-hidden="true" />
+            Exportar CSV
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};
 
 function exportarCsv(pedidos: PedidoEnCola[]) {
   const encabezado = ['Código', 'Cliente', 'Destino', 'Cantidad', 'Plazo', 'Hora límite', 'Salida', 'Llegada estimada', 'Holgura', 'Unidad', 'Unidades', 'Estado'];
@@ -212,6 +241,8 @@ export const ColaPedidos: React.FC<{
 }> = ({ onRegistrar, onVerEnLienzo }) => {
   const { pedidos, total, cargando, error } = useColaPedidos();
   const datos = useDatosOperacion();
+  const angosto = useAnchoAngosto();
+  const [hojaAbierta, setHojaAbierta] = useState(false);
   const [busqueda, setBusqueda] = useState('');
   const [filtros, setFiltros] = useState<Filtros>(SIN_FILTROS);
   const [orden, setOrden] = useState<Orden | null>(null);
@@ -268,6 +299,8 @@ export const ColaPedidos: React.FC<{
   const filtrosActivos =
     Object.values(filtros).filter((v) => v !== TODOS).length + (busqueda.trim() !== '' ? 1 : 0);
 
+  const filtrosSelector = contarFiltrosSelector(filtros);
+
   const limpiarFiltros = () => {
     setFiltros(SIN_FILTROS);
     setBusqueda('');
@@ -280,14 +313,23 @@ export const ColaPedidos: React.FC<{
         estado={<Insignia className="tabular-nums">{formatearMiles(total)} pedidos</Insignia>}
         descripcion="Seguimiento de cada pedido: su holgura, la unidad asignada y su estado."
         acciones={
-          <>
-            <Boton icono={Download} onClick={() => exportarCsv(visibles)} title="Descargar lista visible en formato CSV">
-              Exportar CSV
-            </Boton>
-            <Boton variante="primario" icono={Plus} onClick={onRegistrar}>
-              Registrar pedido
-            </Boton>
-          </>
+          angosto ? (
+            <>
+              <Boton variante="primario" tamano="lg" icono={Plus} onClick={onRegistrar} className="min-h-11">
+                Registrar pedido
+              </Boton>
+              <MenuMasAcciones onExportar={() => exportarCsv(visibles)} />
+            </>
+          ) : (
+            <>
+              <Boton icono={Download} onClick={() => exportarCsv(visibles)} title="Descargar lista visible en formato CSV">
+                Exportar CSV
+              </Boton>
+              <Boton variante="primario" icono={Plus} onClick={onRegistrar}>
+                Registrar pedido
+              </Boton>
+            </>
+          )
         }
       />
 
@@ -297,7 +339,7 @@ export const ColaPedidos: React.FC<{
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-neutral-200 bg-superficie px-4 py-3 lg:px-6">
             <div className="flex min-w-72 flex-1 flex-wrap items-center gap-2">
               {/* Buscador */}
-              <div className="relative w-64 min-w-52">
+              <div className="relative w-64 min-w-52 max-md:w-full">
                 <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-neutral-500" aria-hidden="true" />
                 <Entrada
                   ref={buscadorRef}
@@ -340,47 +382,53 @@ export const ColaPedidos: React.FC<{
               >
                 {ESTADO_EN_ESPERA}
               </FiltroRapido>
-              <span className="h-5 w-px bg-neutral-200" aria-hidden="true" />
+              {angosto ? (
+                <button
+                  type="button"
+                  aria-haspopup="dialog"
+                  onClick={() => setHojaAbierta(true)}
+                  className="inline-flex min-h-11 cursor-pointer items-center gap-1.5 rounded-control border border-neutral-300 bg-superficie px-3 text-body-sm font-medium text-neutral-700 hover:bg-neutral-50"
+                >
+                  <SlidersHorizontal className="size-4 shrink-0" aria-hidden="true" />
+                  {filtrosSelector > 0 ? `Filtros (${filtrosSelector})` : 'Filtros'}
+                </button>
+              ) : (
+                <>
+                  <span className="h-5 w-px bg-neutral-200" aria-hidden="true" />
 
-              <SelectFiltro
-                label="Estado"
-                valor={filtros.estado}
-                activo={filtros.estado !== TODOS}
-                opciones={Object.entries(ESTADOS).map(([val, { etiqueta }]) => ({ valor: val, etiqueta }))}
-                onCambiar={(val) => setFiltros({ ...filtros, estado: val as Filtros['estado'] })}
-              />
+                  <SelectFiltro
+                    label="Estado"
+                    valor={filtros.estado}
+                    activo={filtros.estado !== TODOS}
+                    opciones={OPCIONES_ESTADO}
+                    onCambiar={(val) => setFiltros({ ...filtros, estado: val as Filtros['estado'] })}
+                  />
 
-              <SelectFiltro
-                label="Holgura"
-                valor={filtros.holgura}
-                activo={filtros.holgura !== TODOS}
-                opciones={[
-                  { valor: 'ROJO', etiqueta: `${NOMBRE_HOLGURA.ROJO} (${RANGO_HOLGURA.ROJO})` },
-                  { valor: 'AMBAR', etiqueta: `${NOMBRE_HOLGURA.AMBAR} (${RANGO_HOLGURA.AMBAR})` },
-                  { valor: 'VERDE', etiqueta: `${NOMBRE_HOLGURA.VERDE} (${RANGO_HOLGURA.VERDE})` },
-                  { valor: 'CERRADO', etiqueta: NOMBRE_HOLGURA.CERRADO },
-                ]}
-                onCambiar={(val) => setFiltros({ ...filtros, holgura: val as Filtros['holgura'] })}
-              />
+                  <SelectFiltro
+                    label="Holgura"
+                    valor={filtros.holgura}
+                    activo={filtros.holgura !== TODOS}
+                    opciones={OPCIONES_HOLGURA}
+                    onCambiar={(val) => setFiltros({ ...filtros, holgura: val as Filtros['holgura'] })}
+                  />
 
-              <SelectFiltro
-                label="Plazo"
-                valor={String(filtros.plazo)}
-                activo={filtros.plazo !== TODOS}
-                opciones={PLAZOS_HORAS.map((p) => ({ valor: String(p), etiqueta: etiquetaPlazo(p) }))}
-                onCambiar={(val) => setFiltros({ ...filtros, plazo: val === TODOS ? TODOS : (Number(val) as PlazoHoras) })}
-              />
+                  <SelectFiltro
+                    label="Plazo"
+                    valor={String(filtros.plazo)}
+                    activo={filtros.plazo !== TODOS}
+                    opciones={OPCIONES_PLAZO}
+                    onCambiar={(val) => setFiltros({ ...filtros, plazo: val === TODOS ? TODOS : (Number(val) as PlazoHoras) })}
+                  />
 
-              <SelectFiltro
-                label="Unidad"
-                valor={filtros.vehiculo}
-                activo={filtros.vehiculo !== TODOS}
-                opciones={[
-                  ...(Object.keys(UNIDADES) as TipoUnidad[]).map((t) => ({ valor: t, etiqueta: capitalizar(UNIDADES[t].nombre) })),
-                  { valor: SIN_ASIGNAR, etiqueta: 'Sin asignar' },
-                ]}
-                onCambiar={(val) => setFiltros({ ...filtros, vehiculo: val as Filtros['vehiculo'] })}
-              />
+                  <SelectFiltro
+                    label="Unidad"
+                    valor={filtros.vehiculo}
+                    activo={filtros.vehiculo !== TODOS}
+                    opciones={OPCIONES_UNIDAD}
+                    onCambiar={(val) => setFiltros({ ...filtros, vehiculo: val as Filtros['vehiculo'] })}
+                  />
+                </>
+              )}
 
               {filtrosActivos > 0 && (
                 <Boton
@@ -403,6 +451,13 @@ export const ColaPedidos: React.FC<{
 
           {/* Tabla */}
           <div className="min-h-0 flex-1 overflow-auto">
+            {angosto ? (
+              <div className="divide-y divide-neutral-100">
+                {visibles.map((pedido) => (
+                  <TarjetaPedido key={pedido.codigo} pedido={pedido} referencia={datos.reloj} onAbrir={setCodigoSeleccionado} />
+                ))}
+              </div>
+            ) : (
             <table className="w-full table-auto border-collapse whitespace-nowrap text-left text-body-sm">
               <thead className="sticky top-0 z-10 border-b border-neutral-200 bg-neutral-50 text-overline uppercase text-neutral-600 [&_th]:font-semibold">
                 <tr>
@@ -477,6 +532,7 @@ export const ColaPedidos: React.FC<{
                 ))}
               </tbody>
             </table>
+            )}
 
             {/* Estados de error o vacío */}
             {error && <EstadoVacio tono="critical" icono={AlertTriangle} titulo={error} />}
@@ -506,6 +562,14 @@ export const ColaPedidos: React.FC<{
           </div>
         </Tarjeta>
       </div>
+
+      <HojaFiltrosPedidos
+        abierta={angosto && hojaAbierta}
+        filtros={filtros}
+        visibles={visibles.length}
+        onCambiar={setFiltros}
+        onCerrar={() => setHojaAbierta(false)}
+      />
 
       {/* Detalle lateral del pedido seleccionado */}
       {pedidoSeleccionado && (
