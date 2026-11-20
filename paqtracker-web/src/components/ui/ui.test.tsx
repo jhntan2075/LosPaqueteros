@@ -70,7 +70,7 @@ describe('Tarjeta y EncabezadoPagina', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Volver a la cola de pedidos' }));
     expect(onVolver).toHaveBeenCalled();
   });
-  it('en celular el título ocupa todo el ancho y las acciones van debajo a lo ancho', () => {
+  it('en celular el tÃ­tulo ocupa todo el ancho y las acciones van debajo a lo ancho', () => {
     render(<EncabezadoPagina titulo="Pedidos" descripcion="Cola de pedidos" acciones={<button>Registrar</button>} />);
     expect(screen.getByRole('heading', { level: 1 }).parentElement?.parentElement?.className).toContain('basis-full');
     expect(screen.getByRole('button', { name: 'Registrar' }).parentElement?.className).toContain('w-full');
