@@ -52,8 +52,10 @@ export const ResumenOperacion: React.FC<{ onSeleccionar: (seleccion: SeleccionPa
   const datos = useDatosOperacion();
   const { resumen } = datos;
   const flota = estadoFlota(datos);
-  const quiebre = resumen.saturacion >= 1;
-  const alertaCarga = resumen.saturacion >= 0.7;
+  // El porcentaje y el semáforo salen de las mismas unidades que se muestran, no del dato del servidor.
+  const usoFlota = flota.total === 0 ? 0 : flota.enRuta / flota.total;
+  const quiebre = flota.total > 0 && usoFlota >= 1;
+  const alertaCarga = usoFlota >= 0.7;
   const porcentaje = (resumen.total === 0 ? 0 : (resumen.entregados / resumen.total) * 100).toFixed(1).replace('.', ',');
   const enRutaDe = (tipo: string) => flota.porTipo.find((t) => t.tipo === tipo)?.enRuta ?? 0;
   const diaADia = datos.tipoEscenario === 'DIA_A_DIA';
@@ -91,9 +93,9 @@ export const ResumenOperacion: React.FC<{ onSeleccionar: (seleccion: SeleccionPa
           titulo="Unidades en ruta"
           valor={
             <>
-              {quiebre ? <MarcaSemaforo nivel="ROJO" /> : alertaCarga ? <MarcaSemaforo nivel="AMBAR" /> : null}
+              {quiebre ? <MarcaSemaforo nivel="ROJO" titulo="Toda la flota en ruta" /> : alertaCarga ? <MarcaSemaforo nivel="AMBAR" titulo="Flota con carga alta" /> : null}
               <span className={quiebre ? 'text-critical-600' : alertaCarga ? 'text-warn-700' : undefined}>
-                {`${flota.enRuta} de ${flota.total} (${formatearNumero(Math.round(resumen.saturacion * 100))} %)`}
+                {flota.total === 0 ? '0 de 0' : `${flota.enRuta} de ${flota.total} (${formatearNumero(Math.round(usoFlota * 100))} %)`}
               </span>
             </>
           }

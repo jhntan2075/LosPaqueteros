@@ -107,6 +107,24 @@ describe('Rúbrica · nivel de uso de la flota total', () => {
     expect(screen.getByText('Unidades en ruta').parentElement!.parentElement!.textContent).toContain('2 de 4 (50 %)');
   });
 
+  it('C40 · el porcentaje y la marca de la tarjeta siguen las unidades mostradas, no la saturación del servidor', () => {
+    renderConDatos(<ResumenOperacion onSeleccionar={() => {}} />, { ...datos, resumen: { ...datos.resumen, saturacion: 1 } });
+    const tarjeta = screen.getByText('Unidades en ruta').parentElement!.parentElement!;
+    expect(tarjeta.textContent).toContain('2 de 4 (50 %)');
+    expect(within(tarjeta).queryByRole('img')).toBeNull();
+  });
+
+  it.each([
+    [3, '3 de 4 (75 %)', 'Flota con carga alta'],
+    [4, '4 de 4 (100 %)', 'Toda la flota en ruta'],
+  ])('C40 · con %i unidades en ruta la tarjeta marca el nivel de carga', (enRuta, texto, marca) => {
+    const unidades = datos.flota.map((u, i) => ({ ...u, estado: i < enRuta ? ('EN_RUTA' as const) : ('DISPONIBLE' as const) }));
+    renderConDatos(<ResumenOperacion onSeleccionar={() => {}} />, { ...datos, flota: unidades, resumen: { ...datos.resumen, saturacion: 0 } });
+    const tarjeta = screen.getByText('Unidades en ruta').parentElement!.parentElement!;
+    expect(tarjeta.textContent).toContain(texto);
+    expect(within(tarjeta).getByRole('img', { name: marca })).toBeTruthy();
+  });
+
   it('C40 · la pestaña Flota muestra el porcentaje en ruta y la carga a bordo por tipo', () => {
     renderConDatos(<EstadoFlota onSeleccionar={() => {}} />, datos);
     expect(screen.getByText(/Estado de la flota · 4 unidades/).parentElement!.textContent).toContain('50 % en ruta');
