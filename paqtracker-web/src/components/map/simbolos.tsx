@@ -51,27 +51,63 @@ export type VarianteDestino = 'VERDE' | 'AMBAR' | 'ROJO' | 'CERRADO' | 'ENTREGA'
 export const RADIO_DESTINO: Record<VarianteDestino, number> = { VERDE: 4, CERRADO: 3.5, AMBAR: 5, ROJO: 7, ENTREGA: 6 };
 
 /**
+ * Forma única de cada nivel, centrada en (0, 0): verde = círculo, ámbar = triángulo, rojo = rombo y
+ * vacío = anillo. Triángulo y rombo tienen ~ el área del círculo de igual `radio`. Con `conSigno` lleva
+ * una "!" blanca (crítico); con `contorno`, un borde blanco para separarse del mapa. `marcador` se
+ * escribe como `data-marcador` en la forma principal.
+ */
+export const FormaNivel: React.FC<{ nivel: NivelCarga; radio: number; color: string; conSigno?: boolean; contorno?: boolean; marcador?: string }> = ({
+  nivel,
+  radio,
+  color,
+  conSigno = false,
+  contorno = false,
+  marcador,
+}) => {
+  const borde = contorno ? { stroke: '#FFFFFF', strokeWidth: 1.5, strokeLinejoin: 'round' as const } : {};
+  const k = radio / 7;
+  let forma: React.ReactNode;
+  if (nivel === 'VACIO') {
+    forma = <circle r={radio} fill="#FFFFFF" stroke={color} strokeWidth={contorno ? 2 : 1.5} data-forma="anillo" data-marcador={marcador} />;
+  } else if (nivel === 'VERDE') {
+    forma = <circle r={radio} fill={color} {...borde} data-forma="circulo" data-marcador={marcador} />;
+  } else if (nivel === 'AMBAR') {
+    const R = radio * 1.555;
+    const x = R * 0.866;
+    forma = <path d={`M0 ${-R}L${x} ${R / 2}L${-x} ${R / 2}Z`} fill={color} {...borde} data-forma="triangulo" data-marcador={marcador} />;
+  } else {
+    const d = radio * 1.2533;
+    forma = <path d={`M0 ${-d}L${d} 0L0 ${d}L${-d} 0Z`} fill={color} {...borde} data-forma="rombo" data-marcador={marcador} />;
+  }
+  return (
+    <>
+      {forma}
+      {conSigno && nivel === 'ROJO' && (
+        <g transform={`scale(${k})`}>
+          <rect x="-0.9" y="-4.2" width="1.8" height="4.6" rx="0.9" fill="#FFFFFF" />
+          <circle cx="0" cy="2.6" r="1" fill="#FFFFFF" />
+        </g>
+      )}
+    </>
+  );
+};
+
+/**
  * Marcador de destino del mapa, centrado en el nodo de entrega. Reemplaza al pin en el lienzo: ocupa
- * ~1/4 del área y no tapa lo que está encima del nodo. Además del color, la forma cambia con la
- * urgencia (no depende solo del color): a tiempo = anillo hueco, en alerta = círculo lleno,
- * crítico = círculo mayor con "!", entregando = círculo con punto blanco.
+ * ~1/4 del área y no tapa lo que está encima del nodo. Cada nivel tiene su forma (círculo, triángulo,
+ * rombo con "!"), más grande cuanto más urgente; cerrado = anillo; entregando = círculo con punto blanco.
  */
 export const MarcadorDestino: React.FC<{ variante: VarianteDestino; color: string }> = ({ variante, color }) => {
   const r = RADIO_DESTINO[variante];
-  if (variante === 'VERDE' || variante === 'CERRADO')
-    return <circle r={r} fill="#FFFFFF" stroke={color} strokeWidth="2" data-marcador={variante} />;
-  return (
-    <>
-      <circle r={r} fill={color} stroke="#FFFFFF" strokeWidth="1.5" data-marcador={variante} />
-      {variante === 'ROJO' && (
-        <>
-          <rect x="-0.9" y="-4.2" width="1.8" height="4.6" rx="0.9" fill="#FFFFFF" />
-          <circle cx="0" cy="2.6" r="1" fill="#FFFFFF" />
-        </>
-      )}
-      {variante === 'ENTREGA' && <circle r="2" fill="#FFFFFF" />}
-    </>
-  );
+  if (variante === 'CERRADO') return <FormaNivel nivel="VACIO" radio={r} color={color} contorno marcador={variante} />;
+  if (variante === 'ENTREGA')
+    return (
+      <>
+        <circle r={r} fill={color} stroke="#FFFFFF" strokeWidth="1.5" data-marcador={variante} />
+        <circle r="2" fill="#FFFFFF" />
+      </>
+    );
+  return <FormaNivel nivel={variante} radio={r} color={color} conSigno={variante === 'ROJO'} contorno marcador={variante} />;
 };
 
 /** Depósito central (28 × 26, centrado en el nodo): silueta rellena con puerta. */
@@ -98,15 +134,12 @@ export const AlmacenIntermedio: React.FC<{ color: string; fraccionStock?: number
 };
 
 /**
- * Marca de 9 px del semáforo + vacío: la forma también distingue el nivel (anillo vacío, cuadrado verde,
- * triángulo ámbar, círculo rojo), para no depender solo del color (WCAG 1.4.1).
+ * Marca del semáforo + vacío: la forma también distingue el nivel (anillo vacío, círculo verde,
+ * triángulo ámbar, rombo rojo), para no depender solo del color (WCAG 1.4.1).
  */
 export const MarcaSemaforo: React.FC<{ nivel: NivelCarga; titulo?: string }> = ({ nivel, titulo }) => (
-  <svg width="9" height="9" viewBox="0 0 9 9" className="shrink-0" role={titulo ? 'img' : undefined} aria-label={titulo} aria-hidden={titulo ? undefined : true}>
-    {nivel === 'VACIO' && <circle cx="4.5" cy="4.5" r="3.5" fill="#FFFFFF" stroke={COLOR_SEMAFORO.VACIO} strokeWidth="1.5" />}
-    {nivel === 'VERDE' && <rect x="0.5" y="0.5" width="8" height="8" rx="1" fill={COLOR_SEMAFORO.VERDE} />}
-    {nivel === 'AMBAR' && <path d="M4.5 0.5L8.6 8H0.4L4.5 0.5Z" fill={COLOR_SEMAFORO.AMBAR} />}
-    {nivel === 'ROJO' && <circle cx="4.5" cy="4.5" r="4" fill={COLOR_SEMAFORO.ROJO} />}
+  <svg width="12" height="12" viewBox="-6 -6 12 12" className="shrink-0" role={titulo ? 'img' : undefined} aria-label={titulo} aria-hidden={titulo ? undefined : true}>
+    <FormaNivel nivel={nivel} radio={nivel === 'VACIO' ? 3.9 : 3.8} color={COLOR_SEMAFORO[nivel]} />
   </svg>
 );
 

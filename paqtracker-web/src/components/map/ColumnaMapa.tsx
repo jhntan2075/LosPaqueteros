@@ -7,7 +7,8 @@ import type { Capa } from './capas';
 import { FiltrosMapa, type ConteosFiltros } from './FiltrosMapa';
 import { IndicadoresGlobales } from './IndicadoresGlobales';
 import { LeyendaMapa } from './LeyendaMapa';
-import { COLOR_BLOQUEO } from './simbolos';
+import { COLOR_SEMAFORO, type NivelCarga } from '../../lib/semaforo';
+import { COLOR_BLOQUEO, MarcaSemaforo } from './simbolos';
 
 // Columna de controles del mapa (a su izquierda, fuera de la malla). Ordenada por urgencia: buscar, alertas
 // (lo que exige actuar), qué codifica el color con la ocupación global, y luego filtros y capas, que se usan
@@ -65,8 +66,9 @@ const Seccion: React.FC<{ titulo: string; children: React.ReactNode; derecha?: R
 );
 
 /** Fila de alerta: punto de color, número y qué es. Lleva a su sección de Incidencias. */
-const FilaAlerta: React.FC<{ color: string; numero: number; texto: string; detalle?: string; etiqueta: string; onClick: () => void }> = ({
+const FilaAlerta: React.FC<{ color: string; nivel?: NivelCarga; numero: number; texto: string; detalle?: string; etiqueta: string; onClick: () => void }> = ({
   color,
+  nivel,
   numero,
   texto,
   detalle,
@@ -79,7 +81,11 @@ const FilaAlerta: React.FC<{ color: string; numero: number; texto: string; detal
     aria-label={etiqueta}
     className="w-full min-h-9 px-1.5 rounded-control flex items-center gap-2 text-left hover:bg-neutral-50"
   >
-    <span className="size-2 rounded-full shrink-0" style={{ background: numero > 0 ? color : 'rgb(var(--color-neutral-300))' }} />
+    {nivel && numero > 0 ? (
+      <MarcaSemaforo nivel={nivel} />
+    ) : (
+      <span className="size-2 rounded-full shrink-0" style={{ background: numero > 0 ? color : 'rgb(var(--color-neutral-300))' }} />
+    )}
     <span className={`tabular-nums font-semibold text-body ${numero > 0 ? '' : 'text-neutral-600'}`} style={numero > 0 ? { color } : undefined}>
       {numero}
     </span>
@@ -119,8 +125,6 @@ const Desplegable: React.FC<{
   </div>
 );
 
-const COLOR_RIESGO = '#B91C1C';
-
 const BotonRiel: React.FC<{ etiqueta: string; onClick: () => void; children: React.ReactNode }> = ({ etiqueta, onClick, children }) => (
   <button
     type="button"
@@ -141,10 +145,11 @@ export const ColumnaMapa: React.FC<ColumnaMapaProps> = (props) => {
     if (busqueda.enfocar) entradaRef.current?.focus();
   }, [busqueda.enfocar]);
 
-  const alertasLista: { seccion: SeccionIncidencias; color: string; numero: number; texto: string; detalle?: string; etiqueta: string }[] = [
+  const alertasLista: { seccion: SeccionIncidencias; color: string; nivel?: NivelCarga; numero: number; texto: string; detalle?: string; etiqueta: string }[] = [
     {
       seccion: 'riesgo',
-      color: COLOR_RIESGO,
+      color: COLOR_SEMAFORO.ROJO,
+      nivel: 'ROJO' as const,
       numero: enRiesgo,
       texto: 'en riesgo',
       detalle: `${alertas.riesgo.rojo} crít. · ${alertas.riesgo.ambar} ajust.`,
@@ -155,7 +160,7 @@ export const ColumnaMapa: React.FC<ColumnaMapaProps> = (props) => {
       : [
           {
             seccion: 'averias' as const,
-            color: COLOR_RIESGO,
+            color: COLOR_SEMAFORO.ROJO,
             numero: alertas.averias,
             texto: alertas.averias === 1 ? 'avería' : 'averías',
             etiqueta: `${alertas.averias} ${alertas.averias === 1 ? 'avería' : 'averías'}. Ver en Incidencias`,
@@ -185,7 +190,13 @@ export const ColumnaMapa: React.FC<ColumnaMapaProps> = (props) => {
             <span className="tabular-nums font-semibold text-body" style={{ color: a.numero > 0 ? a.color : undefined }}>
               {a.numero}
             </span>
-            <span className="absolute bottom-1 size-1.5 rounded-full" style={{ background: a.numero > 0 ? a.color : 'rgb(var(--color-neutral-300))' }} />
+            {a.nivel && a.numero > 0 ? (
+              <span className="absolute bottom-0.5">
+                <MarcaSemaforo nivel={a.nivel} />
+              </span>
+            ) : (
+              <span className="absolute bottom-1 size-1.5 rounded-full" style={{ background: a.numero > 0 ? a.color : 'rgb(var(--color-neutral-300))' }} />
+            )}
           </BotonRiel>
         ))}
         <div className="h-px mx-2 my-1 bg-neutral-200" />

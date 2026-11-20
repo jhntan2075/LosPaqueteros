@@ -1,5 +1,6 @@
 import React from 'react';
 import { RANGO_HOLGURA } from '../../config/glosario';
+import { MarcaSemaforo } from '../map/simbolos';
 
 export interface FooterBarProps {
   nodoSeleccionado?: { x: number; y: number };
@@ -110,17 +111,17 @@ export const FooterBar: React.FC<FooterBarProps> = ({
           <span className="text-neutral-600 font-sans">holgura</span>
 
           <div className="flex items-center gap-1">
-            <span className="size-2 bg-ok-600 rounded-sm inline-block"></span>
+            <MarcaSemaforo nivel="VERDE" />
             <span className="text-ok-700 tabular-nums font-normal">{RANGO_HOLGURA.VERDE}</span>
           </div>
 
           <div className="flex items-center gap-1">
-            <span className="text-warn-700 text-caption leading-none">▲</span>
+            <MarcaSemaforo nivel="AMBAR" />
             <span className="text-warn-700 tabular-nums font-normal">{RANGO_HOLGURA.AMBAR}</span>
           </div>
 
           <div className="flex items-center gap-1">
-            <span className="size-2 bg-critical-600 rounded-full inline-block"></span>
+            <MarcaSemaforo nivel="ROJO" />
             <span className="text-critical-600 tabular-nums font-normal">{RANGO_HOLGURA.ROJO}</span>
           </div>
         </div>

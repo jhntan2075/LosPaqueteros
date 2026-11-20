@@ -8,7 +8,7 @@ import type { SeleccionPanel } from '../../types/operacion';
 import { PuntoHolgura } from '../pedidos/iconos';
 import { Boton } from '../ui';
 import { TituloSeccion } from './comunes';
-import trianguloAmbar from '../../assets/figma/pedidos/holgura-ambar-triangulo.svg';
+import { MarcaSemaforo } from '../map/simbolos';
 
 // Pestaña "Resumen" del panel lateral (antes, un popover de métricas flotante sobre el mapa). Los
 // mismos indicadores, en una sola columna angosta: entregas, incidencias y flota de un vistazo.
@@ -126,7 +126,7 @@ export const ResumenOperacion: React.FC<{ onSeleccionar: (seleccion: SeleccionPa
           titulo="Saturación de la flota"
           valor={
             <>
-              {quiebre ? <span className="text-critical-600 text-caption">▲</span> : <img src={trianguloAmbar} alt="" className="block" />}
+              {quiebre ? <MarcaSemaforo nivel="ROJO" /> : <MarcaSemaforo nivel="AMBAR" />}
               <span className={quiebre ? 'text-critical-600' : 'text-warn-700'}>{Math.round(resumen.saturacion * 100)} %</span>
             </>
           }

@@ -140,9 +140,9 @@ export const LeyendaMapa: React.FC<LeyendaMapaProps> = ({ onCerrar, capas, onCam
           detalle={tipo === 1 ? `${SIMBOLO_AVERIA[tipo]}; anillo = lo que falta` : SIMBOLO_AVERIA[tipo]}
         />
       ))}
-      <Fila simbolo={<Simbolo caja="-14 -11 28 22"><MarcadorDestino variante="VERDE" color={VERDE} /></Simbolo>} nombre="Destino a tiempo" detalle="anillo hueco" />
-      <Fila simbolo={<Simbolo caja="-14 -11 28 22"><MarcadorDestino variante="AMBAR" color={AMBAR} /></Simbolo>} nombre="Destino en alerta" />
-      <Fila simbolo={<Simbolo caja="-14 -11 28 22"><MarcadorDestino variante="ROJO" color={ROJO} /></Simbolo>} nombre="Destino crítico" detalle="más grande, con «!»" />
+      <Fila simbolo={<Simbolo caja="-14 -11 28 22"><MarcadorDestino variante="VERDE" color={VERDE} /></Simbolo>} nombre="Destino a tiempo" detalle="círculo" />
+      <Fila simbolo={<Simbolo caja="-14 -11 28 22"><MarcadorDestino variante="AMBAR" color={AMBAR} /></Simbolo>} nombre="Destino en alerta" detalle="triángulo" />
+      <Fila simbolo={<Simbolo caja="-14 -11 28 22"><MarcadorDestino variante="ROJO" color={ROJO} /></Simbolo>} nombre="Destino crítico" detalle="rombo más grande, con «!»" />
       <Fila simbolo={<Simbolo caja="-14 -11 28 22"><MarcadorDestino variante="ENTREGA" color={COLOR_EN_ENTREGA} /></Simbolo>} nombre="Entregando ahora" detalle="la unidad está en el destino" />
       <Fila
         simbolo={<Simbolo caja="-14 -11 28 22"><line x1="-12" y1="0" x2="12" y2="0" stroke="#9EABBA" strokeWidth="1.5" strokeOpacity={0.4} /></Simbolo>}
