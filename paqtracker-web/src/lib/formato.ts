@@ -46,6 +46,30 @@ export const formatearHolgura = (minutos: number) => {
   return minutos < 0 ? `-${texto}` : texto;
 };
 
+/** Holgura legible: 67 → "1 h 07 min", 0 → "0 min", -67 → "1 h 07 min tarde". */
+export const formatearHolguraLegible = (minutos: number) =>
+  minutos < 0 ? `${formatearDuracion(-minutos)} tarde` : formatearDuracion(minutos);
+
+/** 2464 → "2 464"; 65.42 con 1 decimal → "65,4" (coma decimal, siempre con los decimales pedidos). */
+export const formatearNumero = (valor: number, decimales = 0) => {
+  const [entero, fraccion] = Math.abs(valor).toFixed(decimales).split('.');
+  const texto = fraccion === undefined ? formatearMiles(Number(entero)) : `${formatearMiles(Number(entero))},${fraccion}`;
+  return valor < 0 && Number(texto.replace(/\s/g, '').replace(',', '.')) !== 0 ? `-${texto}` : texto;
+};
+
+/** 1.2 → "S/ 1,20". */
+export const formatearSoles = (valor: number) => `S/ ${formatearNumero(valor, 2)}`;
+
+/** Lee "1,2" o "1.2" (con '-' opcional); devuelve null si no es un decimal válido. */
+export const leerDecimal = (texto: string): number | null => {
+  const limpio = texto.trim();
+  return /^-?\d+([.,]\d+)?$/.test(limpio) ? Number(limpio.replace(',', '.')) : null;
+};
+
+/** "13:15" si cae el mismo día que la referencia; si no, "20/11 13:15". */
+export const formatearInstante = (fecha: Date, referencia: Date) =>
+  diasDeDiferencia(referencia, fecha) === 0 ? formatearHora(fecha) : formatearDiaMesHora(fecha);
+
 export const sumarMinutos = (fecha: Date, minutos: number) => new Date(fecha.getTime() + minutos * 60_000);
 
 /** "moto o auto" → "Moto o auto". */

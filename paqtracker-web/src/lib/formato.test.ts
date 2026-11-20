@@ -8,10 +8,15 @@ import {
   formatearFechaLarga,
   formatearFechaNumerica,
   formatearHolgura,
+  formatearHolguraLegible,
   formatearHora,
   formatearHoraRelativa,
+  formatearInstante,
   formatearMiles,
   formatearMomento,
+  formatearNumero,
+  formatearSoles,
+  leerDecimal,
   sumarMinutos,
   unirAlternativas,
 } from './formato';
@@ -77,5 +82,39 @@ describe('formato', () => {
     expect(unirAlternativas(['moto'])).toBe('moto');
     expect(unirAlternativas(['bicicleta', 'moto'])).toBe('bicicleta o moto');
     expect(unirAlternativas(['a', 'b', 'c'], 'y')).toBe('a, b y c');
+  });
+});
+
+describe('formatos únicos', () => {
+  it('holgura legible', () => {
+    expect(formatearHolguraLegible(67)).toBe('1 h 07 min');
+    expect(formatearHolguraLegible(0)).toBe('0 min');
+    expect(formatearHolguraLegible(-67)).toBe('1 h 07 min tarde');
+  });
+
+  it('números con coma decimal y espacio de miles', () => {
+    expect(formatearNumero(2464)).toBe('2 464');
+    expect(formatearNumero(65.42, 1)).toBe('65,4');
+    expect(formatearNumero(0.6, 2)).toBe('0,60');
+    expect(formatearNumero(-1234.5, 1)).toBe('-1 234,5');
+  });
+
+  it('soles', () => {
+    expect(formatearSoles(1.2)).toBe('S/ 1,20');
+    expect(formatearSoles(2464)).toBe('S/ 2 464,00');
+  });
+
+  it('lee decimales con coma o punto', () => {
+    expect(leerDecimal('1,2')).toBe(1.2);
+    expect(leerDecimal('1.2')).toBe(1.2);
+    expect(leerDecimal(' -3 ')).toBe(-3);
+    expect(leerDecimal('1,2,3')).toBeNull();
+    expect(leerDecimal('')).toBeNull();
+    expect(leerDecimal('abc')).toBeNull();
+  });
+
+  it('instante: solo hora el mismo día, con fecha si no', () => {
+    expect(formatearInstante(fecha(3, 13, 15), fecha(3, 8, 0))).toBe('13:15');
+    expect(formatearInstante(fecha(4, 13, 15), fecha(3, 8, 0))).toBe('04/03 13:15');
   });
 });
