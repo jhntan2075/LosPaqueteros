@@ -256,6 +256,8 @@ export const RegistrarPedido: React.FC<RegistrarPedidoProps> = ({ onCancelar, on
                   id="pedido-cliente"
                   ref={refCliente}
                   onBlur={() => tocar('cliente')}
+                  aria-describedby={errorCliente ? 'pedido-cliente-error' : 'pedido-cliente-ayuda'}
+                  aria-invalid={!!errorCliente}
                   tamano="lg"
                   list="pedido-clientes"
                   value={cliente}
@@ -322,6 +324,8 @@ export const RegistrarPedido: React.FC<RegistrarPedidoProps> = ({ onCancelar, on
                   value={cantidadTexto}
                   onChange={(e) => setCantidadTexto(e.target.value)}
                   onBlur={() => tocar('cantidad')}
+                  aria-describedby={errorCantidad ? 'pedido-cantidad-error' : 'pedido-cantidad-ayuda'}
+                  aria-invalid={!!errorCantidad}
                   aria-label="Cantidad de paquetes"
                   className={`h-full min-w-0 flex-1 bg-transparent text-center text-title-sm tabular-nums text-neutral-900 outline-none ${SIN_SPINNER}`}
                 />

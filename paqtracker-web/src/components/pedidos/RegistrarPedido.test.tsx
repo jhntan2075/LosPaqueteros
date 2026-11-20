@@ -85,4 +85,19 @@ describe('Registrar pedido · validación al enviar', () => {
     expect(registrar).not.toHaveBeenCalled();
     expect(document.activeElement).toBe(screen.getByLabelText('Cantidad de paquetes'));
   });
+
+  it('cliente y cantidad apuntan a su ayuda y, tras un envío fallido, a su error', () => {
+    montar();
+    const descripcion = (control: HTMLElement) => document.getElementById(control.getAttribute('aria-describedby')!)?.textContent;
+    const cliente = screen.getByLabelText(/^Cliente/);
+    const cantidad = screen.getByLabelText('Cantidad de paquetes');
+    expect(descripcion(cliente)).toMatch(/clientes frecuentes/);
+    expect(descripcion(cantidad)).toMatch(/Capacidad por unidad/);
+    pulsarRegistrar();
+    escribir('Cantidad de paquetes', '1500');
+    expect(descripcion(cliente)).toBe('Ingresa el cliente.');
+    expect(cliente.getAttribute('aria-invalid')).toBe('true');
+    expect(descripcion(cantidad)).toBe('Debe estar entre 1 y 999 paquetes.');
+    expect(cantidad.getAttribute('aria-invalid')).toBe('true');
+  });
 });
