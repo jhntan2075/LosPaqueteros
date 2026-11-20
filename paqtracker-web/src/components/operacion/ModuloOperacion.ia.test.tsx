@@ -90,3 +90,17 @@ describe('Operación · espacio y presentación', () => {
     expect(panel().getByRole('region', { name: 'En riesgo' })).toBeTruthy();
   });
 });
+
+describe('Operación · Resumen sin alertas repetidas', () => {
+  it('el Resumen no repite el riesgo, nombra la flota "Unidades en ruta" y deja el reporte al final', () => {
+    montarOperacion();
+    fireEvent.click(screen.getByRole('tab', { name: /^Resumen/ }));
+    const resumen = panel();
+    expect(resumen.queryByText(/en riesgo/)).toBeNull();
+    expect(resumen.queryByText(/Saturación/)).toBeNull();
+    expect(resumen.getByText('Unidades en ruta')).toBeTruthy();
+    expect(resumen.getByText(/^\d+ de \d+ \(\d+ %\)$/)).toBeTruthy();
+    const botones = resumen.getAllByRole('button');
+    expect(botones[botones.length - 1].textContent).toMatch(/Generar reporte de cierre|Ver la última planificación/);
+  });
+});

@@ -102,10 +102,9 @@ describe('Rúbrica · tiempos de la simulación', () => {
 describe('Rúbrica · nivel de uso de la flota total', () => {
   const datos = datosRubrica();
 
-  it('C40 · el resumen muestra la flota en números y porcentaje (en ruta / total, saturación)', () => {
+  it('C40 · el resumen muestra la flota en números y porcentaje (en ruta de total, con su porcentaje)', () => {
     renderConDatos(<ResumenOperacion onSeleccionar={() => {}} />, datos);
-    expect(screen.getByText('Unidades en ruta').parentElement!.parentElement!.textContent).toContain('2 / 4');
-    expect(screen.getByText('Saturación de la flota').parentElement!.parentElement!.textContent).toContain('50 %');
+    expect(screen.getByText('Unidades en ruta').parentElement!.parentElement!.textContent).toContain('2 de 4 (50 %)');
   });
 
   it('C40 · la pestaña Flota muestra el porcentaje en ruta y la carga a bordo por tipo', () => {

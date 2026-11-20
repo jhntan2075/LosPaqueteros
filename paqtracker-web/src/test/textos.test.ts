@@ -23,6 +23,7 @@ const PROHIBIDOS = [
   'Vehículo asignad',
   'de la corrida',
   'Ver corrida',
+  'Saturación de la flota',
   'Nueva corrida',
   'Vehículo recomendado',
 ];
