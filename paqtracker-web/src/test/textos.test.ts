@@ -40,6 +40,16 @@ describe('textos visibles', () => {
     expect(archivosCon('de la corrida', muestra)).toEqual(['/src/muestra.tsx']);
   });
 
+  it('ningún componente fija el tamaño de letra en píxeles: usa text-caption, text-body, text-title-sm o text-title', () => {
+    const conPixeles = codigoRevisado.filter(([, codigo]) => /text-\[\d+px\]/.test(codigo)).map(([ruta]) => ruta);
+    expect(conPixeles).toEqual([]);
+  });
+
+  it('detecta un tamaño en píxeles aunque vaya con otras clases', () => {
+    expect(/text-\[\d+px\]/.test(juntarEspacios('className="font-medium text-[14px] leading-5"'))).toBe(true);
+    expect(/text-\[\d+px\]/.test('className="text-body"')).toBe(false);
+  });
+
   it.each(PROHIBIDOS)('ningún texto visible usa "%s"', (texto) => {
     expect(archivosCon(texto, codigoRevisado)).toEqual([]);
   });

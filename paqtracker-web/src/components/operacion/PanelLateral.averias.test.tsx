@@ -7,6 +7,7 @@ import { ContextoDatosOperacion } from '../../hooks/useDatosOperacion';
 import { clienteApi } from '../../services/clienteApi';
 import { datosOperacion, INICIO_MS, unidadApi } from '../../test/fabricas';
 import type { MensajeEstadoApi, RespuestaRegistroAveriaApi } from '../../types/api';
+import { Boton } from '../ui';
 import { PanelLateral, type SeleccionPanel } from './PanelLateral';
 
 // Averías en el panel lateral: el motivo cuando no se admiten, deshacer mientras sigue programada y el
@@ -62,11 +63,38 @@ describe('PanelLateral · averías', () => {
     expect(screen.getByText('Esta simulación no admite averías.')).toBeTruthy();
   });
 
-  it('en Incidencias el acceso dice "+ Registrar avería" y abre el diálogo con buscador', () => {
+  it('en Incidencias el acceso dice "Registrar avería" y abre el diálogo con buscador', () => {
     montar({ tipo: 'incidencias' });
-    fireEvent.click(screen.getByRole('button', { name: '+ Registrar avería' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Registrar avería' }));
     expect(screen.getByRole('dialog', { name: 'Registrar avería' })).toBeTruthy();
     expect(screen.getByRole('combobox', { name: 'Unidad' })).toBeTruthy();
+  });
+
+  it('"Registrar avería" es un botón secundario, sin el rojo de lo crítico, en el detalle y en Incidencias', () => {
+    const { unmount } = render(<Boton variante="secundario" tamano="sm">x</Boton>);
+    const secundario = screen.getByRole('button', { name: 'x' }).className;
+    unmount();
+
+    montar({ tipo: 'vehiculo', codigo: 'A-01' });
+    const enDetalle = screen.getByRole('button', { name: 'Registrar avería' });
+    cleanup();
+    montar({ tipo: 'incidencias' });
+    const enIncidencias = screen.getByRole('button', { name: 'Registrar avería' });
+
+    for (const boton of [enDetalle, enIncidencias]) {
+      expect(boton.className).not.toContain('text-critical-600');
+      expect(boton.className).toBe(secundario);
+    }
+  });
+
+  it('Incidencias muestra los contadores como insignia y los estados vacíos en texto', () => {
+    montar({ tipo: 'incidencias' });
+    expect(screen.getByText('Ninguna unidad averiada.')).toBeTruthy();
+    expect(screen.getByText('Ningún bloqueo activo.')).toBeTruthy();
+    for (const nombre of ['En riesgo', 'Averías', 'Bloqueos']) {
+      const contador = within(screen.getByRole('region', { name: nombre })).getByText('0');
+      expect(contador.className).toContain('rounded-full');
+    }
   });
 
   it('una avería por aplicarse se puede cancelar desde el detalle del vehículo', async () => {

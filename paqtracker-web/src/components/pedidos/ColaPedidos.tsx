@@ -15,7 +15,7 @@ import {
   MoreHorizontal,
   SlidersHorizontal,
 } from 'lucide-react';
-import { UNIDADES, esPlazoRegular, type PlazoHoras } from '../../config/dominio';
+import { UNIDADES, type PlazoHoras } from '../../config/dominio';
 import { ESTADO_EN_ESPERA, etiquetaPlazo } from '../../config/glosario';
 import { capitalizar, formatearMiles } from '../../lib/formato';
 import { cn } from '../../lib/clases';
@@ -24,6 +24,7 @@ import { useCerrarConEscape } from '../../hooks/useCerrarConEscape';
 import { useColaPedidos } from '../../hooks/usePedidos';
 import { useDatosOperacion } from '../../hooks/useDatosOperacion';
 import type { EstadoPedidoCola, NivelHolgura, PedidoEnCola } from '../../types/pedidos';
+import { InsigniaPlazo } from './InsigniaPlazo';
 import { Boton, EncabezadoPagina, Entrada, EstadoCarga, EstadoError, EstadoVacio, Insignia, Tarjeta } from '../ui';
 import { DetallePedido } from './DetallePedido';
 import { COLOR_HOLGURA, TONO_ESTADO } from './estilos';
@@ -501,7 +502,7 @@ export const ColaPedidos: React.FC<{
                     </td>
                     <td className={cn(CELDA, 'text-right font-medium tabular-nums text-neutral-700')}>{pedido.cantidad} paq.</td>
                     <td className={CELDA}>
-                      <Insignia tono={esPlazoRegular(pedido.plazoHoras) ? 'neutral' : 'warn'}>{etiquetaPlazo(pedido.plazoHoras)}</Insignia>
+                      <InsigniaPlazo plazoHoras={pedido.plazoHoras} />
                     </td>
                     <td className={cn(CELDA, 'tabular-nums text-neutral-600')}>{pedido.horaLimite}</td>
                     <td className={cn(CELDA, 'tabular-nums text-neutral-600')}>{pedido.salida ?? '—'}</td>

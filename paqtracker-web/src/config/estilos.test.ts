@@ -20,10 +20,6 @@ const FUENTES = Object.entries(CRUDOS).map(([ruta, contenido]) => ({
  * valor literal; si la prueba cambia, la excepción se borra.
  */
 const EXCEPCIONES: { ruta: string; valor: string; motivo: string }[] = [
-  { ruta: 'components/simulacion/EncabezadoCorrida.tsx', valor: 'text-[11px]', motivo: 'rubrica.tiempos-flota C39' },
-  { ruta: 'components/simulacion/EncabezadoCorrida.tsx', valor: 'text-[14px]', motivo: 'rubrica.tiempos-flota C39' },
-  { ruta: 'components/simulacion/EncabezadoCorrida.tsx', valor: 'text-[16px]', motivo: 'rubrica.tiempos-flota C39' },
-  { ruta: 'components/simulacion/EncabezadoCorrida.tsx', valor: 'text-[20px]', motivo: 'rubrica.tiempos-flota C16' },
   { ruta: 'components/operacion/Trazabilidad.tsx', valor: 'bg-[#1E40AF]', motivo: 'PanelLateral.pedido.test: hito más reciente' },
 ];
 

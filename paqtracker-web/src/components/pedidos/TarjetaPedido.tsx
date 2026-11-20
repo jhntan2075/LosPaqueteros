@@ -1,8 +1,6 @@
 import React from 'react';
-import { esPlazoRegular } from '../../config/dominio';
 import { etiquetaPlazo } from '../../config/glosario';
 import { formatearDiaMesHora } from '../../lib/formato';
-import { cn } from '../../lib/clases';
 import type { PedidoEnCola } from '../../types/pedidos';
 import { Insignia } from '../ui';
 import { ESTADOS } from './filtrosPedidos';
@@ -43,7 +41,7 @@ export const TarjetaPedido: React.FC<TarjetaPedidoProps> = ({ pedido, referencia
         {' · '}
         <span className="tabular-nums">{pedido.cantidad} paq.</span>
         {' · '}
-        <span className={cn(!esPlazoRegular(pedido.plazoHoras) && 'font-medium text-warn-700')}>{etiquetaPlazo(pedido.plazoHoras)}</span>
+        <span>{etiquetaPlazo(pedido.plazoHoras)}</span>
       </span>
       <span className="flex items-center justify-between gap-3 text-body-sm text-neutral-600">
         <span className="tabular-nums">

@@ -93,7 +93,7 @@ describe('Rúbrica · tiempos de la simulación', () => {
     );
     // El reloj simulado usa un tamaño mayor que el resto (20 px frente a 12 px).
     const reloj = within(encabezado).getByText(/6 ene 2026/);
-    expect(reloj.className).toContain('text-[20px]');
+    expect(reloj.className).toContain('text-title');
     // Y el avance de la corrida en días.
     expect(screen.getByRole('progressbar', { name: 'Avance de la simulación' }).getAttribute('aria-valuenow')).toBe('22');
   });
@@ -134,9 +134,9 @@ describe('Rúbrica · C16 · presentación de los tiempos', () => {
     expect(simulado.getByText('Tiempo simulado transcurrido')).toBeTruthy();
     expect(real.getByText('Fecha y hora real')).toBeTruthy();
     expect(real.getByText('Tiempo real transcurrido / Restante')).toBeTruthy();
-    // Etiquetas 11 px < transcurridos 14 px < fecha-hora real 16 px < fecha-hora simulada 20 px.
-    expect(simulado.getByText('Fecha y hora simulada').className).toContain('text-[11px]');
-    expect(simulado.getByText(/1 d 02 h/).className).toContain('text-[14px]');
-    expect(real.getByText(/\d{4} · \d{2}:\d{2}:\d{2}/).className).toContain('text-[16px]');
+    // Etiquetas (caption) < transcurridos (body) < fecha-hora real (title-sm) < fecha-hora simulada (title).
+    expect(simulado.getByText('Fecha y hora simulada').className).toContain('text-caption');
+    expect(simulado.getByText(/1 d 02 h/).className).toContain('text-body');
+    expect(real.getByText(/\d{4} · \d{2}:\d{2}:\d{2}/).className).toContain('text-title-sm');
   });
 });

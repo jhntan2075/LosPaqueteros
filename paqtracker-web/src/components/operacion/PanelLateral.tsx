@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { Plus } from 'lucide-react';
 import { ALMACENES, CORTE_OCUPACION, UNIDADES } from '../../config/dominio';
 import { alertaStockBajo, NOMBRE_CARGA, NOMBRE_STOCK, SITUACION_UNIDAD, etiquetaPlazo, nombreAveria } from '../../config/glosario';
 import { admisionDeAverias, useAveriaPendiente, useAverias } from '../../hooks/useAverias';
@@ -12,6 +13,7 @@ import type { Coordenada } from '../../types/domain';
 import type { PedidoOperacion, SeccionIncidencias, SeleccionPanel, UnidadOperacion } from '../../types/operacion';
 import { TITULO_PESTANA } from '../../hooks/useNavegacionPanel';
 import { buscarPedido, type SeleccionResaltable } from '../../lib/envios';
+import { Boton, Insignia } from '../ui';
 import { FilaFraccion } from './FilaFraccion';
 import { EnviosAlmacen, ListaAlmacenes } from './ListaAlmacenes';
 import { ListaPedidos } from './ListaPedidos';
@@ -415,9 +417,9 @@ const DetalleVehiculo: React.FC<
         {!averiada &&
           !pendiente &&
           (admision.admite ? (
-            <button type="button" onClick={() => onRegistrarAveria(unidad.codigo)} className="font-medium text-critical-600 hover:underline">
+            <Boton variante="secundario" tamano="sm" icono={Plus} onClick={() => onRegistrarAveria(unidad.codigo)}>
               Registrar avería
-            </button>
+            </Boton>
           ) : (
             <span className="text-neutral-600">{admision.motivo}</span>
           ))}
@@ -576,7 +578,7 @@ const ListaIncidencias: React.FC<
   return (
     <div className="flex-1 min-h-0 overflow-y-auto">
       <section ref={riesgoRef} aria-label="En riesgo" className={`px-3 pt-2.5 pb-2 flex flex-col gap-1 border-b border-neutral-200 ${clase('riesgo')}`}>
-        <TituloSeccion derecha={riesgo.length}>En riesgo · menor holgura</TituloSeccion>
+        <TituloSeccion derecha={<Insignia>{riesgo.length}</Insignia>}>En riesgo · menor holgura</TituloSeccion>
         {riesgoVisible.map((p) => (
           <FilaConBarra
             key={p.codigo}
@@ -602,11 +604,11 @@ const ListaIncidencias: React.FC<
         <TituloSeccion
           derecha={
             <span className="flex items-center gap-2.5">
-              {averiadas.length}
+              <Insignia>{averiadas.length}</Insignia>
               {admision.admite && (
-                <button type="button" onClick={() => onRegistrarAveria()} className="font-sans font-medium text-critical-600 hover:underline">
-                  + Registrar avería
-                </button>
+                <Boton variante="secundario" tamano="sm" icono={Plus} onClick={() => onRegistrarAveria()}>
+                  Registrar avería
+                </Boton>
               )}
             </span>
           }
@@ -629,7 +631,8 @@ const ListaIncidencias: React.FC<
         ))}
       </section>
       <section ref={bloqueosRef} aria-label="Bloqueos" className={`px-3 pt-2.5 pb-2 flex flex-col gap-1 ${clase('bloqueos')}`}>
-        <TituloSeccion derecha={cantidadBloqueos(datos)}>Bloqueos</TituloSeccion>
+        <TituloSeccion derecha={<Insignia>{cantidadBloqueos(datos)}</Insignia>}>Bloqueos</TituloSeccion>
+        {bloqueos.length === 0 && <p className="text-body-sm text-neutral-600">Ningún bloqueo activo.</p>}
         {bloqueos.map((b) => (
           <FilaConBarra
             key={b.id}

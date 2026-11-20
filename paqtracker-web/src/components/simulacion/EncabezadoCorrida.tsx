@@ -38,11 +38,11 @@ interface EncabezadoCorridaProps {
   conectado?: boolean;
 }
 
-// Jerarquía de los tiempos (C16, la verifica rubrica.tiempos-flota.test.tsx por clase): etiquetas 11 px <
-// transcurridos 14 px < fecha-hora real 16 px < fecha-hora simulada 20 px. Los 11 y 14 px coinciden con
-// `text-caption` y `text-title-sm`; 16 y 20 px no existen en la escala (es el único reloj de ese tamaño).
-const ETIQUETA_TIEMPO = 'text-[11px] leading-4 font-medium text-neutral-600';
-const VALOR_TRANSCURRIDO = 'tabular-nums font-medium text-[14px] leading-5 text-neutral-900';
+// Jerarquía de los tiempos (C16, la verifica rubrica.tiempos-flota.test.tsx por clase), con los tokens de la
+// escala: etiquetas `text-caption` < transcurridos `text-body` < fecha-hora real `text-title-sm` <
+// fecha-hora simulada `text-title`.
+const ETIQUETA_TIEMPO = 'text-caption font-medium text-neutral-600';
+const VALOR_TRANSCURRIDO = 'tabular-nums font-medium text-body text-neutral-900';
 
 const Bloque: React.FC<{ etiqueta: string; children: React.ReactNode }> = ({ etiqueta, children }) => (
   <div className="flex flex-col gap-px whitespace-nowrap">
@@ -127,7 +127,7 @@ export const EncabezadoCorrida: React.FC<EncabezadoCorridaProps> = ({
         <TarjetaTiempo titulo="Simulado">
           <Bloque etiqueta={colapso ? 'Instante del colapso' : 'Fecha y hora simulada'}>
             <span className="flex items-center gap-2">
-              <span className={cn('text-[20px] font-semibold leading-6 tabular-nums', colapso ? 'text-critical-600' : 'text-neutral-900')}>
+              <span className={cn('text-title tabular-nums', colapso ? 'text-critical-600' : 'text-neutral-900')}>
                 {formatearFechaLarga(relojSimulado)}
               </span>
               <Insignia tono={colapso ? 'critical' : 'primary'} contorno={colapso} className="tabular-nums">
@@ -141,7 +141,7 @@ export const EncabezadoCorrida: React.FC<EncabezadoCorridaProps> = ({
         </TarjetaTiempo>
         <TarjetaTiempo titulo="Real">
           <Bloque etiqueta="Fecha y hora real">
-            <RelojReal className="text-[16px] font-semibold leading-6 tabular-nums text-neutral-900" />
+            <RelojReal className="text-title-sm tabular-nums text-neutral-900" />
           </Bloque>
           <Bloque etiqueta={colapso || terminada ? 'Tiempo real / Estado' : 'Tiempo real transcurrido / Restante'}>
             <span className={VALOR_TRANSCURRIDO}>

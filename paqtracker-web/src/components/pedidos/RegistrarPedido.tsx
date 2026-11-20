@@ -1,7 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { User, CheckCircle2, AlertTriangle, Check, Circle } from 'lucide-react';
-import { ALMACENES, MALLA_ALTO_KM, MALLA_ANCHO_KM, PLAZOS_HORAS, UNIDADES, esPlazoRegular, type PlazoHoras } from '../../config/dominio';
-import { tipoDeEntrega } from '../../config/glosario';
+import { ALMACENES, MALLA_ALTO_KM, MALLA_ANCHO_KM, PLAZOS_HORAS, UNIDADES, type PlazoHoras } from '../../config/dominio';
 import { coordenadaValida, evaluarFactibilidad, type EvaluacionFactibilidad, type NivelFactibilidad } from '../../lib/factibilidad';
 import { diasDeDiferencia, formatearDiaMes, formatearDuracion, formatearHora, sumarMinutos, unirAlternativas } from '../../lib/formato';
 import { nodoEn, proyectar, tramoOrtogonal, trazado, type Vista } from '../../lib/malla';
@@ -15,7 +14,8 @@ import type { NivelHolgura, PedidoRegistrado } from '../../types/pedidos';
 import { IndicadorRadio } from '../layout/IndicadorRadio';
 import { MiniMapaMalla } from '../map/MiniMapaMalla';
 import { COLOR_SIN_DATO } from '../map/iconosVehiculo';
-import { Aviso, Boton, Campo, Entrada, FilaDato, Indicador, Insignia, Tarjeta, TituloGrupo, type TonoAviso } from '../ui';
+import { InsigniaPlazo } from './InsigniaPlazo';
+import { Aviso, Boton, Campo, Entrada, FilaDato, Indicador, Tarjeta, TituloGrupo, type TonoAviso } from '../ui';
 import { COLOR_PIN_HOLGURA } from './estilos';
 import { RotuloMapa, SimboloAlmacen, SimboloDestino } from './iconos';
 
@@ -349,7 +349,6 @@ export const RegistrarPedido: React.FC<RegistrarPedidoProps> = ({ onCancelar, on
               <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-5">
                 {PLAZOS_HORAS.map((plazo) => {
                   const seleccionado = plazo === plazoHoras;
-                  const regular = esPlazoRegular(plazo);
                   const limiteCard = sumarMinutos(reloj, plazo * 60);
                   const diasLimiteCard = diasDeDiferencia(reloj, limiteCard);
                   const prefijoDiaCard = diasLimiteCard === 0 ? 'hoy ' : diasLimiteCard === 1 ? 'mañana ' : `${formatearDiaMes(limiteCard)} `;
@@ -374,7 +373,7 @@ export const RegistrarPedido: React.FC<RegistrarPedidoProps> = ({ onCancelar, on
                       />
                       <span className="flex items-center gap-1.5">
                         <IndicadorRadio marcado={seleccionado} />
-                        <Insignia tono={regular ? 'neutral' : 'warn'}>{tipoDeEntrega(plazo)}</Insignia>
+                        <InsigniaPlazo plazoHoras={plazo} soloTipo />
                       </span>
                       <span className={cn('mt-1 text-title tabular-nums', seleccionado ? 'text-primary-700' : 'text-neutral-900')}>
                         {plazo} h
