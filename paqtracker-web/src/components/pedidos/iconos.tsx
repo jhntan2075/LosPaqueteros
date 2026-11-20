@@ -4,25 +4,11 @@ import type { NivelHolgura } from '../../types/pedidos';
 import { cn } from '../../lib/clases';
 import { COLOR_SEMAFORO } from '../../lib/semaforo';
 import { useDatosOperacion } from '../../hooks/useDatosOperacion';
-import { AlmacenCentral, AlmacenIntermedio, PinDestino } from '../map/simbolos';
+import { AlmacenCentral, AlmacenIntermedio, MarcaSemaforo, PinDestino } from '../map/simbolos';
 import { iconoVehiculo } from '../map/iconosVehiculo';
 
-import holguraRojo from '../../assets/figma/pedidos/holgura-rojo.svg';
-import holguraAmbar from '../../assets/figma/pedidos/holgura-ambar.svg';
-import holguraVerde from '../../assets/figma/pedidos/holgura-verde.svg';
-import holguraNeutra from '../../assets/figma/pedidos/holgura-neutra.svg';
-
-const PUNTO_HOLGURA: Record<NivelHolgura, string> = {
-  ROJO: holguraRojo,
-  AMBAR: holguraAmbar,
-  VERDE: holguraVerde,
-  CERRADO: holguraNeutra,
-};
-
-/** Punto de 7 px del semáforo de holgura. */
-export const PuntoHolgura: React.FC<{ nivel: NivelHolgura }> = ({ nivel }) => (
-  <img src={PUNTO_HOLGURA[nivel]} alt="" className="block shrink-0" />
-);
+/** Marca del semáforo de holgura: la misma forma por nivel que el mapa (CERRADO se muestra como vacío). */
+export const PuntoHolgura: React.FC<{ nivel: NivelHolgura }> = ({ nivel }) => <MarcaSemaforo nivel={nivel === 'CERRADO' ? 'VACIO' : nivel} />;
 
 /**
  * Almacén en un minimapa (dentro de un <svg>), con los símbolos del mapa de Operación: el central relleno;
