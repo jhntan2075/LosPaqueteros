@@ -47,11 +47,12 @@ describe('Rúbrica · inicio de la simulación semanal', () => {
   it('C1 · pide la fecha de inicio y no deja ejecutar sin ella', async () => {
     const onAbrir = vi.fn();
     render(<ConfiguracionEscenario onAbrir={onAbrir} />);
-    expect(botonEjecutar().disabled).toBe(true);
+    fireEvent.click(botonEjecutar());
+    expect(screen.getByText('Elige la fecha de inicio.')).toBeTruthy();
     expect(screen.getByText(/Define la fecha de inicio/)).toBeTruthy();
+    expect(clienteApi.crearEjecucion).not.toHaveBeenCalled();
 
     fireEvent.change(screen.getByLabelText(/Fecha de inicio/), { target: { value: '2026-03-03' } });
-    expect(botonEjecutar().disabled).toBe(false);
     fireEvent.click(botonEjecutar());
 
     await waitFor(() => expect(onAbrir).toHaveBeenCalledWith(ejecucion));
@@ -116,7 +117,9 @@ describe('Rúbrica · carga de datos por GUI', () => {
     fireEvent.change(screen.getByLabelText('Pedidos (ej.: ventas.202611.txt)'), { target: { files: [new File(['x'], 'ventas.202603.txt')] } });
     expect(await screen.findByText(/2 líneas no respetan el formato \(línea 2, 7\)/)).toBeTruthy();
     fireEvent.change(screen.getByLabelText(/Fecha de inicio/), { target: { value: '2026-03-03' } });
-    expect(botonEjecutar().disabled).toBe(true);
+    fireEvent.click(botonEjecutar());
+    expect(clienteApi.crearEjecucion).not.toHaveBeenCalled();
+    expect(screen.getByText(/archivos sin errores/)).toBeTruthy();
   });
 
   it('G13 · la flota se configura desde la interfaz y se envía al crear la simulación', async () => {
@@ -135,8 +138,9 @@ describe('Rúbrica · carga de datos por GUI', () => {
     render(<ConfiguracionEscenario onAbrir={() => {}} />);
     fireEvent.change(screen.getByLabelText(/Fecha de inicio/), { target: { value: '2026-03-03' } });
     fireEvent.change(screen.getByLabelText('Autos'), { target: { value: '51' } });
-    expect(botonEjecutar().disabled).toBe(true);
-    expect(screen.getByText(/una flota de 1 a 50 unidades por tipo/)).toBeTruthy();
+    fireEvent.click(botonEjecutar());
+    expect(clienteApi.crearEjecucion).not.toHaveBeenCalled();
+    expect(screen.getByText('Debe estar entre 0 y 50 unidades.')).toBeTruthy();
   });
 });
 

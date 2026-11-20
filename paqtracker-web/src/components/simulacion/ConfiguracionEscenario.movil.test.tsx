@@ -48,7 +48,7 @@ describe('Simulación en celular', () => {
     simularPantalla(true);
     vi.spyOn(clienteApi, 'crearEjecucion').mockRejectedValue(new ErrorDeApi(500, 'Servidor caído'));
     render(<ModuloSimulacion />);
-    fireEvent.change(await screen.findByLabelText('Fecha de inicio'), { target: { value: '2026-03-03' } });
+    fireEvent.change(await screen.findByLabelText(/Fecha de inicio/), { target: { value: '2026-03-03' } });
     fireEvent.click(screen.getByRole('button', { name: /Ejecutar simulación/ }));
     const alerta = await waitFor(() => screen.getByRole('alert'));
     expect(alerta.textContent).toContain('Servidor caído');

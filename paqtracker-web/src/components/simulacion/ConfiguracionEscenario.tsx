@@ -197,16 +197,39 @@ export const ConfiguracionEscenario: React.FC<ConfiguracionEscenarioProps> = ({ 
   const [hora, setHora] = useState('00:00');
   const [archivos, setArchivos] = useState<Partial<Record<TipoArchivo, ArchivoCargado>>>({});
   const [subiendo, setSubiendo] = useState<TipoArchivo | null>(null);
-  const [flota, setFlota] = useState<ComposicionFlotaApi>({ autos: UNIDADES.AUTO.cantidad, motos: UNIDADES.MOTO.cantidad, bicicletas: UNIDADES.BICICLETA.cantidad });
+  // Texto de cada campo de flota: lo escrito se conserva tal cual; el número válido se deriva de él.
+  const [flotaTexto, setFlotaTexto] = useState<Record<keyof ComposicionFlotaApi, string>>({
+    autos: String(UNIDADES.AUTO.cantidad),
+    motos: String(UNIDADES.MOTO.cantidad),
+    bicicletas: String(UNIDADES.BICICLETA.cantidad),
+  });
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Los errores aparecen tras el primer intento de ejecutar o al salir de un campo; después se actualizan solos.
+  const [intentado, setIntentado] = useState(false);
+  const [tocados, setTocados] = useState<Record<string, boolean>>({});
+  const tocar = (campo: string) => setTocados((previo) => ({ ...previo, [campo]: true }));
+  const mostrar = (campo: string) => intentado || tocados[campo] === true;
+  const refFecha = useRef<HTMLInputElement>(null);
+  const refHora = useRef<HTMLInputElement>(null);
+  const refFlota = useRef<Partial<Record<keyof ComposicionFlotaApi, HTMLInputElement | null>>>({});
 
   const inicio = fecha && hora ? new Date(`${fecha}T${hora}`) : null;
   const inicioValido = inicio !== null && !Number.isNaN(inicio.getTime());
-  const totalFlota = flota.autos + flota.motos + flota.bicicletas;
-  const flotaValida = totalFlota > 0 && [flota.autos, flota.motos, flota.bicicletas].every((n) => n >= 0 && n <= MAXIMO_POR_TIPO);
+  const cantidadFlota = (clave: keyof ComposicionFlotaApi) => {
+    const texto = flotaTexto[clave];
+    const n = Number(texto);
+    return texto.trim() !== '' && Number.isInteger(n) && n >= 0 && n <= MAXIMO_POR_TIPO ? n : null;
+  };
+  const flotaInvalida = (clave: keyof ComposicionFlotaApi) => cantidadFlota(clave) === null;
+  const totalFlota = FLOTA.reduce((suma, { clave }) => suma + (cantidadFlota(clave) ?? 0), 0);
+  const flotaValida = totalFlota > 0 && FLOTA.every(({ clave }) => !flotaInvalida(clave));
   const archivosValidos = Object.values(archivos).every((a) => a.guardado);
-  const listo = inicioValido && flotaValida && archivosValidos && subiendo === null && !enviando;
+  const listo = inicioValido && flotaValida && archivosValidos;
+  const errorFecha = !fecha && mostrar('fecha') ? 'Elige la fecha de inicio.' : undefined;
+  const errorHora = !hora && mostrar('hora') ? 'Elige la hora de inicio.' : undefined;
+  const errorFlota = (clave: keyof ComposicionFlotaApi) =>
+    flotaInvalida(clave) && (flotaTexto[clave] !== '' || mostrar(`flota-${clave}`)) ? `Debe estar entre 0 y ${MAXIMO_POR_TIPO} unidades.` : undefined;
 
   const faltantes = [
     !inicioValido && 'la fecha de inicio',
@@ -233,7 +256,16 @@ export const ConfiguracionEscenario: React.FC<ConfiguracionEscenarioProps> = ({ 
   };
 
   const ejecutar = async () => {
-    if (!listo || !fecha) return;
+    if (enviando || subiendo !== null) return;
+    setIntentado(true);
+    if (!listo || !fecha) {
+      // Foco al primer campo con error, en el orden en que aparecen en el formulario.
+      const primeraFlota = FLOTA.find(({ clave }) => flotaInvalida(clave))?.clave ?? FLOTA[0].clave;
+      const primero = !fecha ? refFecha.current : !hora ? refHora.current : !flotaValida ? refFlota.current[primeraFlota] : null;
+      primero?.focus();
+      return;
+    }
+    const flota: ComposicionFlotaApi = { autos: cantidadFlota('autos')!, motos: cantidadFlota('motos')!, bicicletas: cantidadFlota('bicicletas')! };
     setEnviando(true);
     setError(null);
     try {
@@ -252,8 +284,6 @@ export const ConfiguracionEscenario: React.FC<ConfiguracionEscenarioProps> = ({ 
     }
   };
 
-  const cambiarFlota = (clave: keyof ComposicionFlotaApi, valor: string) =>
-    setFlota((previa) => ({ ...previa, [clave]: Math.max(0, Math.round(Number(valor)) || 0) }));
 
   const resumenArchivo = (tipo: TipoArchivo) => {
     const a = archivos[tipo];
@@ -266,7 +296,7 @@ export const ConfiguracionEscenario: React.FC<ConfiguracionEscenarioProps> = ({ 
       tamano="lg"
       icono={Play}
       onClick={ejecutar}
-      disabled={!listo}
+      disabled={subiendo !== null}
       cargando={enviando}
       textoCargando="Creando simulación…"
       className={cn('w-full', !angosto && 'mt-6')}
@@ -280,7 +310,7 @@ export const ConfiguracionEscenario: React.FC<ConfiguracionEscenarioProps> = ({ 
     </Aviso>
   ) : null;
   const avisoFaltantes =
-    !listo && !enviando && faltantes.length > 0 ? (
+    intentado && !listo && !enviando && faltantes.length > 0 ? (
       <Aviso tono="neutral" className={cn(!angosto && 'mt-3')}>
         Define {faltantes.join(', ').replace(/, ([^,]*)$/, ' y $1')} para continuar.
       </Aviso>
@@ -353,11 +383,27 @@ export const ConfiguracionEscenario: React.FC<ConfiguracionEscenarioProps> = ({ 
                   resumenPendiente={!inicioValido}
                 >
                   <div className="flex flex-wrap gap-4">
-                    <Campo htmlFor="inicio-fecha" etiqueta="Fecha de inicio">
-                      <Entrada id="inicio-fecha" type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} className="w-44 tabular-nums" />
+                    <Campo htmlFor="inicio-fecha" etiqueta="Fecha de inicio" obligatorio error={errorFecha}>
+                      <Entrada
+                        ref={refFecha}
+                        id="inicio-fecha"
+                        type="date"
+                        value={fecha}
+                        onChange={(e) => setFecha(e.target.value)}
+                        onBlur={() => tocar('fecha')}
+                        className="w-44 tabular-nums"
+                      />
                     </Campo>
-                    <Campo htmlFor="inicio-hora" etiqueta="Hora de inicio">
-                      <Entrada id="inicio-hora" type="time" value={hora} onChange={(e) => setHora(e.target.value)} className="w-32 tabular-nums" />
+                    <Campo htmlFor="inicio-hora" etiqueta="Hora de inicio" error={errorHora}>
+                      <Entrada
+                        ref={refHora}
+                        id="inicio-hora"
+                        type="time"
+                        value={hora}
+                        onChange={(e) => setHora(e.target.value)}
+                        onBlur={() => tocar('hora')}
+                        className="w-32 tabular-nums"
+                      />
                     </Campo>
                   </div>
                 </Seccion>
@@ -386,14 +432,18 @@ export const ConfiguracionEscenario: React.FC<ConfiguracionEscenarioProps> = ({ 
                 <Seccion numero="04" titulo="Flota" resumen={`${totalFlota} unidades`}>
                   <div className="flex flex-wrap gap-6">
                     {FLOTA.map(({ clave, etiqueta }) => (
-                      <Campo key={clave} htmlFor={`flota-${clave}`} etiqueta={etiqueta}>
+                      <Campo key={clave} htmlFor={`flota-${clave}`} etiqueta={etiqueta} error={errorFlota(clave)}>
                         <Entrada
+                          ref={(el) => {
+                            refFlota.current[clave] = el;
+                          }}
                           id={`flota-${clave}`}
                           type="number"
                           min={0}
                           max={MAXIMO_POR_TIPO}
-                          value={flota[clave]}
-                          onChange={(e) => cambiarFlota(clave, e.target.value)}
+                          value={flotaTexto[clave]}
+                          onChange={(e) => setFlotaTexto((previo) => ({ ...previo, [clave]: e.target.value }))}
+                          onBlur={() => tocar(`flota-${clave}`)}
                           className="w-24 tabular-nums"
                         />
                       </Campo>
@@ -411,7 +461,7 @@ export const ConfiguracionEscenario: React.FC<ConfiguracionEscenarioProps> = ({ 
                 <FilaResumen etiqueta="Inicio" valor={inicioValido ? formatearFechaLarga(inicio, false) : undefined} />
                 <FilaResumen etiqueta="Pedidos" valor={resumenArchivo('pedidos')} />
                 <FilaResumen etiqueta="Bloqueos" valor={resumenArchivo('bloqueos')} />
-                <FilaResumen etiqueta="Flota" valor={`${flota.autos} autos · ${flota.motos} motos · ${flota.bicicletas} bicis`} />
+                <FilaResumen etiqueta="Flota" valor={`${cantidadFlota('autos') ?? '—'} autos · ${cantidadFlota('motos') ?? '—'} motos · ${cantidadFlota('bicicletas') ?? '—'} bicis`} />
                 <FilaResumen
                   etiqueta="Semáforo de holgura"
                   valor={`${NOMBRE_HOLGURA.ROJO} ${RANGO_HOLGURA.ROJO} · ${NOMBRE_HOLGURA.AMBAR} ${RANGO_HOLGURA.AMBAR}`}
