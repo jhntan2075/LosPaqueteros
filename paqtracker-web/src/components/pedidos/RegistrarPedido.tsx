@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
-import { User, CheckCircle2, AlertTriangle } from 'lucide-react';
+import React, { useRef, useState } from 'react';
+import { User, CheckCircle2, AlertTriangle, Check, Circle } from 'lucide-react';
 import { ALMACENES, MALLA_ALTO_KM, MALLA_ANCHO_KM, PLAZOS_HORAS, UNIDADES, esPlazoRegular, type PlazoHoras } from '../../config/dominio';
 import { tipoDeEntrega } from '../../config/glosario';
 import { coordenadaValida, evaluarFactibilidad, type EvaluacionFactibilidad, type NivelFactibilidad } from '../../lib/factibilidad';
-import { diasDeDiferencia, formatearDiaMes, formatearDuracion, formatearHora, sumarMinutos } from '../../lib/formato';
+import { diasDeDiferencia, formatearDiaMes, formatearDuracion, formatearHora, sumarMinutos, unirAlternativas } from '../../lib/formato';
 import { nodoEn, proyectar, tramoOrtogonal, trazado, type Vista } from '../../lib/malla';
 import { cn } from '../../lib/clases';
 import { useDatosOperacion } from '../../hooks/useDatosOperacion';
@@ -38,8 +38,10 @@ const ESTILO_FACTIBILIDAD: Record<NivelFactibilidad, { titulo: string; tono: Ton
 const CAJA_CONTROL =
   'flex h-10 items-center rounded-control border border-neutral-300 bg-superficie transition-colors focus-within:border-primary-600 focus-within:ring-2 focus-within:ring-primary-600/20';
 
-const InputCoordenada: React.FC<{ id?: string; eje: 'X' | 'Y'; valor: string; maximo: number; ayuda?: string; onCambiar: (valor: string) => void }> = ({
+const InputCoordenada: React.FC<{ id?: string; inputRef?: React.Ref<HTMLInputElement>; onBlur?: () => void; eje: 'X' | 'Y'; valor: string; maximo: number; ayuda?: string; onCambiar: (valor: string) => void }> = ({
   id,
+  inputRef,
+  onBlur,
   eje,
   valor,
   maximo,
@@ -50,6 +52,8 @@ const InputCoordenada: React.FC<{ id?: string; eje: 'X' | 'Y'; valor: string; ma
     <span className="text-body-sm font-semibold text-neutral-600">{eje}:</span>
     <input
       id={id}
+      ref={inputRef}
+      onBlur={onBlur}
       type="number"
       inputMode="numeric"
       min={0}
@@ -79,7 +83,7 @@ const MiniMapaDestino: React.FC<{
   const nivel = evaluacion ? ESTILO_FACTIBILIDAD[evaluacion.nivel].holgura : null;
   return (
     <MiniMapaMalla
-      alto={180}
+      alto={220}
       encuadrar={encuadrar}
       etiqueta={
         almacen && destino
@@ -160,6 +164,14 @@ export const RegistrarPedido: React.FC<RegistrarPedidoProps> = ({ onCancelar, on
   const [plazoHoras, setPlazoHoras] = useState<PlazoHoras | null>(null);
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Los errores aparecen tras el primer intento de envío o al salir de un campo; después se actualizan solos.
+  const [intentado, setIntentado] = useState(false);
+  const [tocados, setTocados] = useState({ cliente: false, destino: false, cantidad: false });
+  const refCliente = useRef<HTMLInputElement>(null);
+  const refDestinoX = useRef<HTMLInputElement>(null);
+  const refCantidad = useRef<HTMLInputElement>(null);
+  const refPlazo = useRef<HTMLInputElement>(null);
+  const tocar = (campo: keyof typeof tocados) => setTocados((previo) => ({ ...previo, [campo]: true }));
 
   const cantidad = Number(cantidadTexto);
   const cantidadValida = cantidadTexto !== '' && Number.isInteger(cantidad) && cantidad >= 1 && cantidad <= CANTIDAD_MAXIMA;
@@ -171,13 +183,13 @@ export const RegistrarPedido: React.FC<RegistrarPedidoProps> = ({ onCancelar, on
   const horaLimite = plazoHoras === null ? null : sumarMinutos(reloj, plazoHoras * 60);
   const diasLimite = horaLimite === null ? null : diasDeDiferencia(reloj, horaLimite);
   const prefijoDia = diasLimite === 0 ? 'hoy ' : diasLimite === 1 ? 'mañana ' : '';
-  const formularioValido = cliente.trim() !== '' && destinoValido && cantidadValida && plazoHoras !== null;
-  const faltantes = [
-    cliente.trim() === '' && 'el cliente',
-    !destinoValido && 'un destino dentro de la malla',
-    !cantidadValida && `una cantidad de 1 a ${CANTIDAD_MAXIMA}`,
-    plazoHoras === null && 'el plazo de entrega',
-  ].filter(Boolean) as string[];
+  const clienteFalta = cliente.trim() === '';
+  const formularioValido = !clienteFalta && destinoValido && cantidadValida && plazoHoras !== null;
+  const mostrar = (campo: keyof typeof tocados) => intentado || tocados[campo];
+  const errorCliente = clienteFalta && mostrar('cliente') ? 'Ingresa el cliente.' : undefined;
+  const errorCantidad = !cantidadValida && (cantidadTexto !== '' || mostrar('cantidad')) ? `Debe estar entre 1 y ${CANTIDAD_MAXIMA} paquetes.` : undefined;
+  const errorPlazo = plazoHoras === null && intentado ? 'Elige un plazo de entrega.' : undefined;
+  const faltantes = [clienteFalta && 'cliente', !destinoValido && 'destino', plazoHoras === null && 'plazo'].filter(Boolean) as string[];
 
   const cambiarCantidad = (valor: number) =>
     setCantidadTexto(String(Math.min(CANTIDAD_MAXIMA, Math.max(1, Math.round(valor) || 1))));
@@ -185,7 +197,14 @@ export const RegistrarPedido: React.FC<RegistrarPedidoProps> = ({ onCancelar, on
 
   const enviar = async (evento: React.FormEvent) => {
     evento.preventDefault();
-    if (!formularioValido || plazoHoras === null || enviando) return;
+    if (enviando) return;
+    setIntentado(true);
+    if (!formularioValido || plazoHoras === null) {
+      // Foco al primer campo con error, en el orden en que aparecen en el formulario.
+      const primero = clienteFalta ? refCliente : !destinoValido ? refDestinoX : !cantidadValida ? refCantidad : refPlazo;
+      primero.current?.focus();
+      return;
+    }
     setEnviando(true);
     setError(null);
     try {
@@ -203,10 +222,13 @@ export const RegistrarPedido: React.FC<RegistrarPedidoProps> = ({ onCancelar, on
       ? `Ruta directa: ${evaluacion.origen.km} km desde ${evaluacion.origen.almacen.nombre} (almacén más próximo)` +
         (segundoAlmacen ? ` · ${segundoAlmacen.km} km desde ${segundoAlmacen.almacen.nombre}` : '')
       : undefined;
-  const errorDestino =
-    destinoCompleto && !destinoValido
+  const errorDestino = !destinoValido
+    ? destinoCompleto
       ? `El destino está fuera de la malla: X debe ir de 0 a ${MALLA_ANCHO_KM} e Y de 0 a ${MALLA_ALTO_KM}.`
-      : undefined;
+      : mostrar('destino')
+        ? 'Elige un destino dentro de la malla.'
+        : undefined
+    : undefined;
   // Campo pone aria-describedby en su hijo directo; en los controles compuestos se repite en cada input.
   const descripcionDestino = errorDestino ? 'pedido-destino-x-error' : ayudaDestino ? 'pedido-destino-x-ayuda' : undefined;
 
@@ -214,7 +236,7 @@ export const RegistrarPedido: React.FC<RegistrarPedidoProps> = ({ onCancelar, on
     <div className="flex-1 min-h-0 overflow-y-auto">
       <div className="mx-auto grid w-full max-w-6xl grid-cols-1 items-start gap-6 p-4 lg:grid-cols-12 lg:p-6">
         {/* Formulario de registro (columna 7/12) */}
-        <form onSubmit={enviar} className="lg:col-span-7">
+        <form onSubmit={enviar} noValidate className="lg:col-span-7">
           <Tarjeta
             titulo="Datos del pedido"
             descripcion="Completa los detalles del pedido para que el planificador asigne la mejor unidad disponible."
@@ -226,18 +248,20 @@ export const RegistrarPedido: React.FC<RegistrarPedidoProps> = ({ onCancelar, on
               etiqueta="Cliente"
               obligatorio
               ayuda="Escribe el nombre del cliente o selecciona uno de los clientes frecuentes registrados."
+              error={errorCliente}
             >
               <div className="relative">
                 <User className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-neutral-500" aria-hidden="true" />
                 <Entrada
                   id="pedido-cliente"
+                  ref={refCliente}
+                  onBlur={() => tocar('cliente')}
                   tamano="lg"
                   list="pedido-clientes"
                   value={cliente}
                   onChange={(e) => setCliente(e.target.value)}
                   placeholder="Ej. Distribuidora Santa Anita S.A.C."
                   autoComplete="off"
-                  aria-describedby="pedido-cliente-ayuda"
                   className="pl-9 font-medium [&::-webkit-calendar-picker-indicator]:!hidden"
                 />
               </div>
@@ -257,8 +281,17 @@ export const RegistrarPedido: React.FC<RegistrarPedidoProps> = ({ onCancelar, on
               error={errorDestino}
             >
               <div className="flex items-center gap-3">
-                <InputCoordenada id="pedido-destino-x" eje="X" valor={x} maximo={MALLA_ANCHO_KM} ayuda={descripcionDestino} onCambiar={setX} />
-                <InputCoordenada eje="Y" valor={y} maximo={MALLA_ALTO_KM} ayuda={descripcionDestino} onCambiar={setY} />
+                <InputCoordenada
+                  id="pedido-destino-x"
+                  inputRef={refDestinoX}
+                  onBlur={() => tocar('destino')}
+                  eje="X"
+                  valor={x}
+                  maximo={MALLA_ANCHO_KM}
+                  ayuda={descripcionDestino}
+                  onCambiar={setX}
+                />
+                <InputCoordenada onBlur={() => tocar('destino')} eje="Y" valor={y} maximo={MALLA_ALTO_KM} ayuda={descripcionDestino} onCambiar={setY} />
               </div>
             </Campo>
 
@@ -268,6 +301,7 @@ export const RegistrarPedido: React.FC<RegistrarPedidoProps> = ({ onCancelar, on
               etiqueta="Cantidad (paquetes)"
               obligatorio
               ayuda={`Capacidad por unidad: ${CAPACIDADES}. Si no cabe en una, se reparte en varios viajes.`}
+              error={errorCantidad}
             >
               <div className={cn(CAJA_CONTROL, 'w-44')}>
                 <button
@@ -281,14 +315,14 @@ export const RegistrarPedido: React.FC<RegistrarPedidoProps> = ({ onCancelar, on
                 </button>
                 <input
                   id="pedido-cantidad"
+                  ref={refCantidad}
                   type="number"
                   min={1}
                   max={CANTIDAD_MAXIMA}
                   value={cantidadTexto}
                   onChange={(e) => setCantidadTexto(e.target.value)}
-                  onBlur={() => cantidadTexto !== '' && !cantidadValida && cambiarCantidad(cantidad)}
+                  onBlur={() => tocar('cantidad')}
                   aria-label="Cantidad de paquetes"
-                  aria-describedby="pedido-cantidad-ayuda"
                   className={`h-full min-w-0 flex-1 bg-transparent text-center text-title-sm tabular-nums text-neutral-900 outline-none ${SIN_SPINNER}`}
                 />
                 <button
@@ -304,7 +338,7 @@ export const RegistrarPedido: React.FC<RegistrarPedidoProps> = ({ onCancelar, on
             </Campo>
 
             {/* Tipo de entrega / plazo */}
-            <fieldset className="flex w-full flex-col gap-1">
+            <fieldset className="flex w-full flex-col gap-1" aria-describedby={errorPlazo ? 'pedido-plazo-error' : undefined}>
               <legend className="mb-1 text-body-sm font-medium text-neutral-700">
                 Plazo de entrega acordado<span className="text-critical-600" aria-hidden="true"> *</span>
               </legend>
@@ -328,6 +362,7 @@ export const RegistrarPedido: React.FC<RegistrarPedidoProps> = ({ onCancelar, on
                       <input
                         type="radio"
                         name="plazo-entrega"
+                        ref={plazo === PLAZOS_HORAS[0] ? refPlazo : undefined}
                         value={plazo}
                         checked={seleccionado}
                         onChange={() => setPlazoHoras(plazo)}
@@ -348,6 +383,11 @@ export const RegistrarPedido: React.FC<RegistrarPedidoProps> = ({ onCancelar, on
                   );
                 })}
               </div>
+              {errorPlazo && (
+                <span id="pedido-plazo-error" className="text-caption text-critical-600">
+                  {errorPlazo}
+                </span>
+              )}
             </fieldset>
 
             {/* Acciones */}
@@ -356,7 +396,6 @@ export const RegistrarPedido: React.FC<RegistrarPedidoProps> = ({ onCancelar, on
                 type="submit"
                 variante="primario"
                 tamano="lg"
-                disabled={!formularioValido}
                 cargando={enviando}
                 textoCargando="Registrando y planificando…"
               >
@@ -367,10 +406,8 @@ export const RegistrarPedido: React.FC<RegistrarPedidoProps> = ({ onCancelar, on
               </Boton>
             </div>
 
-            {!formularioValido && !enviando && faltantes.length > 0 && (
-              <p className="text-body-sm text-neutral-600">
-                Completa {faltantes.join(', ').replace(/, ([^,]*)$/, ' y $1')} para registrar el pedido.
-              </p>
+            {intentado && faltantes.length > 0 && !enviando && (
+              <p className="text-body-sm text-neutral-600">Falta: {unirAlternativas(faltantes, 'y')}</p>
             )}
 
             {error && (
@@ -402,9 +439,18 @@ export const RegistrarPedido: React.FC<RegistrarPedidoProps> = ({ onCancelar, on
                 : 'Haz clic en la malla para fijar el destino, o escribe sus coordenadas.'}
             </p>
             {!evaluacion && (
-              <Aviso tono="neutral" icono={null} className="justify-center text-center">
-                {destinoValido ? 'Elige un plazo de entrega para calcular la factibilidad.' : 'Elige un destino y un plazo de entrega para calcular la factibilidad.'}
-              </Aviso>
+              <ul className="flex flex-col gap-1.5 text-body-sm" aria-label="Para calcular la factibilidad">
+                {[
+                  { cumplido: destinoValido, texto: 'Elige un destino en la malla' },
+                  { cumplido: plazoHoras !== null, texto: 'Elige un plazo de entrega' },
+                ].map(({ cumplido, texto }) => (
+                  <li key={texto} className={cn('flex items-center gap-2', cumplido ? 'text-ok-700' : 'text-neutral-600')}>
+                    {cumplido ? <Check className="size-4" aria-hidden="true" /> : <Circle className="size-4" aria-hidden="true" />}
+                    {texto}
+                    {cumplido && <span className="sr-only"> (listo)</span>}
+                  </li>
+                ))}
+              </ul>
             )}
 
             {/* Hora límite resultante */}
@@ -420,7 +466,7 @@ export const RegistrarPedido: React.FC<RegistrarPedidoProps> = ({ onCancelar, on
                     </span>
                   </span>
                 ) : (
-                  <span className="block text-body-sm font-normal text-neutral-600">Elige un plazo de entrega para calcularla.</span>
+                  <span className="block text-body-sm font-normal text-neutral-600">—</span>
                 )
               }
             />
