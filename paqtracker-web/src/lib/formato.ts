@@ -39,6 +39,9 @@ export const formatearDuracion = (minutos: number) => {
   return horas === 0 ? `${resto} min` : `${horas} h ${dosDigitos(resto)} min`;
 };
 
+/** Antigüedad de un dato: bajo 60 s en segundos, luego en minutos enteros (5 → "5 s", 125 → "2 min"). */
+export const formatearAntiguedad = (segundos: number) => (segundos < 60 ? `${segundos} s` : `${Math.floor(segundos / 60)} min`);
+
 /** Holgura en "HH:MM", con signo negativo si ya venció: 56 → "00:56", -36 → "-00:36". */
 export const formatearHolgura = (minutos: number) => {
   const absoluto = Math.abs(Math.round(minutos));

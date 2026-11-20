@@ -2,12 +2,14 @@ import React from 'react';
 import { ClipboardList, Package, Truck, Warehouse } from 'lucide-react';
 import { ALMACENES, CORTE_INVENTARIO, UNIDADES } from '../../config/dominio';
 import { NOMBRE_HOLGURA } from '../../config/glosario';
-import { capitalizar, formatearMiles } from '../../lib/formato';
+import { capitalizar, formatearAntiguedad, formatearDuracion, formatearNumero } from '../../lib/formato';
 import { cn } from '../../lib/clases';
 import { estadoFlota } from '../../lib/operacion';
+import { nivelDeOcupacion } from '../../lib/semaforo';
 import type { DatosOperacion } from '../../types/operacion';
 import type { NivelHolgura } from '../../types/pedidos';
-import { EncabezadoPagina, Indicador, Tarjeta, TituloGrupo } from '../ui';
+import { MarcaSemaforo } from '../map/simbolos';
+import { EncabezadoPagina, Indicador, Insignia, Tarjeta, TituloGrupo } from '../ui';
 
 const formatoPorcentaje = (valor: number) => `${valor.toFixed(1).replace('.', ',')} %`;
 
@@ -31,9 +33,15 @@ const BarraDistribucion: React.FC<{ etiqueta: string; pct: number; detalle: stri
   </div>
 );
 
+interface ModuloMetricasProps {
+  datos: DatosOperacion;
+  /** Antigüedad del último dato del día a día; sin valor (sin datos en vivo) no se muestra. */
+  segundosDesdeActualizacion?: number;
+}
+
 /** Indicadores de la operación día a día: cumplimiento, flota y planificador, con desagregados que no
  * se ven en ningún otro panel (por tipo de unidad, por nivel de holgura y por almacén). */
-export const ModuloMetricas: React.FC<{ datos: DatosOperacion }> = ({ datos }) => {
+export const ModuloMetricas: React.FC<ModuloMetricasProps> = ({ datos, segundosDesdeActualizacion }) => {
   const { indicadores, resumen, flota, almacenes } = datos;
   const enRuta = flota.filter((u) => u.estado === 'EN_RUTA').length;
   const porTipo = estadoFlota(datos).porTipo;
@@ -46,41 +54,30 @@ export const ModuloMetricas: React.FC<{ datos: DatosOperacion }> = ({ datos }) =
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-superficie">
-      <EncabezadoPagina titulo="Métricas de la operación" descripcion="Indicadores en vivo de la operación día a día." />
+      <EncabezadoPagina
+        titulo="Métricas de la operación"
+        descripcion="Indicadores en vivo de la operación día a día."
+        estado={segundosDesdeActualizacion !== undefined && <Insignia>Actualizado hace {formatearAntiguedad(segundosDesdeActualizacion)}</Insignia>}
+      />
       <div className="min-h-0 flex-1 overflow-y-auto">
         <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 p-4 sm:p-6">
-          <Tarjeta>
-            <div className="flex flex-col gap-5">
-              <div className="flex flex-col gap-3">
-                <TituloGrupo nivel={2} icono={Truck}>
-                  Entregas y flota
-                </TituloGrupo>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                  <Indicador
-                    etiqueta="Entregas en plazo"
-                    valor={formatoPorcentaje(indicadores.porcentajeCumplimiento)}
-                    detalle={`${resumen.enPlazo} de ${resumen.entregados} entregados`}
-                    tono="ok"
-                  />
-                  <Indicador
-                    etiqueta="Unidades en ruta"
-                    valor={`${enRuta} / ${flota.length}`}
-                    detalle={formatoPorcentaje(flota.length === 0 ? 0 : (enRuta / flota.length) * 100)}
-                    tono="primary"
-                  />
-                  <Indicador etiqueta="Tiempo promedio de entrega" valor={`${Math.round(indicadores.tiempoPromedioEntregaMinutos)} min`} />
-                </div>
-              </div>
-              <div className="flex flex-col gap-3">
-                <TituloGrupo nivel={2} icono={ClipboardList}>
-                  Planificador
-                </TituloGrupo>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                  <Indicador etiqueta="Planificaciones ejecutadas" valor={formatearMiles(indicadores.replanificaciones)} />
-                  <Indicador etiqueta="Tiempo de la última planificación" valor={`${indicadores.tiempoComputoUltimoTaMs} ms`} tono="primary" />
-                  <Indicador etiqueta="Distancia recorrida" valor={`${formatearMiles(Math.round(indicadores.distanciaTotalKm))} km`} />
-                </div>
-              </div>
+          <Tarjeta cuerpoClassName="flex flex-col gap-3">
+            <TituloGrupo nivel={2} icono={Truck}>
+              Entregas y flota
+            </TituloGrupo>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <Indicador
+                etiqueta="Entregas en plazo"
+                valor={formatoPorcentaje(indicadores.porcentajeCumplimiento)}
+                detalle={`${resumen.enPlazo} de ${resumen.entregados} entregados`}
+              />
+              <Indicador
+                etiqueta="Unidades en ruta"
+                valor={`${enRuta} / ${flota.length}`}
+                detalle={formatoPorcentaje(flota.length === 0 ? 0 : (enRuta / flota.length) * 100)}
+              />
+              <Indicador etiqueta="Tiempo promedio de entrega" valor={formatearDuracion(indicadores.tiempoPromedioEntregaMinutos)} />
+              <Indicador etiqueta="Distancia recorrida" valor={`${formatearNumero(Math.round(indicadores.distanciaTotalKm))} km`} />
             </div>
           </Tarjeta>
 
@@ -103,7 +100,16 @@ export const ModuloMetricas: React.FC<{ datos: DatosOperacion }> = ({ datos }) =
                     <td className="py-1.5 font-medium text-neutral-900">{capitalizar(UNIDADES[t.tipo].nombre)}</td>
                     <td className="py-1.5 text-right tabular-nums">{t.enRuta}</td>
                     <td className="py-1.5 text-right tabular-nums">{t.total}</td>
-                    <td className="py-1.5 text-right tabular-nums">{t.cargaABordo === null ? '—' : formatoPorcentaje(t.cargaABordo * 100)}</td>
+                    <td className="py-1.5 text-right tabular-nums">
+                      {t.cargaABordo === null ? (
+                        '—'
+                      ) : (
+                        <span className="inline-flex items-center justify-end gap-1.5">
+                          <MarcaSemaforo nivel={nivelDeOcupacion(t.carga, t.capacidad)} />
+                          {formatoPorcentaje(t.cargaABordo * 100)}
+                        </span>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -148,6 +154,16 @@ export const ModuloMetricas: React.FC<{ datos: DatosOperacion }> = ({ datos }) =
               </div>
             </Tarjeta>
           )}
+
+          <Tarjeta cuerpoClassName="flex flex-col gap-3">
+            <TituloGrupo nivel={2} icono={ClipboardList}>
+              Rendimiento del planificador
+            </TituloGrupo>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <Indicador etiqueta="Planificaciones ejecutadas" valor={formatearNumero(indicadores.replanificaciones)} />
+              <Indicador etiqueta="Tiempo de la última planificación" valor={`${formatearNumero(indicadores.tiempoComputoUltimoTaMs)} ms`} />
+            </div>
+          </Tarjeta>
         </div>
       </div>
     </div>

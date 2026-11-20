@@ -1,5 +1,6 @@
 import React from 'react';
 import { RANGO_HOLGURA } from '../../config/glosario';
+import { formatearAntiguedad } from '../../lib/formato';
 import { MarcaSemaforo } from '../map/simbolos';
 
 export interface FooterBarProps {
@@ -21,8 +22,6 @@ export interface FooterBarProps {
 }
 
 const SEGUNDOS_SIN_ACTUALIZAR = 10;
-
-const formatearAntiguedad = (segundos: number) => (segundos < 60 ? `${segundos} s` : `${Math.floor(segundos / 60)} min`);
 
 export const FooterBar: React.FC<FooterBarProps> = ({
   nodoSeleccionado,

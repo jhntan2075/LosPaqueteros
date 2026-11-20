@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import logo from '../../assets/marca/logo.svg';
 import { LayoutGrid, Package, PlayCircle, BarChart3, Radio, Settings, LogOut, Menu, ChevronDown } from 'lucide-react';
+import { formatearAntiguedad } from '../../lib/formato';
 import { MenuModulos } from './MenuModulos';
 import { RelojesBarra } from './RelojesBarra';
 import { SelectorTema } from './SelectorTema';
@@ -24,7 +25,6 @@ const SEGUNDOS_SIN_ACTUALIZAR = 10;
 /** Versión y commit del build; las constantes las inyecta Vite y no existen fuera del build (pruebas). */
 const VERSION =
   typeof __APP_VERSION__ === 'undefined' ? 'PaqTracker' : `PaqTracker v${__APP_VERSION__} · ${typeof __APP_COMMIT__ === 'undefined' ? '' : __APP_COMMIT__}`;
-const antiguedad = (segundos: number) => (segundos < 60 ? `${segundos} s` : `${Math.floor(segundos / 60)} min`);
 
 export const TopNavbar: React.FC<TopNavbarProps> = ({
   tabActiva,
@@ -155,9 +155,9 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
           <Radio className={`size-3 ${!conectado ? 'text-critical-600' : desfasado ? 'text-warn-700' : 'text-primary-700 animate-pulse'}`} />
           <span className="hidden sm:inline">{conectado ? 'Conectado' : 'Sin conexión'}</span>
           {segundosDesdeActualizacion !== undefined && (
-            <span className="font-normal tabular-nums" aria-label={`último dato hace ${antiguedad(segundosDesdeActualizacion)}`}>
+            <span className="font-normal tabular-nums" aria-label={`último dato hace ${formatearAntiguedad(segundosDesdeActualizacion)}`}>
               <span className="hidden sm:inline">· </span>
-              {antiguedad(segundosDesdeActualizacion)}
+              {formatearAntiguedad(segundosDesdeActualizacion)}
             </span>
           )}
         </Insignia>

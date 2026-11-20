@@ -119,7 +119,7 @@ export default function App() {
                   <ModuloSimulacion />
                 </div>
 
-                {tabActiva === 'metricas' && (datos ? <ModuloMetricas datos={datos} /> : sinDatos)}
+                {tabActiva === 'metricas' && (datos ? <ModuloMetricas datos={datos} segundosDesdeActualizacion={relojDiaADia ? segundosActualizado : undefined} /> : sinDatos)}
 
                 {tabActiva === 'configuracion' && <ModuloConfiguracion />}
               </main>
