@@ -1,4 +1,4 @@
-import { MALLA_ALTO_KM, MALLA_ANCHO_KM } from '../config/dominio';
+import { ALMACENES, MALLA_ALTO_KM, MALLA_ANCHO_KM } from '../config/dominio';
 import type { Coordenada } from '../types/domain';
 
 // Proyección de la malla de la ciudad (km) a la pantalla (px), al estilo de un visor de mapas:
@@ -56,10 +56,18 @@ export const escalaMinimaPermitida = (lienzo: Lienzo) => escalaDeEncuadre(lienzo
  * del borde): ese exceso es 0 al encuadrar y crece con el zoom hasta medio área útil, así la transición es
  * continua y alejarse nunca deja la malla corrida hacia un lado.
  */
-const limitarEje = (inicio: number, extension: number, disponible: number, margenInicio: number, margenFin: number) => {
+const limitarEje = (
+  inicio: number,
+  extension: number,
+  disponible: number,
+  margenInicio: number,
+  margenFin: number,
+  cubrir = false,
+) => {
   const libre = disponible - margenInicio - margenFin;
   if (extension <= libre) return margenInicio + (libre - extension) / 2;
-  const exceso = Math.min(libre / 2, extension - libre);
+  // `cubrir`: la malla siempre llena el área útil, sin franja vacía más allá de sus bordes.
+  const exceso = cubrir ? 0 : Math.min(libre / 2, extension - libre);
   return Math.min(margenInicio + exceso, Math.max(disponible - margenFin - extension - exceso, inicio));
 };
 
@@ -69,17 +77,30 @@ export function limitarVista(vista: Vista, lienzo: Lienzo): Vista {
   const escala = Math.min(Math.max(vista.escala, minima), Math.max(minima, ESCALA_MAXIMA));
   return {
     escala,
-    x: limitarEje(vista.x, MALLA_ANCHO_KM * escala, lienzo.ancho, lienzo.margen, derecho(lienzo)),
+    // En lienzos verticales (celular) la malla se recorre en X cubriendo siempre el ancho.
+    x: limitarEje(vista.x, MALLA_ANCHO_KM * escala, lienzo.ancho, lienzo.margen, derecho(lienzo), lienzo.alto > lienzo.ancho),
     y: limitarEje(vista.y, MALLA_ALTO_KM * escala, lienzo.alto, superior(lienzo), inferior(lienzo)),
   };
 }
 
-/** Vista inicial que encuadra la malla completa (70 × 50 km) de forma centrada y sin recortes. */
-export const vistaCompleta = (lienzo: Lienzo): Vista => {
+/**
+ * Vista inicial que encuadra la malla completa (70 × 50 km) de forma centrada y sin recortes.
+ * Con `llenarAlto` y un lienzo vertical (celular), la malla llena el alto útil, sobresale en X y se centra
+ * en el almacén central; el resto se recorre arrastrando.
+ */
+export const vistaCompleta = (lienzo: Lienzo, opciones: { llenarAlto?: boolean } = {}): Vista => {
   const d = derecho(lienzo);
-  const escala = escalaDeEncuadre(lienzo);
   const anchoUtil = lienzo.ancho - lienzo.margen - d;
   const altoUtil = lienzo.alto - superior(lienzo) - inferior(lienzo);
+  if (opciones.llenarAlto && lienzo.alto > lienzo.ancho) {
+    const escala = Math.max(10, altoUtil) / MALLA_ALTO_KM;
+    const central = ALMACENES.find((a) => a.id === 'CENTRAL')!.ubicacion;
+    return limitarVista(
+      { escala, x: lienzo.margen + anchoUtil / 2 - central.x * escala, y: superior(lienzo) },
+      lienzo,
+    );
+  }
+  const escala = escalaDeEncuadre(lienzo);
   return limitarVista(
     {
       escala,

@@ -244,7 +244,7 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
   // Vista elegida por el usuario (zoom / desplazamiento). null = vista inicial centrada, que se recalcula
   // sola con el tamaño del contenedor; una vista elegida se reajusta con limitarVista si el contenedor cambia.
   const [vistaUsuario, setVistaUsuario] = useState<Vista | null>(null);
-  const vista = ancho > 0 && alto > 0 ? (vistaUsuario ? limitarVista(vistaUsuario, lienzo) : vistaCompleta(lienzo)) : null;
+  const vista = ancho > 0 && alto > 0 ? (vistaUsuario ? limitarVista(vistaUsuario, lienzo) : vistaCompleta(lienzo, opcionesVista(lienzo))) : null;
   const [isDragging, setIsDragging] = useState(false);
   const arrastreRef = useRef({ x: 0, y: 0, inicioX: 0, inicioY: 0, objeto: null as string | null, activo: false });
   // Punteros activos sobre el mapa: con dos, el gesto es un pellizco (zoom táctil).
@@ -364,7 +364,7 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
       animacionRef.current = null;
       const factor = factorDeRueda(evento, rect.height);
       setVistaUsuario((actual) =>
-        acercarEn(actual ? limitarVista(actual, l) : vistaCompleta(l), factor, evento.clientX - rect.left, evento.clientY - rect.top, l),
+        acercarEn(actual ? limitarVista(actual, l) : vistaCompleta(l, opcionesVista(l)), factor, evento.clientX - rect.left, evento.clientY - rect.top, l),
       );
     };
     elemento.addEventListener('wheel', alGirar, { passive: false });
@@ -480,7 +480,7 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
   const acercarAlCentro = (factor: number) => {
     if (vista) animarA(acercarEn(vista, factor, ancho / 2, alto / 2, lienzo));
   };
-  const verTodo = () => animarA(vistaCompleta(lienzo), () => setVistaUsuario(null));
+  const verTodo = () => animarA(vistaCompleta(lienzo, opcionesVista(lienzo)), () => setVistaUsuario(null));
 
   // Teclado con el mapa enfocado: + y - acercan y alejan, 0 encuadra la malla, las flechas desplazan.
   const alPresionarTecla = (e: React.KeyboardEvent<HTMLDivElement>) => {
@@ -761,6 +761,10 @@ const ANCHO_CARACTER_PX = 6.6;
  * tocables no se achican (WCAG 2.5.8) y los rótulos bajan a un mínimo legible.
  */
 const ANCHO_COMPACTO_PX = 640;
+
+/** Corte celular/escritorio (`md`): por debajo, la vista inicial llena el alto del mapa. */
+const ANCHO_CELULAR_PX = 768;
+const opcionesVista = (lienzo: Lienzo) => ({ llenarAlto: lienzo.ancho < ANCHO_CELULAR_PX });
 const ESCALA_COMPACTA = 0.6;
 /** Escala del símbolo de almacén en el mapa (el de la leyenda y los paneles queda a tamaño completo). */
 const ESCALA_ALMACEN = 0.75;

@@ -3,6 +3,7 @@ import { ArrowRight, Play, RefreshCw } from 'lucide-react';
 import { UNIDADES } from '../../config/dominio';
 import { NOMBRE_ESTADO_SIMULACION, NOMBRE_HOLGURA, RANGO_HOLGURA } from '../../config/glosario';
 import { mensajeDeError, useEjecuciones } from '../../hooks/useEjecuciones';
+import { useAnchoAngosto } from '../../hooks/useAnchoAngosto';
 import { cn } from '../../lib/clases';
 import { formatearFechaLarga, formatearMiles } from '../../lib/formato';
 import { NOMBRE_REGISTRO, mesDeArchivo, subirArchivo } from '../../services/servicioArchivos';
@@ -189,6 +190,7 @@ interface ConfiguracionEscenarioProps {
 export const ConfiguracionEscenario: React.FC<ConfiguracionEscenarioProps> = ({ onAbrir }) => {
   const { ejecuciones, cargando: cargandoLista, error: errorLista, recargar, crearEIniciar } = useEjecuciones();
   const simulaciones = ejecuciones.filter((e) => e.tipoEscenario !== 'DIA_A_DIA').reverse();
+  const angosto = useAnchoAngosto();
   const [modo, setModo] = useState<'nueva' | 'lista'>('nueva');
   const [escenario, setEscenario] = useState<EscenarioSimulacion>('SIMULACION_PERIODO');
   const [fecha, setFecha] = useState('');
@@ -258,12 +260,38 @@ export const ConfiguracionEscenario: React.FC<ConfiguracionEscenarioProps> = ({ 
     return a ? `${a.registros} · ${a.nombre}` : 'datos del servidor';
   };
 
+  const botonEjecutar = (
+    <Boton
+      variante="primario"
+      tamano="lg"
+      icono={Play}
+      onClick={ejecutar}
+      disabled={!listo}
+      cargando={enviando}
+      textoCargando="Creando simulación…"
+      className={cn('w-full', !angosto && 'mt-6')}
+    >
+      Ejecutar simulación
+    </Boton>
+  );
+  const avisoFaltantes =
+    !listo && !enviando && faltantes.length > 0 ? (
+      <Aviso tono="neutral" className={cn(!angosto && 'mt-3')}>
+        Define {faltantes.join(', ').replace(/, ([^,]*)$/, ' y $1')} para continuar.
+      </Aviso>
+    ) : null;
+
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <EncabezadoPagina titulo="Nueva simulación" descripcion="Abre una simulación que ya esté en el servidor o configura una nueva." />
 
       <div className="min-h-0 flex-1 overflow-y-auto bg-superficie">
-        <div className="mx-auto flex w-full max-w-6xl flex-col items-stretch gap-4 p-4 sm:p-6 lg:flex-row lg:items-start">
+        <div
+          className={cn(
+            'mx-auto flex w-full max-w-6xl flex-col items-stretch gap-4 p-4 sm:p-6 lg:flex-row lg:items-start',
+            angosto && modo === 'nueva' && 'pb-28',
+          )}
+        >
           <div className="flex min-w-0 flex-1 flex-col gap-4">
             <Pestanas
               variante="segmentado"
@@ -383,33 +411,24 @@ export const ConfiguracionEscenario: React.FC<ConfiguracionEscenarioProps> = ({ 
                   etiqueta="Semáforo de holgura"
                   valor={`${NOMBRE_HOLGURA.ROJO} ${RANGO_HOLGURA.ROJO} · ${NOMBRE_HOLGURA.AMBAR} ${RANGO_HOLGURA.AMBAR}`}
                 />
-                <Boton
-                  variante="primario"
-                  tamano="lg"
-                  icono={Play}
-                  onClick={ejecutar}
-                  disabled={!listo}
-                  cargando={enviando}
-                  textoCargando="Creando simulación…"
-                  className="mt-6 w-full"
-                >
-                  Ejecutar simulación
-                </Boton>
+                {!angosto && botonEjecutar}
                 {error && (
                   <Aviso tono="critical" role="alert" className="mt-3">
                     {error}
                   </Aviso>
                 )}
-                {!listo && !enviando && faltantes.length > 0 && (
-                  <Aviso tono="neutral" className="mt-3">
-                    Define {faltantes.join(', ').replace(/, ([^,]*)$/, ' y $1')} para continuar.
-                  </Aviso>
-                )}
+                {!angosto && avisoFaltantes}
               </Tarjeta>
             </aside>
           )}
         </div>
       </div>
+      {modo === 'nueva' && angosto && (
+        <div data-barra-fija className="fixed inset-x-0 bottom-0 z-20 flex flex-col gap-2 border-t border-neutral-200 bg-superficie p-3 md:hidden">
+          {avisoFaltantes}
+          {botonEjecutar}
+        </div>
+      )}
     </div>
   );
 };

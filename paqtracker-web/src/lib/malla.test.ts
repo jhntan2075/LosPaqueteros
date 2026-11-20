@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { escalaDeEncuadre, limitarVista, pasoCuadricula, puntoEnRecorrido, tramoOrtogonal, vistaCompleta, type Lienzo } from './malla';
+import { escalaDeEncuadre, limitarVista, pasoCuadricula, puntoEnRecorrido, tramoOrtogonal, vistaCompleta, proyectar, type Lienzo } from './malla';
 
 describe('malla', () => {
   it('tramoOrtogonal avanza primero en x y luego en y', () => {
@@ -47,6 +47,30 @@ describe('malla', () => {
       expect(limitarVista({ escala, x: centro.x, y: centro.y }, lienzo)).toEqual({ escala, x: centro.x, y: centro.y });
       // Más allá: se detiene con el borde en el centro.
       expect(limitarVista({ escala, x: centro.x + 500, y: centro.y + 500 }, lienzo)).toEqual({ escala, x: centro.x, y: centro.y });
+    });
+  });
+
+  describe('llenarAlto en pantallas angostas', () => {
+    const lienzo: Lienzo = { ancho: 390, alto: 700, margen: 16 };
+
+    it('la escala hace caber la malla en el alto y la deja centrada en el almacén central', () => {
+      const normal = vistaCompleta(lienzo);
+      const lleno = vistaCompleta(lienzo, { llenarAlto: true });
+      expect(lleno.escala).toBeGreaterThan(normal.escala);
+      expect(lleno.escala).toBeCloseTo((700 - 32) / 50, 5);
+      const central = proyectar(lleno, { x: 27, y: 14 });
+      expect(central.x).toBeCloseTo(390 / 2, 5);
+    });
+
+    it('permite desplazar en X cuando la malla es más ancha que el lienzo', () => {
+      const lleno = vistaCompleta(lienzo, { llenarAlto: true });
+      const movida = limitarVista({ ...lleno, x: lleno.x - 100 }, lienzo);
+      expect(movida.x).toBe(lleno.x - 100);
+    });
+
+    it('sin lienzo vertical, llenarAlto no cambia nada', () => {
+      const ancho: Lienzo = { ancho: 1000, alto: 700, margen: 40 };
+      expect(vistaCompleta(ancho, { llenarAlto: true })).toEqual(vistaCompleta(ancho));
     });
   });
 });
