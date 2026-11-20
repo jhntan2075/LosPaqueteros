@@ -148,13 +148,13 @@ describe('Rúbrica · reporte final de la corrida', () => {
 
   it('C79 · presenta el reporte final con resultado, indicadores y parámetros de la corrida', () => {
     montarInforme();
-    expect(screen.getByRole('heading', { name: 'Informe de la corrida' })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Informe de la simulación' })).toBeTruthy();
     expect(fila('Indicadores', 'Pedidos')).toContain('4');
     expect(fila('Indicadores', 'Entregados')).toContain('1');
     expect(fila('Indicadores', 'Cumplimiento en plazo')).toContain('100,0 %');
     expect(fila('Indicadores', 'Distancia recorrida')).toContain('321 km');
     expect(fila('Resultado', 'Planificaciones')).toContain('12');
-    expect(fila('Parámetros de la corrida', 'Algoritmo')).toContain('GA');
+    expect(fila('Parámetros de la simulación', 'Algoritmo')).toContain('GA');
   });
 
   it('C79 · en el escenario de colapso el reporte marca el instante del colapso', () => {
@@ -165,8 +165,8 @@ describe('Rúbrica · reporte final de la corrida', () => {
   it('G6 / G7 / G8 · el reporte informa Ta (última planificación), Sa (salto del algoritmo) y Sc (salto del consumo)', () => {
     montarInforme();
     expect(fila('Resultado', 'Tiempo de la última planificación')).toContain('850 ms');
-    expect(fila('Parámetros de la corrida', 'Planifica cada')).toContain('30 min simulados');
-    expect(fila('Parámetros de la corrida', 'Actualiza la vista cada')).toContain('1 s reales');
-    expect(fila('Parámetros de la corrida', 'Factor de aceleración (k)')).toContain('×180');
+    expect(fila('Parámetros de la simulación', 'Planifica cada')).toContain('30 min simulados');
+    expect(fila('Parámetros de la simulación', 'Actualiza la vista cada')).toContain('1 s reales');
+    expect(fila('Parámetros de la simulación', 'Factor de aceleración (k)')).toContain('×180');
   });
 });

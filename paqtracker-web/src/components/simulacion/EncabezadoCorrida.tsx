@@ -8,8 +8,8 @@ import { ESTADO_CORRIDA } from './estadoCorrida';
 import { formatearCronometro, formatearDiasHoras, formatearFechaLarga, formatearHora } from '../../lib/formato';
 import type { EscenarioSimulacion, EstadoCorrida, MarcaAvance } from '../../types/simulacion';
 
-// Franjas superiores de la corrida (Figma "Corrida de Simulación" y "· Hasta el colapso"):
-// banda de modo (24 px), encabezado de corrida (56 px) y avance de la corrida (44 px).
+// Franjas superiores de la simulación (Figma "Corrida de Simulación" y "· Hasta el colapso"):
+// banda de modo (24 px), encabezado de corrida (56 px) y avance de la simulación (44 px).
 // No hay controles de velocidad: el factor k lo fija el servidor para todos los que observan.
 
 const DIA_MS = 24 * 3600 * 1000;
@@ -185,7 +185,7 @@ export const EncabezadoCorrida: React.FC<EncabezadoCorridaProps> = ({
         </Insignia>
         {estado !== 'EJECUCION' && (
           <Boton variante="primario" onClick={onVerInforme}>
-            Ver informe de la corrida
+            Ver informe de la simulación
           </Boton>
         )}
       </header>
@@ -195,7 +195,7 @@ export const EncabezadoCorrida: React.FC<EncabezadoCorridaProps> = ({
         titulo="¿Detener la simulación?"
         descripcion={
           <>
-            <p>La corrida se detendrá para todas las personas que la están viendo y no se podrá reanudar.</p>
+            <p>La simulación se detendrá para todas las personas que la están viendo y no se podrá reanudar.</p>
             <p>El informe conservará los resultados hasta este momento.</p>
           </>
         }
@@ -212,12 +212,12 @@ export const EncabezadoCorrida: React.FC<EncabezadoCorridaProps> = ({
         }}
       />
 
-      {/* Avance de la corrida */}
+      {/* Avance de la simulación */}
       <div className="flex h-11 items-center gap-4 border-b border-neutral-200 bg-superficie px-4 text-body-sm">
-        <span className="w-28 shrink-0 whitespace-nowrap text-neutral-600">Avance de la corrida</span>
+        <span className="w-28 shrink-0 whitespace-nowrap text-neutral-600">Avance de la simulación</span>
         {sinHorizonteFijo ? (
           <>
-            <div className="relative flex h-full flex-1 items-center" role="status" aria-label="Avance de la corrida: sin horizonte fijo, corre hasta el colapso">
+            <div className="relative flex h-full flex-1 items-center" role="status" aria-label="Avance de la simulación: sin horizonte fijo, corre hasta el colapso">
               <div className="absolute inset-x-0 h-1 rounded-full bg-neutral-200" />
               <div
                 className={cn(
@@ -233,7 +233,7 @@ export const EncabezadoCorrida: React.FC<EncabezadoCorridaProps> = ({
         ) : (
           <>
             {/* Geometría del eje (44 px de alto): pista a 20 px, rótulos de día debajo y marcas encima. */}
-            <div className="relative h-full flex-1" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={porcentaje} aria-label="Avance de la corrida">
+            <div className="relative h-full flex-1" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={porcentaje} aria-label="Avance de la simulación">
               <div className="absolute inset-x-0 top-5 h-0.5 bg-neutral-300" />
               <div className={cn('absolute left-0 top-5 h-1 -translate-y-px', rellenoAvance)} style={{ width: `${progreso * 100}%` }} />
               {Array.from({ length: diasTotales }, (_, i) => i)

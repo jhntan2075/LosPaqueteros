@@ -23,7 +23,7 @@ const CAUSA_COLAPSO: Record<NonNullable<ResultadoGuardadoApi['colapso']>['causa'
 
 const ORIGEN_DATOS: Record<ResultadoGuardadoApi['origenDatos'], string> = {
   SISTEMA: 'Pedidos del sistema',
-  ARCHIVO: 'Archivo subido para esta corrida',
+  ARCHIVO: 'Archivo subido para esta simulación',
 };
 
 const fecha = (iso: string | null) => (iso ? formatearFechaLarga(new Date(iso), false) : '—');
@@ -53,18 +53,18 @@ export const ResultadoHistorico: React.FC<ResultadoHistoricoProps> = ({ ejecucio
     <div className="flex min-h-0 flex-1 flex-col">
       <EncabezadoPagina
         titulo={ejecucion.nombre}
-        descripcion="Corrida guardada: se conserva su resultado, no el mapa."
+        descripcion="Simulación guardada: se conserva su resultado, no el mapa."
         volver={{ texto: 'Ver otras simulaciones', onClick: onSalir }}
         acciones={
           <Boton variante="primario" onClick={onSalir}>
-            Nueva corrida
+            Nueva simulación
           </Boton>
         }
       />
       <div className="min-h-0 flex-1 overflow-y-auto bg-superficie">
         {!resultado ? (
           <div className="mx-auto max-w-xl p-6">
-            <Aviso tono="warn">Esta corrida no tiene un resultado guardado.</Aviso>
+            <Aviso tono="warn">Esta simulación no tiene un resultado guardado.</Aviso>
           </div>
         ) : (
           <div className="mx-auto grid w-full max-w-6xl grid-cols-1 items-start gap-4 p-4 sm:p-6 lg:grid-cols-3">
@@ -91,7 +91,7 @@ export const ResultadoHistorico: React.FC<ResultadoHistoricoProps> = ({ ejecucio
               <Fila etiqueta="Averías atendidas" valor={String(resultado.metricas.averiasAtendidas)} />
             </Seccion>
 
-            <Seccion titulo="Parámetros de la corrida">
+            <Seccion titulo="Parámetros de la simulación">
               <Fila etiqueta="Algoritmo" valor={ejecucion.algoritmo} />
               <Fila etiqueta="Flota" valor={`${ejecucion.flota.autos} A · ${ejecucion.flota.motos} M · ${ejecucion.flota.bicicletas} B`} />
               <Fila etiqueta="Pedidos" valor={ORIGEN_DATOS[resultado.origenDatos]} />

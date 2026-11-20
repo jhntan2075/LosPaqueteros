@@ -18,12 +18,12 @@ export interface ArchivoCargado {
 }
 
 /**
- * Estado de la corrida para el encabezado: en ejecución, colapsada, completada (llegó a su horizonte)
+ * Estado de la simulación para el encabezado: en ejecución, colapsada, completada (llegó a su horizonte)
  * o detenida (alguien la detuvo antes de su horizonte).
  */
 export type EstadoCorrida = 'EJECUCION' | 'COLAPSO' | 'COMPLETADA' | 'DETENIDA';
 
-/** Marca sobre la línea de avance: minuto simulado desde el inicio de la corrida. */
+/** Marca sobre la línea de avance: minuto simulado desde el inicio de la simulación. */
 export interface MarcaAvance {
   id: string;
   minuto: number;

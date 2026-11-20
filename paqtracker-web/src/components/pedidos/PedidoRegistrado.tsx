@@ -164,7 +164,7 @@ export const PedidoRegistrado: React.FC<PedidoRegistradoProps> = ({
             </TituloGrupo>
 
             <div className="grid grid-cols-3 gap-2.5">
-              <Indicador className="min-w-0" etiqueta="Vehículo" icono={Truck} valor={<ValorKpi>{nombreVehiculo}</ValorKpi>} />
+              <Indicador className="min-w-0" etiqueta="Unidad" icono={Truck} valor={<ValorKpi>{nombreVehiculo}</ValorKpi>} />
               <Indicador
                 className="min-w-0"
                 etiqueta="Llegada estimada"

@@ -95,7 +95,7 @@ describe('Rúbrica · tiempos de la simulación', () => {
     const reloj = within(encabezado).getByText(/6 ene 2026/);
     expect(reloj.className).toContain('text-[20px]');
     // Y el avance de la corrida en días.
-    expect(screen.getByRole('progressbar', { name: 'Avance de la corrida' }).getAttribute('aria-valuenow')).toBe('22');
+    expect(screen.getByRole('progressbar', { name: 'Avance de la simulación' }).getAttribute('aria-valuenow')).toBe('22');
   });
 });
 

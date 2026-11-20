@@ -435,7 +435,7 @@ export const RegistrarPedido: React.FC<RegistrarPedidoProps> = ({ onCancelar, on
                 {/* Parámetros clave */}
                 <div className="flex flex-col border-t border-neutral-200 pt-2">
                   <FilaDato etiqueta="Almacén de origen probable" valor={evaluacion.origen.almacen.nombre} texto />
-                  <FilaDato etiqueta="Vehículo recomendado" valor={evaluacion.vehiculoSugerido} texto />
+                  <FilaDato etiqueta="Unidad recomendada" valor={evaluacion.vehiculoSugerido} texto />
                   <FilaDato
                     etiqueta="Distancia de recorrido"
                     valor={`${evaluacion.origen.km} km` + (evaluacion.minutosViaje !== null ? ` (~${evaluacion.minutosViaje} min)` : '')}
@@ -445,11 +445,11 @@ export const RegistrarPedido: React.FC<RegistrarPedidoProps> = ({ onCancelar, on
                 {/* Fraccionamiento */}
                 {evaluacion.unidadesNecesarias <= 1 ? (
                   <Aviso tono="ok" icono={CheckCircle2}>
-                    Las {cantidad} u. caben en una sola unidad: un solo viaje.
+                    Las {cantidad} paq. caben en una sola unidad: un solo viaje.
                   </Aviso>
                 ) : (
                   <Aviso tono="warn" icono={AlertTriangle}>
-                    Las {cantidad} u. no caben en una sola unidad: se repartirán en {evaluacion.unidadesNecesarias} viajes.
+                    Las {cantidad} paq. no caben en una sola unidad: se repartirán en {evaluacion.unidadesNecesarias} viajes.
                   </Aviso>
                 )}
               </>

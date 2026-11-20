@@ -181,7 +181,7 @@ const FiltroRapido: React.FC<{ activo: boolean; tono: 'critical' | 'primary'; on
 );
 
 function exportarCsv(pedidos: PedidoEnCola[]) {
-  const encabezado = ['Código', 'Cliente', 'Destino', 'Cantidad', 'Plazo', 'Hora límite', 'Salida', 'Llegada estimada', 'Holgura', 'Vehículo', 'Unidades', 'Estado'];
+  const encabezado = ['Código', 'Cliente', 'Destino', 'Cantidad', 'Plazo', 'Hora límite', 'Salida', 'Llegada estimada', 'Holgura', 'Unidad', 'Unidades', 'Estado'];
   const filas = pedidos.map((p) => [
     p.codigo,
     p.cliente,

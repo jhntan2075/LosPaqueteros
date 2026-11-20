@@ -155,7 +155,7 @@ const ListaEjecuciones: React.FC<{
 }> = ({ simulaciones, cargando, error, onRecargar, onAbrir }) => (
   <Seccion titulo="Simulaciones existentes" resumen={`${simulaciones.length} en el servidor`} resumenPendiente={simulaciones.length === 0}>
     <div className="flex items-center gap-3 text-body-sm">
-      <span className="text-neutral-600">Ábrelas desde cualquier dispositivo; todos ven la misma corrida.</span>
+      <span className="text-neutral-600">Ábrelas desde cualquier dispositivo; todos ven la misma simulación.</span>
       <Boton variante="fantasma" tamano="sm" icono={RefreshCw} onClick={onRecargar} className="ml-auto">
         Actualizar
       </Boton>
@@ -176,7 +176,7 @@ const ListaEjecuciones: React.FC<{
             <span className="truncate text-neutral-900">{e.nombre}</span>
             <span className="whitespace-nowrap tabular-nums text-neutral-600">{e.relojSimulado ?? ''}</span>
             <Boton variante="secundario" tamano="sm" iconoDerecha={ArrowRight} onClick={() => onAbrir(e)} className="ml-auto">
-              {e.historica ? 'Ver resultado' : 'Ver corrida'}
+              {e.historica ? 'Ver resultado' : 'Ver simulación'}
             </Boton>
           </div>
         ))}

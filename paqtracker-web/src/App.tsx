@@ -73,7 +73,7 @@ export default function App() {
 
   const conectado = useConexionStomp();
   const sinDatos = <EstadoConexion titulo="Operación día a día" error={diaADia.error} />;
-  // En Simulación manda el reloj de la corrida: el del día a día se oculta para no mostrar dos relojes.
+  // En Simulación manda el reloj de la simulación: el del día a día se oculta para no mostrar dos relojes.
   const relojDiaADia = datos && tabActiva !== 'simulacion' ? datos.reloj : null;
 
   return (

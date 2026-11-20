@@ -12,7 +12,7 @@ const FRACCION_HOJA = 0.48;
 
 /**
  * Presentación del mapa y su panel según el espacio real del contenedor (no del viewport: así funciona
- * igual dentro de Operación y de la corrida de Simulación):
+ * igual dentro de Operación y de la simulación):
  *  - escritorio: columna de controles, mapa, panel lateral y pestañas verticales;
  *  - tablet vertical: lo mismo, pero el panel se abre como hoja inferior;
  *  - celular (< 768 px): controles en cajón, chip de alertas, hoja inferior y pestañas al pie.

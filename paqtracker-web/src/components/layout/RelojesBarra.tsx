@@ -4,7 +4,7 @@ import { useAhora } from '../../hooks/useAhora';
 import { formatearFechaLarga } from '../../lib/formato';
 
 // Relojes de la barra superior: el de la operación día a día y el real del equipo, en una sola pieza.
-// Misma lectura que el encabezado de la corrida en Simulación (etiqueta arriba, valor abajo): la hora
+// Misma lectura que el encabezado de la simulación en Simulación (etiqueta arriba, valor abajo): la hora
 // destaca y la fecha la acompaña en la línea de la etiqueta. El reloj de la operación manda; el real es
 // referencia y se oculta en pantallas angostas.
 

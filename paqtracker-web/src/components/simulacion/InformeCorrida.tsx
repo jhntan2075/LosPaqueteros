@@ -59,7 +59,7 @@ function exportarCsv(ejecucion: EjecucionApi, estado: EstadoCorrida, datos: Dato
   setTimeout(() => URL.revokeObjectURL(enlace.href), 0);
 }
 
-// Informe de la corrida (SI-05). El frame de Figma no estuvo disponible: esta versión reúne los datos
+// Informe de la simulación (SI-05). El frame de Figma no estuvo disponible: esta versión reúne los datos
 // que el informe debe auditar con el lenguaje visual del resto del sistema. Los valores son los de la
 // última instantánea de la ejecución.
 
@@ -98,8 +98,8 @@ export const InformeCorrida: React.FC<InformeCorridaProps> = ({ ejecucion, estad
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <EncabezadoPagina
-        titulo="Informe de la corrida"
-        volver={{ texto: 'Volver a la corrida', onClick: onVolverACorrida }}
+        titulo="Informe de la simulación"
+        volver={{ texto: 'Volver a la simulación', onClick: onVolverACorrida }}
         estado={
           <Insignia tamano="md" tono={estadoCorrida.tono} punto={estadoCorrida.punto} contorno={estadoCorrida.contorno}>
             {estadoCorrida.texto}
@@ -111,7 +111,7 @@ export const InformeCorrida: React.FC<InformeCorridaProps> = ({ ejecucion, estad
               Exportar informe (CSV)
             </Boton>
             <Boton variante="primario" onClick={onNuevaCorrida}>
-              Nueva corrida
+              Nueva simulación
             </Boton>
           </>
         }
@@ -158,7 +158,7 @@ export const InformeCorrida: React.FC<InformeCorridaProps> = ({ ejecucion, estad
                 <Fila etiqueta="Distancia recorrida" valor={`${formatearMiles(Math.round(indicadores.distanciaTotalKm))} km`} />
               </SeccionInforme>
 
-              <SeccionInforme titulo="Parámetros de la corrida">
+              <SeccionInforme titulo="Parámetros de la simulación">
                 <Fila etiqueta="Inicio" valor={formatearFechaLarga(datos.relojInicio, false)} />
                 <Fila etiqueta="Algoritmo" valor={ejecucion.algoritmo} />
                 <Fila etiqueta="Flota" valor={`${ejecucion.flota.autos} A · ${ejecucion.flota.motos} M · ${ejecucion.flota.bicicletas} B`} />

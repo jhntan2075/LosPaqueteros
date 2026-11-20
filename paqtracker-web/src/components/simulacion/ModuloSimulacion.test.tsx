@@ -86,7 +86,7 @@ describe('ModuloSimulacion · abrir por URL', () => {
     render(<ModuloSimulacion />);
 
     fireEvent.click(await screen.findByRole('tab', { name: /Simulaciones existentes/ }));
-    fireEvent.click(await screen.findByRole('button', { name: /Ver corrida/ }));
+    fireEvent.click(await screen.findByRole('button', { name: /Ver simulación/ }));
 
     expect(window.location.search).toBe('?ejecucion=sim-1');
     // ConfiguracionEscenario entrega la ejecución completa: no hace falta volver a pedirla por id.
@@ -149,10 +149,10 @@ describe('ModuloSimulacion · corridas guardadas', () => {
     fireEvent.click(await screen.findByRole('tab', { name: /Simulaciones existentes/ }));
     fireEvent.click(await screen.findByRole('button', { name: /Ver resultado/ }));
 
-    expect(await screen.findByText('Corrida guardada: se conserva su resultado, no el mapa.')).toBeTruthy();
+    expect(await screen.findByText('Simulación guardada: se conserva su resultado, no el mapa.')).toBeTruthy();
     expect(screen.getByText('P-123456')).toBeTruthy();
     expect(screen.getByText('Entrega fuera de plazo')).toBeTruthy();
-    expect(screen.getByText('Archivo subido para esta corrida')).toBeTruthy();
+    expect(screen.getByText('Archivo subido para esta simulación')).toBeTruthy();
     expect(screen.getByText('18 234 km')).toBeTruthy();
   });
 
@@ -161,7 +161,7 @@ describe('ModuloSimulacion · corridas guardadas', () => {
     vi.spyOn(clienteApi, 'consultarEjecucion').mockResolvedValue(historica);
     render(<ModuloSimulacion />);
 
-    expect(await screen.findByText('Corrida guardada: se conserva su resultado, no el mapa.')).toBeTruthy();
+    expect(await screen.findByText('Simulación guardada: se conserva su resultado, no el mapa.')).toBeTruthy();
     expect(clienteApi.estado).not.toHaveBeenCalled();
     expect(clienteStomp.suscribir).not.toHaveBeenCalled();
   });

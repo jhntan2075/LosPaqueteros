@@ -129,7 +129,7 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
 
       {/* 2. Lado Derecho: Reloj, Turno, Estado de Conexión, Tema y Salir */}
       <div className="flex items-center gap-2 sm:gap-3 shrink-0 ml-2">
-        {/* Relojes de la operación día a día y real (en Simulación van en el encabezado de la corrida) */}
+        {/* Relojes de la operación día a día y real (en Simulación van en el encabezado de la simulación) */}
         {relojSimulado && <RelojesBarra operacion={relojSimulado} />}
 
         {/* Turno */}
