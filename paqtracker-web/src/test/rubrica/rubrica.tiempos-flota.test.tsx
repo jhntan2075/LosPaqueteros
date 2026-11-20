@@ -118,8 +118,8 @@ describe('Rúbrica · nivel de uso de la flota total', () => {
   it('C41 · la carga de la flota usa semáforo: ámbar para autos (83 %) y rojo para motos (100 %)', () => {
     renderConDatos(<EstadoFlota onSeleccionar={() => {}} />, datos);
     const relleno = (nombre: string) => screen.getByRole('meter', { name: nombre }).firstElementChild!.className;
-    expect(relleno('Carga a bordo de auto')).toContain('bg-[#B45309]');
-    expect(relleno('Carga a bordo de moto')).toContain('bg-[#B91C1C]');
+    expect(relleno('Carga a bordo de auto')).toContain('bg-warn-700');
+    expect(relleno('Carga a bordo de moto')).toContain('bg-critical-600');
     // La barra segmentada por estado tiene su texto alternativo con las cantidades.
     expect(screen.getByRole('img', { name: /en ruta/ }).getAttribute('aria-label')).toBe('2 en ruta, 1 disponibles, 1 averiadas');
   });

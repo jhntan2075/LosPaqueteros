@@ -117,10 +117,10 @@ describe('Rúbrica · panel · almacenes', () => {
   it('C60 · el stock del almacén usa semáforo + vacío en el panel (40 % medio, 10 % crítico) y avisa el stock bajo', () => {
     const { container } = montarOperacion();
     tocar(objetoMapa(container, 'almacen:INTERMEDIO_1')!);
-    expect(panel().getByText('40/100').className).toContain('text-[#B45309]');
+    expect(panel().getByText('40/100').className).toContain('text-warn-700');
     expect(panel().queryByText(/Stock bajo/)).toBeNull();
     tocar(objetoMapa(container, 'almacen:INTERMEDIO_2')!);
-    expect(panel().getByText('10/100').className).toContain('text-[#B91C1C]');
+    expect(panel().getByText('10/100').className).toContain('text-critical-600');
     expect(panel().getByText(/Stock bajo/)).toBeTruthy();
   });
 

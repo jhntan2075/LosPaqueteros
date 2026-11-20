@@ -13,7 +13,7 @@ import {
   nombreAveria,
 } from '../../config/glosario';
 import { useRangosSemaforo } from '../../hooks/useRangosSemaforo';
-import { NIVELES_CARGA } from '../../lib/semaforo';
+import { COLOR_SEMAFORO, NIVELES_CARGA } from '../../lib/semaforo';
 import { CAPAS, type Capa } from './capas';
 import { Boton } from '../ui';
 import { DialogoRangosSemaforo } from './DialogoRangosSemaforo';
@@ -35,9 +35,7 @@ import {
 // se dibujan (rutas, unidades, destinos, bloqueos, almacenes) y qué es cada símbolo; el detalle de cada
 // objeto está en su tooltip y en el panel lateral.
 
-const ROJO = '#B91C1C';
-const VERDE = '#15803D';
-const AMBAR = '#B45309';
+const { ROJO, VERDE, AMBAR } = COLOR_SEMAFORO;
 const GRIS = '#64748B';
 
 /**

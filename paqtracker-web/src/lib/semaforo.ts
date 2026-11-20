@@ -1,4 +1,5 @@
 import { CORTE_INVENTARIO, CORTE_OCUPACION } from '../config/dominio';
+import type { NivelHolgura } from '../types/pedidos';
 
 // Semáforo + vacío: cuánto contiene una unidad o un almacén sobre su capacidad.
 // Unidades (rúbrica): vacío = nada; verde = poco (mucho espacio); ámbar = cantidad importante; rojo = casi lleno.
@@ -45,31 +46,39 @@ export function nivelDeStock(stock: number, capacidad: number): NivelCarga {
   return 'VERDE';
 }
 
-/** Vacío en gris pizarra (contraste 4,8:1 sobre blanco): se dibuja hueco, no relleno. */
+/** Hex del tema claro (tailwind.config.js: ok-600, warn-700, critical-600). Vacío en gris pizarra: se dibuja hueco. */
 export const COLOR_SEMAFORO: Record<NivelCarga, string> = {
   VACIO: '#64748B',
-  VERDE: '#15803D',
-  AMBAR: '#B45309',
-  ROJO: '#B91C1C',
+  VERDE: '#12805C',
+  AMBAR: '#B44D08',
+  ROJO: '#C81E3A',
+};
+
+/** Holgura de un pedido sobre su plazo, para el mapa y su leyenda: mismos colores que la carga; cerrado en gris claro. */
+export const COLOR_HOLGURA_HEX: Record<NivelHolgura, string> = {
+  VERDE: COLOR_SEMAFORO.VERDE,
+  AMBAR: COLOR_SEMAFORO.AMBAR,
+  ROJO: COLOR_SEMAFORO.ROJO,
+  CERRADO: '#94A3B8',
 };
 
 export const TEXTO_SEMAFORO: Record<NivelCarga, string> = {
-  VACIO: 'text-[#64748B]',
-  VERDE: 'text-[#15803D]',
-  AMBAR: 'text-[#B45309]',
-  ROJO: 'text-[#B91C1C]',
+  VACIO: 'text-neutral-500',
+  VERDE: 'text-ok-600',
+  AMBAR: 'text-warn-700',
+  ROJO: 'text-critical-600',
 };
 
 export const BORDE_SEMAFORO: Record<NivelCarga, string> = {
-  VACIO: 'border-[#CBD5E1]',
-  VERDE: 'border-[#15803D]',
-  AMBAR: 'border-[#B45309]',
-  ROJO: 'border-[#B91C1C]',
+  VACIO: 'border-neutral-300',
+  VERDE: 'border-ok-600',
+  AMBAR: 'border-warn-700',
+  ROJO: 'border-critical-600',
 };
 
 export const FONDO_SEMAFORO: Record<NivelCarga, string> = {
-  VACIO: 'bg-[#64748B]',
-  VERDE: 'bg-[#15803D]',
-  AMBAR: 'bg-[#B45309]',
-  ROJO: 'bg-[#B91C1C]',
+  VACIO: 'bg-neutral-500',
+  VERDE: 'bg-ok-600',
+  AMBAR: 'bg-warn-700',
+  ROJO: 'bg-critical-600',
 };

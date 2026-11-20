@@ -2,6 +2,7 @@
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { formatearDiaMesHora } from '../../lib/formato';
+import { COLOR_SEMAFORO } from '../../lib/semaforo';
 import { clienteApi } from '../../services/clienteApi';
 import { INICIO_MS, pedidoApi } from '../../test/fabricas';
 import { MIN, datosRubrica, mensajeRubrica, objetoMapa, prepararEntornoMapa } from '../../test/rubrica/escenario';
@@ -126,7 +127,7 @@ describe('Pedido en entrega', () => {
     const pin = objetoMapa(container, 'pedido:#1001')!;
     expect(pin.querySelector('[data-marcador]')!.getAttribute('fill')).toBe('#7C3AED');
     // Los demás pines conservan el color de su holgura.
-    expect(objetoMapa(container, 'pedido:#1002')!.querySelector('[data-marcador]')!.getAttribute('fill')).toBe('#B91C1C');
+    expect(objetoMapa(container, 'pedido:#1002')!.querySelector('[data-marcador]')!.getAttribute('fill')).toBe(COLOR_SEMAFORO.ROJO);
     fireEvent.pointerMove(pin, { clientX: 10, clientY: 10 });
     expect(screen.getByRole('tooltip').textContent).toContain('Entregando ahora · A-01');
   });

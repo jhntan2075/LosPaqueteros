@@ -22,7 +22,7 @@ import {
 } from '../../lib/malla';
 import { fueraDelAlmacen, ocupacionAlmacenes, ocupacionFlota } from '../../lib/operacion';
 import { almacenPasaFiltros, cantidadFiltros, guardarFiltros, leerFiltros, SIN_FILTROS, unidadPasaFiltros, type FiltrosMapa as Filtros } from '../../lib/filtrosMapa';
-import { COLOR_SEMAFORO, NIVELES_CARGA, nivelDeOcupacion, type NivelCarga } from '../../lib/semaforo';
+import { COLOR_HOLGURA_HEX, COLOR_SEMAFORO, NIVELES_CARGA, nivelDeOcupacion, type NivelCarga } from '../../lib/semaforo';
 import { destinoResaltado, unidadesResaltadas, type SeleccionResaltable } from '../../lib/envios';
 import { COLOR_SIN_DATO, colorDeUnidad, iconoVehiculo, unidadVacia } from './iconosVehiculo';
 import type { Capa } from './capas';
@@ -203,13 +203,12 @@ const leerPreferenciaColumna = () => {
   return valor === '1' ? true : valor === '0' ? false : null;
 };
 
-const COLOR_NIVEL: Record<NivelHolgura, string> = { ROJO: '#B91C1C', AMBAR: '#B45309', VERDE: '#15803D', CERRADO: '#94A3B8' };
 const ORDEN_URGENCIA: NivelHolgura[] = ['ROJO', 'AMBAR', 'VERDE', 'CERRADO'];
 
 /** Color de la unidad según la holgura del pedido más urgente que lleva; gris si no lleva ninguno. */
 const colorHolguraDeUnidad = (u: UnidadOperacion) => {
   const nivel = ORDEN_URGENCIA.find((n) => u.paradas.some((p) => p.nivel === n));
-  return nivel ? COLOR_NIVEL[nivel] : COLOR_SIN_DATO;
+  return nivel ? COLOR_HOLGURA_HEX[nivel] : COLOR_SIN_DATO;
 };
 
 const ESTILO_BOTON_ZOOM =
@@ -812,7 +811,7 @@ function contenidoTooltip(
       titulo: `Pedido ${d.pedido}`,
       detalle: `Holgura ${d.holgura} · ${NOMBRE_HOLGURA[d.nivel].toLowerCase()}`,
       extra: entregando.length > 0 ? `Entregando ahora · ${entregando.join(', ')}` : undefined,
-      color: COLOR_NIVEL[d.nivel],
+      color: COLOR_HOLGURA_HEX[d.nivel],
       punto: d.destino,
       alzaPx: 12,
     };
@@ -1224,7 +1223,7 @@ const CapasMapa: React.FC<CapasMapaProps> = ({
               <circle r={AREA_TOQUE_DESTINO_PX / 2} fill="transparent" />
               {seleccionado && <circle r={RADIO_DESTINO[variante] * f + 4} fill="none" stroke="#1E40AF" strokeWidth="2" />}
               <g transform={escalar}>
-                <MarcadorDestino variante={variante} color={entregando ? COLOR_EN_ENTREGA : COLOR_NIVEL[d.nivel]} />
+                <MarcadorDestino variante={variante} color={entregando ? COLOR_EN_ENTREGA : COLOR_HOLGURA_HEX[d.nivel]} />
               </g>
             </g>
           );

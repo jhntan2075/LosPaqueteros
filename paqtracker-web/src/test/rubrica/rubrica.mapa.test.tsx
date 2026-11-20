@@ -398,14 +398,14 @@ describe('Rúbrica · CIERRE · indicadores globales', () => {
     // Fuera del almacén: A-01 20/24, M-01 8/8 y B-01 0/4 → 28/36 = 78 %, ámbar.
     const flota = indicadores().getByRole('button', { name: /^Carga de flota: 78 %, ocupación alta \(28 de 36\)/ });
     expect(flota.textContent).toContain('78 %');
-    expect(flota.innerHTML).toContain('text-[#B45309]');
+    expect(flota.innerHTML).toContain('text-warn-700');
   });
 
   it('G03–G04 · la ocupación de los almacenes en conjunto se ve en % y con semáforo, y abre la lista de almacenes', () => {
     montarOperacion();
     // Intermedios: 40/100 y 10/100 → 50/200 = 25 %, stock medio (ámbar: entre 20 % y 50 %).
     const almacenes = indicadores().getByRole('button', { name: /^Stock de almacenes: 25 %, stock medio \(50 de 200\)/ });
-    expect(almacenes.innerHTML).toContain('text-[#B45309]');
+    expect(almacenes.innerHTML).toContain('text-warn-700');
     fireEvent.click(almacenes);
     expect(screen.getByRole('region', { name: 'Lista de almacenes' })).toBeTruthy();
   });

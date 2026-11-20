@@ -31,15 +31,9 @@ body {
 
 /* --- Tema oscuro: valores fijados por las pruebas de la rúbrica -------------------------------------
    Algunas clases y atributos llevan el color escrito porque las pruebas de la rúbrica los buscan tal cual
-   (`text-[#15803D]`, `path[stroke="#1E40AF"]`…) y no se pueden cambiar. En el tema claro rigen esos
+   (`bg-[#1E40AF]`, `path[stroke="#1E40AF"]`…) y no se pueden cambiar. En el tema claro rigen esos
    valores; en el oscuro, CSS los reemplaza (una regla CSS manda sobre un atributo de presentación SVG). */
 
-/* Semáforo de carga en texto y bordes (lib/semaforo.ts): mismo tono, más brillo sobre fondo oscuro. */
-:root.oscuro .text-\[\#64748B\] { color: #94A3B8; }
-:root.oscuro .text-\[\#15803D\] { color: #4ADE80; }
-:root.oscuro .text-\[\#B45309\] { color: #FBA04B; }
-:root.oscuro .text-\[\#B91C1C\] { color: #F87171; }
-:root.oscuro .border-\[\#CBD5E1\] { border-color: #3C4A64; }
 /* Hito más reciente de la trazabilidad (Operación). */
 :root.oscuro .bg-\[\#1E40AF\] { background-color: #6F96FF; }
 
