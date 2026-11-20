@@ -19,7 +19,7 @@ interface EncabezadoPaginaProps {
 
 export const EncabezadoPagina: React.FC<EncabezadoPaginaProps> = ({ titulo, descripcion, volver, estado, acciones, children }) => (
   <header className="flex min-h-16 shrink-0 flex-wrap items-center gap-x-4 gap-y-2 border-b border-neutral-200 bg-superficie px-4 py-3 sm:px-6">
-    <div className="flex min-w-0 flex-1 flex-col gap-1">
+    <div className="flex min-w-0 basis-full flex-col gap-1 md:basis-auto md:flex-1">
       {volver && (
         <Boton
           variante="fantasma"
@@ -39,6 +39,6 @@ export const EncabezadoPagina: React.FC<EncabezadoPaginaProps> = ({ titulo, desc
       {descripcion && <p className="text-body text-neutral-600">{descripcion}</p>}
       {children}
     </div>
-    {acciones && <div className="flex flex-wrap items-center gap-2">{acciones}</div>}
+    {acciones && <div className="flex w-full flex-wrap items-center gap-2 md:w-auto [&>*]:flex-1 md:[&>*]:flex-none">{acciones}</div>}
   </header>
 );
