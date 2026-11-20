@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ALMACENES, DURACIONES_AVERIA, UNIDADES } from '../../config/dominio';
 import { TIPO_AVERIA } from '../../config/glosario';
@@ -116,5 +116,25 @@ describe('ModuloConfiguracion (B02, B04, B07-B09)', () => {
 
     await waitFor(() => expect(reiniciar).toHaveBeenCalledTimes(1));
     await waitFor(() => expect(screen.queryByRole('button', { name: /Aplicar a la operación día a día/ })).toBeNull());
+  });
+
+  it('descartar cambios pide confirmación y no descarta hasta confirmar', async () => {
+    render(<ModuloConfiguracion />);
+
+    const velocidad = (await screen.findByLabelText('Velocidad', { selector: '#unidad-1-velocidad' })) as HTMLInputElement;
+    fireEvent.change(velocidad, { target: { value: '30' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Descartar cambios' }));
+
+    expect(screen.getByRole('alertdialog', { name: '¿Descartar los cambios?' })).toBeTruthy();
+    expect(velocidad.value).toBe('30');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }));
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    expect(velocidad.value).toBe('30');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Descartar cambios' }));
+    fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Descartar cambios' }));
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    expect(velocidad.value).toBe('25');
   });
 });

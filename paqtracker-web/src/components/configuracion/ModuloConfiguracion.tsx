@@ -102,7 +102,26 @@ const CAMPOS_AVERIA: { campo: keyof ParametrosAveriaApi; etiqueta: string; ayuda
   { campo: 'trasvaseMinutos', etiqueta: 'Trasvase de carga a otra unidad', ayuda: 'En el punto de la avería.' },
 ];
 
-type Confirmacion = 'restablecer' | 'aplicar' | null;
+type Confirmacion = 'restablecer' | 'aplicar' | 'descartar' | null;
+
+const TEXTOS_CONFIRMACION = {
+  aplicar: {
+    titulo: '¿Aplicar a la operación día a día?',
+    descripcion:
+      'La operación se reinicia desde el minuto actual con los parámetros vigentes: todas las unidades parten del almacén central y los pedidos registrados se replanifican.',
+    textoConfirmar: 'Aplicar y reiniciar',
+  },
+  restablecer: {
+    titulo: '¿Restablecer los valores por defecto?',
+    descripcion: 'Se descartan los almacenes, unidades y averías configurados y rigen otra vez los valores originales para las simulaciones nuevas.',
+    textoConfirmar: 'Restablecer',
+  },
+  descartar: {
+    titulo: '¿Descartar los cambios?',
+    descripcion: 'Se perderán los cambios que no guardaste.',
+    textoConfirmar: 'Descartar cambios',
+  },
+} as const;
 
 const DESCRIPCION =
   'Los cambios rigen para las simulaciones que se creen después de guardar; las que están en curso conservan sus valores. La operación día a día los toma al aplicarlos.';
@@ -184,6 +203,11 @@ export const ModuloConfiguracion: React.FC = () => {
   };
 
   const confirmar = async () => {
+    if (confirmacion === 'descartar') {
+      if (guardados) tomarGuardados(guardados);
+      setConfirmacion(null);
+      return;
+    }
     setEnCurso(true);
     setErrorConfirmacion(null);
     try {
@@ -398,7 +422,7 @@ export const ModuloConfiguracion: React.FC = () => {
             >
               Restablecer valores por defecto
             </Boton>
-            <Boton variante="secundario" onClick={() => guardados && tomarGuardados(guardados)} disabled={!hayCambios || enCurso} className="ml-auto">
+            <Boton variante="secundario" onClick={() => setConfirmacion('descartar')} disabled={!hayCambios || enCurso} className="ml-auto">
               Descartar cambios
             </Boton>
             <Boton
@@ -417,13 +441,10 @@ export const ModuloConfiguracion: React.FC = () => {
 
       <DialogoConfirmacion
         abierto={confirmacion !== null}
-        titulo={confirmacion === 'aplicar' ? '¿Aplicar a la operación día a día?' : '¿Restablecer los valores por defecto?'}
-        descripcion={
-          confirmacion === 'aplicar'
-            ? 'La operación se reinicia desde el minuto actual con los parámetros vigentes: todas las unidades parten del almacén central y los pedidos registrados se replanifican.'
-            : 'Se descartan los almacenes, unidades y averías configurados y rigen otra vez los valores originales para las simulaciones nuevas.'
-        }
-        textoConfirmar={confirmacion === 'aplicar' ? 'Aplicar y reiniciar' : 'Restablecer'}
+        titulo={TEXTOS_CONFIRMACION[confirmacion ?? 'restablecer'].titulo}
+        descripcion={TEXTOS_CONFIRMACION[confirmacion ?? 'restablecer'].descripcion}
+        textoConfirmar={TEXTOS_CONFIRMACION[confirmacion ?? 'restablecer'].textoConfirmar}
+        tono={confirmacion === 'aplicar' ? 'normal' : 'peligro'}
         textoEnCurso={confirmacion === 'aplicar' ? 'Reiniciando…' : 'Restableciendo…'}
         enCurso={enCurso}
         error={errorConfirmacion}
