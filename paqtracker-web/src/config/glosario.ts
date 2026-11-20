@@ -10,6 +10,14 @@ const porcentaje = (fraccion: number) => Math.round(fraccion * 1000) / 10;
 
 // Los rangos son getters: se arman al leerlos con los cortes vigentes, que el operador puede cambiar.
 
+/** Estado de una simulación: el mismo nombre en el encabezado, el informe, el historial y la lista de existentes. */
+export const NOMBRE_ESTADO_SIMULACION: Record<'EN_CURSO' | 'COMPLETADA' | 'DETENIDA' | 'COLAPSADA', string> = {
+  EN_CURSO: 'En curso',
+  COMPLETADA: 'Completada',
+  DETENIDA: 'Detenida',
+  COLAPSADA: 'Colapsada',
+};
+
 /** Nivel del semáforo de holgura. */
 export const NOMBRE_HOLGURA: Record<NivelHolgura, string> = {
   ROJO: 'Crítico',
@@ -125,7 +133,7 @@ export const nombreAveria = (tipo: 1 | 2 | 3) => `Tipo ${tipo} · ${TIPO_AVERIA[
  */
 export const NOMBRE_ESTADO_FRACCION: Record<EstadoFraccion, string> = {
   PROGRAMADA: 'Por salir',
-  EN_CAMINO: 'En camino',
+  EN_CAMINO: 'En tránsito',
   ENTREGADA: 'Entregada',
   LIBERADA: 'Liberada por avería',
 };

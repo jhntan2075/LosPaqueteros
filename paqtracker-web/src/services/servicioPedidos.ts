@@ -1,5 +1,5 @@
 import type { TipoUnidad } from '../config/dominio';
-import { formatearDiaMesHora, formatearHolgura } from '../lib/formato';
+import { formatearDiaMesHora, formatearHolguraLegible } from '../lib/formato';
 import type { PedidoApi } from '../types/api';
 import type { DatosOperacion } from '../types/operacion';
 import type { BorradorPedido, EstadoPedidoCola, PedidoEnCola, PedidoRegistrado, VehiculoAsignado } from '../types/pedidos';
@@ -30,6 +30,7 @@ export function adaptarPedidoEnCola(pedido: PedidoApi, reloj: Date): PedidoEnCol
   const vigentes = (pedido.fracciones ?? []).filter((f) => f.estado !== 'LIBERADA');
   const salidaMs = vigentes.length === 0 ? null : Math.min(...vigentes.map((f) => f.salidaMs));
   const unidades = [...new Set(vigentes.map((f) => f.unidad))];
+  const holguraMinutos = Math.round((pedido.horaLimiteMs - referencia) / MS_POR_MINUTO);
   return {
     codigo: pedido.codigo,
     cliente: pedido.cliente ?? '—',
@@ -39,8 +40,8 @@ export function adaptarPedidoEnCola(pedido: PedidoApi, reloj: Date): PedidoEnCol
     horaLimite: formatearDiaMesHora(new Date(pedido.horaLimiteMs)),
     horaLimiteMs: pedido.horaLimiteMs,
     eta: pedido.etaMs === null ? null : formatearDiaMesHora(new Date(pedido.etaMs)),
-    holgura: formatearHolgura((pedido.horaLimiteMs - referencia) / MS_POR_MINUTO),
-    holguraMinutos: Math.round((pedido.horaLimiteMs - referencia) / MS_POR_MINUTO),
+    holgura: formatearHolguraLegible(holguraMinutos),
+    holguraMinutos,
     nivelHolgura: pedido.nivelHolgura,
     vehiculo: vehiculoDeCodigo(pedido.unidad),
     estado: estadoEnCola(pedido),

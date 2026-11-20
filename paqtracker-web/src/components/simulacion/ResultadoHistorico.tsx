@@ -1,4 +1,5 @@
 import React from 'react';
+import { NOMBRE_ESTADO_SIMULACION } from '../../config/glosario';
 import { formatearFechaLarga, formatearMiles } from '../../lib/formato';
 import type { EjecucionApi, EstadoEjecucionApi, ResultadoGuardadoApi } from '../../types/api';
 import { Aviso, Boton, EncabezadoPagina, FilaDato, Tarjeta } from '../ui';
@@ -8,10 +9,11 @@ import { Aviso, Boton, EncabezadoPagina, FilaDato, Tarjeta } from '../ui';
 
 const ESTADO: Record<EstadoEjecucionApi, string> = {
   CONFIGURADA: 'Configurada',
-  EN_CURSO: 'Interrumpida',
-  PAUSADA: 'Interrumpida',
-  FINALIZADA: 'Finalizada',
-  COLAPSADA: 'Colapsada',
+  // Una corrida que ya no está en memoria no sigue avanzando: se muestra como detenida.
+  EN_CURSO: NOMBRE_ESTADO_SIMULACION.DETENIDA,
+  PAUSADA: NOMBRE_ESTADO_SIMULACION.DETENIDA,
+  FINALIZADA: NOMBRE_ESTADO_SIMULACION.COMPLETADA,
+  COLAPSADA: NOMBRE_ESTADO_SIMULACION.COLAPSADA,
 };
 
 const CAUSA_COLAPSO: Record<NonNullable<ResultadoGuardadoApi['colapso']>['causa'], string> = {

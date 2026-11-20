@@ -30,7 +30,7 @@ describe('adaptador de pedidos', () => {
     expect(pedido.estado).toBe('En tránsito');
     expect(pedido.plazoHoras).toBe(4);
     expect(pedido.holguraMinutos).toBe(60);
-    expect(pedido.holgura).toBe('01:00');
+    expect(pedido.holgura).toBe('1 h 00 min');
     expect(pedido.nivel).toBe('AMBAR');
     expect(pedido.unidad).toBe('A-01');
     expect(pedido.eta).toBe('03/03 11:00');
@@ -46,7 +46,7 @@ describe('adaptador de pedidos', () => {
 
   it('una holgura vencida es negativa', () => {
     const datos = datosOperacion({ pedidos: [pedidoApi({ horaLimiteMs: INICIO_MS - 36 * 60_000 })] });
-    expect(datos.pedidos['#1001'].holgura).toBe('-00:36');
+    expect(datos.pedidos['#1001'].holgura).toBe('36 min tarde');
   });
 });
 

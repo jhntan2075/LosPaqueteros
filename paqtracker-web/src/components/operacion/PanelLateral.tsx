@@ -4,7 +4,7 @@ import { alertaStockBajo, NOMBRE_CARGA, NOMBRE_STOCK, SITUACION_UNIDAD, etiqueta
 import { admisionDeAverias, useAveriaPendiente, useAverias } from '../../hooks/useAverias';
 import { useDatosOperacion } from '../../hooks/useDatosOperacion';
 import { useTrazabilidadPedido } from '../../hooks/useTrazabilidadPedido';
-import { capitalizar, formatearHora, formatearMomento } from '../../lib/formato';
+import { capitalizar, formatearDuracion, formatearHora, formatearMomento } from '../../lib/formato';
 import { cantidadBloqueos, distanciaDesdeOrigen, fueraDelAlmacen, pedidosEnRiesgo, unidadPorCodigo } from '../../lib/operacion';
 import { BORDE_SEMAFORO, FONDO_SEMAFORO, TEXTO_SEMAFORO, nivelDeOcupacion } from '../../lib/semaforo';
 import { turnoVigente } from '../../lib/turnos';
@@ -162,7 +162,7 @@ const DetallePedido: React.FC<{ pedido: PedidoOperacion; fraccionResaltada?: str
         </div>
         <div className="py-1 border-b border-neutral-200">
           <Dato etiqueta="Cliente" valor={pedido.cliente} />
-          <Dato etiqueta="Cantidad" valor={`${pedido.cantidad} unidades de P`} />
+          <Dato etiqueta="Cantidad" valor={`${pedido.cantidad} paquetes`} />
           <Dato etiqueta="Tipo de entrega" valor={etiquetaPlazo(pedido.plazoHoras)} />
           <Dato etiqueta="Registrado" valor={pedido.registrado} />
           <Dato etiqueta="Hora límite" valor={pedido.horaLimite} />
@@ -172,8 +172,8 @@ const DetallePedido: React.FC<{ pedido: PedidoOperacion; fraccionResaltada?: str
             <FraccionesDelPedido pedido={pedido} resaltada={fraccionResaltada} onSeleccionar={onSeleccionar} />
           ) : portadoras.length > 1 ? (
             <div className="px-3 py-1 flex flex-col gap-0.5 text-body-sm">
-              <span className="font-sans text-neutral-600">Vehículos asignados · pedido fraccionado en {portadoras.length}</span>
-              <ul aria-label="Vehículos asignados" className="flex flex-col">
+              <span className="font-sans text-neutral-600">Unidades asignadas · pedido fraccionado en {portadoras.length}</span>
+              <ul aria-label="Unidades asignadas" className="flex flex-col">
                 {portadoras.map(({ unidad: u, parada }) => (
                   <li key={u.codigo}>
                     <button
@@ -193,7 +193,7 @@ const DetallePedido: React.FC<{ pedido: PedidoOperacion; fraccionResaltada?: str
             </div>
           ) : (
             <Dato
-              etiqueta="Vehículo asignado"
+              etiqueta="Unidad asignada"
               valor={
                 unidad ? (
                   <button type="button" onClick={() => onSeleccionar({ tipo: 'vehiculo', codigo: unidad.codigo })} className="hover:underline">
@@ -534,6 +534,12 @@ const DetalleAlmacen: React.FC<{ codigo: string } & Omit<PanelLateralProps, 'sel
 /** Filas de "Pedidos en riesgo" que se muestran antes de ofrecer "ver más": con 26 en riesgo no tenía sentido listarlos todos de una. */
 const LIMITE_RIESGO_VISIBLE = 8;
 
+/** Qué se dice de un pedido en riesgo: su holgura y cuándo llega; sin unidad, cuánto falta para que venza. */
+const detalleRiesgo = (p: PedidoOperacion) => {
+  if (p.unidad !== '—') return `${p.holgura} · llega ${p.eta}`;
+  return p.holguraMinutos < 0 ? `Sin unidad asignada · ${p.holgura}` : `Sin unidad asignada · vence en ${formatearDuracion(p.holguraMinutos)}`;
+};
+
 /** Lleva la lista a la sección pedida y la marca un instante, para que el ojo la encuentre. */
 function useIrASeccion(pedido: PanelLateralProps['seccionIncidencias']) {
   const riesgoRef = useRef<HTMLElement>(null);
@@ -576,7 +582,7 @@ const ListaIncidencias: React.FC<
             key={p.codigo}
             color={p.nivel === 'ROJO' ? 'rojo' : 'ambar'}
             titulo={`${p.codigo} · ${p.unidad}`}
-            detalle={`holgura ${p.holgura} · llega ${p.eta}`}
+            detalle={detalleRiesgo(p)}
             detalleMono
             onClick={() => onSeleccionar({ tipo: 'pedido', codigo: p.codigo })}
             className="py-1.5 rounded"

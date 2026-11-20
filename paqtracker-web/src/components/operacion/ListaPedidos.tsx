@@ -27,7 +27,7 @@ import { FilaFraccion } from './FilaFraccion';
 
 const FILTROS: { valor: FiltroPedidos; etiqueta: string }[] = [
   { valor: 'TODOS', etiqueta: 'Todos' },
-  { valor: 'EN_CAMINO', etiqueta: 'En camino' },
+  { valor: 'EN_CAMINO', etiqueta: 'En tránsito' },
   { valor: 'EN_ESPERA', etiqueta: 'En espera' },
   { valor: 'POR_ENTREGAR_4H', etiqueta: `Por entregar · ${VENTANA_PANEL_HORAS} h` },
   { valor: 'ENTREGADOS_4H', etiqueta: `Entregados · ${VENTANA_PANEL_HORAS} h` },

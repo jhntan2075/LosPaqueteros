@@ -16,7 +16,7 @@ const BORDE_NIVEL: Record<NivelHolgura, string> = {
 
 interface RecuadroHolguraProps {
   nivel: NivelHolgura;
-  /** Holgura ya formateada ("02:57"). */
+  /** Holgura ya formateada ("2 h 57 min"; "1 h 07 min tarde" si ya venció). */
   holgura: string;
   holguraMinutos: number;
   plazoHoras: number;
@@ -29,12 +29,12 @@ export const RecuadroHolgura: React.FC<RecuadroHolguraProps> = ({ nivel, holgura
     <div className={cn('border rounded-control px-3 py-2 flex items-center justify-between', BORDE_NIVEL[nivel], className)}>
       <div className="flex flex-col">
         <span className="flex items-center gap-2 font-sans text-body-sm text-neutral-600">
-          <PuntoHolgura nivel={nivel} /> holgura restante
+          <PuntoHolgura nivel={nivel} /> {holguraMinutos < 0 ? 'Retraso estimado' : 'Holgura restante'}
         </span>
         <span className={`tabular-nums text-kpi ${COLOR_HOLGURA[nivel]}`}>{holgura}</span>
       </div>
       <div className="flex flex-col items-end text-body-sm">
-        <span className={`tabular-nums ${COLOR_HOLGURA[nivel]}`}>{Math.round(fraccion * 100)} % del plazo total</span>
+        {holguraMinutos >= 0 && <span className={`tabular-nums ${COLOR_HOLGURA[nivel]}`}>{Math.round(fraccion * 100)} % del plazo total</span>}
         <span className="font-sans text-neutral-600">
           {NOMBRE_HOLGURA[nivel]}
           {nivel !== 'CERRADO' && ` · ${RANGO_HOLGURA[nivel]}`}

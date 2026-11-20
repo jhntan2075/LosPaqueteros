@@ -1,6 +1,7 @@
 import React from 'react';
 import { ClipboardList, Package, Truck, Warehouse } from 'lucide-react';
 import { ALMACENES, CORTE_INVENTARIO, UNIDADES } from '../../config/dominio';
+import { NOMBRE_HOLGURA } from '../../config/glosario';
 import { capitalizar, formatearMiles } from '../../lib/formato';
 import { cn } from '../../lib/clases';
 import { estadoFlota } from '../../lib/operacion';
@@ -10,7 +11,6 @@ import { EncabezadoPagina, Indicador, Tarjeta, TituloGrupo } from '../ui';
 
 const formatoPorcentaje = (valor: number) => `${valor.toFixed(1).replace('.', ',')} %`;
 
-const NOMBRE_NIVEL: Record<NivelHolgura, string> = { ROJO: 'Crítico', AMBAR: 'Ajustado', VERDE: 'Holgado', CERRADO: 'Resuelto' };
 const COLOR_BARRA_NIVEL: Record<NivelHolgura, string> = {
   ROJO: 'bg-critical-600',
   AMBAR: 'bg-warn-500',
@@ -120,7 +120,7 @@ export const ModuloMetricas: React.FC<{ datos: DatosOperacion }> = ({ datos }) =
                 return (
                   <BarraDistribucion
                     key={nivel}
-                    etiqueta={NOMBRE_NIVEL[nivel]}
+                    etiqueta={NOMBRE_HOLGURA[nivel]}
                     pct={pct}
                     detalle={`${cantidad} (${pct.toFixed(0)} %)`}
                     color={COLOR_BARRA_NIVEL[nivel]}

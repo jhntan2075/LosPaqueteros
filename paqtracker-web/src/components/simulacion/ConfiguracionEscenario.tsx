@@ -1,7 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { ArrowRight, Play, RefreshCw } from 'lucide-react';
 import { UNIDADES } from '../../config/dominio';
-import { NOMBRE_HOLGURA, RANGO_HOLGURA } from '../../config/glosario';
+import { NOMBRE_ESTADO_SIMULACION, NOMBRE_HOLGURA, RANGO_HOLGURA } from '../../config/glosario';
 import { mensajeDeError, useEjecuciones } from '../../hooks/useEjecuciones';
 import { cn } from '../../lib/clases';
 import { formatearFechaLarga, formatearMiles } from '../../lib/formato';
@@ -23,8 +23,8 @@ const ESCENARIOS: { valor: EscenarioSimulacion; titulo: string; descripcion: str
 ];
 
 const ARCHIVOS: { tipo: TipoArchivo; etiqueta: string }[] = [
-  { tipo: 'pedidos', etiqueta: 'Pedidos (ventas.AAAAMM.txt)' },
-  { tipo: 'bloqueos', etiqueta: 'Bloqueos (bloqueo.AAMM.txt)' },
+  { tipo: 'pedidos', etiqueta: 'Pedidos (ej.: ventas.202611.txt)' },
+  { tipo: 'bloqueos', etiqueta: 'Bloqueos (ej.: bloqueo.2611.txt)' },
 ];
 
 const FLOTA = [
@@ -35,10 +35,10 @@ const FLOTA = [
 
 const ESTADO_EJECUCION: Record<EstadoEjecucionApi, { texto: string; tono: Tono; contorno?: boolean }> = {
   CONFIGURADA: { texto: 'Configurada', tono: 'neutral' },
-  EN_CURSO: { texto: 'En curso', tono: 'primary' },
+  EN_CURSO: { texto: NOMBRE_ESTADO_SIMULACION.EN_CURSO, tono: 'primary' },
   PAUSADA: { texto: 'Pausada', tono: 'warn' },
-  FINALIZADA: { texto: 'Finalizada', tono: 'ok' },
-  COLAPSADA: { texto: 'Colapsada', tono: 'critical', contorno: true },
+  FINALIZADA: { texto: NOMBRE_ESTADO_SIMULACION.COMPLETADA, tono: 'ok' },
+  COLAPSADA: { texto: NOMBRE_ESTADO_SIMULACION.COLAPSADA, tono: 'critical', contorno: true },
 };
 
 const Seccion: React.FC<{ numero?: string; titulo: string; resumen: React.ReactNode; resumenPendiente?: boolean; children: React.ReactNode }> = ({
@@ -263,7 +263,7 @@ export const ConfiguracionEscenario: React.FC<ConfiguracionEscenarioProps> = ({ 
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <EncabezadoPagina titulo="Configuración de escenario" descripcion="Abre una simulación que ya esté en el servidor o configura una nueva." />
+      <EncabezadoPagina titulo="Nueva simulación" descripcion="Abre una simulación que ya esté en el servidor o configura una nueva." />
 
       <div className="min-h-0 flex-1 overflow-y-auto bg-superficie">
         <div className="mx-auto flex w-full max-w-6xl flex-col items-stretch gap-4 p-4 sm:p-6 lg:flex-row lg:items-start">
@@ -349,8 +349,7 @@ export const ConfiguracionEscenario: React.FC<ConfiguracionEscenarioProps> = ({ 
                     />
                   ))}
                   <Aviso tono="neutral">
-                    El servidor valida cada línea con el mismo lector del planificador y guarda el archivo para su mes. Las averías se incorporan en una entrega
-                    posterior.
+                    El servidor valida cada línea con el mismo lector del planificador y guarda el archivo para su mes.
                   </Aviso>
                 </Seccion>
 
@@ -377,7 +376,7 @@ export const ConfiguracionEscenario: React.FC<ConfiguracionEscenarioProps> = ({ 
 
           {modo === 'nueva' && (
             <aside className="w-full shrink-0 lg:sticky lg:top-0 lg:w-96">
-              <Tarjeta titulo="Resumen de la corrida" divisor cuerpoClassName="flex flex-col px-5 pb-5 pt-2">
+              <Tarjeta titulo="Resumen de la simulación" divisor cuerpoClassName="flex flex-col px-5 pb-5 pt-2">
                 <FilaResumen etiqueta="Escenario" valor={ESCENARIOS.find((e) => e.valor === escenario)!.titulo} />
                 <FilaResumen etiqueta="Inicio" valor={inicioValido ? formatearFechaLarga(inicio, false) : undefined} />
                 <FilaResumen etiqueta="Pedidos" valor={resumenArchivo('pedidos')} />

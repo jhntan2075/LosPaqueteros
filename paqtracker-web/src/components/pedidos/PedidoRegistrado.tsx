@@ -147,7 +147,7 @@ export const PedidoRegistrado: React.FC<PedidoRegistradoProps> = ({
                   </span>
                 }
               />
-              <FilaDato separador etiqueta="Cantidad" valor={`${borrador.cantidad} unidades de P`} />
+              <FilaDato separador etiqueta="Cantidad" valor={`${borrador.cantidad} paquetes`} />
               <FilaDato separador etiqueta="Tipo de entrega" valor={etiquetaPlazo(borrador.plazoHoras)} texto />
               <FilaDato
                 separador

@@ -59,7 +59,7 @@ describe('Detalle de pedido', () => {
       m01: { paradas: [...m01.paradas, { codigoPedido: '#1001', destino: { x: 27, y: 24 }, cantidad: 1, etaMs: INICIO_MS + 80 * MIN }] },
     });
     montarOperacion({ datos, pedidoAEnfocar: '#1001' });
-    const lista = panel().getByRole('list', { name: 'Vehículos asignados' });
+    const lista = panel().getByRole('list', { name: 'Unidades asignadas' });
     const filas = within(lista).getAllByRole('button').map((b) => b.textContent);
     expect(filas).toHaveLength(2);
     expect(filas[0]).toMatch(/Auto A-01.*3 de \d+ paq\..*llega/);

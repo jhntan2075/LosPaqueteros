@@ -62,6 +62,7 @@ export interface Parada {
   /** Llegada estimada con fecha y hora: "04/03 22:30". */
   eta: string;
   holgura: string;
+  holguraMinutos: number;
   nivel: NivelHolgura;
 }
 

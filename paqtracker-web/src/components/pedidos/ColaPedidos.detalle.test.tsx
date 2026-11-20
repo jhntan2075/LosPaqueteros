@@ -44,9 +44,9 @@ const abrirDetalle = async () => {
 describe('Pedidos · detalle del pedido', () => {
   it('lista todas las unidades de un pedido fraccionado, sin las liberadas por avería', async () => {
     const detalle = await abrirDetalle();
-    expect(detalle.getByText('Vehículos asignados')).toBeTruthy();
+    expect(detalle.getByText('Unidades asignadas')).toBeTruthy();
     expect(detalle.getByText('pedido fraccionado en 2')).toBeTruthy();
-    const filas = within(detalle.getByRole('list', { name: 'Vehículos asignados' })).getAllByRole('listitem');
+    const filas = within(detalle.getByRole('list', { name: 'Unidades asignadas' })).getAllByRole('listitem');
     expect(filas[0].textContent).toContain('21 de 45 paq.');
     expect(filas.map((f) => f.textContent)).toEqual([expect.stringContaining('Auto A-07'), expect.stringContaining('Auto A-01')]);
     expect(detalle.queryByText(/M-02/)).toBeNull();
@@ -54,14 +54,14 @@ describe('Pedidos · detalle del pedido', () => {
 
   it('las filas de unidades son de solo lectura (no se presentan como botones)', async () => {
     const detalle = await abrirDetalle();
-    const lista = detalle.getByRole('list', { name: 'Vehículos asignados' });
+    const lista = detalle.getByRole('list', { name: 'Unidades asignadas' });
     expect(within(lista).queryAllByRole('button')).toHaveLength(0);
   });
 
   it('un pedido sin despachar dice que aún no tiene unidad', async () => {
     vi.spyOn(clienteApi, 'listarPedidos').mockResolvedValue([{ ...fraccionado, estado: 'REGISTRADO', unidad: null, etaMs: null, fracciones: [] }]);
     const detalle = await abrirDetalle();
-    expect(detalle.getByText('Vehículo asignado')).toBeTruthy();
+    expect(detalle.getByText('Unidad asignada')).toBeTruthy();
     expect(detalle.getByText(/Sin asignar/)).toBeTruthy();
   });
 });

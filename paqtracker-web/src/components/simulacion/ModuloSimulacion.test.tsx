@@ -48,7 +48,7 @@ afterEach(() => {
 describe('ModuloSimulacion · abrir por URL', () => {
   it('sin ?ejecucion en la URL, muestra la configuración de escenario', async () => {
     render(<ModuloSimulacion />);
-    expect(await screen.findByText('Configuración de escenario')).toBeTruthy();
+    expect(await screen.findByRole('heading', { name: 'Nueva simulación' })).toBeTruthy();
   });
 
   it('con ?ejecucion=<id> en la URL, busca esa corrida y, mientras llega, lo dice', () => {
@@ -75,7 +75,7 @@ describe('ModuloSimulacion · abrir por URL', () => {
     expect(screen.queryByText('Abriendo…')).toBeNull();
 
     screen.getByRole('button', { name: 'Ver otras simulaciones' }).click();
-    expect(await screen.findByText('Configuración de escenario')).toBeTruthy();
+    expect(await screen.findByRole('heading', { name: 'Nueva simulación' })).toBeTruthy();
     // Solo se quita "ejecucion" de la URL: "tab" se queda, porque se sigue viendo Simulación.
     expect(window.location.search).toBe('?tab=simulacion');
   });

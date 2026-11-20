@@ -181,7 +181,7 @@ const FiltroRapido: React.FC<{ activo: boolean; tono: 'critical' | 'primary'; on
 );
 
 function exportarCsv(pedidos: PedidoEnCola[]) {
-  const encabezado = ['ID', 'Cliente', 'Destino', 'Cantidad', 'Plazo', 'Hora límite', 'Salida', 'Llegada estimada', 'Holgura', 'Vehículo', 'Unidades', 'Estado'];
+  const encabezado = ['Código', 'Cliente', 'Destino', 'Cantidad', 'Plazo', 'Hora límite', 'Salida', 'Llegada estimada', 'Holgura', 'Vehículo', 'Unidades', 'Estado'];
   const filas = pedidos.map((p) => [
     p.codigo,
     p.cliente,
@@ -372,7 +372,7 @@ export const ColaPedidos: React.FC<{
               />
 
               <SelectFiltro
-                label="Vehículo"
+                label="Unidad"
                 valor={filtros.vehiculo}
                 activo={filtros.vehiculo !== TODOS}
                 opciones={[
@@ -415,7 +415,7 @@ export const ColaPedidos: React.FC<{
                   <th className={CELDA}>Salida</th>
                   <th className={CELDA}>Llegada estimada</th>
                   <EncabezadoOrdenable campo="holgura" orden={orden} onOrdenar={alternarOrden}>Holgura</EncabezadoOrdenable>
-                  <th className={CELDA}>Vehículo</th>
+                  <th className={CELDA}>Unidad</th>
                   <EncabezadoOrdenable campo="estado" orden={orden} onOrdenar={alternarOrden}>Estado</EncabezadoOrdenable>
                   <th className="w-10 px-3 py-2 text-center">
                     <span className="sr-only">Abrir detalle</span>
@@ -443,7 +443,7 @@ export const ColaPedidos: React.FC<{
                     <td className={cn(CELDA, 'tabular-nums text-neutral-600')}>
                       {pedido.destino ? `(${pedido.destino.x}, ${pedido.destino.y})` : '—'}
                     </td>
-                    <td className={cn(CELDA, 'text-right font-medium tabular-nums text-neutral-700')}>{pedido.cantidad} u.</td>
+                    <td className={cn(CELDA, 'text-right font-medium tabular-nums text-neutral-700')}>{pedido.cantidad} paq.</td>
                     <td className={CELDA}>
                       <Insignia tono={esPlazoRegular(pedido.plazoHoras) ? 'neutral' : 'warn'}>{etiquetaPlazo(pedido.plazoHoras)}</Insignia>
                     </td>

@@ -167,18 +167,18 @@ export const DetallePedido: React.FC<DetallePedidoProps> = ({ pedido, ejecucionI
           <Tarjeta cuerpoClassName="flex flex-col gap-1 p-4">
             <TituloGrupo>Pedido</TituloGrupo>
             <div className="flex flex-col">
-              <FilaDato separador etiqueta="Cantidad" valor={`${pedido.cantidad} unidades de P`} />
-              {pedido.destino && <FilaDato separador etiqueta="Destino (malla)" valor={`(${pedido.destino.x}, ${pedido.destino.y})`} />}
+              <FilaDato separador etiqueta="Cantidad" valor={`${pedido.cantidad} paquetes`} />
+              {pedido.destino && <FilaDato separador etiqueta="Destino" valor={`(${pedido.destino.x}, ${pedido.destino.y})`} />}
             </div>
           </Tarjeta>
 
           {/* 4. Reparto: todos los vehículos que llevan el pedido. */}
           <Tarjeta cuerpoClassName="flex flex-col gap-1 p-4">
             <TituloGrupo derecha={unidadesDistintas > 1 ? `pedido fraccionado en ${unidadesDistintas}` : undefined}>
-              {unidadesDistintas > 1 ? 'Vehículos asignados' : 'Vehículo asignado'}
+              {unidadesDistintas > 1 ? 'Unidades asignadas' : 'Unidad asignada'}
             </TituloGrupo>
             {fracciones.length > 0 ? (
-              <ul aria-label="Vehículos asignados" className="flex flex-col divide-y divide-dashed divide-neutral-200">
+              <ul aria-label="Unidades asignadas" className="flex flex-col divide-y divide-dashed divide-neutral-200">
                 {fracciones.map((f) => (
                   <FilaVehiculo key={f.codigo} fraccion={f} cantidadPedido={pedido.cantidad} />
                 ))}

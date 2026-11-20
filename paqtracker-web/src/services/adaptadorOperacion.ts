@@ -1,4 +1,4 @@
-import { formatearDiaMesHora, formatearHolgura, formatearHora } from '../lib/formato';
+import { formatearDiaMesHora, formatearHolguraLegible, formatearHora } from '../lib/formato';
 import { longitudRecorrido, puntoEnRecorrido } from '../lib/malla';
 import { nivelDeStock } from '../lib/semaforo';
 import type {
@@ -118,7 +118,7 @@ export function adaptarPedido(pedido: PedidoEnMapaApi, ahoraMs: number): PedidoO
     registrado: fechaYHora(pedido.registroMs),
     horaLimite: fechaYHora(pedido.horaLimiteMs),
     eta: pedido.etaMs === null ? '—' : fechaYHora(pedido.etaMs),
-    holgura: formatearHolgura(holguraMinutos),
+    holgura: formatearHolguraLegible(holguraMinutos),
     holguraMinutos,
     nivel: pedido.nivelHolgura,
     estado: ESTADO_PEDIDO[pedido.estado],
@@ -171,12 +171,14 @@ function adaptarUnidad(unidad: UnidadEnMapaApi, pedidos: Record<string, PedidoOp
   const kmPorRecorrer = longitudRecorrido(ruta);
   const paradas: Parada[] = unidad.paradas.map((parada) => {
     const pedido = pedidos[parada.codigoPedido];
+    const holguraMinutos = pedido?.holguraMinutos ?? 0;
     return {
       pedido: parada.codigoPedido,
       destino: coordenada(parada.destino),
       cantidad: parada.cantidad,
       eta: fechaYHora(parada.etaMs),
-      holgura: formatearHolgura(pedido?.holguraMinutos ?? 0),
+      holgura: formatearHolguraLegible(holguraMinutos),
+      holguraMinutos,
       nivel: pedido?.nivel ?? 'VERDE',
     };
   });

@@ -69,7 +69,7 @@ describe('riesgo de pedidos', () => {
   });
 
   it('resume el riesgo con la holgura mínima', () => {
-    expect(resumenRiesgo(datos)).toEqual({ rojo: 1, ambar: 1, holguraMinima: '00:10' });
+    expect(resumenRiesgo(datos)).toEqual({ rojo: 1, ambar: 1, holguraMinima: '10 min' });
   });
 
   it('sin pedidos en riesgo la holgura mínima es "—"', () => {

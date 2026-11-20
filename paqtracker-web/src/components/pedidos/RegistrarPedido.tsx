@@ -265,7 +265,7 @@ export const RegistrarPedido: React.FC<RegistrarPedidoProps> = ({ onCancelar, on
             {/* Cantidad de unidades */}
             <Campo
               htmlFor="pedido-cantidad"
-              etiqueta="Cantidad a transportar (unidades de P)"
+              etiqueta="Cantidad (paquetes)"
               obligatorio
               ayuda={`Capacidad por unidad: ${CAPACIDADES}. Si no cabe en una, se reparte en varios viajes.`}
             >
@@ -287,7 +287,7 @@ export const RegistrarPedido: React.FC<RegistrarPedidoProps> = ({ onCancelar, on
                   value={cantidadTexto}
                   onChange={(e) => setCantidadTexto(e.target.value)}
                   onBlur={() => cantidadTexto !== '' && !cantidadValida && cambiarCantidad(cantidad)}
-                  aria-label="Cantidad de unidades de P"
+                  aria-label="Cantidad de paquetes"
                   aria-describedby="pedido-cantidad-ayuda"
                   className={`h-full min-w-0 flex-1 bg-transparent text-center text-title-sm tabular-nums text-neutral-900 outline-none ${SIN_SPINNER}`}
                 />

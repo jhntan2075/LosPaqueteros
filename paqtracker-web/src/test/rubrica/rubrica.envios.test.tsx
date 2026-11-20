@@ -147,7 +147,7 @@ describe('Rúbrica 91.EvaSw · envíos del almacén', () => {
 
   it('E20 · lista los envíos en camino que salieron del almacén, con su unidad y llegada', () => {
     const envios = abrirCentral();
-    expect(envios.getByRole('tab', { name: 'En camino (2)' }).getAttribute('aria-selected')).toBe('true');
+    expect(envios.getByRole('tab', { name: 'En tránsito (2)' }).getAttribute('aria-selected')).toBe('true');
     const filas = envios.getAllByRole('listitem').map((li) => li.textContent);
     expect(filas[0]).toMatch(/#1001.*3 paq\..*A-01.*llega \d{2}:\d{2} · en 30 min/);
     expect(filas[1]).toMatch(/#1002·2.*2 paq\..*A-01/);

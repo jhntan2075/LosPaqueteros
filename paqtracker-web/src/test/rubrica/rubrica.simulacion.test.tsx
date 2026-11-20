@@ -77,7 +77,7 @@ describe('Rúbrica · carga de datos por GUI', () => {
       .mockResolvedValue({ mes: '202603', registrosValidos: 1234, lineasInvalidas: [], guardado: true, lote: 'corrida-abc' } as never);
     render(<ConfiguracionEscenario onAbrir={() => {}} />);
     const archivo = new File(['01d00h05m:10,20,c001,3,24\n'], 'ventas.202603.txt', { type: 'text/plain' });
-    fireEvent.change(screen.getByLabelText('Pedidos (ventas.AAAAMM.txt)'), { target: { files: [archivo] } });
+    fireEvent.change(screen.getByLabelText('Pedidos (ej.: ventas.202611.txt)'), { target: { files: [archivo] } });
 
     await waitFor(() => expect(subir).toHaveBeenCalledWith(archivo, '202603'));
     expect(await screen.findByText(/Listo para esta simulación \(mes 202603\); no reemplaza los pedidos del sistema/)).toBeTruthy();
@@ -93,7 +93,7 @@ describe('Rúbrica · carga de datos por GUI', () => {
       lote: 'corrida-abc',
     } as never);
     render(<ConfiguracionEscenario onAbrir={() => {}} />);
-    fireEvent.change(screen.getByLabelText('Pedidos (ventas.AAAAMM.txt)'), { target: { files: [new File(['x'], 'ventas.202603.txt')] } });
+    fireEvent.change(screen.getByLabelText('Pedidos (ej.: ventas.202611.txt)'), { target: { files: [new File(['x'], 'ventas.202603.txt')] } });
     await screen.findByText(/Listo para esta simulación/);
     fireEvent.change(screen.getByLabelText(/Fecha de inicio/), { target: { value: '2026-03-03' } });
     fireEvent.click(botonEjecutar());
@@ -113,7 +113,7 @@ describe('Rúbrica · carga de datos por GUI', () => {
   it('G11 · un archivo de pedidos con líneas inválidas se informa y no se guarda', async () => {
     vi.spyOn(clienteApi, 'subirVentas').mockResolvedValue({ mes: '202603', registrosValidos: 1, lineasInvalidas: [2, 7], guardado: false } as never);
     render(<ConfiguracionEscenario onAbrir={() => {}} />);
-    fireEvent.change(screen.getByLabelText('Pedidos (ventas.AAAAMM.txt)'), { target: { files: [new File(['x'], 'ventas.202603.txt')] } });
+    fireEvent.change(screen.getByLabelText('Pedidos (ej.: ventas.202611.txt)'), { target: { files: [new File(['x'], 'ventas.202603.txt')] } });
     expect(await screen.findByText(/2 líneas no respetan el formato \(línea 2, 7\)/)).toBeTruthy();
     fireEvent.change(screen.getByLabelText(/Fecha de inicio/), { target: { value: '2026-03-03' } });
     expect(botonEjecutar().disabled).toBe(true);

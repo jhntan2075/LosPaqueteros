@@ -138,7 +138,7 @@ export const EnviosAlmacen: React.FC<{ almacen: IdAlmacen; onSeleccionar: (selec
   const desde = formatearHora(new Date(datos.reloj.getTime() - VENTANA_PANEL_HORAS * 3_600_000));
   const elegir = (f: Fraccion) => onSeleccionar({ tipo: 'fraccion', codigo: f.codigo, pedido: f.pedido, unidad: f.unidad });
   const opciones: { valor: Vista; etiqueta: string }[] = [
-    { valor: 'enCamino', etiqueta: `En camino (${envios.enCamino.length})` },
+    { valor: 'enCamino', etiqueta: `En tránsito (${envios.enCamino.length})` },
     { valor: 'porSalir', etiqueta: `Por salir · ${VENTANA_PANEL_HORAS} h (${envios.porSalir.length})` },
     { valor: 'entregadas', etiqueta: `Entregados · ${VENTANA_PANEL_HORAS} h (${envios.entregadas.length})` },
   ];
