@@ -15,6 +15,8 @@ export interface FooterBarProps {
   conectado?: boolean;
   /** Reemplaza "actualizado hace N s" (p. ej. "mapa congelado al detectar el colapso"). */
   estadoAlerta?: string;
+  /** false: la antigüedad del dato ya se muestra en la barra superior (día a día). */
+  mostrarActualizacion?: boolean;
 }
 
 const SEGUNDOS_SIN_ACTUALIZAR = 10;
@@ -32,6 +34,7 @@ export const FooterBar: React.FC<FooterBarProps> = ({
   segundosDesdeActualizacion = 0,
   conectado = true,
   estadoAlerta,
+  mostrarActualizacion = true,
 }) => {
   // El estado llega cada Sc (1 s): pasado el umbral sin instantáneas, el dato ya no es "en vivo".
   const desfasado = segundosDesdeActualizacion >= SEGUNDOS_SIN_ACTUALIZAR;
@@ -125,7 +128,7 @@ export const FooterBar: React.FC<FooterBarProps> = ({
         <div className="w-px h-3.5 bg-neutral-200"></div>
 
         {/* Antigüedad del último dato recibido */}
-        {estadoAlerta ? (
+        {!mostrarActualizacion ? null : estadoAlerta ? (
           <div className="flex items-center gap-1.5">
             <span className="size-1.5 bg-critical-600 rounded-full"></span>
             <span className="text-neutral-600 font-sans text-body-sm">{estadoAlerta}</span>
@@ -134,7 +137,7 @@ export const FooterBar: React.FC<FooterBarProps> = ({
           <div className="flex items-center gap-1.5">{actualizacion}</div>
         )}
 
-        <div className="w-px h-3.5 bg-neutral-200"></div>
+        {mostrarActualizacion && <div className="w-px h-3.5 bg-neutral-200"></div>}
         {/* Versión del front y commit del build (A01): permite comprobar qué versión se está evaluando. */}
         <span className="text-neutral-600 font-sans text-body-sm tabular-nums" title={`Commit ${__APP_COMMIT__}`}>
           v{__APP_VERSION__} · {__APP_COMMIT__}

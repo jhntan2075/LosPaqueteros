@@ -5,7 +5,6 @@ import { useControlEjecucion } from '../../hooks/useEjecuciones';
 import { useSegundosDesde } from '../../hooks/useSegundosDesde';
 import { cantidadBloqueos, estadoFlota, fueraDelAlmacen, pedidosEnRiesgo, resumenRiesgo } from '../../lib/operacion';
 import type { EjecucionApi } from '../../types/api';
-import type { Coordenada } from '../../types/domain';
 import type { PestanaPanel } from '../../types/operacion';
 import type { EscenarioSimulacion, EstadoCorrida, MarcaAvance } from '../../types/simulacion';
 import { EstadoConexion } from '../layout/EstadoConexion';
@@ -14,6 +13,7 @@ import { GridMap, type DestinoMapa, type GridMapHandle } from '../map/GridMap';
 import { BarraPaneles } from '../operacion/BarraPaneles';
 import { PanelLateral } from '../operacion/PanelLateral';
 import { useNavegacionPanel } from '../../hooks/useNavegacionPanel';
+import { usePresentacionMapa } from '../../hooks/usePresentacionMapa';
 import { Boton } from '../ui';
 import { DiagnosticoColapso } from './DiagnosticoColapso';
 import { EncabezadoCorrida } from './EncabezadoCorrida';
@@ -59,7 +59,9 @@ const CorridaEnVivo: React.FC<CorridaSimulacionProps & { recibidoEnMs: number }>
   const [verInforme, setVerInforme] = useState(false);
   // El diagnóstico se abre solo al detectar el colapso; el usuario puede cerrarlo y reabrirlo.
   const [diagnosticoCerrado, setDiagnosticoCerrado] = useState(false);
-  const [nodo, setNodo] = useState<Coordenada>({ x: 19, y: 9 });
+  const mainRef = useRef<HTMLElement>(null);
+  const presentacion = usePresentacionMapa(mainRef, panelAbierto);
+  const panelLateral = presentacion.presentacionPanel === 'lateral';
 
   // El servidor marca FINALIZADA tanto al llegar al horizonte como al detenerla: se distingue por el avance.
   const llegoAlHorizonte = datos.transcurridoSimuladoMs >= ejecucion.dias * DIA_MS - TOLERANCIA_HORIZONTE_MS;
@@ -111,7 +113,7 @@ const CorridaEnVivo: React.FC<CorridaSimulacionProps & { recibidoEnMs: number }>
         onVerInforme={() => setVerInforme(true)}
         conectado={conectado}
       />
-      <main className="relative flex min-h-0 flex-1 bg-superficie">
+      <main ref={mainRef} className={`relative flex min-h-0 flex-1 bg-superficie ${presentacion.compacto ? 'flex-col' : ''}`}>
         <GridMap
           ref={mapaRef}
           variante="simulacion"
@@ -120,14 +122,14 @@ const CorridaEnVivo: React.FC<CorridaSimulacionProps & { recibidoEnMs: number }>
           bloqueos={datos.bloqueos}
           almacenes={datos.almacenes}
           seleccion={nav.seleccionMapa}
-          anchoPanelDerecho={panelAbierto || verDiagnostico ? ANCHO_PANEL_PX : 0}
+          anchoPanelDerecho={(panelAbierto && panelLateral) || verDiagnostico ? ANCHO_PANEL_PX : 0}
+          altoPanelInferior={presentacion.altoPanelInferior}
+          compacto={presentacion.compacto}
           riesgo={resumenRiesgo(datos)}
           onSeleccionar={nav.elegirEnMapa}
-          onAbrirIncidencias={() => seleccionar({ tipo: 'incidencias' })}
-          onAbrirAverias={() => seleccionar({ tipo: 'flota' })}
+          onAbrirIncidencias={(seccion) => seleccionar({ tipo: 'incidencias', seccion })}
           onAbrirFlota={() => seleccionar({ tipo: 'flota' })}
           onAbrirAlmacenes={() => seleccionar({ tipo: 'almacenes' })}
-          onHoverCoordenada={setNodo}
         >
           {panelAbierto && (
             <PanelLateral
@@ -139,6 +141,10 @@ const CorridaEnVivo: React.FC<CorridaSimulacionProps & { recibidoEnMs: number }>
               etiquetaVolver={nav.etiquetaVolver}
               resaltado={nav.resaltado}
               onResaltar={nav.resaltar}
+              seccionIncidencias={nav.seccionIncidencias}
+              presentacion={presentacion.presentacionPanel}
+              hojaCompleta={presentacion.hojaCompleta}
+              onAlternarHoja={presentacion.alternarHoja}
             />
           )}
           {verDiagnostico && (
@@ -163,12 +169,12 @@ const CorridaEnVivo: React.FC<CorridaSimulacionProps & { recibidoEnMs: number }>
         <BarraPaneles
           activa={panelAbierto || verDiagnostico ? nav.pestanaActiva : null}
           onSeleccionar={(tipo) => seleccionar({ tipo })}
-          conteos={{ incidencias: riesgo.length, flota: flota.averiadas.length }}
+          alertas={riesgo.length}
+          orientacion={presentacion.compacto ? 'horizontal' : 'vertical'}
         />
       </main>
       {/* Terminada la corrida el servidor deja de difundir: la antigüedad del dato ya no indica un problema. */}
       <FooterBar
-        nodoSeleccionado={nodo}
         totalPedidos={datos.resumen.total}
         entregados={datos.resumen.entregados}
         enRuta={datos.resumen.enRuta}

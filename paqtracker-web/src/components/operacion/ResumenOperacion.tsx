@@ -98,21 +98,22 @@ export const ResumenOperacion: React.FC<{ onSeleccionar: (seleccion: SeleccionPa
         <div className="mt-1">
           <TituloSeccion>Incidencias y flota</TituloSeccion>
         </div>
-        <Ficha
-          titulo="Pedidos en riesgo"
-          valor={
-            <>
-              <PuntoHolgura nivel="ROJO" />
-              <span className="text-critical-600">{riesgo.rojo}</span>
-              <PuntoHolgura nivel="AMBAR" />
-              <span className="text-warn-700">{riesgo.ambar}</span>
-            </>
-          }
-          linea1={`${riesgo.rojo} críticos · ${riesgo.ambar} ajustados`}
-          linea2={`Holgura mínima: ${riesgo.holguraMinima}`}
-          onClick={() => onSeleccionar({ tipo: 'incidencias' })}
-          esAlerta={riesgo.rojo > 0}
-        />
+        {/* El riesgo vive en Incidencias: aquí solo se enlaza, con el mismo número que las alertas del mapa. */}
+        <button
+          type="button"
+          onClick={() => onSeleccionar({ tipo: 'incidencias', seccion: 'riesgo' })}
+          className="group w-full flex items-center gap-1.5 px-2.5 py-2 rounded-card border border-neutral-200 text-left text-body-sm hover:border-primary-600 focus-visible:ring-2 focus-visible:ring-primary-600/30"
+        >
+          <PuntoHolgura nivel="ROJO" />
+          <span className="tabular-nums text-neutral-900">
+            {riesgo.rojo + riesgo.ambar} en riesgo
+            <span className="text-neutral-600"> · {riesgo.rojo} críticos · {riesgo.ambar} ajustados</span>
+          </span>
+          <span className="ml-auto flex items-center gap-1 font-medium text-primary-600 whitespace-nowrap">
+            Ver en Incidencias
+            <ArrowRight className="size-3" />
+          </span>
+        </button>
         <Ficha
           titulo="Unidades en ruta"
           valor={`${flota.enRuta} / ${flota.total}`}

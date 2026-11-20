@@ -51,16 +51,10 @@ export const CORTE_HOLGURA = {
   get ambar() { return obtenerRangos().holgura.ambar; },
 };
 
-/** Ocupación de un almacén intermedio (semáforo + vacío de la rúbrica, rojo = lleno). */
-export const CORTE_STOCK = {
-  get vacio() { return obtenerRangos().ocupacionAlmacen.vacio; },
-  get ambar() { return obtenerRangos().ocupacionAlmacen.ambar; },
-  get rojo() { return obtenerRangos().ocupacionAlmacen.rojo; },
-};
-
 /**
- * Alerta de stock bajo de un almacén intermedio (LE-078), aparte del semáforo de ocupación. La calcula
- * paqtracker-api con los mismos cortes.
+ * Stock de un almacén intermedio: colorea el almacén (rojo bajo `rojo`, ámbar bajo `ambar`, verde = lleno)
+ * y su rojo es además la alerta de stock bajo (LE-078), que paqtracker-api calcula con los mismos cortes.
+ * El grupo `ocupacionAlmacen` de los rangos ya no se usa para colorear (rojo = lleno quedó descartado).
  */
 export const CORTE_INVENTARIO = {
   get rojo() { return obtenerRangos().inventario.rojo; },

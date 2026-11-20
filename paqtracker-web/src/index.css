@@ -48,6 +48,13 @@ body {
    distinguen igual sobre fondo oscuro. */
 :root.oscuro .lienzo-mapa [fill="#F8FAFC"] { fill: #0F1729; }
 :root.oscuro .lienzo-mapa [stroke="#E2E8F0"] { stroke: #1E293B; }
+/* Cuadrícula tenue de la malla: un paso sobre el fondo, para que las rutas y los símbolos manden. */
+:root.oscuro .lienzo-mapa [stroke="#EEF2F6"] { stroke: #182235; }
+/* Rótulos grises (carga de las unidades, nombre y stock de los almacenes). */
+:root.oscuro .lienzo-mapa text[fill="#64748B"] { fill: #A3AEC2; }
+/* Destino a tiempo: anillo hueco, con el centro del color del lienzo y no blanco. */
+:root.oscuro .lienzo-mapa circle[data-marcador="VERDE"],
+:root.oscuro .lienzo-mapa circle[data-marcador="CERRADO"] { fill: #0F1729; }
 :root.oscuro .lienzo-mapa rect[stroke="#CBD5E1"] { stroke: #3C4A64; }
 :root.oscuro .lienzo-mapa text[fill="#0F172A"],
 :root.oscuro .lienzo-mapa text[fill="#475569"] { fill: #DCE1EA; }

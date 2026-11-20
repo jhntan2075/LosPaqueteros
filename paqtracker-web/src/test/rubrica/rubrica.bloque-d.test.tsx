@@ -112,7 +112,8 @@ describe('Bloque D · D11 · avería tipo 2 o 3 en el almacén central', () => {
     // Mismo nodo que el central, pero el contenido de la unidad baja una fila.
     expect(posicionEnPantalla(unidad)).toEqual(posicionEnPantalla(central));
     const desplazado = unidad.querySelector('[data-en-almacen]')!;
-    expect(posicionEnPantalla(desplazado).y).toBeGreaterThanOrEqual(26);
+    // Medio central en el mapa (13 px × 0,75 ≈ 10) + radio de la insignia (10): no se tocan.
+    expect(posicionEnPantalla(desplazado).y).toBeGreaterThanOrEqual(20);
     expect(unidad.textContent).toContain('M-02');
     expect(unidad.textContent).toMatch(/vuelve/);
   });

@@ -38,7 +38,6 @@ export default function App() {
   // Cambiar de pestaña queda en el historial (atrás vuelve a la pestaña anterior); los parámetros más
   // finos de abajo (panel, vista) se reemplazan en vez de empujar, para no llenar el historial con cada clic.
   const setTabActiva = useCallback((tab: TabModulo) => fijarTabActiva(tab, { empujar: true }), [fijarTabActiva]);
-  const [nodoHover, setNodoHover] = useState<{ x: number; y: number }>({ x: 19, y: 9 });
 
   // Sub-vista del módulo Pedidos (cola, registro y confirmación)
   const [vistaPedidos, setVistaPedidos] = useParametroUrlCerrado('vista', VISTAS_PEDIDOS_VALIDAS, 'cola');
@@ -51,7 +50,6 @@ export default function App() {
     setSubvistaOperacion(subvista);
     setTabActiva('operacion');
   };
-  const enLienzo = tabActiva === 'operacion';
 
   // Pedido que Pedidos pidió ubicar en el lienzo; Operación lo abre y lo centra, y luego se limpia.
   const [pedidoAEnfocar, setPedidoAEnfocar] = useState<string | null>(null);
@@ -86,6 +84,7 @@ export default function App() {
             tabActiva={tabActiva}
             onCambiarTab={(tab) => (tab === 'pedidos' ? abrirPedidos('cola') : setTabActiva(tab))}
             relojSimulado={relojDiaADia ? formatearFechaLarga(relojDiaADia) : undefined}
+            segundosDesdeActualizacion={relojDiaADia ? segundosActualizado : undefined}
             turno={relojDiaADia ? turnoVigente(relojDiaADia).actual : undefined}
             conectado={conectado}
           />
@@ -101,7 +100,6 @@ export default function App() {
                     <ModuloOperacion
                       subvista={subvistaOperacion}
                       onCambiarSubvista={setSubvistaOperacion}
-                      onHoverCoordenada={setNodoHover}
                       pedidoAEnfocar={pedidoAEnfocar}
                       onPedidoEnfocado={limpiarPedidoAEnfocar}
                     />
@@ -126,17 +124,18 @@ export default function App() {
                 {tabActiva === 'configuracion' && <ModuloConfiguracion />}
               </main>
 
-              {datos && !pantallaCompleta && tabActiva !== 'simulacion' && tabActiva !== 'configuracion' && (
+              {/* Operación no lleva barra inferior: sus datos ya tienen casa (alertas y ocupación en la columna
+                  del mapa, totales en el Resumen, nodo en la esquina del mapa, antigüedad del dato arriba). */}
+              {datos && !pantallaCompleta && tabActiva !== 'simulacion' && tabActiva !== 'configuracion' && tabActiva !== 'operacion' && (
                 <FooterBar
-                  nodoSeleccionado={enLienzo ? nodoHover : undefined}
                   totalPedidos={datos.resumen.total}
                   entregados={datos.resumen.entregados}
                   enRuta={datos.resumen.enRuta}
                   criticos={pedidosEnRiesgo(datos).filter((p) => p.nivel === 'ROJO').length}
                   bloqueosActivos={cantidadBloqueos(datos)}
                   averiasActivas={datos.flota.filter((u) => u.estado === 'AVERIADA').length}
-                  segundosDesdeActualizacion={segundosActualizado}
                   conectado={conectado}
+                  mostrarActualizacion={false}
                 />
               )}
             </div>

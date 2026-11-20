@@ -11,7 +11,8 @@ import { formatearFechaLarga } from '../../lib/formato';
 /** Etiqueta + fecha arriba, hora abajo. El " · " oculto deja la lectura "28 oct 2026 · 15:04:05". */
 const Reloj: React.FC<{ etiqueta: string; fecha: string; hora: string; principal?: boolean }> = ({ etiqueta, fecha, hora, principal = false }) => (
   <span className="flex flex-col justify-center">
-    <span className="whitespace-nowrap text-caption text-neutral-500">
+    {/* En el celular solo la hora: la etiqueta y la fecha quedan en el título del grupo. */}
+    <span className="hidden sm:block whitespace-nowrap text-caption text-neutral-500">
       <span className="font-semibold uppercase tracking-wide text-neutral-600">{etiqueta}</span> {fecha}
       <span className="sr-only"> · </span>
     </span>
@@ -38,8 +39,8 @@ export const RelojesBarra: React.FC<RelojesBarraProps> = ({ operacion }) => {
   const [fechaReal, horaReal] = formatearFechaLarga(ahora).split(' · ');
   return (
     <div className="flex h-10 shrink-0 items-stretch rounded-control border border-neutral-200 bg-superficie shadow-xs">
-      <div role="group" aria-label="Reloj de la operación día a día" title="Reloj de la operación día a día" className="flex items-center gap-2 pl-2.5 pr-3">
-        <Clock className="size-4 shrink-0 text-primary-600" aria-hidden="true" />
+      <div role="group" aria-label="Reloj de la operación día a día" title="Reloj de la operación día a día" className="flex items-center gap-2 px-2 sm:pl-2.5 sm:pr-3">
+        <Clock className="hidden sm:block size-4 shrink-0 text-primary-600" aria-hidden="true" />
         <Reloj etiqueta="Operación" fecha={fechaOperacion} hora={horaOperacion} principal />
       </div>
       <span className="my-2 hidden w-px bg-neutral-200 md:block" aria-hidden="true" />

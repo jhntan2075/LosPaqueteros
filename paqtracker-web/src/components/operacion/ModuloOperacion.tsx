@@ -1,23 +1,26 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useDatosOperacion } from '../../hooks/useDatosOperacion';
-import { estadoFlota, fueraDelAlmacen, resumenRiesgo } from '../../lib/operacion';
+import { cantidadBloqueos, fueraDelAlmacen, resumenRiesgo } from '../../lib/operacion';
 import type { Coordenada } from '../../types/domain';
 import { useNavegacionPanel } from '../../hooks/useNavegacionPanel';
+import { usePresentacionMapa } from '../../hooks/usePresentacionMapa';
 import type { SubvistaOperacion } from '../../types/operacion';
 import { GridMap, type DestinoMapa, type GridMapHandle } from '../map/GridMap';
 import { BarraPaneles } from './BarraPaneles';
 import { PanelLateral } from './PanelLateral';
 
-// Operación día a día: mapa en vivo de la ejecución que difunde paqtracker-api. Resumen, Incidencias,
-// Pedidos, Flota, Almacenes y Bitácora son pestañas del panel lateral sobre el mapa, elegidas desde la barra vertical fija
-// a su derecha, igual que en la corrida de simulación.
+// Operación día a día: mapa en vivo de la ejecución que difunde paqtracker-api. Cada zona tiene una sola
+// responsabilidad: la columna de la izquierda alerta y filtra, el mapa muestra, el panel detalla y actúa, y
+// la barra de pestañas solo navega. Resumen, Incidencias, Pedidos, Flota, Almacenes y Bitácora son pestañas
+// del panel, igual que en la corrida de simulación. En pantallas angostas el panel es una hoja inferior y
+// las pestañas van al pie (usePresentacionMapa).
 
 const ANCHO_PANEL_PX = 340 + 12;
 
 interface ModuloOperacionProps {
   subvista: SubvistaOperacion;
   onCambiarSubvista: (subvista: SubvistaOperacion) => void;
-  onHoverCoordenada: (coord: Coordenada) => void;
+  onHoverCoordenada?: (coord: Coordenada) => void;
   /** Pedido que otra pantalla pidió ubicar (p. ej. "Ubicar en el mapa" desde Pedidos). */
   pedidoAEnfocar?: string | null;
   /** Avisa que el pedido solicitado ya se abrió, para no reabrirlo al volver a Operación. */
@@ -45,14 +48,18 @@ export const ModuloOperacion: React.FC<ModuloOperacionProps> = ({
   // Último pedidoAEnfocar ya abierto: evita reabrirlo en cada render mientras la prop sigue viva.
   const [ultimoPedidoAEnfocar, setUltimoPedidoAEnfocar] = useState<string | null>(null);
 
-  const flota = estadoFlota(datos);
   const riesgo = resumenRiesgo(datos);
+  // Una sola cifra de alertas: la misma que suman las alertas de la columna del mapa.
+  const alertas = riesgo.rojo + riesgo.ambar + cantidadBloqueos(datos) + datos.flota.filter((u) => u.estado === 'AVERIADA').length;
   const destinos: DestinoMapa[] = useMemo(
     () => datos.flota.flatMap((u) => u.paradas.map((p) => ({ pedido: p.pedido, destino: p.destino, nivel: p.nivel, holgura: p.holgura, unidad: u.codigo }))),
     [datos.flota],
   );
   const unidadesEnMapa = datos.flota.filter(fueraDelAlmacen);
   const { panelAbierto } = nav;
+  const mainRef = useRef<HTMLElement>(null);
+  const presentacion = usePresentacionMapa(mainRef, panelAbierto);
+  const panelLateral = presentacion.presentacionPanel === 'lateral';
 
   // Pedido pedido desde otra pantalla ("Ubicar en el mapa"): se abre en cuanto cambia la prop, no solo
   // al montar (Operación ahora queda montada entre pestañas, para no perder el zoom, el panel y las
@@ -80,7 +87,7 @@ export const ModuloOperacion: React.FC<ModuloOperacionProps> = ({
 
   return (
     <div className="flex-1 flex flex-col min-h-0">
-      <main className="flex-1 relative flex min-h-0 bg-superficie">
+      <main ref={mainRef} className={`flex-1 relative flex min-h-0 bg-superficie ${presentacion.compacto ? 'flex-col' : ''}`}>
         <GridMap
           ref={mapaRef}
           unidades={unidadesEnMapa}
@@ -88,11 +95,12 @@ export const ModuloOperacion: React.FC<ModuloOperacionProps> = ({
           bloqueos={datos.bloqueos}
           almacenes={datos.almacenes}
           seleccion={nav.seleccionMapa}
-          anchoPanelDerecho={panelAbierto ? ANCHO_PANEL_PX : 0}
+          anchoPanelDerecho={panelAbierto && panelLateral ? ANCHO_PANEL_PX : 0}
+          altoPanelInferior={presentacion.altoPanelInferior}
+          compacto={presentacion.compacto}
           riesgo={riesgo}
           onSeleccionar={nav.elegirEnMapa}
-          onAbrirIncidencias={() => nav.seleccionar({ tipo: 'incidencias' })}
-          onAbrirAverias={() => nav.seleccionar({ tipo: 'flota' })}
+          onAbrirIncidencias={(seccion) => nav.seleccionar({ tipo: 'incidencias', seccion })}
           onAbrirFlota={() => nav.seleccionar({ tipo: 'flota' })}
           onAbrirAlmacenes={() => nav.seleccionar({ tipo: 'almacenes' })}
           onHoverCoordenada={onHoverCoordenada}
@@ -107,13 +115,18 @@ export const ModuloOperacion: React.FC<ModuloOperacionProps> = ({
               etiquetaVolver={nav.etiquetaVolver}
               resaltado={nav.resaltado}
               onResaltar={nav.resaltar}
+              seccionIncidencias={nav.seccionIncidencias}
+              presentacion={presentacion.presentacionPanel}
+              hojaCompleta={presentacion.hojaCompleta}
+              onAlternarHoja={presentacion.alternarHoja}
             />
           )}
         </GridMap>
         <BarraPaneles
           activa={panelAbierto ? nav.pestanaActiva : null}
           onSeleccionar={(tipo) => nav.seleccionar({ tipo })}
-          conteos={{ incidencias: riesgo.rojo + riesgo.ambar, flota: flota.averiadas.length }}
+          alertas={alertas}
+          orientacion={presentacion.compacto ? 'horizontal' : 'vertical'}
         />
       </main>
     </div>

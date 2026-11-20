@@ -10,11 +10,18 @@ Hay cuatro semáforos. Todos se guardan como fracciones entre 0 y 1, y la interf
 | Semáforo | Mide | Umbrales | Regla | Por defecto | Lo calcula |
 |---|---|---|---|---|---|
 | Holgura del pedido | holgura restante / plazo | rojo, ámbar | rojo < ámbar | 15 % / 40 % | API |
-| Stock bajo de almacén (LE-078) | stock / capacidad | rojo, ámbar | rojo < ámbar | 20 % / 50 % | API |
+| Stock de almacenes (color y alerta de stock bajo, LE-078) | stock / capacidad | rojo, ámbar | rojo < ámbar | 20 % / 50 % | API (alerta) e interfaz (color) |
 | Carga de unidades | carga / capacidad | vacío, ámbar, rojo | vacío < ámbar < rojo | 0 / 70 % / 90 % | interfaz |
-| Stock de almacenes (rojo = lleno) | stock / capacidad | vacío, ámbar, rojo | vacío < ámbar < rojo | 0 / 50 % / 80 % | interfaz |
+| Ocupación de almacenes (sin uso desde el 20-11-2026) | stock / capacidad | vacío, ámbar, rojo | vacío < ámbar < rojo | 0 / 50 % / 80 % | — |
 
 ## Decisiones
+
+0. **Color de los almacenes: verde = lleno (20-11-2026).** Se indicó que el almacén lleno debe verse en verde,
+   porque abastece: tener stock es lo correcto. El color usa los cortes del stock bajo: rojo bajo 20 %,
+   ámbar bajo 50 %, verde desde 50 %; sin stock es *vacío* (gris, hueco). Así el rojo coincide con la
+   alerta de stock bajo, que se mantiene además como insignia. Las unidades conservan su semáforo
+   (rojo = casi llena). El grupo `ocupacionAlmacen` se sigue guardando por compatibilidad con la API,
+   pero ya no colorea nada ni aparece en el diálogo.
 
 1. **Estado vacío configurable con un umbral.** La unidad o el almacén es *vacío* si su fracción es
    ≤ `vacio`. Con 0 (por defecto) solo cuenta como vacío lo que no tiene carga, como antes.

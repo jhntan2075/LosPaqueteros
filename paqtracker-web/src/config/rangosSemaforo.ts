@@ -15,9 +15,9 @@ export const RANGOS_POR_DEFECTO: RangosSemaforoApi = {
 /** Nombre visible de cada semáforo, en el mismo orden que en el diálogo. */
 export const NOMBRE_RANGO: Record<keyof RangosSemaforoApi, string> = {
   holgura: 'Holgura del pedido',
-  inventario: 'Stock bajo de almacén',
+  inventario: 'Stock de almacenes',
   ocupacionUnidad: 'Carga de unidades',
-  ocupacionAlmacen: 'Stock de almacenes',
+  ocupacionAlmacen: 'Ocupación de almacenes (sin uso)',
 };
 
 let vigentes: RangosSemaforoApi = RANGOS_POR_DEFECTO;

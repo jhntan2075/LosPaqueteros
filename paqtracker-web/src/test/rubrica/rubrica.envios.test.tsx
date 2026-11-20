@@ -99,7 +99,7 @@ function datosEnvios() {
   return datosRubrica({ unidades, pedidos, entregadosRecientes } as Partial<MensajeEstadoApi>);
 }
 
-const panel = () => within(screen.getByRole('complementary', { name: 'Incidencias, flota y bitácora' }));
+const panel = () => within(screen.getByRole('complementary', { name: 'Panel de detalle' }));
 const tocar = (elemento: Element) => {
   fireEvent.pointerDown(elemento, { button: 0, clientX: 50, clientY: 50, pointerId: 1 });
   fireEvent.pointerUp(elemento, { button: 0, clientX: 50, clientY: 50, pointerId: 1 });
@@ -114,7 +114,7 @@ describe('Rúbrica 91.EvaSw · lista de almacenes', () => {
     expect(lista.getAllByRole('listitem')).toHaveLength(3);
     const intermedio1 = fila('[data-almacen="INTERMEDIO_1"]');
     expect(intermedio1.textContent).toContain('40/100 · 40 %');
-    expect(within(intermedio1).getByRole('img', { name: 'Con espacio' })).toBeTruthy();
+    expect(within(intermedio1).getByRole('img', { name: 'Stock medio' })).toBeTruthy();
     expect(fila('[data-almacen="CENTRAL"]').textContent).toContain('Sin tope');
     // Cada fila adelanta sus envíos: el central tiene 2 en camino, 1 por salir y 1 entregado en la ventana.
     expect(fila('[data-almacen="CENTRAL"]').textContent).toContain('↗ 2 en camino · ⏱ 1 por salir · ✓ 1 entregados');
@@ -125,14 +125,14 @@ describe('Rúbrica 91.EvaSw · lista de almacenes', () => {
     tocar(objetoMapa(container, 'almacen:INTERMEDIO_2')!);
     expect(screen.getByRole('region', { name: 'Lista de almacenes' })).toBeTruthy();
     expect(fila('[data-almacen="INTERMEDIO_2"]').getAttribute('aria-current')).toBe('true');
-    expect(objetoMapa(container, 'almacen:INTERMEDIO_2')!.querySelector('circle[r="21"]')).toBeTruthy();
+    expect(objetoMapa(container, 'almacen:INTERMEDIO_2')!.querySelector('circle[r="16"]')).toBeTruthy();
   });
 
   it('F05 · lista → mapa: un clic en la fila lo resalta en el mapa; otro clic abre su detalle', () => {
     const { container } = montarOperacion({ datos: datosEnvios(), subvista: 'almacenes' });
     const boton = within(fila('[data-almacen="INTERMEDIO_1"]')).getAllByRole('button')[0];
     fireEvent.click(boton);
-    expect(objetoMapa(container, 'almacen:INTERMEDIO_1')!.querySelector('circle[r="21"]')).toBeTruthy();
+    expect(objetoMapa(container, 'almacen:INTERMEDIO_1')!.querySelector('circle[r="16"]')).toBeTruthy();
     fireEvent.click(boton);
     expect(panel().getByRole('heading', { name: 'Almacén Intermedio 1' })).toBeTruthy();
   });

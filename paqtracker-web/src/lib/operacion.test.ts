@@ -109,6 +109,7 @@ describe('ocupación global', () => {
     const almacen = (stock: number | null, capacidad: number | null) =>
       ({ id: 'INTERMEDIO_1', stock, capacidad, porcentajeStock: null, nivelStock: null, stockBajo: false }) as const;
     expect(ocupacionAlmacenes([almacen(null, null), almacen(0, 100), almacen(0, 100)])).toMatchObject({ cantidad: 0, capacidad: 200, nivel: 'VACIO' });
-    expect(ocupacionAlmacenes([almacen(90, 100), almacen(80, 100)])).toMatchObject({ nivel: 'ROJO' });
+    expect(ocupacionAlmacenes([almacen(90, 100), almacen(80, 100)])).toMatchObject({ nivel: 'VERDE' });
+    expect(ocupacionAlmacenes([almacen(10, 100), almacen(15, 100)])).toMatchObject({ nivel: 'ROJO' });
   });
 });

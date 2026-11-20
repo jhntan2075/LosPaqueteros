@@ -1,6 +1,6 @@
 import React, { useMemo, useRef, useState } from 'react';
 import { ALMACENES, type IdAlmacen } from '../../config/dominio';
-import { alertaStockBajo, NOMBRE_CARGA, STOCK_CENTRAL } from '../../config/glosario';
+import { alertaStockBajo, NOMBRE_STOCK, STOCK_CENTRAL } from '../../config/glosario';
 import { useDatosOperacion } from '../../hooks/useDatosOperacion';
 import { useDesplazarAResaltado } from '../../hooks/useDesplazarAResaltado';
 import { buscarPedido, enviosDeAlmacen, VENTANA_PANEL_HORAS, type SeleccionResaltable } from '../../lib/envios';
@@ -74,7 +74,7 @@ export const ListaAlmacenes: React.FC<ListaAlmacenesProps> = ({ resaltado, onRes
                 >
                   <span className="flex items-center gap-2 w-full">
                     {conStock && nivel ? (
-                      <MarcaSemaforo nivel={nivel} titulo={NOMBRE_CARGA[nivel]} />
+                      <MarcaSemaforo nivel={nivel} titulo={NOMBRE_STOCK[nivel]} />
                     ) : (
                       <span aria-hidden="true" className="size-2 rounded-sm bg-neutral-900 shrink-0" />
                     )}

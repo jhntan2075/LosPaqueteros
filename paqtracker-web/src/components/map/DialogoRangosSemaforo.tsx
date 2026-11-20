@@ -40,9 +40,8 @@ const CARGA: CampoUmbral[] = [
 
 const GRUPOS: DefinicionGrupo[] = [
   { grupo: 'holgura', mide: 'Holgura restante sobre el plazo del pedido. Sobre el ámbar es verde.', campos: POR_DEBAJO },
-  { grupo: 'inventario', mide: 'Stock de un intermedio sobre su capacidad: alerta de stock bajo.', campos: POR_DEBAJO },
+  { grupo: 'inventario', mide: 'Stock de un intermedio sobre su capacidad: color del almacén (lleno = verde); el rojo es además la alerta de stock bajo.', campos: POR_DEBAJO },
   { grupo: 'ocupacionUnidad', mide: 'Carga de la unidad sobre su capacidad. 0 en vacío = solo sin carga.', campos: CARGA },
-  { grupo: 'ocupacionAlmacen', mide: 'Stock de un intermedio sobre su capacidad (rojo = lleno).', campos: CARGA },
 ];
 
 const aTexto = (fraccion: number) => String(Math.round(fraccion * 1000) / 10);
@@ -58,12 +57,12 @@ function aFormulario(rangos: RangosSemaforoApi): Formulario {
   return formulario;
 }
 
-function aRangos(formulario: Formulario): RangosSemaforoApi {
+function aRangos(formulario: Formulario, base: RangosSemaforoApi): RangosSemaforoApi {
   const porDebajo = (grupo: 'holgura' | 'inventario') => ({
     rojo: aFraccion(formulario[grupo].rojo),
     ambar: aFraccion(formulario[grupo].ambar),
   });
-  const carga = (grupo: 'ocupacionUnidad' | 'ocupacionAlmacen') => ({
+  const carga = (grupo: 'ocupacionUnidad') => ({
     vacio: aFraccion(formulario[grupo].vacio),
     ambar: aFraccion(formulario[grupo].ambar),
     rojo: aFraccion(formulario[grupo].rojo),
@@ -72,7 +71,8 @@ function aRangos(formulario: Formulario): RangosSemaforoApi {
     holgura: porDebajo('holgura'),
     inventario: porDebajo('inventario'),
     ocupacionUnidad: carga('ocupacionUnidad'),
-    ocupacionAlmacen: carga('ocupacionAlmacen'),
+    // Ya no colorea nada (el almacén usa los cortes del inventario); se reenvía tal como está guardado.
+    ocupacionAlmacen: base.ocupacionAlmacen,
   };
 }
 
@@ -94,7 +94,7 @@ export const DialogoRangosSemaforo: React.FC<DialogoRangosSemaforoProps> = ({ on
     primerCampo.current?.focus();
   }, []);
 
-  const errores = validarRangos(aRangos(formulario));
+  const errores = validarRangos(aRangos(formulario, vigentes));
   const mostrarErrores = intentado && errores.length > 0;
 
   const manejarCambio = (grupo: Grupo, umbral: Umbral, valor: string) =>
@@ -104,7 +104,7 @@ export const DialogoRangosSemaforo: React.FC<DialogoRangosSemaforoProps> = ({ on
     evento.preventDefault();
     setIntentado(true);
     if (errores.length > 0) return;
-    if (await guardar(aRangos(formulario))) onCerrar();
+    if (await guardar(aRangos(formulario, vigentes))) onCerrar();
   };
 
   return (

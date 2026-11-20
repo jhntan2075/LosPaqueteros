@@ -4,6 +4,7 @@ import { X } from 'lucide-react';
 import {
   alertaStockBajo,
   NOMBRE_CARGA,
+  NOMBRE_STOCK,
   RANGO_HOLGURA,
   RANGO_OCUPACION,
   RANGO_STOCK,
@@ -25,16 +26,18 @@ import {
   InsigniaStockBajo,
   LineaBloqueo,
   MarcaBloqueo,
+  MarcadorDestino,
   MarcaSemaforo,
-  PinDestino,
 } from './simbolos';
 
-// Capas y leyenda del mapa: panel flotante y no modal, para usarlo sin dejar de ver el mapa. Qué capas
+// Capas y leyenda del mapa, desplegadas dentro de la columna de controles (o sueltas, con su botón de
+// cerrar, si se pasa onCerrar): se usan sin dejar de ver el mapa. Qué capas
 // se dibujan (rutas, unidades, destinos, bloqueos, almacenes) y qué es cada símbolo; el detalle de cada
 // objeto está en su tooltip y en el panel lateral.
 
 const ROJO = '#B91C1C';
 const VERDE = '#15803D';
+const AMBAR = '#B45309';
 const GRIS = '#64748B';
 
 /**
@@ -66,7 +69,8 @@ const Fila: React.FC<{ simbolo: React.ReactNode; nombre: string; detalle?: strin
 const NIVELES_HOLGURA: ('ROJO' | 'AMBAR' | 'VERDE')[] = ['ROJO', 'AMBAR', 'VERDE'];
 
 interface LeyendaMapaProps {
-  onCerrar: () => void;
+  /** Con valor, la leyenda lleva encabezado y botón de cerrar (uso suelto); en la columna no hace falta. */
+  onCerrar?: () => void;
   /** Qué capas se dibujan; sin valor (o sin onCambiarCapa), el panel no muestra la sección de capas. */
   capas?: Record<Capa, boolean>;
   onCambiarCapa?: (clave: Capa) => void;
@@ -77,12 +81,8 @@ export const LeyendaMapa: React.FC<LeyendaMapaProps> = ({ onCerrar, capas, onCam
   // Suscrita a los rangos: al guardarlos, la tabla de abajo muestra los nuevos sin esperar a la raíz.
   useRangosSemaforo();
   return (
-  <section
-    aria-label="Capas y leyenda"
-    data-sin-zoom
-    onPointerDown={(e) => e.stopPropagation()}
-    className="w-[280px] max-h-[calc(100vh-260px)] overflow-y-auto bg-superficie border border-neutral-200 rounded-card shadow-overlay cursor-default"
-  >
+  <section aria-label="Capas y leyenda" className="cursor-default">
+    {onCerrar && (
     <header className="h-9 pl-3 pr-2 flex items-center border-b border-neutral-200">
       <h2 className="font-semibold text-body text-neutral-900">Capas y leyenda</h2>
       <button
@@ -94,9 +94,10 @@ export const LeyendaMapa: React.FC<LeyendaMapaProps> = ({ onCerrar, capas, onCam
         <X className="size-3.5" />
       </button>
     </header>
+    )}
 
     {capas && onCambiarCapa && (
-      <fieldset className="px-3 py-2 border-b border-neutral-200 flex flex-col gap-0.5">
+      <fieldset className="py-2 border-b border-neutral-200 flex flex-col gap-0.5">
         <legend className="sr-only">Capas visibles</legend>
         {CAPAS.map(({ clave, etiqueta }) => (
           <label key={clave} className="flex items-center gap-2 py-0.5 text-body-sm font-sans text-neutral-900 cursor-pointer">
@@ -107,7 +108,7 @@ export const LeyendaMapa: React.FC<LeyendaMapaProps> = ({ onCerrar, capas, onCam
       </fieldset>
     )}
 
-    <ul className="px-3 py-2">
+    <ul className="py-2">
       <Fila simbolo={<Simbolo caja="-16 -16 32 32"><AlmacenCentral /></Simbolo>} nombre="Almacén central" />
       <Fila
         simbolo={<Simbolo caja="-14 -14 28 28"><AlmacenIntermedio color={VERDE} fraccionStock={0.6} /></Simbolo>}
@@ -141,17 +142,18 @@ export const LeyendaMapa: React.FC<LeyendaMapaProps> = ({ onCerrar, capas, onCam
           detalle={tipo === 1 ? `${SIMBOLO_AVERIA[tipo]}; anillo = lo que falta` : SIMBOLO_AVERIA[tipo]}
         />
       ))}
-      <Fila simbolo={<Simbolo caja="-14 -27 28 29"><PinDestino color={VERDE} /></Simbolo>} nombre="Destino" detalle="color = holgura" />
-      <Fila simbolo={<Simbolo caja="-14 -27 28 29"><PinDestino color={ROJO} critico /></Simbolo>} nombre="Destino crítico" />
-      <Fila simbolo={<Simbolo caja="-14 -27 28 29"><PinDestino color={COLOR_EN_ENTREGA} /></Simbolo>} nombre="Entregando ahora" detalle="la unidad está en el destino" />
+      <Fila simbolo={<Simbolo caja="-14 -11 28 22"><MarcadorDestino variante="VERDE" color={VERDE} /></Simbolo>} nombre="Destino a tiempo" detalle="anillo hueco" />
+      <Fila simbolo={<Simbolo caja="-14 -11 28 22"><MarcadorDestino variante="AMBAR" color={AMBAR} /></Simbolo>} nombre="Destino en alerta" />
+      <Fila simbolo={<Simbolo caja="-14 -11 28 22"><MarcadorDestino variante="ROJO" color={ROJO} /></Simbolo>} nombre="Destino crítico" detalle="más grande, con «!»" />
+      <Fila simbolo={<Simbolo caja="-14 -11 28 22"><MarcadorDestino variante="ENTREGA" color={COLOR_EN_ENTREGA} /></Simbolo>} nombre="Entregando ahora" detalle="la unidad está en el destino" />
       <Fila
-        simbolo={<Simbolo caja="-14 -11 28 22"><line x1="-12" y1="0" x2="12" y2="0" stroke="#9EABBA" strokeWidth="2" /></Simbolo>}
+        simbolo={<Simbolo caja="-14 -11 28 22"><line x1="-12" y1="0" x2="12" y2="0" stroke="#9EABBA" strokeWidth="1.5" strokeOpacity={0.4} /></Simbolo>}
         nombre="Tramo recorrido"
       />
       <Fila
         simbolo={
           <Simbolo caja="-14 -11 28 22">
-            <line x1="-12" y1="0" x2="12" y2="0" stroke="#94A3B8" strokeWidth="2.5" strokeDasharray="6 4" />
+            <line x1="-12" y1="0" x2="12" y2="0" stroke="#94A3B8" strokeWidth="2" strokeOpacity={0.55} strokeDasharray="6 4" />
           </Simbolo>
         }
         nombre="Tramo pendiente"
@@ -168,27 +170,31 @@ export const LeyendaMapa: React.FC<LeyendaMapaProps> = ({ onCerrar, capas, onCam
       />
     </ul>
 
-    <div className="px-3 pt-2.5 pb-3 border-t border-neutral-200 flex flex-col gap-2.5">
+    <div className="pt-2.5 pb-1 border-t border-neutral-200 flex flex-col gap-2.5">
       <table className="w-full text-body-sm tabular-nums">
         <caption className="text-left font-semibold text-body-sm text-neutral-900 pb-1">Semáforo de carga y stock</caption>
         <thead>
           <tr className="text-caption text-neutral-600">
-            <th scope="col" className="text-left font-normal pb-0.5">Nivel</th>
-            <th scope="col" className="text-right font-normal pb-0.5">Unidad</th>
-            <th scope="col" className="text-right font-normal pb-0.5">Almacén</th>
+            <th scope="col" className="text-left font-normal pb-0.5">
+              <span className="sr-only">Color</span>
+            </th>
+            <th scope="col" className="text-left font-normal pb-0.5">Unidad (carga)</th>
+            <th scope="col" className="text-left font-normal pb-0.5">Almacén (stock)</th>
           </tr>
         </thead>
         <tbody>
+          {/* El mismo color se lee distinto: en la unidad rojo = casi llena; en el almacén rojo = stock bajo. */}
           {NIVELES_CARGA.map((nivel) => (
-            <tr key={nivel} className="h-5 text-neutral-900">
-              <th scope="row" className="text-left font-normal">
-                <span className="flex items-center gap-1.5 whitespace-nowrap">
-                  <MarcaSemaforo nivel={nivel} />
-                  {NOMBRE_CARGA[nivel]}
-                </span>
+            <tr key={nivel} className="h-5 text-neutral-900 align-top">
+              <th scope="row" className="text-left font-normal pr-1.5">
+                <MarcaSemaforo nivel={nivel} titulo={nivel === 'VACIO' ? 'Vacío' : nivel === 'VERDE' ? 'Verde' : nivel === 'AMBAR' ? 'Ámbar' : 'Rojo'} />
               </th>
-              <td className="text-right whitespace-nowrap">{RANGO_OCUPACION[nivel]}</td>
-              <td className="text-right whitespace-nowrap">{RANGO_STOCK[nivel]}</td>
+              <td className="text-left pr-2">
+                {NOMBRE_CARGA[nivel]} <span className="text-neutral-600 whitespace-nowrap">{RANGO_OCUPACION[nivel]}</span>
+              </td>
+              <td className="text-left">
+                {NOMBRE_STOCK[nivel]} <span className="text-neutral-600 whitespace-nowrap">{RANGO_STOCK[nivel]}</span>
+              </td>
             </tr>
           ))}
         </tbody>

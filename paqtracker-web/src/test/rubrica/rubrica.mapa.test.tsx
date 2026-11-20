@@ -70,12 +70,12 @@ describe('Rúbrica · MAPA · pantalla principal', () => {
   it('C4 · al inicio el mapa está libre: panel lateral y capas y leyenda cerrados', () => {
     localStorage.clear();
     montarOperacion();
-    expect(screen.queryByRole('complementary', { name: 'Incidencias, flota y bitácora' })).toBeNull();
+    expect(screen.queryByRole('complementary', { name: 'Panel de detalle' })).toBeNull();
     expect(screen.queryByRole('region', { name: 'Capas y leyenda' })).toBeNull();
     expect(screen.queryByRole('group', { name: 'Capas visibles' })).toBeNull();
     // Se abre a demanda desde la barra vertical de paneles, siempre visible junto al mapa.
     fireEvent.click(screen.getByRole('tab', { name: /Flota/ }));
-    expect(screen.getByRole('complementary', { name: 'Incidencias, flota y bitácora' })).toBeTruthy();
+    expect(screen.getByRole('complementary', { name: 'Panel de detalle' })).toBeTruthy();
   });
 });
 
@@ -155,13 +155,13 @@ describe('Rúbrica · MAPA · almacenes intermedios', () => {
     expect(tooltip()).toContain('Stock 40 %');
   });
 
-  it('C15 · el stock del intermedio usa semáforo + vacío con rojo = lleno, y la alerta de stock bajo va aparte', () => {
+  it('C15 · el stock del intermedio usa semáforo + vacío con verde = lleno y rojo = stock bajo, con la alerta además como insignia', () => {
     const { container } = montarOperacion();
     const color = (id: string) => objetoMapa(container, `almacen:${id}`)!.querySelector('path')!.getAttribute('stroke');
-    // 40 % y 10 % tienen mucho espacio: verde (glosario de la rúbrica). Los cortes, en semaforo.test.ts.
-    expect(color('INTERMEDIO_1')).toBe(COLOR_SEMAFORO.VERDE);
-    expect(color('INTERMEDIO_2')).toBe(COLOR_SEMAFORO.VERDE);
-    // El 10 % dispara la alerta de stock bajo de la API (LE-078) como insignia, sin cambiar el color.
+    // 40 % = stock medio (ámbar); 10 % = stock bajo (rojo). Los cortes, en semaforo.test.ts.
+    expect(color('INTERMEDIO_1')).toBe(COLOR_SEMAFORO.AMBAR);
+    expect(color('INTERMEDIO_2')).toBe(COLOR_SEMAFORO.ROJO);
+    // El 10 % dispara además la alerta de stock bajo de la API (LE-078) como insignia: no depende solo del color.
     const insignia = (id: string) => objetoMapa(container, `almacen:${id}`)!.querySelector('circle[r="6"]');
     expect(insignia('INTERMEDIO_1')).toBeNull();
     expect(insignia('INTERMEDIO_2')).toBeTruthy();
@@ -258,11 +258,17 @@ describe('Rúbrica · MAPA · unidades de transporte', () => {
     expect(color(7)).toBe(COLOR_SEMAFORO.AMBAR);
     expect(color(9)).toBe(COLOR_SEMAFORO.ROJO);
     expect(color(0, 'AVERIADA')).toBe(COLOR_AVERIADA_SIN_TIPO);
-    // En el mapa, la barra de carga de A-01 (83 %) es ámbar y la de M-01 (100 %) roja.
+    // En el mapa, desde la vista inicial, el ícono de A-01 (83 %) es ámbar y el de M-01 (100 %) rojo.
     const { container } = montarOperacion();
-    const barra = (codigo: string) => objetoMapa(container, `vehiculo:${codigo}`)!.querySelectorAll('rect')[1].getAttribute('fill');
-    expect(barra('A-01')).toBe(COLOR_SEMAFORO.AMBAR);
-    expect(barra('M-01')).toBe(COLOR_SEMAFORO.ROJO);
+    const colorIcono = (codigo: string) =>
+      decodeURIComponent(objetoMapa(container, `vehiculo:${codigo}`)!.querySelector('image:not([href$=".svg"])')!.getAttribute('href')!);
+    expect(colorIcono('A-01')).toContain(`fill="${COLOR_SEMAFORO.AMBAR}"`);
+    expect(colorIcono('M-01')).toContain(`fill="${COLOR_SEMAFORO.ROJO}"`);
+    // La barrita de carga (detalle al acercar o seleccionar) usa el mismo semáforo.
+    const a01 = objetoMapa(container, 'vehiculo:A-01')!;
+    fireEvent.pointerDown(a01, { button: 0, clientX: 50, clientY: 50, pointerId: 1 });
+    fireEvent.pointerUp(a01, { button: 0, clientX: 50, clientY: 50, pointerId: 1 });
+    expect(objetoMapa(container, 'vehiculo:A-01')!.querySelector('[data-barra-carga]')!.getAttribute('fill')).toBe(COLOR_SEMAFORO.AMBAR);
     // Una unidad vacía en ruta lleva el ícono hueco (cuerpo blanco, contorno gris); averiada sigue en rojo.
     const icono = (estado: 'EN_RUTA' | 'AVERIADA') =>
       decodeURIComponent(iconoDeUnidad({ tipo: 'BICICLETA', estado, carga: 0, capacidad: 4 }).href);
@@ -364,12 +370,14 @@ describe('Rúbrica · CIRCUNSTANCIAS · filtros globales del mapa', () => {
   it('D07 · se filtran los almacenes por semáforo + vacío de su stock; el central siempre se ve', () => {
     const { container } = montarOperacion();
     abrirFiltros();
-    fireEvent.click(grupo('Stock de almacenes').getByRole('button', { name: /^Ocupación alta/ }));
+    // Intermedio 1 al 40 % (stock medio) e intermedio 2 al 10 % (crítico): ninguno abastecido.
+    fireEvent.click(grupo('Stock de almacenes').getByRole('button', { name: /^Abastecido/ }));
     expect(objetoMapa(container, 'almacen:INTERMEDIO_1')).toBeNull();
     expect(objetoMapa(container, 'almacen:INTERMEDIO_2')).toBeNull();
     expect(objetoMapa(container, 'almacen:CENTRAL')).toBeTruthy();
-    fireEvent.click(grupo('Stock de almacenes').getByRole('button', { name: /^Con espacio/ }));
+    fireEvent.click(grupo('Stock de almacenes').getByRole('button', { name: /^Stock medio/ }));
     expect(objetoMapa(container, 'almacen:INTERMEDIO_1')).toBeTruthy();
+    expect(objetoMapa(container, 'almacen:INTERMEDIO_2')).toBeNull();
   });
 
   it('lo seleccionado no se oculta al filtrar', () => {
@@ -388,16 +396,16 @@ describe('Rúbrica · CIERRE · indicadores globales', () => {
   it('G01–G02 · la ocupación de la flota en conjunto se ve en % y con semáforo', () => {
     montarOperacion();
     // Fuera del almacén: A-01 20/24, M-01 8/8 y B-01 0/4 → 28/36 = 78 %, ámbar.
-    const flota = indicadores().getByRole('button', { name: /^Flota: 78 %, ocupación alta \(28 de 36\)/ });
+    const flota = indicadores().getByRole('button', { name: /^Carga de flota: 78 %, ocupación alta \(28 de 36\)/ });
     expect(flota.textContent).toContain('78 %');
     expect(flota.innerHTML).toContain('text-[#B45309]');
   });
 
   it('G03–G04 · la ocupación de los almacenes en conjunto se ve en % y con semáforo, y abre la lista de almacenes', () => {
     montarOperacion();
-    // Intermedios: 40/100 y 10/100 → 50/200 = 25 %, verde.
-    const almacenes = indicadores().getByRole('button', { name: /^Almacenes: 25 %, con espacio \(50 de 200\)/ });
-    expect(almacenes.innerHTML).toContain('text-[#15803D]');
+    // Intermedios: 40/100 y 10/100 → 50/200 = 25 %, stock medio (ámbar: entre 20 % y 50 %).
+    const almacenes = indicadores().getByRole('button', { name: /^Stock de almacenes: 25 %, stock medio \(50 de 200\)/ });
+    expect(almacenes.innerHTML).toContain('text-[#B45309]');
     fireEvent.click(almacenes);
     expect(screen.getByRole('region', { name: 'Lista de almacenes' })).toBeTruthy();
   });
@@ -406,7 +414,7 @@ describe('Rúbrica · CIERRE · indicadores globales', () => {
     montarOperacion();
     fireEvent.click(screen.getByRole('button', { name: 'Filtros' }));
     fireEvent.click(within(screen.getByRole('group', { name: 'Tipo de unidad' })).getByRole('button', { name: /^Moto/ }));
-    expect(indicadores().getByRole('button', { name: /^Flota: 78 %/ })).toBeTruthy();
+    expect(indicadores().getByRole('button', { name: /^Carga de flota: 78 %/ })).toBeTruthy();
     localStorage.clear();
   });
 });

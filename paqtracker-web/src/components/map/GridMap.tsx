@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useImperativeHandle, forwardRef } from 'react';
-import { Search, ZoomIn, ZoomOut, Maximize2, MapIcon, ListFilter, X } from 'lucide-react';
+import { ZoomIn, ZoomOut, Maximize2, Search, SlidersHorizontal, AlertTriangle } from 'lucide-react';
 import { ALMACENES, MALLA_ALTO_KM, MALLA_ANCHO_KM, TIPOS_UNIDAD, UNIDADES, type IdAlmacen } from '../../config/dominio';
-import { alertaStockBajo, NOMBRE_CARGA, NOMBRE_HOLGURA, SITUACION_UNIDAD, nombreAveria } from '../../config/glosario';
+import { alertaStockBajo, NOMBRE_CARGA, NOMBRE_HOLGURA, NOMBRE_STOCK, SITUACION_UNIDAD, nombreAveria } from '../../config/glosario';
 import { useCerrarConEscape } from '../../hooks/useCerrarConEscape';
 import { useTamanoElemento } from '../../hooks/useTamanoElemento';
 import { capitalizar, formatearMomento } from '../../lib/formato';
@@ -24,27 +24,28 @@ import { fueraDelAlmacen, ocupacionAlmacenes, ocupacionFlota } from '../../lib/o
 import { almacenPasaFiltros, cantidadFiltros, guardarFiltros, leerFiltros, SIN_FILTROS, unidadPasaFiltros, type FiltrosMapa as Filtros } from '../../lib/filtrosMapa';
 import { COLOR_SEMAFORO, NIVELES_CARGA, nivelDeOcupacion, type NivelCarga } from '../../lib/semaforo';
 import { destinoResaltado, unidadesResaltadas, type SeleccionResaltable } from '../../lib/envios';
-import { colorDeUnidad, iconoDeUnidad } from './iconosVehiculo';
+import { COLOR_SIN_DATO, colorDeUnidad, iconoVehiculo, unidadVacia } from './iconosVehiculo';
 import type { Capa } from './capas';
-import { FiltrosMapa, type ConteosFiltros } from './FiltrosMapa';
-import { IndicadoresGlobales } from './IndicadoresGlobales';
-import { LeyendaMapa } from './LeyendaMapa';
+import type { ConteosFiltros } from './FiltrosMapa';
+import { ANCHO_COLUMNA_PX, ANCHO_RIEL_PX, ColumnaMapa, type ColumnaMapaProps, type ModoColor } from './ColumnaMapa';
 import {
   AlmacenCentral,
   AlmacenIntermedio,
-  CENTRO_CABEZA_PIN,
   COLOR_EN_ENTREGA,
   InsigniaAveria,
   InsigniaStockBajo,
   COLOR_BLOQUEO,
   MarcaBloqueo,
+  MarcadorDestino,
   OPACIDAD_LINEA_BLOQUEO,
-  PinDestino,
+  RADIO_DESTINO,
+  type VarianteDestino,
 } from './simbolos';
 import haloSeleccion from '../../assets/figma/pedidos/halo.svg';
 import type { Coordenada } from '../../types/domain';
-import type { AlmacenOperacion, BloqueoOperacion, UnidadOperacion } from '../../types/operacion';
+import type { AlmacenOperacion, BloqueoOperacion, SeccionIncidencias, UnidadOperacion } from '../../types/operacion';
 import type { NivelHolgura } from '../../types/pedidos';
+
 
 /** Destino de un pedido a bordo, dibujado como pin con el color de su holgura. */
 export interface DestinoMapa {
@@ -73,6 +74,7 @@ export interface GridMapHandle {
   centrarEn: (punto: Coordenada) => boolean;
 }
 
+
 interface GridMapProps {
   unidades: UnidadOperacion[];
   destinos: DestinoMapa[];
@@ -82,29 +84,63 @@ interface GridMapProps {
   seleccion: ObjetoMapa | null;
   /** Ancho ocupado por un panel flotante a la derecha; los controles de zoom se corren a su izquierda. */
   anchoPanelDerecho?: number;
+  /** Alto de una hoja inferior abierta (pantallas angostas): la malla se encuadra encima de ella. */
+  altoPanelInferior?: number;
   /** Pedidos en riesgo por nivel del semáforo de holgura. */
   riesgo: { rojo: number; ambar: number };
   onSeleccionar: (objeto: ObjetoMapa) => void;
-  onAbrirIncidencias: () => void;
-  /** Píldora de averías: va a la flota, donde se ve el detalle de cada unidad. Sin valor, va a Incidencias. */
-  onAbrirAverias?: () => void;
-  /** Indicador de ocupación de la flota; sin valor, va adonde va la píldora de averías. */
+  /** Abre Incidencias, en la sección de la alerta tocada si se indica. */
+  onAbrirIncidencias: (seccion?: SeccionIncidencias) => void;
+  /** Indicador de carga de la flota. */
   onAbrirFlota?: () => void;
-  /** Indicador de ocupación de los almacenes; sin valor, el indicador solo informa. */
+  /** Indicador de stock de los almacenes; sin valor, el indicador solo informa. */
   onAbrirAlmacenes?: () => void;
   onHoverCoordenada?: (coord: Coordenada) => void;
-  /** 'simulacion': barra reducida (búsqueda y riesgo); tocar un objeto abre su detalle igual que en Operación. */
+  /** 'simulacion': solo alerta del riesgo; tocar un objeto abre su detalle igual que en Operación. */
   variante?: 'operacion' | 'simulacion';
+  /**
+   * Pantalla angosta: sin columna fija. Las alertas se resumen en un chip y los controles se abren en un
+   * cajón sobre el mapa; el zoom es con pellizco (y "ver todo" queda a mano).
+   */
+  compacto?: boolean;
   children?: React.ReactNode;
 }
 
+/** Distancia del borde derecho a los controles de zoom, y lo que ocupan a lo ancho (botón de 32 px + relleno). */
+const DERECHA_CONTROLES_PX = 16;
+const ANCHO_CONTROLES_ZOOM_PX = 44;
+/** En la presentación compacta, franja superior con el chip de alertas y los botones (44 px + aire). */
+const FRANJA_COMPACTA_PX = 56;
+/** Lugar al pie para la barra de escala y la coordenada del nodo. */
+const PIE_PX = 44;
+
 /**
- * La malla de 70 × 50 km se encuadra completa ('contener') con márgenes para que todos los
- * vehículos, almacenes y destinos se vean a la primera sin recortes. Los controles flotan sobre el mapa.
+ * La malla de 70 × 50 km se encuadra completa ('contener') y es lo único que lleva cuadrícula: alrededor
+ * queda un margen neutro que marca su límite. Los controles viven en la columna de la izquierda (fuera de
+ * este lienzo) y en los márgenes (zoom a la derecha, escala al pie): ninguno tapa la malla en la vista completa.
  */
-const LIENZO_BASE = { margen: 32, margenSuperior: 56, ajuste: 'contener' } as const;
-/** Franja superior ocupada por los controles flotantes: los rótulos del eje x se dibujan debajo. */
-const FRANJA_CONTROLES_PX = 52;
+const crearLienzo = (ancho: number, alto: number, anchoPanelDerecho: number, altoPanelInferior: number, compacto: boolean): Lienzo => {
+  if (compacto) {
+    return {
+      ancho,
+      alto,
+      margen: 12,
+      margenSuperior: FRANJA_COMPACTA_PX + 8,
+      margenInferior: altoPanelInferior > 0 ? altoPanelInferior + 12 : PIE_PX,
+      ajuste: 'contener',
+    };
+  }
+  const derechaControles = anchoPanelDerecho > 0 ? anchoPanelDerecho + 24 : DERECHA_CONTROLES_PX;
+  return {
+    ancho,
+    alto,
+    margen: 32,
+    margenInferior: PIE_PX,
+    margenDerecho: derechaControles + ANCHO_CONTROLES_ZOOM_PX + 16,
+    ajuste: 'contener',
+  };
+};
+
 /** Desplazamiento máximo (px) para considerar un toque como clic y no como arrastre. */
 const TOLERANCIA_CLIC_PX = 4;
 /** Escala mínima (px/km) al centrar en un objeto. */
@@ -115,6 +151,11 @@ const FACTOR_BOTON = 1.25;
 const PASO_TECLADO_PX = 80;
 /** Duración de las transiciones de la vista: corta, para que se sienta inmediata pero continua. */
 const DURACION_ANIMACION_MS = 200;
+/**
+ * La columna de controles se pliega sola a un riel si, junto al panel abierto, achicaría la malla más que
+ * esto: el orden de prioridad del espacio es malla, panel y después columna.
+ */
+const TOLERANCIA_PLEGADO = 0.98;
 
 /** Sin animación si el usuario pidió menos movimiento o el entorno no puede animar. */
 const sinAnimacion = () =>
@@ -138,26 +179,41 @@ const barraEscala = (pxPorKm: number) => {
   return { km, px: Math.round(km * pxPorKm) };
 };
 
-/** La leyenda abierta o cerrada se recuerda por navegador; sin almacenamiento, arranca cerrada. */
-const CLAVE_LEYENDA = 'paqtracker.leyendaAbierta';
-const leerLeyendaAbierta = () => {
+/** Preferencias por navegador; sin almacenamiento, rigen los valores por defecto. */
+const leer = (clave: string) => {
   try {
-    return localStorage.getItem(CLAVE_LEYENDA) === '1';
+    return localStorage.getItem(clave);
   } catch {
-    return false;
+    return null;
   }
 };
-const guardarLeyendaAbierta = (abierta: boolean) => {
+const guardar = (clave: string, valor: string | null) => {
   try {
-    localStorage.setItem(CLAVE_LEYENDA, abierta ? '1' : '0');
+    if (valor === null) localStorage.removeItem(clave);
+    else localStorage.setItem(clave, valor);
   } catch {
     // Sin almacenamiento disponible: la preferencia dura solo esta sesión.
   }
 };
+const CLAVE_LEYENDA = 'paqtracker.leyendaAbierta';
+const CLAVE_COLUMNA = 'paqtracker.columnaPlegada';
+const CLAVE_COLOR = 'paqtracker.colorUnidades';
+const leerPreferenciaColumna = () => {
+  const valor = leer(CLAVE_COLUMNA);
+  return valor === '1' ? true : valor === '0' ? false : null;
+};
 
 const COLOR_NIVEL: Record<NivelHolgura, string> = { ROJO: '#B91C1C', AMBAR: '#B45309', VERDE: '#15803D', CERRADO: '#94A3B8' };
+const ORDEN_URGENCIA: NivelHolgura[] = ['ROJO', 'AMBAR', 'VERDE', 'CERRADO'];
 
-const ESTILO_PILDORA = 'h-8 bg-superficie shadow-xs rounded-full border border-neutral-200 flex items-center';
+/** Color de la unidad según la holgura del pedido más urgente que lleva; gris si no lleva ninguno. */
+const colorHolguraDeUnidad = (u: UnidadOperacion) => {
+  const nivel = ORDEN_URGENCIA.find((n) => u.paradas.some((p) => p.nivel === n));
+  return nivel ? COLOR_NIVEL[nivel] : COLOR_SIN_DATO;
+};
+
+const ESTILO_BOTON_ZOOM =
+  'w-8 h-8 flex items-center justify-center hover:bg-neutral-100 rounded-control text-neutral-600 hover:text-neutral-900 transition cursor-pointer';
 
 export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
   {
@@ -167,26 +223,24 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
     almacenes = [],
     seleccion,
     anchoPanelDerecho = 0,
+    altoPanelInferior = 0,
     riesgo,
     onSeleccionar,
     onAbrirIncidencias,
-    onAbrirAverias,
     onAbrirFlota,
     onAbrirAlmacenes,
     onHoverCoordenada,
     variante = 'operacion',
+    compacto = false,
     children,
   },
   ref,
 ) {
+  const envolturaRef = useRef<HTMLDivElement>(null);
+  const { ancho: anchoTotal } = useTamanoElemento(envolturaRef);
   const containerRef = useRef<HTMLDivElement>(null);
   const { ancho, alto } = useTamanoElemento(containerRef);
-  const lienzo: Lienzo = {
-    ancho,
-    alto,
-    ...LIENZO_BASE,
-    margenDerecho: anchoPanelDerecho > 0 ? anchoPanelDerecho + 24 : LIENZO_BASE.margen,
-  };
+  const lienzo = crearLienzo(ancho, alto, anchoPanelDerecho, altoPanelInferior, compacto);
 
   // Vista elegida por el usuario (zoom / desplazamiento). null = vista inicial centrada, que se recalcula
   // sola con el tamaño del contenedor; una vista elegida se reajusta con limitarVista si el contenedor cambia.
@@ -194,29 +248,28 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
   const vista = ancho > 0 && alto > 0 ? (vistaUsuario ? limitarVista(vistaUsuario, lienzo) : vistaCompleta(lienzo)) : null;
   const [isDragging, setIsDragging] = useState(false);
   const arrastreRef = useRef({ x: 0, y: 0, inicioX: 0, inicioY: 0, objeto: null as string | null, activo: false });
+  // Punteros activos sobre el mapa: con dos, el gesto es un pellizco (zoom táctil).
+  const punterosRef = useRef(new Map<number, { x: number; y: number }>());
+  const pellizcoRef = useRef<{ distancia: number; vista: Vista; medio: { x: number; y: number } } | null>(null);
 
   const [terminoBusqueda, setTerminoBusqueda] = useState('');
   const [sinResultados, setSinResultados] = useState(false);
   const [nodoActivo, setNodoActivo] = useState<Coordenada>({ x: 19, y: 9 });
   // Hover: se guarda el objeto, no la posición del cursor, así el mapa no se redibuja con cada movimiento.
   const [hover, setHover] = useState<ObjetoHover | null>(null);
-  // La retícula del nodo bajo el cursor solo se muestra mientras el cursor está sobre el mapa.
+  // La retícula y la coordenada del nodo bajo el cursor solo se muestran mientras el cursor está sobre el mapa.
   const [cursorEnMapa, setCursorEnMapa] = useState(false);
-  const [leyendaAbierta, setLeyendaAbierta] = useState(leerLeyendaAbierta);
+  const [leyendaAbierta, setLeyendaAbierta] = useState(() => leer(CLAVE_LEYENDA) === '1');
   const [filtrosAbiertos, setFiltrosAbiertos] = useState(false);
-  // Capas y leyenda y Filtros comparten la esquina: abrir uno cierra el otro.
+  const [modoColor, setModoColor] = useState<ModoColor>(() => (leer(CLAVE_COLOR) === 'holgura' ? 'holgura' : 'carga'));
   const alternarLeyenda = (abierta: boolean) => {
     setLeyendaAbierta(abierta);
-    guardarLeyendaAbierta(abierta);
-    if (abierta) setFiltrosAbiertos(false);
+    guardar(CLAVE_LEYENDA, abierta ? '1' : '0');
   };
-  const alternarFiltros = (abiertos: boolean) => {
-    setFiltrosAbiertos(abiertos);
-    if (abiertos) alternarLeyenda(false);
+  const cambiarModoColor = (modo: ModoColor) => {
+    setModoColor(modo);
+    guardar(CLAVE_COLOR, modo);
   };
-  // Esc cierra el panel abierto, como los demás paneles flotantes.
-  useCerrarConEscape(leyendaAbierta, () => alternarLeyenda(false));
-  useCerrarConEscape(filtrosAbiertos, () => setFiltrosAbiertos(false));
   const [filtros, setFiltros] = useState<Filtros>(leerFiltros);
   const cambiarFiltros = (nuevos: Filtros) => {
     setFiltros(nuevos);
@@ -225,6 +278,31 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
   const filtrosActivos = cantidadFiltros(filtros);
   const enSimulacion = variante === 'simulacion';
   const [capas, setCapas] = useState<Record<Capa, boolean>>({ rutas: true, unidades: true, destinos: true, bloqueos: true, almacenes: true });
+
+  // Columna de controles: se pliega sola a un riel cuando, junto al panel, achicaría la malla; el usuario
+  // puede forzar lo contrario y se recuerda. Si su elección coincide con la automática, vuelve a ser automática.
+  const escalaConColumna = (anchoColumna: number) =>
+    escalaDeEncuadre(crearLienzo(anchoTotal - anchoColumna, alto, anchoPanelDerecho, 0, false));
+  const plegadaAuto =
+    !compacto && anchoPanelDerecho > 0 && anchoTotal > 0 && alto > 0 && escalaConColumna(ANCHO_COLUMNA_PX) < escalaConColumna(ANCHO_RIEL_PX) * TOLERANCIA_PLEGADO;
+  const [preferenciaPlegada, setPreferenciaPlegada] = useState<boolean | null>(leerPreferenciaColumna);
+  const plegada = preferenciaPlegada ?? plegadaAuto;
+  const fijarPlegada = (valor: boolean) => {
+    const preferencia = valor === plegadaAuto ? null : valor;
+    setPreferenciaPlegada(preferencia);
+    guardar(CLAVE_COLUMNA, preferencia === null ? null : preferencia ? '1' : '0');
+  };
+  // Pedido de foco para el buscador: cambia cada vez que se pide desde el riel o desde el ícono compacto.
+  const [enfocarBusqueda, setEnfocarBusqueda] = useState(false);
+  const [cajonAbierto, setCajonAbierto] = useState(false);
+  useCerrarConEscape(cajonAbierto, () => setCajonAbierto(false));
+  const desplegar = (seccion?: 'buscar' | 'filtros' | 'leyenda') => {
+    if (compacto) setCajonAbierto(true);
+    else fijarPlegada(false);
+    setEnfocarBusqueda(seccion === 'buscar');
+    if (seccion === 'filtros') setFiltrosAbiertos(true);
+    if (seccion === 'leyenda') alternarLeyenda(true);
+  };
 
   // Zoom continuo (C08): botones, "ver todo" y centrar animan la vista; rueda y arrastre la cancelan.
   const animacionRef = useRef<number | null>(null);
@@ -262,12 +340,13 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
     animacionRef.current = requestAnimationFrame(paso);
   };
 
-  // Centra el nodo en el área libre (descontando el panel derecho).
+  // Centra el nodo en el área libre (descontando el panel derecho o la hoja inferior).
   const centrarEn = (punto: Coordenada) => {
     if (!vista) return false;
     const escala = Math.max(vista.escala, ESCALA_AL_CENTRAR);
     const centroX = (ancho - anchoPanelDerecho) / 2;
-    animarA(limitarVista({ escala, x: centroX - punto.x * escala, y: alto / 2 - punto.y * escala }, lienzo));
+    const centroY = (alto - altoPanelInferior) / 2;
+    animarA(limitarVista({ escala, x: centroX - punto.x * escala, y: centroY - punto.y * escala }, lienzo));
     return true;
   };
   useImperativeHandle(ref, () => ({ centrarEn }));
@@ -281,12 +360,7 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
       if ((evento.target as HTMLElement).closest('[data-sin-zoom]')) return;
       evento.preventDefault();
       const rect = elemento.getBoundingClientRect();
-      const l: Lienzo = {
-        ancho: rect.width,
-        alto: rect.height,
-        ...LIENZO_BASE,
-        margenDerecho: anchoPanelDerecho > 0 ? anchoPanelDerecho + 24 : LIENZO_BASE.margen,
-      };
+      const l = crearLienzo(rect.width, rect.height, anchoPanelDerecho, altoPanelInferior, compacto);
       if (animacionRef.current !== null) cancelAnimationFrame(animacionRef.current);
       animacionRef.current = null;
       const factor = factorDeRueda(evento, rect.height);
@@ -296,7 +370,19 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
     };
     elemento.addEventListener('wheel', alGirar, { passive: false });
     return () => elemento.removeEventListener('wheel', alGirar);
-  }, [anchoPanelDerecho]);
+  }, [anchoPanelDerecho, altoPanelInferior, compacto]);
+
+  const posicionLocal = (e: React.PointerEvent) => {
+    const rect = containerRef.current!.getBoundingClientRect();
+    return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+  };
+  const iniciarPellizco = () => {
+    const [a, b] = [...punterosRef.current.values()];
+    if (!a || !b || !vista) return;
+    pellizcoRef.current = { distancia: Math.hypot(a.x - b.x, a.y - b.y) || 1, vista, medio: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 } };
+    arrastreRef.current.activo = false; // un pellizco nunca es un toque
+    setIsDragging(false);
+  };
 
   // Arrastre con captura de puntero: sigue aunque el cursor salga del mapa, como en un visor de mapas.
   // Con la captura activa el click llega al contenedor, así que un toque sin desplazamiento sobre un
@@ -305,7 +391,12 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
     const destino = e.target as HTMLElement;
     if (e.button !== 0 || !vista || destino.closest('button, input, a, [data-sin-zoom]')) return;
     cancelarAnimacion();
-    e.currentTarget.setPointerCapture(e.pointerId);
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+    if (containerRef.current) punterosRef.current.set(e.pointerId, posicionLocal(e));
+    if (punterosRef.current.size === 2) {
+      iniciarPellizco();
+      return;
+    }
     setIsDragging(true);
     setHover(null);
     arrastreRef.current = {
@@ -320,6 +411,16 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
 
   const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
     if (!vista || !containerRef.current) return;
+    if (punterosRef.current.has(e.pointerId)) punterosRef.current.set(e.pointerId, posicionLocal(e));
+    const pellizco = pellizcoRef.current;
+    if (pellizco && punterosRef.current.size === 2) {
+      const [a, b] = [...punterosRef.current.values()];
+      const medio = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+      const factor = Math.hypot(a.x - b.x, a.y - b.y) / pellizco.distancia;
+      const base = { ...pellizco.vista, x: pellizco.vista.x + medio.x - pellizco.medio.x, y: pellizco.vista.y + medio.y - pellizco.medio.y };
+      setVistaUsuario(acercarEn(base, factor, medio.x, medio.y, lienzo));
+      return;
+    }
     if (isDragging) {
       setVistaUsuario(limitarVista({ ...vista, x: e.clientX - arrastreRef.current.x, y: e.clientY - arrastreRef.current.y }, lienzo));
     }
@@ -340,7 +441,12 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
   };
 
   const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId);
+    if (e.currentTarget.hasPointerCapture?.(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId);
+    punterosRef.current.delete(e.pointerId);
+    if (pellizcoRef.current) {
+      if (punterosRef.current.size < 2) pellizcoRef.current = null;
+      return;
+    }
     setIsDragging(false);
     const a = arrastreRef.current;
     if (!a.activo) return;
@@ -359,6 +465,7 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
     const nombre = terminoBusqueda.trim().toLowerCase();
     const almacen = ALMACENES.find((a) => [a.id, a.nombre, a.nombreCorto].some((n) => n.toLowerCase() === nombre));
     setSinResultados(!destino && !unidad && !almacen);
+    if (destino || unidad || almacen) setCajonAbierto(false);
     if (destino) {
       onSeleccionar({ tipo: 'pedido', codigo: destino.pedido });
       centrarEn(destino.destino);
@@ -399,10 +506,10 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
   const escalaMinima = ancho > 0 ? escalaMinimaPermitida(lienzo) : 1;
   const enEscalaMinima = !vista || vista.escala <= escalaMinima * 1.001;
   const averiadas = unidades.filter((u) => u.estado === 'AVERIADA').length;
-  const abrirAverias = onAbrirAverias ?? onAbrirIncidencias;
   // Un bloqueo con una polilínea de varios puntos se parte en varios tramos; se cuenta una sola vez.
   const cantidadBloqueos = new Set(bloqueos.map((b) => b.idOriginal)).size;
-  const derechaControles = anchoPanelDerecho > 0 ? anchoPanelDerecho + 24 : 16;
+  const derechaControles = anchoPanelDerecho > 0 ? anchoPanelDerecho + 24 : DERECHA_CONTROLES_PX;
+  const totalAlertas = riesgo.rojo + riesgo.ambar + (enSimulacion ? 0 : cantidadBloqueos + averiadas);
 
   // Filtros globales: lo seleccionado nunca se oculta, para no perder el contexto de lo que se mira.
   const enMapa = unidades.filter(fueraDelAlmacen);
@@ -428,235 +535,185 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
     almacenes: { visibles: ALMACENES.length - almacenesOcultos.size, total: ALMACENES.length },
   };
 
+  const propsColumna: Omit<ColumnaMapaProps, 'forma' | 'onPlegar'> = {
+    onDesplegar: desplegar,
+    soloRiesgo: enSimulacion,
+    alertas: { riesgo, bloqueos: cantidadBloqueos, averias: averiadas },
+    onAbrirAlerta: (seccion) => {
+      setCajonAbierto(false);
+      onAbrirIncidencias(seccion);
+    },
+    busqueda: {
+      termino: terminoBusqueda,
+      onCambiar: (termino) => {
+        setTerminoBusqueda(termino);
+        setSinResultados(false);
+      },
+      sinResultados,
+      onBuscar: buscar,
+      // Pedidos con destino en el mapa, unidades y almacenes.
+      opciones: [...new Set(destinos.map((d) => d.pedido)), ...unidades.map((u) => u.codigo), ...ALMACENES.map((a) => a.nombre)],
+      enfocar: enfocarBusqueda,
+    },
+    ocupacion: { flota: ocupacionFlota(unidades), almacenes: ocupacionAlmacenes(almacenes), onAbrirFlota, onAbrirAlmacenes },
+    modoColor,
+    onCambiarModoColor: cambiarModoColor,
+    filtros: {
+      valor: filtros,
+      conteos: conteosFiltros,
+      activos: filtrosActivos,
+      abiertos: filtrosAbiertos,
+      onAlternar: () => setFiltrosAbiertos(!filtrosAbiertos),
+      onCambiar: cambiarFiltros,
+      onLimpiar: () => cambiarFiltros(SIN_FILTROS),
+    },
+    leyenda: {
+      abierta: leyendaAbierta,
+      onAlternar: () => alternarLeyenda(!leyendaAbierta),
+      capas,
+      onCambiarCapa: (clave) => setCapas({ ...capas, [clave]: !capas[clave] }),
+    },
+  };
+
+  const BOTON_COMPACTO = 'h-11 min-w-11 px-3 bg-superficie shadow-xs rounded-full border border-neutral-200 flex items-center justify-center gap-1.5';
+
   return (
-    <div
-      ref={containerRef}
-      onPointerDown={handlePointerDown}
-      onPointerMove={handlePointerMove}
-      onPointerUp={handlePointerUp}
-      onPointerCancel={handlePointerUp}
-      onKeyDown={alPresionarTecla}
-      tabIndex={0}
-      role="region"
-      aria-roledescription="mapa"
-      aria-label="Mapa de la malla. Con el mapa enfocado: + y - acercan y alejan, 0 muestra la malla completa y las flechas desplazan."
-      onPointerEnter={() => setCursorEnMapa(true)}
-      onPointerLeave={() => {
-        setHover(null);
-        setCursorEnMapa(false);
-      }}
-      className={`relative flex-1 w-full h-full bg-superficie overflow-hidden select-none touch-none outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-600 ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
-    >
-      {/* 1. Barra flotante: búsqueda, riesgo, bloqueos y averías a la izquierda; ocupación global a la
-          derecha. En pantallas angostas los indicadores bajan a una segunda fila en lugar de tapar las
-          píldoras. Los huecos de la barra dejan pasar el arrastre del mapa. */}
+    <div ref={envolturaRef} className="relative flex-1 flex w-full h-full min-w-0 min-h-0">
+      {!compacto && <ColumnaMapa {...propsColumna} forma={plegada ? 'riel' : 'columna'} onPlegar={() => fijarPlegada(!plegada)} />}
+
       <div
-        className="absolute left-3 top-3 z-10 flex flex-wrap items-center gap-2 pointer-events-none [&>*]:pointer-events-auto"
-        style={{ right: derechaControles }}
+        ref={containerRef}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerUp}
+        onKeyDown={alPresionarTecla}
+        tabIndex={0}
+        role="region"
+        aria-roledescription="mapa"
+        aria-label="Mapa de la malla. Con el mapa enfocado: + y - acercan y alejan, 0 muestra la malla completa y las flechas desplazan."
+        onPointerEnter={() => setCursorEnMapa(true)}
+        onPointerLeave={() => {
+          setHover(null);
+          setCursorEnMapa(false);
+        }}
+        className={`relative flex-1 min-w-0 w-full h-full bg-neutral-100 dark:bg-fondo overflow-hidden select-none touch-none outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-600 ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
       >
-        <form onSubmit={buscar} className={`${ESTILO_PILDORA} relative w-52 px-3 gap-2`} role="search">
-          <Search className="size-3.5 text-neutral-600 shrink-0" />
-          <input
-            type="search"
-            placeholder="Pedido, unidad o almacén"
-            aria-label="Buscar pedido o unidad en el mapa"
-            list="mapa-objetos"
-            value={terminoBusqueda}
-            onChange={(e) => {
-              setTerminoBusqueda(e.target.value);
-              setSinResultados(false);
-            }}
-            className={`w-full text-body-sm font-sans bg-transparent focus:outline-none [&::-webkit-calendar-picker-indicator]:!hidden ${
-              sinResultados ? 'text-critical-600' : 'text-neutral-900'
-            } placeholder-neutral-400`}
-          />
-          <span role="status" className="absolute left-0 top-9 whitespace-nowrap">
-            {sinResultados && (
-              <span className="block bg-superficie border border-critical-600/25 rounded-control px-2 py-1 font-sans text-body-sm text-critical-600 shadow-xs">
-                No hay pedidos, unidades ni almacenes en el mapa con «{terminoBusqueda.trim()}»
-              </span>
-            )}
-          </span>
-          <datalist id="mapa-objetos">
-            {[...new Set(destinos.map((d) => d.pedido))].map((pedido) => (
-              <option key={pedido} value={pedido} />
-            ))}
-            {unidades.map((u) => (
-              <option key={u.codigo} value={u.codigo} />
-            ))}
-            {ALMACENES.map((a) => (
-              <option key={a.id} value={a.nombre} />
-            ))}
-          </datalist>
-        </form>
-
-        <button
-          type="button"
-          onClick={onAbrirIncidencias}
-          aria-label={`${riesgo.rojo} pedidos críticos y ${riesgo.ambar} ajustados. Ver incidencias`}
-          className={`${ESTILO_PILDORA} px-3 gap-1.5 hover:bg-neutral-50`}
-        >
-          <span className="size-2 bg-critical-600 rounded-full"></span>
-          <span className="text-critical-600 tabular-nums font-medium text-body-sm">{riesgo.rojo}</span>
-          <span className="text-warn-700 text-caption leading-none" aria-hidden="true">▲</span>
-          <span className="text-warn-700 tabular-nums font-medium text-body-sm">{riesgo.ambar}</span>
-          <span className="text-neutral-600 font-sans text-body-sm">en riesgo</span>
-        </button>
-
-        {!enSimulacion && (
-        <button
-          type="button"
-          onClick={onAbrirIncidencias}
-          aria-label={`${cantidadBloqueos} bloqueos activos. Ver incidencias`}
-          className={`${ESTILO_PILDORA} px-3 gap-1.5 hover:bg-neutral-50`}
-        >
-          <span className="size-2 rounded-full" style={{ background: COLOR_BLOQUEO }}></span>
-          <span className="tabular-nums font-medium text-body-sm" style={{ color: COLOR_BLOQUEO }}>{cantidadBloqueos}</span>
-          <span className="text-neutral-600 font-sans text-body-sm">bloqueos</span>
-        </button>
-        )}
-
-        {!enSimulacion && (
-        <button
-          type="button"
-          onClick={abrirAverias}
-          aria-label={`${averiadas} unidades averiadas. Ver flota`}
-          className={`${ESTILO_PILDORA} px-3 gap-1.5 hover:bg-neutral-50`}
-        >
-          <span className="size-2 bg-critical-600 rounded-full"></span>
-          <span className="text-critical-600 tabular-nums font-medium text-body-sm">{averiadas}</span>
-          <span className="text-neutral-600 font-sans text-body-sm">averías</span>
-        </button>
-        )}
-
-        <div className="ml-auto">
-          <IndicadoresGlobales
-            flota={ocupacionFlota(unidades)}
-            almacenes={ocupacionAlmacenes(almacenes)}
-            onAbrirFlota={onAbrirFlota ?? onAbrirAverias}
-            onAbrirAlmacenes={onAbrirAlmacenes}
-          />
-        </div>
-      </div>
-
-      {/* 2. Controles de zoom (a la izquierda del panel derecho si está abierto) */}
-      <div
-        className="absolute bottom-12 z-10 flex flex-col gap-1.5 bg-superficie p-1.5 rounded-card shadow-xs border border-neutral-200"
-        style={{ right: derechaControles }}
-      >
-        <button
-          onClick={() => acercarAlCentro(FACTOR_BOTON)}
-          className="w-8 h-8 flex items-center justify-center hover:bg-neutral-100 rounded-control text-neutral-600 hover:text-neutral-900 transition cursor-pointer"
-          title="Acercar (+)"
-          aria-label="Acercar"
-        >
-          <ZoomIn className="size-4" />
-        </button>
-        <button
-          onClick={() => acercarAlCentro(1 / FACTOR_BOTON)}
-          disabled={enEscalaMinima}
-          className="w-8 h-8 flex items-center justify-center hover:bg-neutral-100 rounded-control text-neutral-600 hover:text-neutral-900 transition cursor-pointer disabled:opacity-40 disabled:cursor-default disabled:hover:bg-transparent"
-          title="Alejar (-)"
-          aria-label="Alejar"
-        >
-          <ZoomOut className="size-4" />
-        </button>
-        <div className="w-full h-px bg-neutral-200 my-0.5"></div>
-        <button
-          onClick={verTodo}
-          className="w-8 h-8 flex items-center justify-center hover:bg-neutral-100 rounded-control text-neutral-600 hover:text-neutral-900 transition cursor-pointer"
-          title="Ver la malla completa (0)"
-          aria-label="Ver la malla completa"
-        >
-          <Maximize2 className="size-3.5" />
-        </button>
-        <span className="text-caption tabular-nums text-center text-neutral-600 font-semibold block">
-          {vista ? Math.round((vista.escala / escalaBase) * 100) : 100}%
-        </span>
-      </div>
-
-      {/* 3. Capas y leyenda (panel flotante, no modal) y barra de escala */}
-      <div className="absolute left-4 bottom-4 z-20 flex flex-col items-start gap-2">
-        {filtrosAbiertos && (
-          <FiltrosMapa filtros={filtros} conteos={conteosFiltros} onCambiar={cambiarFiltros} onCerrar={() => setFiltrosAbiertos(false)} />
-        )}
-        {leyendaAbierta && (
-          <LeyendaMapa
-            onCerrar={() => alternarLeyenda(false)}
-            capas={capas}
-            onCambiarCapa={(clave) => setCapas({ ...capas, [clave]: !capas[clave] })}
-          />
-        )}
-        <div className="flex items-end gap-2">
-          <button
-            type="button"
-            onClick={() => alternarLeyenda(!leyendaAbierta)}
-            aria-expanded={leyendaAbierta}
-            className={`${ESTILO_PILDORA} px-3 gap-1.5 hover:bg-neutral-50 ${leyendaAbierta ? 'border-primary-600' : ''}`}
-          >
-            <MapIcon className="size-3.5 text-neutral-600" />
-            <span className="text-neutral-900 font-sans text-body-sm">Capas y leyenda</span>
-          </button>
-          <div className={`${ESTILO_PILDORA} ${filtrosActivos > 0 || filtrosAbiertos ? 'border-primary-600' : ''}`}>
+        {/* 1. Presentación compacta: un solo chip con el total de alertas (lleva a Incidencias) y los accesos
+            a búsqueda, controles y "ver todo". Toques de 44 px. */}
+        {compacto && (
+          <div className="absolute left-3 right-3 top-3 z-10 flex items-center gap-2 pointer-events-none [&>*]:pointer-events-auto">
             <button
               type="button"
-              onClick={() => alternarFiltros(!filtrosAbiertos)}
-              aria-expanded={filtrosAbiertos}
-              aria-label={filtrosActivos > 0 ? `Filtros, ${filtrosActivos} ${filtrosActivos === 1 ? 'activo' : 'activos'}` : 'Filtros'}
-              className={`h-full pl-3 gap-1.5 flex items-center rounded-full hover:bg-neutral-50 ${filtrosActivos > 0 ? 'pr-2' : 'pr-3'}`}
+              onClick={() => onAbrirIncidencias()}
+              aria-label={`${totalAlertas} ${totalAlertas === 1 ? 'alerta' : 'alertas'}. Ver Incidencias`}
+              className={`${BOTON_COMPACTO} ${totalAlertas > 0 ? 'text-critical-600' : 'text-neutral-600'}`}
             >
-              <ListFilter className={`size-3.5 ${filtrosActivos > 0 ? 'text-primary-600' : 'text-neutral-600'}`} />
-              <span className="text-neutral-900 font-sans text-body-sm">Filtros</span>
-              {filtrosActivos > 0 && (
-                <span className="min-w-5 h-5 px-1 rounded-full bg-primary-600 text-sobre-color text-caption font-semibold tabular-nums flex items-center justify-center">
-                  {filtrosActivos}
-                </span>
-              )}
+              <AlertTriangle className="size-4" />
+              <span className="tabular-nums font-semibold text-body">{totalAlertas}</span>
+              <span className="text-body-sm text-neutral-900">{totalAlertas === 1 ? 'alerta' : 'alertas'}</span>
             </button>
-            {filtrosActivos > 0 && (
-              <button
-                type="button"
-                onClick={() => cambiarFiltros(SIN_FILTROS)}
-                aria-label="Quitar los filtros"
-                title="Quitar los filtros"
-                className="h-full pl-1 pr-2.5 flex items-center rounded-r-full text-neutral-600 hover:text-neutral-900 hover:bg-neutral-50"
-              >
-                <X className="size-3.5" />
-              </button>
-            )}
+            <span className="flex-1" />
+            <button type="button" onClick={() => desplegar('buscar')} aria-label="Buscar en el mapa" className={BOTON_COMPACTO}>
+              <Search className="size-4 text-neutral-600" />
+            </button>
+            <button
+              type="button"
+              onClick={() => desplegar()}
+              aria-label={filtrosActivos > 0 ? `Controles del mapa, ${filtrosActivos} filtros activos` : 'Controles del mapa'}
+              className={`${BOTON_COMPACTO} relative`}
+            >
+              <SlidersHorizontal className={`size-4 ${filtrosActivos > 0 ? 'text-primary-600' : 'text-neutral-600'}`} />
+              {filtrosActivos > 0 && <span className="absolute top-1.5 right-1.5 size-2 rounded-full bg-primary-600" />}
+            </button>
+            <button type="button" onClick={verTodo} aria-label="Ver la malla completa" className={BOTON_COMPACTO}>
+              <Maximize2 className="size-4 text-neutral-600" />
+            </button>
           </div>
-          {vista && (
-            <div className="bg-superficie/95 backdrop-blur-xs px-2.5 py-1 rounded-control border border-neutral-200 shadow-xs pointer-events-none flex flex-col gap-0.5">
+        )}
+
+        {/* 2. Controles de zoom, en el margen derecho de la malla (a la izquierda del panel si está abierto) */}
+        {!compacto && (
+          <div
+            className="absolute bottom-12 z-10 flex flex-col gap-1.5 bg-superficie p-1.5 rounded-card shadow-xs border border-neutral-200"
+            style={{ right: derechaControles }}
+          >
+            <button onClick={() => acercarAlCentro(FACTOR_BOTON)} className={ESTILO_BOTON_ZOOM} title="Acercar (+)" aria-label="Acercar">
+              <ZoomIn className="size-4" />
+            </button>
+            <button
+              onClick={() => acercarAlCentro(1 / FACTOR_BOTON)}
+              disabled={enEscalaMinima}
+              className={`${ESTILO_BOTON_ZOOM} disabled:opacity-40 disabled:cursor-default disabled:hover:bg-transparent`}
+              title="Alejar (-)"
+              aria-label="Alejar"
+            >
+              <ZoomOut className="size-4" />
+            </button>
+            <div className="w-full h-px bg-neutral-200 my-0.5"></div>
+            <button onClick={verTodo} className={ESTILO_BOTON_ZOOM} title="Ver la malla completa (0)" aria-label="Ver la malla completa">
+              <Maximize2 className="size-3.5" />
+            </button>
+            <span className="text-caption tabular-nums text-center text-neutral-600 font-semibold block">
+              {vista ? Math.round((vista.escala / escalaBase) * 100) : 100}%
+            </span>
+          </div>
+        )}
+
+        {/* 3. Al pie: barra de escala y, con el cursor sobre el mapa, la coordenada del nodo (convención de
+            los visores de mapas; antes estaba en la barra inferior de la aplicación). */}
+        {vista && (
+          <div
+            className="absolute left-3 z-10 flex items-end gap-2 pointer-events-none"
+            style={{ bottom: compacto && altoPanelInferior > 0 ? altoPanelInferior + 8 : 10 }}
+          >
+            <div className="bg-superficie/95 px-2.5 py-1 rounded-control border border-neutral-200 shadow-xs flex flex-col gap-0.5">
               <span className="tabular-nums text-caption text-neutral-600">{barraEscala(vista.escala).km} km</span>
               <span className="block h-1.5 border-x-2 border-b-2 border-neutral-600" style={{ width: barraEscala(vista.escala).px }} />
             </div>
-          )}
-        </div>
+            {cursorEnMapa && !compacto && (
+              <span className="bg-superficie/95 px-2.5 py-1 rounded-control border border-neutral-200 shadow-xs text-caption tabular-nums text-neutral-600">
+                nodo <span className="font-medium text-neutral-900">({nodoActivo.x},{nodoActivo.y})</span>
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* 4. Lienzo: la geometría se proyecta con la vista; los marcadores conservan su tamaño en pantalla */}
+        {vista && (
+          <CapasMapa
+            vista={vista}
+            lienzo={lienzo}
+            franjaSuperior={compacto ? FRANJA_COMPACTA_PX : 0}
+            capas={capas}
+            unidades={unidadesVisibles}
+            destinos={destinosVisibles}
+            bloqueos={bloqueos}
+            almacenes={almacenes}
+            almacenesOcultos={almacenesOcultos}
+            seleccion={seleccion}
+            nodoActivo={nodoActivo}
+            mostrarReticula={cursorEnMapa}
+            modoColor={modoColor}
+            unidadBajoCursor={hover?.tipo === 'vehiculo' ? hover.codigo : null}
+          />
+        )}
+
+        {/* Tooltip del objeto bajo el cursor (identifica; el detalle se abre con clic) */}
+        {vista && hover && !isDragging && (
+          <TooltipObjeto objeto={hover} vista={vista} lienzo={lienzo} unidades={unidades} destinos={destinos} bloqueos={bloqueos} almacenes={almacenes} />
+        )}
+
+        {children}
+
+        {/* Cajón de controles (presentación compacta): sobre el mapa, con velo que lo cierra al tocar fuera. */}
+        {compacto && cajonAbierto && (
+          <>
+            <div className="absolute inset-0 z-30 bg-velo/30" onPointerDown={(e) => e.stopPropagation()} onClick={() => setCajonAbierto(false)} aria-hidden="true" />
+            <ColumnaMapa {...propsColumna} forma="cajon" onPlegar={() => setCajonAbierto(false)} />
+          </>
+        )}
       </div>
-
-      {/* 4. Lienzo: la geometría se proyecta con la vista; los marcadores conservan su tamaño en pantalla */}
-      {vista && (
-        <CapasMapa
-          vista={vista}
-          lienzo={lienzo}
-          capas={capas}
-          unidades={unidadesVisibles}
-          destinos={destinosVisibles}
-          bloqueos={bloqueos}
-          almacenes={almacenes}
-          almacenesOcultos={almacenesOcultos}
-          seleccion={seleccion}
-          nodoActivo={nodoActivo}
-          mostrarReticula={cursorEnMapa}
-        />
-      )}
-
-      {/* Tooltip del objeto bajo el cursor (identifica; el detalle se abre con clic) */}
-      {vista && hover && !isDragging && (
-        <TooltipObjeto objeto={hover} vista={vista} lienzo={lienzo} unidades={unidades} destinos={destinos} bloqueos={bloqueos} almacenes={almacenes} />
-      )}
-
-      {children}
     </div>
   );
 });
@@ -674,11 +731,48 @@ interface CapasMapaProps {
   seleccion: ObjetoMapa | null;
   nodoActivo: Coordenada;
   mostrarReticula: boolean;
+  /** Alto (px) de los controles sobre el borde superior del mapa: los rótulos del eje x se dibujan debajo. */
+  franjaSuperior: number;
+  /** Qué codifica el color de las unidades: su carga (por defecto) o la holgura de su pedido más urgente. */
+  modoColor: ModoColor;
+  /** Unidad bajo el cursor: muestra su detalle aunque la escala no alcance. */
+  unidadBajoCursor: string | null;
 }
 
+/**
+ * Detalle según el zoom: por debajo de esta escala (la vista completa en la mayoría de las pantallas) la
+ * unidad muestra solo su carga en números (C28) y se omite la barrita, que repite número y color.
+ */
+const ESCALA_DETALLE_PX_KM = 20;
+/** Área tocable mínima de una unidad (WCAG 2.5.8), aunque la silueta sea más chica. */
+const AREA_TOQUE_PX = 28;
+/** Área tocable de un destino: el marcador mide 8–14 px, pero se toca como uno de 24. */
+const AREA_TOQUE_DESTINO_PX = 24;
+/** Opacidad de las rutas no destacadas: siguen a la vista, pero quedan como contexto. */
+const OPACIDAD_PENDIENTE = 0.55;
+const OPACIDAD_RECORRIDO = 0.4;
+/** Orden de dibujo de los destinos: lo urgente al final, para que nunca quede tapado. */
+const ORDEN_DIBUJO_DESTINO: Record<VarianteDestino, number> = { CERRADO: 0, VERDE: 1, AMBAR: 2, ROJO: 3, ENTREGA: 4 };
+/** Ancho aproximado (px) de un carácter de los rótulos de 11–13 px, para detectar rótulos que se pisan. */
+const ANCHO_CARACTER_PX = 6.6;
+
 /** Fracción de la avería que falta cumplir (1 al empezar, 0 al reincorporarse). */
+/**
+ * Mapa angosto (celular): los símbolos se dibujan a ESCALA_COMPACTA para que la malla se lea. Las áreas
+ * tocables no se achican (WCAG 2.5.8) y los rótulos bajan a un mínimo legible.
+ */
+const ANCHO_COMPACTO_PX = 640;
+const ESCALA_COMPACTA = 0.6;
+/** Escala del símbolo de almacén en el mapa (el de la leyenda y los paneles queda a tamaño completo). */
+const ESCALA_ALMACEN = 0.75;
+/** Medio tamaño (px) del almacén ya escalado: el central mide 28 × 26 a escala 1. */
+const MEDIO_ALMACEN_PX = 14 * ESCALA_ALMACEN;
+/** Radio del halo de selección del almacén. */
+const RADIO_HALO_ALMACEN = 16;
+/** Inicio del rótulo del almacén, a la derecha del símbolo. */
+const ROTULO_ALMACEN_X = 18;
 /** Separación vertical (px) entre el símbolo de un almacén y cada averiada que está en él. */
-const DESPLAZAMIENTO_EN_ALMACEN_PX = 28;
+const DESPLAZAMIENTO_EN_ALMACEN_PX = 24;
 /** Tolerancia (km) para decir que una posición, que puede venir fraccionaria, está sobre un almacén. */
 const TOLERANCIA_NODO_KM = 0.01;
 
@@ -720,7 +814,7 @@ function contenidoTooltip(
       extra: entregando.length > 0 ? `Entregando ahora · ${entregando.join(', ')}` : undefined,
       color: COLOR_NIVEL[d.nivel],
       punto: d.destino,
-      alzaPx: 30,
+      alzaPx: 12,
     };
   }
   if (objeto.tipo === 'vehiculo') {
@@ -753,7 +847,7 @@ function contenidoTooltip(
     const alerta = estado?.stockBajo ? ` · ${alertaStockBajo().toLowerCase()}` : '';
     return {
       titulo: `Almacén ${a.nombre}`,
-      detalle: nivel ? `Stock ${estado?.porcentajeStock} % · ${NOMBRE_CARGA[nivel].toLowerCase()}${alerta}` : 'Stock ilimitado',
+      detalle: nivel ? `Stock ${estado?.porcentajeStock} % · ${NOMBRE_STOCK[nivel].toLowerCase()}${alerta}` : 'Stock ilimitado',
       extra: pedidosQueSalen(datos.unidades, a.id),
       color: nivel ? COLOR_SEMAFORO[nivel] : undefined,
       punto: a.ubicacion,
@@ -842,6 +936,9 @@ const CapasMapa: React.FC<CapasMapaProps> = ({
   seleccion,
   nodoActivo,
   mostrarReticula,
+  franjaSuperior,
+  modoColor,
+  unidadBajoCursor,
 }) => {
   // Reloj simulado de la ejecución: mide cuánto le falta a cada avería.
   const { reloj } = useDatosOperacion();
@@ -852,15 +949,23 @@ const CapasMapa: React.FC<CapasMapaProps> = ({
   const paso = pasoCuadricula(vista.escala);
   const pasoPx = paso * vista.escala;
 
-  // Cuadrícula continua y uniforme en todo el lienzo
-  const iMin = Math.floor((0 - origen.x) / pasoPx) - 1;
-  const iMax = Math.ceil((lienzo.ancho - origen.x) / pasoPx) + 1;
-  const jMin = Math.floor((0 - origen.y) / pasoPx) - 1;
-  const jMax = Math.ceil((lienzo.alto - origen.y) / pasoPx) + 1;
+  // La cuadrícula cubre solo la malla (70 × 50 km); fuera de ella no hay calles. Se dibujan solo las
+  // líneas que caen en pantalla.
+  const anchoMallaPx = MALLA_ANCHO_KM * vista.escala;
+  const altoMallaPx = MALLA_ALTO_KM * vista.escala;
+  const iMin = Math.max(0, Math.floor(-origen.x / pasoPx));
+  const iMax = Math.min(Math.floor(MALLA_ANCHO_KM / paso), Math.ceil((lienzo.ancho - origen.x) / pasoPx));
+  const jMin = Math.max(0, Math.floor(-origen.y / pasoPx));
+  const jMax = Math.min(Math.floor(MALLA_ALTO_KM / paso), Math.ceil((lienzo.alto - origen.y) / pasoPx));
+  // Las líneas verticales y horizontales se recortan al tramo visible de la malla.
+  const yIni = Math.max(0, origen.y);
+  const yFin = Math.min(lienzo.alto, origen.y + altoMallaPx);
+  const xIni = Math.max(0, origen.x);
+  const xFin = Math.min(lienzo.ancho, origen.x + anchoMallaPx);
 
   // Rótulos de los ejes: marcas cada 10 km a lo largo del plano
-  const hayEspacioSuperior = origen.y >= FRANJA_CONTROLES_PX + 14;
-  const yRotulosX = hayEspacioSuperior ? origen.y - 6 : Math.max(origen.y + 14, FRANJA_CONTROLES_PX + 4);
+  const hayEspacioSuperior = origen.y >= franjaSuperior + 14;
+  const yRotulosX = hayEspacioSuperior ? origen.y - 6 : Math.max(origen.y + 14, franjaSuperior + 14);
 
   const hayEspacioIzquierdo = origen.x >= 28;
   const xRotulosY = hayEspacioIzquierdo ? origen.x - 6 : Math.max(origen.x + 6, 8);
@@ -872,6 +977,14 @@ const CapasMapa: React.FC<CapasMapaProps> = ({
   const totalRotulosY = Math.floor(MALLA_ALTO_KM / 10) + 1;
 
   const halo = { stroke: '#FFFFFF', strokeWidth: 3, paintOrder: 'stroke' } as const;
+  // Factor de tamaño de los símbolos: 1 en escritorio, menor en un mapa angosto.
+  const f = lienzo.ancho > 0 && lienzo.ancho < ANCHO_COMPACTO_PX ? ESCALA_COMPACTA : 1;
+  const compacto = f < 1;
+  const escalar = f === 1 ? undefined : `scale(${f})`;
+  const tamRotulo = (px: number) => (compacto ? Math.max(9, px - 2) : px);
+  const almacenEscala = ESCALA_ALMACEN * f;
+  const medioAlmacen = MEDIO_ALMACEN_PX * f;
+  const rotuloAlmacenX = medioAlmacen + 6 + (compacto ? 0 : ROTULO_ALMACEN_X - MEDIO_ALMACEN_PX - 6);
 
   // Unidades destacadas: la seleccionada, todas las que llevan el pedido seleccionado (F03, puede ir
   // fraccionado) o solo la que lleva la fracción seleccionada (F02).
@@ -899,15 +1012,50 @@ const CapasMapa: React.FC<CapasMapaProps> = ({
     enAlmacen.push({ unidad: u, fila });
   }
 
+  // Destinos de menor a mayor urgencia: los críticos se dibujan encima.
+  const destinosOrdenados = destinos
+    .map((d) => ({ d, entregando: unidades.some((u) => u.codigo === d.unidad && u.pedidoEnEntrega === d.pedido) }))
+    .sort((a, b) => ORDEN_DIBUJO_DESTINO[a.entregando ? 'ENTREGA' : a.d.nivel] - ORDEN_DIBUJO_DESTINO[b.entregando ? 'ENTREGA' : b.d.nivel]);
+
+  const esSeleccionada = (u: UnidadOperacion) =>
+    (seleccion?.tipo === 'vehiculo' && seleccion.codigo === u.codigo) || (seleccion?.tipo === 'fraccion' && seleccion.unidad === u.codigo);
+
+  // Rótulos que se pisan (p. ej. varias unidades saliendo del central): en la vista lejana se omite el
+  // rótulo de carga de la unidad que chocaría con otro ya puesto. La carga sigue en el color del ícono,
+  // en el tooltip y en el panel, y vuelve al acercar, pasar el mouse o seleccionar la unidad.
+  const rotulosOmitidos = new Set<string>();
+  if (vista.escala < ESCALA_DETALLE_PX_KM) {
+    const ocupados: { x1: number; y1: number; x2: number; y2: number }[] = [];
+    const choca = (c: (typeof ocupados)[number]) => ocupados.some((o) => c.x1 < o.x2 && c.x2 > o.x1 && c.y1 < o.y2 && c.y2 > o.y1);
+    // Primero lo que siempre lleva rótulo: los almacenes (símbolo y nombre) y las averiadas.
+    for (const almacen of ALMACENES) {
+      if (!capas.almacenes || almacenesOcultos.has(almacen.id)) continue;
+      const { x, y } = proyectar(vista, almacen.ubicacion);
+      ocupados.push({ x1: x - medioAlmacen, y1: y - medioAlmacen, x2: x + rotuloAlmacenX + 16 * ANCHO_CARACTER_PX * (compacto ? 0.85 : 1), y2: y + medioAlmacen });
+    }
+    const prioridad = (u: UnidadOperacion) =>
+      esSeleccionada(u) || unidadBajoCursor === u.codigo ? 2 : u.estado === 'AVERIADA' ? 1.5 : u.carga / Math.max(1, u.capacidad);
+    for (const u of [...enCalle].sort((a, b) => prioridad(b) - prioridad(a))) {
+      const { x, y } = proyectar(vista, u.posicion);
+      const inicio = x + iconoVehiculo(u.tipo, '#000').medioAnchoVisible * f + 4;
+      const anchoCaracter = ANCHO_CARACTER_PX * (compacto ? 0.85 : 1);
+      const caja = { x1: inicio, y1: y - 7, x2: inicio + `${u.carga}/${u.capacidad}`.length * anchoCaracter, y2: y + 5 };
+      if (u.estado !== 'AVERIADA' && prioridad(u) < 2 && choca(caja)) rotulosOmitidos.add(u.codigo);
+      else ocupados.push(caja);
+    }
+  }
+
   const dibujarUnidad = (u: UnidadOperacion, desplazamientoY: number) => {
     const { x, y } = proyectar(vista, u.posicion);
     const capacidad = u.capacidad;
     const averiada = u.estado === 'AVERIADA';
+    // La barrita y el rótulo siempre muestran la carga; el modo de color solo cambia el color del ícono.
     const color = colorDeUnidad(u);
-    const seleccionada =
-      (seleccion?.tipo === 'vehiculo' && seleccion.codigo === u.codigo) || (seleccion?.tipo === 'fraccion' && seleccion.unidad === u.codigo);
-    const icono = iconoDeUnidad(u);
-    const rotuloX = icono.medioAnchoVisible + (seleccionada ? 6 : 4);
+    const porHolgura = modoColor === 'holgura' && !averiada;
+    const seleccionada = esSeleccionada(u);
+    const icono = porHolgura ? iconoVehiculo(u.tipo, colorHolguraDeUnidad(u)) : iconoVehiculo(u.tipo, color, unidadVacia(u));
+    const rotuloX = icono.medioAnchoVisible * f + (seleccionada ? 6 : 4);
+    const conDetalle = vista.escala >= ESCALA_DETALLE_PX_KM || seleccionada || unidadBajoCursor === u.codigo;
     return (
       // El grupo exterior lo mueve useDeslizamientoUnidades (reescribe su transform); el desplazamiento
       // bajo un almacén va en el grupo interior para no perderse.
@@ -921,41 +1069,53 @@ const CapasMapa: React.FC<CapasMapaProps> = ({
         data-ky={u.posicion.y}
       >
         <g transform={desplazamientoY === 0 ? undefined : `translate(0, ${desplazamientoY})`} data-en-almacen={desplazamientoY === 0 ? undefined : true}>
-          {seleccionada && <image href={haloSeleccion} x={-13} y={-13} width={26} height={26} />}
-          <image
-            href={icono.href}
-            x={-icono.centroX}
-            y={-icono.centroY}
-            width={icono.ancho}
-            height={icono.alto}
-            transform={averiada ? undefined : orientacionIcono(u)}
-          />
+          {/* Área tocable: transparente pero "pintada", así cuenta para el puntero aunque la silueta sea angosta. */}
+          <rect x={-AREA_TOQUE_PX / 2} y={-AREA_TOQUE_PX / 2} width={AREA_TOQUE_PX} height={AREA_TOQUE_PX} fill="transparent" />
+          <g transform={escalar}>
+            {seleccionada && <image href={haloSeleccion} x={-13} y={-13} width={26} height={26} />}
+            <image
+              href={icono.href}
+              x={-icono.centroX}
+              y={-icono.centroY}
+              width={icono.ancho}
+              height={icono.alto}
+              transform={averiada ? undefined : orientacionIcono(u)}
+            />
+          </g>
           {averiada ? (
             u.averia ? (
               // Ícono · insignia del tipo con el anillo de lo que falta · código y hora de regreso.
               <>
-                <g transform={`translate(${rotuloX + 9}, 0)`} data-averia={u.averia.tipo}>
-                  <InsigniaAveria tipo={u.averia.tipo} restante={fraccionRestante(u.averia.desde, u.averia.vuelve, reloj)} />
+                <g transform={`translate(${rotuloX + 9 * f}, 0)`} data-averia={u.averia.tipo}>
+                  <g transform={escalar}>
+                    <InsigniaAveria tipo={u.averia.tipo} restante={fraccionRestante(u.averia.desde, u.averia.vuelve, reloj)} />
+                  </g>
                 </g>
-                <text x={rotuloX + 23} y="-1" fill={color} fontSize="12" fontWeight="600" {...halo}>
+                <text x={rotuloX + 18 * f + 5} y="-1" fill={color} fontSize={tamRotulo(12)} fontWeight="600" {...halo}>
                   {u.codigo}
                 </text>
-                <text x={rotuloX + 23} y="11" fill="#475569" fontSize="11" {...halo}>
+                <text x={rotuloX + 18 * f + 5} y={compacto ? 9 : 11} fill="#475569" fontSize={tamRotulo(11)} {...halo}>
                   vuelve {formatearMomento(u.averia.vuelve, reloj)}
                 </text>
               </>
             ) : (
-              <text x={rotuloX} y="4" fill={color} fontSize="12" fontWeight="600" {...halo}>
+              <text x={rotuloX} y="4" fill={color} fontSize={tamRotulo(12)} fontWeight="600" {...halo}>
                 {u.codigo} · averiada
               </text>
             )
           ) : (
             <>
-              <text x={rotuloX} y="-1" fill="#64748B" fontSize="12" fontWeight="500" {...halo}>
-                {u.carga}/{capacidad}
-              </text>
-              <rect x={rotuloX} y="4" width="24" height="3" rx="1.5" fill="#CBD5E1" />
-              <rect x={rotuloX} y="4" width={24 * (u.carga / capacidad)} height="3" rx="1.5" fill={color} />
+              {!rotulosOmitidos.has(u.codigo) && (
+                <text x={rotuloX} y={conDetalle ? -1 : 4} fill="#64748B" fontSize={tamRotulo(conDetalle ? 12 : 11)} fontWeight="500" {...halo}>
+                  {u.carga}/{capacidad}
+                </text>
+              )}
+              {conDetalle && (
+                <>
+                  <rect x={rotuloX} y="4" width="24" height="3" rx="1.5" fill="#CBD5E1" />
+                  <rect x={rotuloX} y="4" width={24 * (u.carga / capacidad)} height="3" rx="1.5" fill={color} data-barra-carga />
+                </>
+              )}
             </>
           )}
         </g>
@@ -965,37 +1125,26 @@ const CapasMapa: React.FC<CapasMapaProps> = ({
 
   return (
     <svg ref={svgRef} className="lienzo-mapa absolute inset-0 w-full h-full">
-      {/* Cuadrícula continua y uniforme en todo el lienzo */}
+      {/* La malla como una hoja sobre el fondo neutro: relleno de superficie, cuadrícula y borde. */}
+      <rect
+        x={origen.x}
+        y={origen.y}
+        width={anchoMallaPx}
+        height={altoMallaPx}
+        className="fill-superficie"
+        style={{ filter: 'drop-shadow(0 1px 3px rgb(var(--color-sombra) / 0.08))' }}
+      />
       {Array.from({ length: Math.max(0, iMax - iMin + 1) }, (_, idx) => {
         const i = iMin + idx;
         const x = origen.x + i * pasoPx;
-        return (
-          <line
-            key={`gv${i}`}
-            x1={x}
-            y1={0}
-            x2={x}
-            y2={lienzo.alto}
-            stroke="#E2E8F0"
-            strokeWidth="1"
-          />
-        );
+        return <line key={`gv${i}`} x1={x} y1={yIni} x2={x} y2={yFin} stroke="#EEF2F6" strokeWidth="1" />;
       })}
       {Array.from({ length: Math.max(0, jMax - jMin + 1) }, (_, idx) => {
         const j = jMin + idx;
         const y = origen.y + j * pasoPx;
-        return (
-          <line
-            key={`gh${j}`}
-            x1={0}
-            y1={y}
-            x2={lienzo.ancho}
-            y2={y}
-            stroke="#E2E8F0"
-            strokeWidth="1"
-          />
-        );
+        return <line key={`gh${j}`} x1={xIni} y1={y} x2={xFin} y2={y} stroke="#EEF2F6" strokeWidth="1" />;
       })}
+      <rect x={origen.x} y={origen.y} width={anchoMallaPx} height={altoMallaPx} fill="none" stroke="#CBD5E1" strokeWidth="1" />
 
       {/* Rótulos cada 10 km */}
       {Array.from({ length: Math.max(0, totalRotulosX) }, (_, i) => {
@@ -1027,12 +1176,17 @@ const CapasMapa: React.FC<CapasMapaProps> = ({
           const atenuada = unidadesDestacadas.size > 0 && !destacada;
           return (
             <g key={`ruta-${unidad.codigo}`} opacity={atenuada ? 0.35 : 1}>
-              {recorrido.length > 1 && <path d={trazado(vista, recorrido)} fill="none" stroke="#9EABBA" strokeWidth="2" />}
+              {recorrido.length > 1 && (
+                <path d={trazado(vista, recorrido)} fill="none" stroke="#9EABBA" strokeWidth="1.5" strokeOpacity={destacada ? 1 : OPACIDAD_RECORRIDO} />
+              )}
+              {/* Todas las rutas siguen a la vista, pero translúcidas: donde se superponen, la calle se ve más
+                  oscura (marca los corredores con más tráfico) y la destacada resalta sin competir. */}
               <path
                 d={trazado(vista, pendiente)}
                 fill="none"
                 stroke={destacada ? '#1E40AF' : '#94A3B8'}
-                strokeWidth={destacada ? 3 : 2.5}
+                strokeWidth={destacada ? 3 : 2}
+                strokeOpacity={destacada ? 1 : OPACIDAD_PENDIENTE}
                 strokeDasharray={destacada ? '7 5' : '6 4'}
               />
             </g>
@@ -1047,9 +1201,11 @@ const CapasMapa: React.FC<CapasMapaProps> = ({
           const m = { x: (a.x + z.x) / 2, y: (a.y + z.y) / 2 };
           return (
             <g key={b.id}>
-              <line x1={a.x} y1={a.y} x2={z.x} y2={z.y} stroke={COLOR_BLOQUEO} strokeWidth="4" strokeLinecap="round" opacity={OPACIDAD_LINEA_BLOQUEO} />
+              <line x1={a.x} y1={a.y} x2={z.x} y2={z.y} stroke={COLOR_BLOQUEO} strokeWidth={compacto ? 3 : 4} strokeLinecap="round" opacity={OPACIDAD_LINEA_BLOQUEO} />
               <g transform={`translate(${m.x}, ${m.y})`} data-objeto={`bloqueo:${b.id}`}>
-                <MarcaBloqueo />
+                <g transform={escalar}>
+                  <MarcaBloqueo />
+                </g>
               </g>
             </g>
           );
@@ -1057,15 +1213,19 @@ const CapasMapa: React.FC<CapasMapaProps> = ({
 
       {/* --- DESTINOS: pin con el color de la holgura del pedido --- */}
       {capas.destinos &&
-        destinos.map((d) => {
+        destinosOrdenados.map(({ d, entregando }) => {
           const { x, y } = proyectar(vista, d.destino);
           const seleccionado = destinoResaltado(seleccion, d);
-          // Mientras su unidad lo entrega, el pin cambia de color para distinguirlo de los que esperan.
-          const entregando = unidades.some((u) => u.codigo === d.unidad && u.pedidoEnEntrega === d.pedido);
+          // Mientras su unidad lo entrega, el marcador cambia de color para distinguirlo de los que esperan.
+          const variante: VarianteDestino = entregando ? 'ENTREGA' : d.nivel;
           return (
             <g key={`${d.pedido}-${d.unidad}`} transform={`translate(${x}, ${y})`} className="cursor-pointer" data-objeto={`pedido:${d.pedido}`}>
-              {seleccionado && <circle cx="0" cy={CENTRO_CABEZA_PIN} r="13" fill="none" stroke="#1E40AF" strokeWidth="2" />}
-              <PinDestino color={entregando ? COLOR_EN_ENTREGA : COLOR_NIVEL[d.nivel]} critico={!entregando && d.nivel === 'ROJO'} />
+              {/* Área tocable mayor que el marcador (WCAG 2.5.8): el símbolo es chico, pero se toca fácil. */}
+              <circle r={AREA_TOQUE_DESTINO_PX / 2} fill="transparent" />
+              {seleccionado && <circle r={RADIO_DESTINO[variante] * f + 4} fill="none" stroke="#1E40AF" strokeWidth="2" />}
+              <g transform={escalar}>
+                <MarcadorDestino variante={variante} color={entregando ? COLOR_EN_ENTREGA : COLOR_NIVEL[d.nivel]} />
+              </g>
             </g>
           );
         })}
@@ -1078,7 +1238,9 @@ const CapasMapa: React.FC<CapasMapaProps> = ({
             const { x, y } = proyectar(vista, u.posicion);
             return (
               <g key={`entrega-${u.codigo}`} transform={`translate(${x}, ${y})`} className="cursor-pointer" data-objeto={`vehiculo:${u.codigo}`}>
-                <PinDestino color={COLOR_EN_ENTREGA} />
+                <g transform={escalar}>
+                  <MarcadorDestino variante="ENTREGA" color={COLOR_EN_ENTREGA} />
+                </g>
               </g>
             );
           })}
@@ -1095,21 +1257,23 @@ const CapasMapa: React.FC<CapasMapaProps> = ({
           const estado = almacenes.find((a) => a.id === almacen.id);
           const nivel = estado?.nivelStock;
           const etiqueta = stock === undefined ? almacen.nombre : `${almacen.nombreCorto.replace('Int.', 'Interm.')} / ${stock} %`;
-          // Semáforo + vacío de ocupación (rojo = lleno); vacío deja el depósito hueco y gris.
+          // Semáforo de stock (verde = lleno, rojo = bajo); sin stock deja el depósito hueco y gris.
           const color = stock === undefined || !nivel ? '#64748B' : COLOR_SEMAFORO[nivel];
           const central = almacen.id === 'CENTRAL';
           return (
             <g key={almacen.id} transform={`translate(${x}, ${y})`} className="cursor-pointer" data-objeto={`almacen:${almacen.id}`}>
               {seleccion?.tipo === 'almacen' && seleccion.codigo === almacen.id && (
-                <circle r="21" fill="none" stroke="#1E40AF" strokeWidth="2" />
+                <circle r={compacto ? medioAlmacen + 5 : RADIO_HALO_ALMACEN} fill="none" stroke="#1E40AF" strokeWidth="2" />
               )}
-              {central ? <AlmacenCentral /> : <AlmacenIntermedio color={color} fraccionStock={stock === undefined ? undefined : stock / 100} />}
+              <g transform={`scale(${almacenEscala})`}>
+                {central ? <AlmacenCentral /> : <AlmacenIntermedio color={color} fraccionStock={stock === undefined ? undefined : stock / 100} />}
+              </g>
               {estado?.stockBajo && (
-                <g transform="translate(11, -10)">
+                <g transform={`translate(${8 * f}, ${-8 * f})${compacto ? ` scale(${Math.max(0.75, f)})` : ''}`}>
                   <InsigniaStockBajo />
                 </g>
               )}
-              <text x="24" y="5" fill="#64748B" fontSize="13" fontWeight="500" {...halo}>
+              <text x={rotuloAlmacenX} y="4" fill="#64748B" fontSize={tamRotulo(12)} fontWeight="500" {...halo}>
                 {etiqueta}
               </text>
             </g>
@@ -1118,7 +1282,7 @@ const CapasMapa: React.FC<CapasMapaProps> = ({
 
       {/* --- AVERIADAS EN UN ALMACÉN (tipo 2 y 3 tras pasar al central): encima de los almacenes y debajo
           de su símbolo, una por fila, para que el rótulo del almacén no tape la insignia de la avería. --- */}
-      {capas.unidades && enAlmacen.map(({ unidad, fila }) => dibujarUnidad(unidad, DESPLAZAMIENTO_EN_ALMACEN_PX * (fila + 1)))}
+      {capas.unidades && enAlmacen.map(({ unidad, fila }) => dibujarUnidad(unidad, DESPLAZAMIENTO_EN_ALMACEN_PX * f * (fila + 1)))}
 
       {/* Retícula del nodo bajo el cursor: solo mientras el cursor está sobre el mapa. */}
       {mostrarReticula && (

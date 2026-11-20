@@ -23,7 +23,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-const panel = () => within(screen.getByRole('complementary', { name: 'Incidencias, flota y bitácora' }));
+const panel = () => within(screen.getByRole('complementary', { name: 'Panel de detalle' }));
 const tocar = (elemento: Element) => {
   fireEvent.pointerDown(elemento, { button: 0, clientX: 50, clientY: 50, pointerId: 1 });
   fireEvent.pointerUp(elemento, { button: 0, clientX: 50, clientY: 50, pointerId: 1 });
@@ -124,9 +124,9 @@ describe('Pedido en entrega', () => {
   it('el pin del pedido que se está entregando cambia de color y su tooltip lo indica', () => {
     const { container } = montarOperacion({ datos: entregando() });
     const pin = objetoMapa(container, 'pedido:#1001')!;
-    expect(pin.querySelector('path')!.getAttribute('fill')).toBe('#7C3AED');
+    expect(pin.querySelector('[data-marcador]')!.getAttribute('fill')).toBe('#7C3AED');
     // Los demás pines conservan el color de su holgura.
-    expect(objetoMapa(container, 'pedido:#1002')!.querySelector('path')!.getAttribute('fill')).toBe('#B91C1C');
+    expect(objetoMapa(container, 'pedido:#1002')!.querySelector('[data-marcador]')!.getAttribute('fill')).toBe('#B91C1C');
     fireEvent.pointerMove(pin, { clientX: 10, clientY: 10 });
     expect(screen.getByRole('tooltip').textContent).toContain('Entregando ahora · A-01');
   });
@@ -137,7 +137,7 @@ describe('Pedido en entrega', () => {
     const { container } = montarOperacion({ datos });
     expect(objetoMapa(container, 'pedido:#1001')).toBeNull();
     const [pin, unidad] = Array.from(container.querySelectorAll('[data-objeto="vehiculo:A-01"]'));
-    expect(pin.querySelector('path')!.getAttribute('fill')).toBe('#7C3AED');
+    expect(pin.querySelector('[data-marcador]')!.getAttribute('fill')).toBe('#7C3AED');
     expect(pin.getAttribute('transform')).toBe(unidad.getAttribute('transform'));
     fireEvent.pointerMove(pin, { clientX: 10, clientY: 10 });
     expect(screen.getByRole('tooltip').textContent).toContain('Entregando #1001');

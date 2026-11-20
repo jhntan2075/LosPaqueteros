@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { ALMACENES, CORTE_OCUPACION, UNIDADES } from '../../config/dominio';
-import { alertaStockBajo, NOMBRE_CARGA, SITUACION_UNIDAD, etiquetaPlazo, nombreAveria } from '../../config/glosario';
+import { alertaStockBajo, NOMBRE_CARGA, NOMBRE_STOCK, SITUACION_UNIDAD, etiquetaPlazo, nombreAveria } from '../../config/glosario';
 import { admisionDeAverias, useAveriaPendiente, useAverias } from '../../hooks/useAverias';
 import { useDatosOperacion } from '../../hooks/useDatosOperacion';
 import { useTrazabilidadPedido } from '../../hooks/useTrazabilidadPedido';
@@ -9,7 +9,7 @@ import { cantidadBloqueos, distanciaDesdeOrigen, fueraDelAlmacen, pedidosEnRiesg
 import { BORDE_SEMAFORO, FONDO_SEMAFORO, TEXTO_SEMAFORO, nivelDeOcupacion } from '../../lib/semaforo';
 import { turnoVigente } from '../../lib/turnos';
 import type { Coordenada } from '../../types/domain';
-import type { PedidoOperacion, SeleccionPanel, UnidadOperacion } from '../../types/operacion';
+import type { PedidoOperacion, SeccionIncidencias, SeleccionPanel, UnidadOperacion } from '../../types/operacion';
 import { TITULO_PESTANA } from '../../hooks/useNavegacionPanel';
 import { buscarPedido, type SeleccionResaltable } from '../../lib/envios';
 import { FilaFraccion } from './FilaFraccion';
@@ -50,6 +50,16 @@ interface PanelLateralProps {
   resaltado?: SeleccionResaltable | null;
   /** Marca un objeto desde una fila de lista, sin salir de la lista. */
   onResaltar?: (objeto: SeleccionResaltable) => void;
+  /** Sección de Incidencias a la que llevar (pedida por una alerta del mapa). */
+  seccionIncidencias?: { seccion: SeccionIncidencias; vez: number } | null;
+  /**
+   * 'lateral' (por defecto): columna a la derecha del mapa. 'hoja': hoja inferior para pantallas angostas
+   * o verticales, con dos alturas (media y completa).
+   */
+  presentacion?: 'lateral' | 'hoja';
+  /** Con presentación 'hoja': altura actual y cómo cambiarla. */
+  hojaCompleta?: boolean;
+  onAlternarHoja?: () => void;
 }
 
 /** Mismo punto de 7 px para los cuatro niveles: la forma del semáforo no cambia de una pantalla a otra. */
@@ -461,7 +471,7 @@ const DetalleAlmacen: React.FC<{ codigo: string } & Omit<PanelLateralProps, 'sel
                 </div>
                 <div className="flex flex-col items-end text-body-sm">
                   <span className={`tabular-nums ${TEXTO_SEMAFORO[nivel]}`}>{Math.round(fraccion * 100)} % de capacidad</span>
-                  <span className="text-neutral-600">{NOMBRE_CARGA[nivel]}</span>
+                  <span className="text-neutral-600">{NOMBRE_STOCK[nivel]}</span>
                 </div>
               </div>
               <div className="h-1 bg-neutral-200 rounded-full overflow-hidden">
@@ -524,12 +534,33 @@ const DetalleAlmacen: React.FC<{ codigo: string } & Omit<PanelLateralProps, 'sel
 /** Filas de "Pedidos en riesgo" que se muestran antes de ofrecer "ver más": con 26 en riesgo no tenía sentido listarlos todos de una. */
 const LIMITE_RIESGO_VISIBLE = 8;
 
-const ListaIncidencias: React.FC<Pick<PanelLateralProps, 'onSeleccionar' | 'onCentrar'> & { onRegistrarAveria: AbrirRegistroAveria }> = ({
-  onSeleccionar,
-  onCentrar,
-  onRegistrarAveria,
-}) => {
+/** Lleva la lista a la sección pedida y la marca un instante, para que el ojo la encuentre. */
+function useIrASeccion(pedido: PanelLateralProps['seccionIncidencias']) {
+  const riesgoRef = useRef<HTMLElement>(null);
+  const averiasRef = useRef<HTMLElement>(null);
+  const bloqueosRef = useRef<HTMLElement>(null);
+  const [marcada, setMarcada] = useState<SeccionIncidencias | null>(null);
+  const vez = pedido?.vez;
+  const seccion = pedido?.seccion;
+  useEffect(() => {
+    if (!seccion) return;
+    const elemento = (seccion === 'riesgo' ? riesgoRef : seccion === 'averias' ? averiasRef : bloqueosRef).current;
+    elemento?.scrollIntoView?.({ block: 'start', behavior: 'smooth' });
+    setMarcada(seccion);
+    const temporizador = setTimeout(() => setMarcada(null), 1200);
+    return () => clearTimeout(temporizador);
+    // refs son estables; se reacciona a cada pedido (vez), aunque sea la misma sección.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [seccion, vez]);
+  const clase = (s: SeccionIncidencias) => `scroll-mt-1 transition-colors duration-500 ${marcada === s ? 'bg-primary-50' : ''}`;
+  return { riesgoRef, averiasRef, bloqueosRef, clase };
+}
+
+const ListaIncidencias: React.FC<
+  Pick<PanelLateralProps, 'onSeleccionar' | 'onCentrar' | 'seccionIncidencias'> & { onRegistrarAveria: AbrirRegistroAveria }
+> = ({ onSeleccionar, onCentrar, onRegistrarAveria, seccionIncidencias }) => {
   const datos = useDatosOperacion();
+  const { riesgoRef, averiasRef, bloqueosRef, clase } = useIrASeccion(seccionIncidencias);
   const riesgo = pedidosEnRiesgo(datos);
   const averiadas = datos.flota.filter((u) => u.estado === 'AVERIADA');
   const admision = admisionDeAverias(datos);
@@ -538,8 +569,8 @@ const ListaIncidencias: React.FC<Pick<PanelLateralProps, 'onSeleccionar' | 'onCe
   const riesgoVisible = verTodoElRiesgo ? riesgo : riesgo.slice(0, LIMITE_RIESGO_VISIBLE);
   return (
     <div className="flex-1 min-h-0 overflow-y-auto">
-      <section className="px-3 pt-2.5 pb-2 flex flex-col gap-1 border-b border-neutral-200">
-        <TituloSeccion derecha={riesgo.length}>Pedidos en riesgo · menor holgura</TituloSeccion>
+      <section ref={riesgoRef} aria-label="En riesgo" className={`px-3 pt-2.5 pb-2 flex flex-col gap-1 border-b border-neutral-200 ${clase('riesgo')}`}>
+        <TituloSeccion derecha={riesgo.length}>En riesgo · menor holgura</TituloSeccion>
         {riesgoVisible.map((p) => (
           <FilaConBarra
             key={p.codigo}
@@ -561,7 +592,7 @@ const ListaIncidencias: React.FC<Pick<PanelLateralProps, 'onSeleccionar' | 'onCe
           </button>
         )}
       </section>
-      <section className="px-3 pt-2.5 pb-2 flex flex-col gap-1 border-b border-neutral-200">
+      <section ref={averiasRef} aria-label="Averías" className={`px-3 pt-2.5 pb-2 flex flex-col gap-1 border-b border-neutral-200 ${clase('averias')}`}>
         <TituloSeccion
           derecha={
             <span className="flex items-center gap-2.5">
@@ -574,7 +605,7 @@ const ListaIncidencias: React.FC<Pick<PanelLateralProps, 'onSeleccionar' | 'onCe
             </span>
           }
         >
-          Averías activas
+          Averías
         </TituloSeccion>
         {!admision.admite && <p className="text-body-sm text-neutral-600">{admision.motivo}</p>}
         {averiadas.length === 0 && <p className="text-body-sm text-neutral-600">Ninguna unidad averiada.</p>}
@@ -591,8 +622,8 @@ const ListaIncidencias: React.FC<Pick<PanelLateralProps, 'onSeleccionar' | 'onCe
           />
         ))}
       </section>
-      <section className="px-3 pt-2.5 pb-2 flex flex-col gap-1">
-        <TituloSeccion derecha={cantidadBloqueos(datos)}>Bloqueos activos</TituloSeccion>
+      <section ref={bloqueosRef} aria-label="Bloqueos" className={`px-3 pt-2.5 pb-2 flex flex-col gap-1 ${clase('bloqueos')}`}>
+        <TituloSeccion derecha={cantidadBloqueos(datos)}>Bloqueos</TituloSeccion>
         {bloqueos.map((b) => (
           <FilaConBarra
             key={b.id}
@@ -617,6 +648,10 @@ export const PanelLateral: React.FC<PanelLateralProps> = ({
   etiquetaVolver,
   resaltado = null,
   onResaltar,
+  seccionIncidencias = null,
+  presentacion = 'lateral',
+  hojaCompleta = false,
+  onAlternarHoja,
 }) => {
   const datos = useDatosOperacion();
   const mostrarAviso = useAvisos();
@@ -641,11 +676,27 @@ export const PanelLateral: React.FC<PanelLateralProps> = ({
   const unidad = seleccion.tipo === 'vehiculo' ? unidadPorCodigo(datos, seleccion.codigo) : undefined;
   return (
     <aside
-      aria-label="Incidencias, flota y bitácora"
-      className="absolute right-3 top-0 bottom-0 z-20 w-[340px] bg-superficie border border-neutral-200 rounded-card shadow-overlay flex flex-col overflow-hidden"
+      aria-label="Panel de detalle"
+      className={
+        presentacion === 'hoja'
+          ? `absolute inset-x-0 bottom-0 z-20 ${hojaCompleta ? 'top-2' : 'h-[48%]'} bg-superficie border-t border-neutral-200 rounded-t-card shadow-overlay flex flex-col overflow-hidden transition-[height] duration-200`
+          : 'absolute right-3 top-0 bottom-0 z-20 w-[340px] bg-superficie border border-neutral-200 rounded-card shadow-overlay flex flex-col overflow-hidden'
+      }
       data-sin-zoom
       onPointerDown={(e) => e.stopPropagation()}
     >
+      {presentacion === 'hoja' && (
+        // Asa de la hoja: alterna entre media altura (se ve el mapa) y altura completa (para leer listas largas).
+        <button
+          type="button"
+          onClick={onAlternarHoja}
+          aria-label={hojaCompleta ? 'Reducir el panel' : 'Ampliar el panel'}
+          aria-expanded={hojaCompleta}
+          className="h-6 shrink-0 flex items-center justify-center"
+        >
+          <span className="w-10 h-1 rounded-full bg-neutral-300" aria-hidden="true" />
+        </button>
+      )}
       {!esDetalle && (
         <div className="h-9 px-3 flex items-center border-b border-neutral-200 shrink-0">
           <h2 className="font-sans text-title-sm text-neutral-900">{TITULO_PESTANA[seleccion.tipo]}</h2>
@@ -691,7 +742,14 @@ export const PanelLateral: React.FC<PanelLateralProps> = ({
         />
       )}
       {seleccion.tipo === 'resumen' && <ResumenOperacion onSeleccionar={onSeleccionar} />}
-      {seleccion.tipo === 'incidencias' && <ListaIncidencias onSeleccionar={onSeleccionar} onCentrar={onCentrar} onRegistrarAveria={abrirRegistro} />}
+      {seleccion.tipo === 'incidencias' && (
+        <ListaIncidencias
+          onSeleccionar={onSeleccionar}
+          onCentrar={onCentrar}
+          onRegistrarAveria={abrirRegistro}
+          seccionIncidencias={seccionIncidencias}
+        />
+      )}
       {seleccion.tipo === 'pedidos' && <ListaPedidos resaltado={resaltado} onResaltar={resaltar} onSeleccionar={onSeleccionar} onCentrar={onCentrar} />}
       {seleccion.tipo === 'flota' && <EstadoFlota onSeleccionar={onSeleccionar} resaltado={resaltado} onResaltar={resaltar} onCentrar={onCentrar} />}
       {seleccion.tipo === 'almacenes' && <ListaAlmacenes resaltado={resaltado} onResaltar={resaltar} onSeleccionar={onSeleccionar} onCentrar={onCentrar} />}

@@ -13,9 +13,12 @@ export type SubvistaOperacion = 'vivo' | 'resumen' | 'incidencias' | 'pedidos' |
 export type PestanaPanel = Exclude<SubvistaOperacion, 'vivo'>;
 
 /** Qué muestra el panel lateral del mapa: una de sus pestañas, o el detalle de un objeto. */
+/** Sección de la pestaña Incidencias a la que lleva cada alerta del mapa. */
+export type SeccionIncidencias = 'riesgo' | 'averias' | 'bloqueos';
+
 export type SeleccionPanel =
   | { tipo: 'resumen' }
-  | { tipo: 'incidencias' }
+  | { tipo: 'incidencias'; seccion?: SeccionIncidencias }
   | { tipo: 'pedidos' }
   | { tipo: 'flota' }
   | { tipo: 'almacenes' }
@@ -205,7 +208,7 @@ export interface AlmacenOperacion {
   capacidad: number | null;
   /** Stock como porcentaje de la capacidad; null en el almacén central (sin tope). */
   porcentajeStock: number | null;
-  /** Semáforo + vacío de ocupación (rojo = lleno); null en el central. */
+  /** Semáforo + vacío de stock (verde = lleno, rojo = stock bajo); null en el central. */
   nivelStock: NivelCarga | null;
   /** Alerta de stock bajo calculada por la API (LE-078): true bajo su corte rojo. */
   stockBajo: boolean;

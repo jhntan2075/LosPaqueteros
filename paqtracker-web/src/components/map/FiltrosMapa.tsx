@@ -1,16 +1,16 @@
 import React from 'react';
-import { Check, X } from 'lucide-react';
+import { Check } from 'lucide-react';
 import { TIPOS_UNIDAD, UNIDADES, type TipoUnidad } from '../../config/dominio';
-import { NOMBRE_CARGA } from '../../config/glosario';
+import { NOMBRE_CARGA, NOMBRE_STOCK } from '../../config/glosario';
 import { SIN_FILTROS, alternar, cantidadFiltros, type FiltrosMapa as Filtros } from '../../lib/filtrosMapa';
 import { capitalizar } from '../../lib/formato';
-import { NIVELES_CARGA, type NivelCarga } from '../../lib/semaforo';
+import { NIVELES_CARGA, NIVELES_STOCK, type NivelCarga } from '../../lib/semaforo';
 import { iconoVehiculo } from './iconosVehiculo';
 import { MarcaSemaforo } from './simbolos';
 
-// Panel flotante de filtros globales del mapa (D05–D07), con el mismo formato que "Capas y leyenda": no
-// modal, para ver el efecto en el mapa mientras se filtra. Chips de selección múltiple con su conteo; el
-// chip marcado lleva un check además del color, para no depender solo del color.
+// Filtros globales del mapa (D05–D07), desplegados dentro de la columna de controles: se ve el efecto en
+// el mapa mientras se filtra. Chips de selección múltiple con su conteo; el chip marcado lleva un check
+// además del color, para no depender solo del color.
 
 export interface ConteosFiltros {
   tipos: Record<TipoUnidad, number>;
@@ -41,7 +41,7 @@ const Chip: React.FC<{ activo: boolean; conteo: number; onClick: () => void; chi
 );
 
 const Grupo: React.FC<{ titulo: string; nota?: string; children: React.ReactNode }> = ({ titulo, nota, children }) => (
-  <fieldset className="px-3 py-2.5 border-b border-neutral-200">
+  <fieldset className="py-2 border-b border-neutral-200 last-of-type:border-b-0">
     <legend className="contents">
       <span className="block font-semibold text-body-sm text-neutral-900 mb-1.5">{titulo}</span>
     </legend>
@@ -50,16 +50,18 @@ const Grupo: React.FC<{ titulo: string; nota?: string; children: React.ReactNode
   </fieldset>
 );
 
-const ChipsNivel: React.FC<{ marcados: NivelCarga[]; conteos: Record<NivelCarga, number>; onCambiar: (n: NivelCarga[]) => void }> = ({
-  marcados,
-  conteos,
-  onCambiar,
-}) => (
+const ChipsNivel: React.FC<{
+  niveles: NivelCarga[];
+  nombres: Record<NivelCarga, string>;
+  marcados: NivelCarga[];
+  conteos: Record<NivelCarga, number>;
+  onCambiar: (n: NivelCarga[]) => void;
+}> = ({ niveles, nombres, marcados, conteos, onCambiar }) => (
   <>
-    {NIVELES_CARGA.map((nivel) => (
+    {niveles.map((nivel) => (
       <Chip key={nivel} activo={marcados.includes(nivel)} conteo={conteos[nivel]} onClick={() => onCambiar(alternar(marcados, nivel))}>
         <MarcaSemaforo nivel={nivel} />
-        {NOMBRE_CARGA[nivel]}
+        {nombres[nivel]}
       </Chip>
     ))}
   </>
@@ -69,29 +71,12 @@ interface FiltrosMapaProps {
   filtros: Filtros;
   conteos: ConteosFiltros;
   onCambiar: (filtros: Filtros) => void;
-  onCerrar: () => void;
 }
 
-export const FiltrosMapa: React.FC<FiltrosMapaProps> = ({ filtros, conteos, onCambiar, onCerrar }) => {
+export const FiltrosMapa: React.FC<FiltrosMapaProps> = ({ filtros, conteos, onCambiar }) => {
   const activos = cantidadFiltros(filtros);
   return (
-    <section
-      aria-label="Filtros del mapa"
-      data-sin-zoom
-      onPointerDown={(e) => e.stopPropagation()}
-      className="w-[300px] max-h-[calc(100vh-260px)] overflow-y-auto bg-superficie border border-neutral-200 rounded-card shadow-overlay cursor-default"
-    >
-      <header className="h-9 pl-3 pr-2 flex items-center border-b border-neutral-200">
-        <h2 className="font-semibold text-body text-neutral-900">Filtros</h2>
-        <button
-          type="button"
-          onClick={onCerrar}
-          aria-label="Cerrar filtros"
-          className="ml-auto size-6 flex items-center justify-center rounded-control text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900"
-        >
-          <X className="size-3.5" />
-        </button>
-      </header>
+    <section aria-label="Filtros del mapa" className="cursor-default">
 
       <Grupo titulo="Tipo de unidad">
         {TIPOS_UNIDAD.map((tipo) => (
@@ -108,14 +93,14 @@ export const FiltrosMapa: React.FC<FiltrosMapaProps> = ({ filtros, conteos, onCa
       </Grupo>
 
       <Grupo titulo="Carga de unidades">
-        <ChipsNivel marcados={filtros.carga} conteos={conteos.carga} onCambiar={(carga) => onCambiar({ ...filtros, carga })} />
+        <ChipsNivel niveles={NIVELES_CARGA} nombres={NOMBRE_CARGA} marcados={filtros.carga} conteos={conteos.carga} onCambiar={(carga) => onCambiar({ ...filtros, carga })} />
       </Grupo>
 
       <Grupo titulo="Stock de almacenes" nota="El almacén central no tiene tope: siempre se muestra.">
-        <ChipsNivel marcados={filtros.stock} conteos={conteos.stock} onCambiar={(stock) => onCambiar({ ...filtros, stock })} />
+        <ChipsNivel niveles={NIVELES_STOCK} nombres={NOMBRE_STOCK} marcados={filtros.stock} conteos={conteos.stock} onCambiar={(stock) => onCambiar({ ...filtros, stock })} />
       </Grupo>
 
-      <footer className="px-3 py-2.5 flex items-center gap-2">
+      <footer className="pt-2 flex items-center gap-2">
         <p role="status" className="text-caption text-neutral-600 tabular-nums">
           {conteos.unidades.visibles} de {conteos.unidades.total} unidades · {conteos.almacenes.visibles} de {conteos.almacenes.total}{' '}
           almacenes

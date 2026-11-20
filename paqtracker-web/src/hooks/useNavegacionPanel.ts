@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ALMACENES } from '../config/dominio';
 import { accionAlElegirEnMapa, esResaltable, type SeleccionResaltable } from '../lib/envios';
-import type { PestanaPanel, SeleccionPanel } from '../types/operacion';
+import type { PestanaPanel, SeccionIncidencias, SeleccionPanel } from '../types/operacion';
 
 // Navegación del panel lateral del mapa, la misma en Operación y en Simulación. Separa dos ideas:
 //  - el objeto RESALTADO: lo que el mapa y las listas marcan (F01, F05), y
@@ -10,7 +10,7 @@ import type { PestanaPanel, SeleccionPanel } from '../types/operacion';
 export const TITULO_PESTANA: Record<PestanaPanel, string> = {
   resumen: 'Resumen',
   incidencias: 'Incidencias',
-  pedidos: 'Pedidos',
+  pedidos: 'Envíos',
   flota: 'Flota',
   almacenes: 'Almacenes',
   bitacora: 'Bitácora',
@@ -50,6 +50,11 @@ export interface NavegacionPanel {
   seleccionPanel: SeleccionPanel;
   /** Texto del botón "‹ …" del detalle. */
   etiquetaVolver: string;
+  /**
+   * Sección de Incidencias pedida por una alerta, con un contador que cambia en cada pedido: tocar la
+   * misma alerta dos veces vuelve a llevar a su sección aunque el usuario haya desplazado la lista.
+   */
+  seccionIncidencias: { seccion: SeccionIncidencias; vez: number } | null;
   /** Abre una pestaña o el detalle de un objeto (desde el panel, el buscador u otra pantalla). */
   seleccionar: (seleccion: SeleccionPanel) => void;
   /** Clic en un objeto del mapa: resalta su fila si su lista está abierta; si no, abre su detalle. */
@@ -66,10 +71,15 @@ export function useNavegacionPanel({ pestana, abrirPestana, cerrarPanel }: Opcio
   const [pila, setPila] = useState<SeleccionResaltable[]>([]);
   const [resaltado, setResaltado] = useState<SeleccionResaltable | null>(null);
   const [ultimaPestana, setUltimaPestana] = useState<PestanaPanel>(pestana ?? 'incidencias');
+  const [seccionIncidencias, setSeccionIncidencias] = useState<{ seccion: SeccionIncidencias; vez: number } | null>(null);
+  // Si el detalle se abrió con el panel cerrado (desde el mapa o el buscador), "Volver" sin historial
+  // regresa al mapa, no a una pestaña que el usuario nunca abrió.
+  const [desdeElMapa, setDesdeElMapa] = useState(false);
   // La pestaña puede venir de fuera (la URL en Operación): se recuerda la última al cambiar, durante el render.
   if (pestana !== null && pestana !== ultimaPestana) setUltimaPestana(pestana);
 
   const abrirDetalle = (objeto: SeleccionResaltable) => {
+    if (!detalle) setDesdeElMapa(pestana === null);
     if (detalle && !mismaSeleccion(detalle, objeto)) setPila((anteriores) => [...anteriores, detalle]);
     setDetalle(objeto);
     setResaltado(objeto);
@@ -83,6 +93,10 @@ export function useNavegacionPanel({ pestana, abrirPestana, cerrarPanel }: Opcio
     setDetalle(null);
     setPila([]);
     setUltimaPestana(seleccion.tipo);
+    if (seleccion.tipo === 'incidencias' && seleccion.seccion) {
+      const seccion = seleccion.seccion;
+      setSeccionIncidencias((previa) => ({ seccion, vez: (previa?.vez ?? 0) + 1 }));
+    }
     abrirPestana(seleccion.tipo);
   };
 
@@ -99,16 +113,21 @@ export function useNavegacionPanel({ pestana, abrirPestana, cerrarPanel }: Opcio
       setResaltado(anterior);
       return;
     }
+    if (desdeElMapa) {
+      cerrar();
+      return;
+    }
     setDetalle(null);
     abrirPestana(ultimaPestana);
   };
 
-  const cerrar = () => {
+  function cerrar() {
     setDetalle(null);
     setPila([]);
     setResaltado(null);
+    setDesdeElMapa(false);
     cerrarPanel();
-  };
+  }
 
   const anterior = pila[pila.length - 1];
   return {
@@ -118,7 +137,8 @@ export function useNavegacionPanel({ pestana, abrirPestana, cerrarPanel }: Opcio
     panelAbierto: pestana !== null || detalle !== null,
     pestanaActiva: pestana ?? ultimaPestana,
     seleccionPanel: detalle ?? { tipo: pestana ?? ultimaPestana },
-    etiquetaVolver: anterior ? tituloDeSeleccion(anterior) : TITULO_PESTANA[ultimaPestana],
+    etiquetaVolver: anterior ? tituloDeSeleccion(anterior) : desdeElMapa ? 'Mapa' : TITULO_PESTANA[ultimaPestana],
+    seccionIncidencias,
     seleccionar,
     elegirEnMapa,
     resaltar: setResaltado,

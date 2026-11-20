@@ -91,7 +91,7 @@ export const ListaPedidos: React.FC<ListaPedidosProps> = ({ resaltado, onResalta
   return (
     <div className="flex-1 min-h-0 overflow-y-auto">
       <section aria-label="Lista de pedidos" className="px-3 pt-2.5 pb-1.5 flex flex-col gap-1.5">
-        <TituloSeccion derecha={`${pedidos.length}`}>Pedidos</TituloSeccion>
+        <TituloSeccion derecha={`${pedidos.length}`}>Pedidos en curso</TituloSeccion>
         <input
           type="search"
           value={termino}

@@ -1,4 +1,4 @@
-import { CORTE_HOLGURA, CORTE_INVENTARIO, CORTE_OCUPACION, CORTE_STOCK, DURACIONES_AVERIA, esPlazoRegular, formatearDuracion } from './dominio';
+import { CORTE_HOLGURA, CORTE_INVENTARIO, CORTE_OCUPACION, DURACIONES_AVERIA, esPlazoRegular, formatearDuracion } from './dominio';
 import type { NivelCarga } from '../lib/semaforo';
 import type { EstadoFraccion, EstadoUnidad, SituacionUnidad } from '../types/operacion';
 import type { NivelHolgura } from '../types/pedidos';
@@ -25,7 +25,7 @@ export const RANGO_HOLGURA: Record<Exclude<NivelHolgura, 'CERRADO'>, string> = {
   get VERDE() { return `> ${porcentaje(CORTE_HOLGURA.ambar)} %`; },
 };
 
-/** Nivel del semáforo + vacío de carga (unidades) y de stock (almacenes). */
+/** Nivel del semáforo + vacío de carga de las unidades. */
 export const NOMBRE_CARGA: Record<NivelCarga, string> = {
   VACIO: 'Vacío',
   VERDE: 'Con espacio',
@@ -49,7 +49,21 @@ const rangos = (cortes: { vacio: number; ambar: number; rojo: number }): Record<
 export const RANGO_OCUPACION = rangos(CORTE_OCUPACION);
 
 /** Stock de un almacén intermedio sobre su capacidad. */
-export const RANGO_STOCK = rangos(CORTE_STOCK);
+/** Nivel de stock de un almacén intermedio: lleno = verde, bajo = rojo. */
+export const NOMBRE_STOCK: Record<NivelCarga, string> = {
+  VACIO: 'Sin stock',
+  ROJO: 'Stock crítico',
+  AMBAR: 'Stock medio',
+  VERDE: 'Abastecido',
+};
+
+/** Rango de stock (fracción de la capacidad) de cada nivel, con los cortes del inventario. */
+export const RANGO_STOCK: Record<NivelCarga, string> = {
+  VACIO: '0',
+  get ROJO() { return `< ${porcentaje(CORTE_INVENTARIO.rojo)} %`; },
+  get AMBAR() { return `${porcentaje(CORTE_INVENTARIO.rojo)}–${porcentaje(CORTE_INVENTARIO.ambar)} %`; },
+  get VERDE() { return `≥ ${porcentaje(CORTE_INVENTARIO.ambar)} %`; },
+};
 
 /** Alerta de stock bajo de un intermedio (LE-078), aparte del semáforo de ocupación. */
 export const alertaStockBajo = () => `Stock bajo (< ${porcentaje(CORTE_INVENTARIO.rojo)} %)`;

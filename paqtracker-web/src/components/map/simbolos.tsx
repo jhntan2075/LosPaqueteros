@@ -44,6 +44,36 @@ export const PinDestino: React.FC<{ color: string; critico?: boolean }> = ({ col
   </>
 );
 
+/** Variante del marcador de destino en el mapa: su peso visual sube con la urgencia. */
+export type VarianteDestino = 'VERDE' | 'AMBAR' | 'ROJO' | 'CERRADO' | 'ENTREGA';
+
+/** Radio de cada variante: lo urgente se ve más grande; lo que va a tiempo queda de fondo. */
+export const RADIO_DESTINO: Record<VarianteDestino, number> = { VERDE: 4, CERRADO: 3.5, AMBAR: 5, ROJO: 7, ENTREGA: 6 };
+
+/**
+ * Marcador de destino del mapa, centrado en el nodo de entrega. Reemplaza al pin en el lienzo: ocupa
+ * ~1/4 del área y no tapa lo que está encima del nodo. Además del color, la forma cambia con la
+ * urgencia (no depende solo del color): a tiempo = anillo hueco, en alerta = círculo lleno,
+ * crítico = círculo mayor con "!", entregando = círculo con punto blanco.
+ */
+export const MarcadorDestino: React.FC<{ variante: VarianteDestino; color: string }> = ({ variante, color }) => {
+  const r = RADIO_DESTINO[variante];
+  if (variante === 'VERDE' || variante === 'CERRADO')
+    return <circle r={r} fill="#FFFFFF" stroke={color} strokeWidth="2" data-marcador={variante} />;
+  return (
+    <>
+      <circle r={r} fill={color} stroke="#FFFFFF" strokeWidth="1.5" data-marcador={variante} />
+      {variante === 'ROJO' && (
+        <>
+          <rect x="-0.9" y="-4.2" width="1.8" height="4.6" rx="0.9" fill="#FFFFFF" />
+          <circle cx="0" cy="2.6" r="1" fill="#FFFFFF" />
+        </>
+      )}
+      {variante === 'ENTREGA' && <circle r="2" fill="#FFFFFF" />}
+    </>
+  );
+};
+
 /** Depósito central (28 × 26, centrado en el nodo): silueta rellena con puerta. */
 export const AlmacenCentral: React.FC = () => (
   <>

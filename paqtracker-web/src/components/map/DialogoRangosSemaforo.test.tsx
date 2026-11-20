@@ -32,7 +32,7 @@ describe('DialogoRangosSemaforo', () => {
     expect(campo(dialogo, /Holgura del pedido: rojo por debajo de/).value).toBe('15');
     expect(campo(dialogo, /Carga de unidades: vacío hasta/).value).toBe('0');
     expect(campo(dialogo, /Carga de unidades: ámbar desde/).value).toBe('70');
-    expect(campo(dialogo, /Stock de almacenes: rojo desde/).value).toBe('80');
+    expect(campo(dialogo, /Stock de almacenes: rojo por debajo de/).value).toBe('20');
   });
 
   it('guarda en la API como fracciones y la leyenda cambia de inmediato', async () => {

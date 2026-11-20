@@ -20,12 +20,13 @@ describe('nivelDeOcupacion', () => {
 });
 
 describe('nivelDeStock', () => {
-  it('rojo es lleno, no stock bajo (glosario de la rúbrica)', () => {
+  it('lleno es verde y el stock bajo, rojo (cortes del inventario: rojo < 20 %, ámbar < 50 %)', () => {
     expect(nivelDeStock(0, 100)).toBe('VACIO');
-    expect(nivelDeStock(10, 100)).toBe('VERDE');
-    expect(nivelDeStock(49, 100)).toBe('VERDE');
-    expect(nivelDeStock(50, 100)).toBe('AMBAR');
-    expect(nivelDeStock(80, 100)).toBe('ROJO');
-    expect(nivelDeStock(100, 100)).toBe('ROJO');
+    expect(nivelDeStock(10, 100)).toBe('ROJO');
+    expect(nivelDeStock(19, 100)).toBe('ROJO');
+    expect(nivelDeStock(20, 100)).toBe('AMBAR');
+    expect(nivelDeStock(49, 100)).toBe('AMBAR');
+    expect(nivelDeStock(50, 100)).toBe('VERDE');
+    expect(nivelDeStock(100, 100)).toBe('VERDE');
   });
 });
