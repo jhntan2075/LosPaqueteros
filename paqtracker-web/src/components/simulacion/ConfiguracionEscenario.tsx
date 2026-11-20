@@ -274,6 +274,11 @@ export const ConfiguracionEscenario: React.FC<ConfiguracionEscenarioProps> = ({ 
       Ejecutar simulación
     </Boton>
   );
+  const avisoError = error ? (
+    <Aviso tono="critical" role="alert" className={cn(!angosto && 'mt-3')}>
+      {error}
+    </Aviso>
+  ) : null;
   const avisoFaltantes =
     !listo && !enviando && faltantes.length > 0 ? (
       <Aviso tono="neutral" className={cn(!angosto && 'mt-3')}>
@@ -412,11 +417,7 @@ export const ConfiguracionEscenario: React.FC<ConfiguracionEscenarioProps> = ({ 
                   valor={`${NOMBRE_HOLGURA.ROJO} ${RANGO_HOLGURA.ROJO} · ${NOMBRE_HOLGURA.AMBAR} ${RANGO_HOLGURA.AMBAR}`}
                 />
                 {!angosto && botonEjecutar}
-                {error && (
-                  <Aviso tono="critical" role="alert" className="mt-3">
-                    {error}
-                  </Aviso>
-                )}
+                {!angosto && avisoError}
                 {!angosto && avisoFaltantes}
               </Tarjeta>
             </aside>
@@ -425,6 +426,7 @@ export const ConfiguracionEscenario: React.FC<ConfiguracionEscenarioProps> = ({ 
       </div>
       {modo === 'nueva' && angosto && (
         <div data-barra-fija className="fixed inset-x-0 bottom-0 z-20 flex flex-col gap-2 border-t border-neutral-200 bg-superficie p-3 md:hidden">
+          {avisoError}
           {avisoFaltantes}
           {botonEjecutar}
         </div>
