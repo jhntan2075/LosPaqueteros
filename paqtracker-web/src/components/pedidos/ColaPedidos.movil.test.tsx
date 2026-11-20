@@ -85,6 +85,16 @@ describe('Pedidos · celular', () => {
   });
 });
 
+describe('Pedidos · celular · áreas táctiles', () => {
+  it('el buscador, su botón de limpiar y "Limpiar filtros" miden al menos 44 px en celular', async () => {
+    await montar(true);
+    expect(screen.getByLabelText('Buscar pedidos').className).toContain('max-md:h-11');
+    fireEvent.change(screen.getByLabelText('Buscar pedidos'), { target: { value: 'zzz' } });
+    expect(screen.getByRole('button', { name: 'Limpiar búsqueda' }).className).toContain('max-md:size-11');
+    expect(screen.getByRole('button', { name: /^Limpiar filtros/ }).className).toContain('max-md:min-h-11');
+  });
+});
+
 describe('Pedidos · escritorio', () => {
   it('sigue mostrando la tabla, el botón Exportar CSV y los selectores', async () => {
     await montar(false);

@@ -348,7 +348,7 @@ export const ColaPedidos: React.FC<{
                   aria-label="Buscar pedidos"
                   value={busqueda}
                   onChange={(e) => setBusqueda(e.target.value)}
-                  className="pl-8 pr-7 text-body-sm"
+                  className="pl-8 pr-7 text-body-sm max-md:h-11 max-md:pr-11"
                 />
                 {!busqueda && (
                   <kbd className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 rounded border border-neutral-200 px-1 font-sans text-caption text-neutral-500">
@@ -360,7 +360,7 @@ export const ColaPedidos: React.FC<{
                     type="button"
                     onClick={() => setBusqueda('')}
                     aria-label="Limpiar búsqueda"
-                    className="absolute right-1.5 top-1/2 flex size-5 -translate-y-1/2 items-center justify-center rounded text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900"
+                    className="absolute right-1.5 top-1/2 flex size-5 max-md:right-0 max-md:size-11 -translate-y-1/2 items-center justify-center rounded text-neutral-500 hover:bg-neutral-100 hover:text-neutral-900"
                   >
                     <X className="size-3" aria-hidden="true" />
                   </button>
@@ -436,7 +436,7 @@ export const ColaPedidos: React.FC<{
                   tamano="sm"
                   icono={RotateCcw}
                   onClick={limpiarFiltros}
-                  className="text-primary-700 hover:bg-primary-50 hover:text-primary-700"
+                  className="text-primary-700 hover:bg-primary-50 hover:text-primary-700 max-md:min-h-11"
                 >
                   Limpiar filtros ({filtrosActivos})
                 </Boton>
