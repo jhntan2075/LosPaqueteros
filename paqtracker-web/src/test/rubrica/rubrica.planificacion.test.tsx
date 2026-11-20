@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, screen, within } from '@testing-library/react';
+import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { InformeCorrida } from '../../components/simulacion/InformeCorrida';
 import { clienteApi, ErrorDeApi } from '../../services/clienteApi';
@@ -102,8 +102,8 @@ describe('Rúbrica 91.EvaSw · reporte de la última planificación estable', ()
     vi.spyOn(clienteApi, 'planEstable').mockResolvedValue(plan({ colapso: { instanteMs: INICIO_MS + 300 * MIN, pedido: 'P-00007', causa: 'PLAZO_VENCIDO' } }));
     montarInforme('COLAPSO');
     fireEvent.click(screen.getByRole('tab', { name: 'Última planificación estable (antes del colapso)' }));
-    const aviso = await screen.findByRole('status');
-    expect(aviso.textContent).toMatch(/Plan anterior al colapso\..*P-00007/);
+    // Mientras carga también hay un role="status" (EstadoCarga): se espera al aviso del colapso.
+    await waitFor(() => expect(screen.getByRole('status').textContent).toMatch(/Plan anterior al colapso\..*P-00007/));
   });
 
   it('G09 · en la operación día a día, "Generar reporte de cierre" abre el plan sin detener la operación', async () => {

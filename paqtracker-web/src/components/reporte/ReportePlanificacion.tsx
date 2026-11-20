@@ -5,7 +5,7 @@ import { usePlanEstable } from '../../hooks/usePlanEstable';
 import { capitalizar, formatearDiaMesHora, formatearMiles } from '../../lib/formato';
 import { cn } from '../../lib/clases';
 import type { IdAlmacenApi, PlanEstableApi, RutaPlanificadaApi } from '../../types/api';
-import { Aviso, Boton, Indicador } from '../ui';
+import { Aviso, Boton, EstadoCarga, EstadoError, Indicador } from '../ui';
 
 // Reporte de la última planificación estable (rúbrica 91.EvaSw G08 simulación del periodo, G09 cierre del día a
 // día, G10 colapso): el plan vigente tras la última planificación que terminó sin colapso, una ruta por unidad
@@ -120,7 +120,7 @@ interface ReportePlanificacionProps {
 export const ReportePlanificacion: React.FC<ReportePlanificacionProps> = ({ ejecucionId, actualizable = false }) => {
   const { plan, cargando, error, sinPlan, recargar } = usePlanEstable(ejecucionId);
 
-  if (cargando && !plan) return <p className="p-6 text-body text-neutral-600">Cargando la última planificación…</p>;
+  if (cargando && !plan) return <EstadoCarga texto="Cargando la última planificación…" className="p-6" />;
   if (sinPlan)
     return (
       <p className="p-6 text-body text-neutral-600">
@@ -129,19 +129,7 @@ export const ReportePlanificacion: React.FC<ReportePlanificacionProps> = ({ ejec
     );
   if (error || !plan)
     return (
-      <div className="p-6">
-        <Aviso
-          tono="critical"
-          role="alert"
-          accion={
-            <Boton variante="secundario" tamano="sm" icono={RefreshCw} onClick={recargar}>
-              Reintentar
-            </Boton>
-          }
-        >
-          No se pudo obtener la planificación: {error ?? 'sin respuesta'}
-        </Aviso>
-      </div>
+      <EstadoError titulo="No se pudo obtener la planificación" descripcion={error ?? 'sin respuesta'} onReintentar={recargar} />
     );
 
   const paquetes = plan.rutas.reduce((total, r) => total + r.carga, 0);

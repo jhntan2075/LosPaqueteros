@@ -46,6 +46,13 @@ afterEach(() => {
 });
 
 describe('ModuloSimulacion · abrir por URL', () => {
+  it('la lista de simulaciones muestra un estado de carga (role="status") mientras llega', async () => {
+    vi.spyOn(clienteApi, 'listarEjecuciones').mockReturnValue(new Promise(() => {}));
+    render(<ModuloSimulacion />);
+    fireEvent.click(await screen.findByRole('tab', { name: /Simulaciones existentes/ }));
+    expect(screen.getByRole('status').textContent).toContain('Cargando simulaciones…');
+  });
+
   it('sin ?ejecucion en la URL, muestra la configuración de escenario', async () => {
     render(<ModuloSimulacion />);
     expect(await screen.findByRole('heading', { name: 'Nueva simulación' })).toBeTruthy();

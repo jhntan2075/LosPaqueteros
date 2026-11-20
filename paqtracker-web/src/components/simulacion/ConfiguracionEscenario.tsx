@@ -8,7 +8,7 @@ import { formatearFechaLarga, formatearMiles } from '../../lib/formato';
 import { NOMBRE_REGISTRO, mesDeArchivo, subirArchivo } from '../../services/servicioArchivos';
 import type { ComposicionFlotaApi, EjecucionApi, EstadoEjecucionApi } from '../../types/api';
 import { IndicadorRadio } from '../layout/IndicadorRadio';
-import { Aviso, Boton, Campo, EncabezadoPagina, Entrada, FilaDato, Insignia, Pestanas, Tarjeta, type Tono } from '../ui';
+import { Aviso, Boton, Campo, EncabezadoPagina, Entrada, EstadoCarga, EstadoError, FilaDato, Insignia, Pestanas, Tarjeta, type Tono } from '../ui';
 import type { ArchivoCargado, EscenarioSimulacion, TipoArchivo } from '../../types/simulacion';
 
 // Configuración de escenario (Figma "Configuración de escenario · vacío / completado"). Crea una
@@ -160,11 +160,8 @@ const ListaEjecuciones: React.FC<{
         Actualizar
       </Boton>
     </div>
-    {error && (
-      <Aviso tono="critical" role="alert">
-        {error}
-      </Aviso>
-    )}
+    {error && <EstadoError titulo={error} onReintentar={onRecargar} />}
+    {!error && cargando && simulaciones.length === 0 && <EstadoCarga texto="Cargando simulaciones…" />}
     {!error && !cargando && simulaciones.length === 0 && <p className="text-body-sm text-neutral-600">Aún no hay simulaciones.</p>}
     {simulaciones.length > 0 && (
       <div className="flex flex-col">

@@ -11,7 +11,7 @@ import { DialogoRangosSemaforo } from '../map/DialogoRangosSemaforo';
 import { MiniMapaMalla } from '../map/MiniMapaMalla';
 import { DialogoConfirmacion } from '../modals/DialogoConfirmacion';
 import { AlmacenCentral, AlmacenIntermedio } from '../map/simbolos';
-import { Aviso, Boton, Campo, EncabezadoPagina, Entrada, Tarjeta } from '../ui';
+import { Aviso, Boton, Campo, EncabezadoPagina, EstadoCarga, EstadoError, Entrada, Tarjeta } from '../ui';
 import type { EntradaProps } from '../ui/Campo';
 
 // Configuración del dominio (rúbrica B02, B04, B06, B07-B09): ubicación y capacidad de los almacenes,
@@ -150,15 +150,7 @@ export const ModuloConfiguracion: React.FC = () => {
       <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-superficie">
         {encabezado}
         <div className="flex flex-1 items-center justify-center p-4 sm:p-6">
-          {errorCarga ? (
-            <Aviso tono="critical" role="status">
-              {errorCarga}
-            </Aviso>
-          ) : (
-            <p className="text-body text-neutral-600" role="status">
-              Cargando configuración…
-            </p>
-          )}
+          {errorCarga ? <EstadoError titulo={errorCarga} /> : <EstadoCarga texto="Cargando configuración…" />}
         </div>
       </div>
     );

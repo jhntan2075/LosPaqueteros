@@ -9,7 +9,8 @@ import {
   Plus,
   RotateCcw,
   ArrowRight,
-  AlertTriangle,
+  Package,
+  SearchX,
   Check,
   MoreHorizontal,
   SlidersHorizontal,
@@ -23,7 +24,7 @@ import { useCerrarConEscape } from '../../hooks/useCerrarConEscape';
 import { useColaPedidos } from '../../hooks/usePedidos';
 import { useDatosOperacion } from '../../hooks/useDatosOperacion';
 import type { EstadoPedidoCola, NivelHolgura, PedidoEnCola } from '../../types/pedidos';
-import { Boton, EncabezadoPagina, Entrada, EstadoVacio, Insignia, Tarjeta } from '../ui';
+import { Boton, EncabezadoPagina, Entrada, EstadoCarga, EstadoError, EstadoVacio, Insignia, Tarjeta } from '../ui';
 import { DetallePedido } from './DetallePedido';
 import { COLOR_HOLGURA, TONO_ESTADO } from './estilos';
 import { PuntoHolgura } from './iconos';
@@ -535,17 +536,17 @@ export const ColaPedidos: React.FC<{
             )}
 
             {/* Estados de error o vacío */}
-            {error && <EstadoVacio tono="critical" icono={AlertTriangle} titulo={error} />}
+            {error && <EstadoError titulo={error} />}
 
-            {!error && visibles.length === 0 && (
+            {!error && cargando && visibles.length === 0 && <EstadoCarga texto="Cargando cola de pedidos…" filas={5} />}
+
+            {!error && !cargando && visibles.length === 0 && (
               <EstadoVacio
-                icono={Search}
+                icono={pedidos.length === 0 ? Package : SearchX}
                 titulo={
-                  cargando
-                    ? 'Cargando cola de pedidos…'
-                    : pedidos.length === 0
-                      ? 'No hay pedidos registrados en este momento'
-                      : 'Ningún pedido coincide con la búsqueda o filtros aplicados'
+                  pedidos.length === 0
+                    ? 'No hay pedidos registrados en este momento'
+                    : 'Ningún pedido coincide con la búsqueda o filtros aplicados'
                 }
                 descripcion={
                   filtrosActivos > 0 ? 'Intenta modificar o limpiar los filtros seleccionados.' : 'Registra un nuevo pedido para iniciar la planificación.'

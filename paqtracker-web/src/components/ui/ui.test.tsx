@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { Plus, X } from 'lucide-react';
 import { cn } from '../../lib/clases';
-import { Aviso, Boton, Campo, EncabezadoPagina, Entrada, FilaDato, Insignia, Pestanas, Tarjeta } from '.';
+import { Aviso, Boton, Campo, EncabezadoPagina, Entrada, EstadoCarga, EstadoError, FilaDato, Insignia, Pestanas, Tarjeta } from '.';
 
 afterEach(cleanup);
 
@@ -124,5 +124,34 @@ describe('Campo respeta lo que trae el control', () => {
     const input = screen.getByLabelText('Contraseña');
     expect(input.getAttribute('aria-invalid')).toBe('true');
     expect(input.getAttribute('aria-describedby')).toBe('error-login clave-ayuda');
+  });
+});
+
+describe('EstadoCarga', () => {
+  it('anuncia el texto con role="status" y muestra 3 barras de esqueleto por defecto', () => {
+    const { container } = render(<EstadoCarga texto="Cargando pedidos…" />);
+    const estado = screen.getByRole('status');
+    expect(estado.getAttribute('aria-live')).toBe('polite');
+    expect(estado.textContent).toContain('Cargando pedidos…');
+    expect(container.querySelectorAll('[data-esqueleto]').length).toBe(3);
+  });
+  it('respeta la cantidad de filas pedida', () => {
+    const { container } = render(<EstadoCarga texto="Cargando…" filas={5} />);
+    expect(container.querySelectorAll('[data-esqueleto]').length).toBe(5);
+  });
+});
+
+describe('EstadoError', () => {
+  it('es un role="alert" con título, descripción y sin botón si no hay cómo reintentar', () => {
+    render(<EstadoError titulo="No se pudo cargar" descripcion="Revisa la conexión." />);
+    expect(screen.getByRole('alert').textContent).toContain('No se pudo cargar');
+    expect(screen.getByText('Revisa la conexión.')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Reintentar' })).toBeNull();
+  });
+  it('"Reintentar" llama a la función recibida', () => {
+    const onReintentar = vi.fn();
+    render(<EstadoError titulo="No se pudo cargar" onReintentar={onReintentar} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Reintentar' }));
+    expect(onReintentar).toHaveBeenCalledTimes(1);
   });
 });
