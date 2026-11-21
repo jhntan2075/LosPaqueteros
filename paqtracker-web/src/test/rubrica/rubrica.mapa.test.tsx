@@ -305,7 +305,7 @@ describe('Rúbrica · MAPA · línea de la ruta', () => {
     expect(leyenda.textContent).toContain('Tramo recorrido');
     expect(leyenda.textContent).toContain('Tramo pendiente');
     const pendiente = leyenda.querySelector('line[stroke-dasharray]')!;
-    expect(pendiente.getAttribute('stroke')).toBe('#94A3B8');
+    expect(pendiente.getAttribute('stroke')).toBe('var(--mapa-ruta)');
     expect(pendiente.getAttribute('stroke-dasharray')).toBe('6 4');
   });
 
@@ -323,9 +323,24 @@ describe('Rúbrica · MAPA · línea de la ruta', () => {
     const ruta = rutas(container).find((r) => (r.getAttribute('d') ?? '').startsWith(`M ${unidad.x} ${unidad.y}`));
     expect(ruta, 'la ruta de A-01 debe empezar en la posición de la unidad').toBeTruthy();
     // El trazo sólido de lo recorrido queda de longitud cero: todos sus puntos son la posición actual.
-    container.querySelectorAll('path[stroke="#9EABBA"]').forEach((recorrido) => {
+    container.querySelectorAll('path[stroke="var(--mapa-recorrido)"]').forEach((recorrido) => {
       const puntos = (recorrido.getAttribute('d') ?? '').split(/[ML]/).map((p) => p.trim()).filter(Boolean);
       expect(new Set(puntos).size).toBe(1);
+    });
+  });
+
+  it('la cuadrícula, el borde y los rótulos del lienzo usan variables de tema, no colores escritos (modo oscuro)', () => {
+    const { container } = montarOperacion({ datos: datosRubrica() });
+    const lienzo = container.querySelector('svg.lienzo-mapa')!;
+    const cuadricula = Array.from(lienzo.querySelectorAll(':scope > line'));
+    expect(cuadricula.length).toBeGreaterThan(0);
+    cuadricula.forEach((linea) => expect(linea.getAttribute('stroke')).toBe('var(--mapa-cuadricula)'));
+    expect(lienzo.querySelector(':scope > rect[fill="none"]')!.getAttribute('stroke')).toBe('var(--mapa-borde)');
+    const rotulos = Array.from(lienzo.querySelectorAll(':scope > text'));
+    expect(rotulos.length).toBeGreaterThan(0);
+    rotulos.forEach((rotulo) => {
+      expect(rotulo.getAttribute('fill')).toBe('var(--mapa-eje)');
+      expect(rotulo.getAttribute('stroke')).toBe('var(--mapa-halo)');
     });
   });
 });
@@ -414,7 +429,7 @@ describe('Rúbrica · MAPA · rutas dinámicas', () => {
     datos.flota.find((u) => u.codigo === 'M-01')!.paradas[0].holguraMinutos = -10;
     const { container } = montarOperacion({ datos });
     expect(container.querySelector('[data-ruta-tardia]')).toBeNull();
-    expect(rutaDe(container, 'M-01').getAttribute('stroke')).toBe('#94A3B8');
+    expect(rutaDe(container, 'M-01').getAttribute('stroke')).toBe('var(--mapa-ruta)');
   });
 
   it('la ruta tardía también lleva flechas, del color de la ruta', () => {
@@ -435,7 +450,7 @@ describe('Rúbrica · MAPA · rutas dinámicas', () => {
     expect(leyenda.textContent).toContain('La ruta seleccionada avanza hacia su destino');
     expect(leyenda.textContent).toContain('Ruta con un pedido que llega tarde (modo Holgura)');
     const lineas = Array.from(leyenda.querySelectorAll('line[stroke-dasharray]'));
-    expect(lineas[0].getAttribute('stroke')).toBe('#94A3B8');
+    expect(lineas[0].getAttribute('stroke')).toBe('var(--mapa-ruta)');
     expect(lineas[1].getAttribute('stroke')).toBe('#1E40AF');
     expect(lineas[1].getAttribute('stroke-dasharray')).toBe('7 5');
     expect(lineas[2].getAttribute('stroke')).toBe(COLOR_SEMAFORO.ROJO);

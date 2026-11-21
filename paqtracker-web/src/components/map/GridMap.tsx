@@ -974,7 +974,7 @@ const CapasMapa: React.FC<CapasMapaProps> = ({
   const totalRotulosX = Math.floor(MALLA_ANCHO_KM / 10) + 1;
   const totalRotulosY = Math.floor(MALLA_ALTO_KM / 10) + 1;
 
-  const halo = { stroke: '#FFFFFF', strokeWidth: 3, paintOrder: 'stroke' } as const;
+  const halo = { stroke: 'var(--mapa-halo)', strokeWidth: 3, paintOrder: 'stroke' } as const;
   // Factor de tamaño de los símbolos: 1 en escritorio, menor en un mapa angosto.
   const f = lienzo.ancho > 0 && lienzo.ancho < ANCHO_COMPACTO_PX ? ESCALA_COMPACTA : 1;
   const compacto = f < 1;
@@ -1092,7 +1092,7 @@ const CapasMapa: React.FC<CapasMapaProps> = ({
                 <text x={rotuloX + 18 * f + 5} y="-1" fill={color} fontSize={tamRotulo(12)} fontWeight="600" {...halo}>
                   {u.codigo}
                 </text>
-                <text x={rotuloX + 18 * f + 5} y={compacto ? 9 : 11} fill="#475569" fontSize={tamRotulo(11)} {...halo}>
+                <text x={rotuloX + 18 * f + 5} y={compacto ? 9 : 11} fill="var(--mapa-rotulo-fuerte)" fontSize={tamRotulo(11)} {...halo}>
                   vuelve {formatearMomento(u.averia.vuelve, reloj)}
                 </text>
               </>
@@ -1104,13 +1104,13 @@ const CapasMapa: React.FC<CapasMapaProps> = ({
           ) : (
             <>
               {!rotulosOmitidos.has(u.codigo) && (
-                <text x={rotuloX} y={conDetalle ? -1 : 4} fill="#64748B" fontSize={tamRotulo(conDetalle ? 12 : 11)} fontWeight="500" {...halo}>
+                <text x={rotuloX} y={conDetalle ? -1 : 4} fill="var(--mapa-rotulo)" fontSize={tamRotulo(conDetalle ? 12 : 11)} fontWeight="500" {...halo}>
                   {u.carga}/{capacidad}
                 </text>
               )}
               {conDetalle && (
                 <>
-                  <rect x={rotuloX} y="4" width="24" height="3" rx="1.5" fill="#CBD5E1" />
+                  <rect x={rotuloX} y="4" width="24" height="3" rx="1.5" fill="var(--mapa-borde)" />
                   <rect x={rotuloX} y="4" width={24 * (u.carga / capacidad)} height="3" rx="1.5" fill={color} data-barra-carga />
                 </>
               )}
@@ -1135,21 +1135,21 @@ const CapasMapa: React.FC<CapasMapaProps> = ({
       {Array.from({ length: Math.max(0, iMax - iMin + 1) }, (_, idx) => {
         const i = iMin + idx;
         const x = origen.x + i * pasoPx;
-        return <line key={`gv${i}`} x1={x} y1={yIni} x2={x} y2={yFin} stroke="#EEF2F6" strokeWidth="1" />;
+        return <line key={`gv${i}`} x1={x} y1={yIni} x2={x} y2={yFin} stroke="var(--mapa-cuadricula)" strokeWidth="1" />;
       })}
       {Array.from({ length: Math.max(0, jMax - jMin + 1) }, (_, idx) => {
         const j = jMin + idx;
         const y = origen.y + j * pasoPx;
-        return <line key={`gh${j}`} x1={xIni} y1={y} x2={xFin} y2={y} stroke="#EEF2F6" strokeWidth="1" />;
+        return <line key={`gh${j}`} x1={xIni} y1={y} x2={xFin} y2={y} stroke="var(--mapa-cuadricula)" strokeWidth="1" />;
       })}
-      <rect x={origen.x} y={origen.y} width={anchoMallaPx} height={altoMallaPx} fill="none" stroke="#CBD5E1" strokeWidth="1" />
+      <rect x={origen.x} y={origen.y} width={anchoMallaPx} height={altoMallaPx} fill="none" stroke="var(--mapa-borde)" strokeWidth="1" />
 
       {/* Rótulos cada 10 km */}
       {Array.from({ length: Math.max(0, totalRotulosX) }, (_, i) => {
         const x = origen.x + i * 10 * vista.escala;
         if (x < 14 || x > lienzo.ancho - 16) return null;
         return (
-          <text key={`rx${i}`} x={x} y={yRotulosX} fill="#94A3B8" fontSize="11" textAnchor="middle" {...halo}>
+          <text key={`rx${i}`} x={x} y={yRotulosX} fill="var(--mapa-eje)" fontSize="11" textAnchor="middle" {...halo}>
             {i * 10}k
           </text>
         );
@@ -1159,7 +1159,7 @@ const CapasMapa: React.FC<CapasMapaProps> = ({
         const topeSuperior = hayEspacioSuperior ? 14 : yRotulosX + 16;
         if (y < topeSuperior || y > lienzo.alto - 6) return null;
         return (
-          <text key={`ry${i}`} x={xRotulosY} y={y} fill="#94A3B8" fontSize="11" textAnchor={anchorY} {...halo}>
+          <text key={`ry${i}`} x={xRotulosY} y={y} fill="var(--mapa-eje)" fontSize="11" textAnchor={anchorY} {...halo}>
             {i * 10}k
           </text>
         );
@@ -1175,13 +1175,13 @@ const CapasMapa: React.FC<CapasMapaProps> = ({
           // En modo Holgura, la ruta de una unidad con algún pedido que llegará tarde va en rojo; sigue siendo
           // contextual (mismo punteado y opacidad) para no competir con la ruta seleccionada.
           const tardia = modoColor === 'holgura' && !destacada && unidad.paradas.some((p) => p.holguraMinutos < 0);
-          const colorPendiente = destacada ? '#1E40AF' : tardia ? COLOR_SEMAFORO.ROJO : '#94A3B8';
+          const colorPendiente = destacada ? '#1E40AF' : tardia ? COLOR_SEMAFORO.ROJO : 'var(--mapa-ruta)';
           const opacidadPendiente = destacada ? 1 : OPACIDAD_PENDIENTE;
           const flechas = !destacada && vista.escala >= ESCALA_DETALLE_PX_KM ? flechasDeRecorrido(pendiente, vista, SEPARACION_FLECHA_PX) : [];
           return (
             <g key={`ruta-${unidad.codigo}`} opacity={atenuada ? 0.35 : 1}>
               {recorrido.length > 1 && (
-                <path d={trazado(vista, recorrido)} fill="none" stroke="#9EABBA" strokeWidth="1.5" strokeOpacity={destacada ? 1 : OPACIDAD_RECORRIDO} />
+                <path d={trazado(vista, recorrido)} fill="none" stroke="var(--mapa-recorrido)" strokeWidth="1.5" strokeOpacity={destacada ? 1 : OPACIDAD_RECORRIDO} />
               )}
               {/* Todas las rutas siguen a la vista, pero translúcidas: donde se superponen, la calle se ve más
                   oscura (marca los corredores con más tráfico) y la destacada resalta sin competir. */}
@@ -1278,11 +1278,11 @@ const CapasMapa: React.FC<CapasMapaProps> = ({
               return (
                 <g key={`parada-${u.codigo}-${i}`} data-parada={i + 1} data-unidad={u.codigo} transform={`translate(${x}, ${y})`} pointerEvents="none">
                   <circle cy={-16 * f} r={8 * f} fill="#1E40AF" stroke="#FFFFFF" strokeWidth="1.5" />
-                  <text y={-16 * f} fill="#FFFFFF" fontSize={tamRotulo(11)} fontWeight="700" textAnchor="middle" dominantBaseline="central">
+                  <text y={-16 * f} fill="var(--mapa-sobre-acento)" fontSize={tamRotulo(11)} fontWeight="700" textAnchor="middle" dominantBaseline="central">
                     {i + 1}
                   </text>
                   {hora && (
-                    <text x={8 * f + 4} y={-16 * f} fill="#475569" fontSize={tamRotulo(11)} dominantBaseline="central" {...halo}>
+                    <text x={8 * f + 4} y={-16 * f} fill="var(--mapa-rotulo-fuerte)" fontSize={tamRotulo(11)} dominantBaseline="central" {...halo}>
                       {hora}
                     </text>
                   )}
@@ -1319,7 +1319,7 @@ const CapasMapa: React.FC<CapasMapaProps> = ({
                   <InsigniaStockBajo />
                 </g>
               )}
-              <text x={rotuloAlmacenX} y="4" fill="#64748B" fontSize={tamRotulo(12)} fontWeight="500" {...halo}>
+              <text x={rotuloAlmacenX} y="4" fill="var(--mapa-rotulo)" fontSize={tamRotulo(12)} fontWeight="500" {...halo}>
                 {etiqueta}
               </text>
             </g>

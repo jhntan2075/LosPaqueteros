@@ -71,7 +71,7 @@ const CuadriculaMalla: React.FC<{ vista: Vista }> = ({ vista }) => {
         const y = origen.y + i * paso * vista.escala;
         return <line key={`h${i}`} x1={origen.x} y1={y} x2={origen.x + ancho} y2={y} stroke="#E2E8F0" strokeWidth="1" />;
       })}
-      <rect x={origen.x} y={origen.y} width={ancho} height={alto} fill="none" stroke="#CBD5E1" strokeWidth="1" />
+      <rect x={origen.x} y={origen.y} width={ancho} height={alto} fill="none" stroke="var(--mapa-borde)" strokeWidth="1" />
     </g>
   );
 };

@@ -8,6 +8,29 @@
   font-family: 'Fira Sans', system-ui, sans-serif;
   line-height: 1.5;
   font-weight: 400;
+
+  /* Colores del lienzo del mapa (tema claro); los del oscuro, en `:root.oscuro`. */
+  --mapa-cuadricula: #EEF2F6;
+  --mapa-borde: #CBD5E1; /* borde de la malla y fondo de las barras de carga */
+  --mapa-rotulo: #64748B; /* rótulos secundarios: carga de las unidades, nombre de los almacenes */
+  --mapa-rotulo-fuerte: #475569; /* hora de regreso de las averías y de las paradas */
+  --mapa-eje: #94A3B8; /* rótulos de los ejes */
+  --mapa-halo: #FFFFFF; /* contorno de los rótulos */
+  --mapa-ruta: #94A3B8; /* tramo pendiente (y su muestra en la leyenda); igual en ambos temas */
+  --mapa-recorrido: #9EABBA; /* tramo ya recorrido */
+  --mapa-sobre-acento: #FFFFFF; /* número dentro de la insignia de parada, sobre el azul de la ruta */
+}
+
+:root.oscuro {
+  --mapa-cuadricula: #182235;
+  --mapa-borde: #3C4A64;
+  --mapa-rotulo: #A3AEC2;
+  --mapa-rotulo-fuerte: #DCE1EA;
+  --mapa-eje: #8592AD;
+  --mapa-halo: #0F1729;
+  --mapa-ruta: #94A3B8;
+  --mapa-recorrido: #4B5A76;
+  --mapa-sobre-acento: #0F1729;
 }
 
 /* Rótulos del mapa (ejes, almacenes, unidades): dígitos de ancho fijo, como el resto de los datos. */
@@ -29,34 +52,25 @@ body {
   color: rgb(var(--color-neutral-900));
 }
 
-/* --- Tema oscuro: valores fijados por las pruebas de la rúbrica -------------------------------------
-   Algunas clases y atributos llevan el color escrito porque las pruebas de la rúbrica los buscan tal cual
-   (`bg-[#1E40AF]`, `path[stroke="#1E40AF"]`…) y no se pueden cambiar. En el tema claro rigen esos
-   valores; en el oscuro, CSS los reemplaza (una regla CSS manda sobre un atributo de presentación SVG). */
+/* --- Tema oscuro --------------------------------------------------------------------------------------
+   Los colores propios del lienzo del mapa (cuadrícula, borde, rótulos, halo, rutas) son variables
+   `--mapa-*`: GridMap, MiniMapaMalla y LeyendaMapa las usan como atributos de presentación
+   (`stroke="var(--mapa-cuadricula)"`), y el tema oscuro solo cambia su valor en `:root.oscuro`. Así un
+   color nuevo en el mapa no rompe el tema oscuro, como pasaba cuando CSS buscaba el hex exacto. */
 
-/* Hito más reciente de la trazabilidad (Operación). */
+/* Hito más reciente de la trazabilidad (Operación): la prueba de la rúbrica lee `bg-[#1E40AF]`. */
 :root.oscuro .bg-\[\#1E40AF\] { background-color: #6F96FF; }
 
-/* Mapa y minimapas (clase `lienzo-mapa`): lienzo, cuadrícula, rótulos, halos y rutas. Los símbolos con
-   significado (semáforo, averías, almacenes, bloqueos) conservan su color: llevan contorno blanco y se
-   distinguen igual sobre fondo oscuro. */
+/* Lo que sí se reemplaza por hex en el mapa y minimapas (clase `lienzo-mapa`): el azul de la ruta destacada
+   y de la selección (las pruebas de la rúbrica leen `#1E40AF`), el fondo y la cuadrícula del minimapa, y el
+   anillo de las unidades. Los símbolos con significado (semáforo, averías, almacenes, bloqueos) conservan su
+   color: llevan contorno blanco y se distinguen igual sobre fondo oscuro. */
 :root.oscuro .lienzo-mapa [fill="#F8FAFC"] { fill: #0F1729; }
 :root.oscuro .lienzo-mapa [stroke="#E2E8F0"] { stroke: #1E293B; }
-/* Cuadrícula tenue de la malla: un paso sobre el fondo, para que las rutas y los símbolos manden. */
-:root.oscuro .lienzo-mapa [stroke="#EEF2F6"] { stroke: #182235; }
-/* Rótulos grises (carga de las unidades, nombre y stock de los almacenes). */
-:root.oscuro .lienzo-mapa text[fill="#64748B"] { fill: #A3AEC2; }
-/* Destino cerrado: anillo hueco, con el centro del color del lienzo y no blanco. */
-:root.oscuro .lienzo-mapa circle[data-marcador="CERRADO"] { fill: #0F1729; }
-:root.oscuro .lienzo-mapa rect[stroke="#CBD5E1"] { stroke: #3C4A64; }
-:root.oscuro .lienzo-mapa text[fill="#0F172A"],
-:root.oscuro .lienzo-mapa text[fill="#475569"] { fill: #DCE1EA; }
-:root.oscuro .lienzo-mapa text[fill="#94A3B8"] { fill: #8592AD; }
-:root.oscuro .lienzo-mapa text[stroke="#FFFFFF"] { stroke: #0F1729; }
 :root.oscuro .lienzo-mapa [stroke="#1E40AF"] { stroke: #6F96FF; }
 :root.oscuro .lienzo-mapa [fill="#1E40AF"] { fill: #6F96FF; }
-:root.oscuro .lienzo-mapa [stroke="#9EABBA"] { stroke: #4B5A76; }
-:root.oscuro .lienzo-mapa rect[fill="#CBD5E1"] { fill: #3C4A64; }
+/* Destino cerrado: anillo hueco, con el centro del color del lienzo y no blanco. */
+:root.oscuro .lienzo-mapa circle[data-marcador="CERRADO"] { fill: #0F1729; }
 
 /* Ruta seleccionada: el punteado avanza hacia el destino (el ciclo es el largo de "7 5"). */
 @keyframes ruta-fluye {

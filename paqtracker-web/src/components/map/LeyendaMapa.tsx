@@ -145,13 +145,13 @@ export const LeyendaMapa: React.FC<LeyendaMapaProps> = ({ onCerrar, capas, onCam
       <Fila simbolo={<Simbolo caja="-14 -11 28 22"><MarcadorDestino variante="ROJO" color={ROJO} /></Simbolo>} nombre="Destino crítico" detalle="rombo más grande, con «!»" />
       <Fila simbolo={<Simbolo caja="-14 -11 28 22"><MarcadorDestino variante="ENTREGA" color={COLOR_EN_ENTREGA} /></Simbolo>} nombre="Entregando ahora" detalle="la unidad está en el destino" />
       <Fila
-        simbolo={<Simbolo caja="-14 -11 28 22"><line x1="-12" y1="0" x2="12" y2="0" stroke="#9EABBA" strokeWidth="1.5" strokeOpacity={0.4} /></Simbolo>}
+        simbolo={<Simbolo caja="-14 -11 28 22"><line x1="-12" y1="0" x2="12" y2="0" stroke="var(--mapa-recorrido)" strokeWidth="1.5" strokeOpacity={0.4} /></Simbolo>}
         nombre="Tramo recorrido"
       />
       <Fila
         simbolo={
           <Simbolo caja="-14 -11 28 22">
-            <line x1="-12" y1="0" x2="12" y2="0" stroke="#94A3B8" strokeWidth="2" strokeOpacity={0.55} strokeDasharray="6 4" />
+            <line x1="-12" y1="0" x2="12" y2="0" stroke="var(--mapa-ruta)" strokeWidth="2" strokeOpacity={0.55} strokeDasharray="6 4" />
           </Simbolo>
         }
         nombre="Tramo pendiente"
