@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { escalaDeEncuadre, limitarVista, pasoCuadricula, puntoEnRecorrido, tramoOrtogonal, vistaCompleta, proyectar, type Lienzo } from './malla';
+import { escalaDeEncuadre, flechasDeRecorrido, limitarVista, pasoCuadricula, puntoEnRecorrido, tramoOrtogonal, vistaCompleta, proyectar, type Lienzo } from './malla';
 
 describe('malla', () => {
   it('tramoOrtogonal avanza primero en x y luego en y', () => {
@@ -72,5 +72,66 @@ describe('malla', () => {
       const ancho: Lienzo = { ancho: 1000, alto: 700, margen: 40 };
       expect(vistaCompleta(ancho, { llenarAlto: true })).toEqual(vistaCompleta(ancho));
     });
+  });
+});
+
+describe('flechasDeRecorrido', () => {
+  const vista = { escala: 10, x: 0, y: 0 };
+
+  it('pone una flecha cada separación a lo largo del trazo proyectado, sin flecha en el destino', () => {
+    const ruta = [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }];
+    const flechas = flechasDeRecorrido(ruta, vista, 50);
+    expect(flechas).toHaveLength(3);
+    expect(flechas[0].x).toBeCloseTo(50, 5);
+    expect(flechas[0].y).toBeCloseTo(0, 5);
+    expect(flechas[0].angulo).toBeCloseTo(0, 5);
+    // En el vértice (100, 0) manda el tramo que sale de él: hacia +y.
+    expect(flechas[1].x).toBeCloseTo(100, 5);
+    expect(flechas[1].y).toBeCloseTo(0, 5);
+    expect(flechas[1].angulo).toBeCloseTo(90, 5);
+    expect(flechas[2].x).toBeCloseTo(100, 5);
+    expect(flechas[2].y).toBeCloseTo(50, 5);
+    expect(flechas[2].angulo).toBeCloseTo(90, 5);
+  });
+
+  it('devuelve el ángulo según el sentido de avance', () => {
+    const flechas = flechasDeRecorrido([{ x: 10, y: 0 }, { x: 0, y: 0 }], vista, 50);
+    expect(flechas.map((f) => Math.abs(f.angulo))).toEqual([180]);
+  });
+
+  it('devuelve [] si el trazo mide menos que la separación', () => {
+    expect(flechasDeRecorrido([{ x: 0, y: 0 }, { x: 0.3, y: 0 }], vista, 50)).toEqual([]);
+  });
+
+  it('devuelve [] si el trazo mide exactamente la separación', () => {
+    expect(flechasDeRecorrido([{ x: 0, y: 0 }, { x: 5, y: 0 }], vista, 50)).toEqual([]);
+  });
+
+  it('ignora los puntos repetidos', () => {
+    const ruta = [{ x: 0, y: 0 }, { x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }];
+    expect(flechasDeRecorrido(ruta, vista, 50)).toEqual(flechasDeRecorrido(
+      [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }], vista, 50));
+  });
+
+  it('con menos de dos puntos distintos devuelve []', () => {
+    expect(flechasDeRecorrido([], vista, 50)).toEqual([]);
+    expect(flechasDeRecorrido([{ x: 3, y: 3 }], vista, 50)).toEqual([]);
+    expect(flechasDeRecorrido([{ x: 3, y: 3 }, { x: 3, y: 3 }], vista, 50)).toEqual([]);
+  });
+
+  it('desplaza las coordenadas con el origen de la vista', () => {
+    const ruta = [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }];
+    const flechas = flechasDeRecorrido(ruta, { escala: 10, x: 20, y: 30 }, 50);
+    expect(flechas.map((f) => [Math.round(f.x), Math.round(f.y), Math.round(f.angulo)])).toEqual([
+      [70, 30, 0],
+      [120, 30, 90],
+      [120, 80, 90],
+    ]);
+  });
+
+  it('con separación 0 o negativa devuelve []', () => {
+    const ruta = [{ x: 0, y: 0 }, { x: 10, y: 0 }];
+    expect(flechasDeRecorrido(ruta, vista, 0)).toEqual([]);
+    expect(flechasDeRecorrido(ruta, vista, -5)).toEqual([]);
   });
 });

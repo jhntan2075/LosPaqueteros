@@ -193,3 +193,38 @@ export const trazado = (vista: Vista, puntos: Coordenada[]) =>
       return `${i === 0 ? 'M' : 'L'} ${x} ${y}`;
     })
     .join(' ');
+
+/**
+ * Puntos de pantalla para dibujar flechas de sentido a lo largo de una ruta: uno cada `separacionPx` de
+ * longitud proyectada, sin llegar al final (el destino ya tiene su marcador). `angulo` va en grados
+ * (0 = hacia +x, 90 = hacia +y) y sigue el tramo donde cae la flecha; en un vértice manda el tramo que sale.
+ */
+export function flechasDeRecorrido(
+  puntos: Coordenada[],
+  vista: Vista,
+  separacionPx: number,
+): { x: number; y: number; angulo: number }[] {
+  if (separacionPx <= 0) return [];
+  const proyectados = puntos.map((p) => proyectar(vista, p));
+  const tramos: { desde: { x: number; y: number }; dx: number; dy: number; inicio: number; largo: number }[] = [];
+  let total = 0;
+  for (let i = 1; i < proyectados.length; i++) {
+    const desde = proyectados[i - 1];
+    const dx = proyectados[i].x - desde.x;
+    const dy = proyectados[i].y - desde.y;
+    const largo = Math.hypot(dx, dy);
+    if (largo === 0) continue; // puntos repetidos: no hay sentido que dibujar
+    tramos.push({ desde, dx, dy, inicio: total, largo });
+    total += largo;
+  }
+
+  const flechas: { x: number; y: number; angulo: number }[] = [];
+  let tramo = 0;
+  for (let d = separacionPx; d < total; d += separacionPx) {
+    while (tramo < tramos.length - 1 && d >= tramos[tramo].inicio + tramos[tramo].largo) tramo++;
+    const { desde, dx, dy, inicio, largo } = tramos[tramo];
+    const t = (d - inicio) / largo;
+    flechas.push({ x: desde.x + dx * t, y: desde.y + dy * t, angulo: (Math.atan2(dy, dx) * 180) / Math.PI });
+  }
+  return flechas;
+}
