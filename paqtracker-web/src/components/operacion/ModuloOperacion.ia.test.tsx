@@ -67,11 +67,32 @@ describe('Operación · alertas y navegación', () => {
 });
 
 describe('Operación · espacio y presentación', () => {
-  it('con el panel abierto y poco ancho, la columna de controles se pliega a un riel y se puede desplegar', () => {
+  it('abrir un panel derecho pliega la columna de controles a un riel, aunque sobre espacio', () => {
+    simularTamano(4000, 700);
+    montarOperacion();
+    expect(screen.queryByRole('button', { name: 'Mostrar los controles del mapa' })).toBeNull();
+    fireEvent.click(screen.getByRole('tab', { name: /Flota/ }));
+    expect(screen.getByRole('button', { name: 'Mostrar los controles del mapa' })).toBeTruthy();
+    expect(screen.queryByLabelText('Buscar pedido o unidad en el mapa')).toBeNull();
+  });
+
+  it('volver a expandir la columna no cierra el panel: el usuario manda', () => {
+    simularTamano(4000, 700);
     montarOperacion();
     fireEvent.click(screen.getByRole('tab', { name: /Flota/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Mostrar los controles del mapa' }));
     expect(screen.getByLabelText('Buscar pedido o unidad en el mapa')).toBeTruthy();
+    expect(screen.getByRole('tab', { name: /Flota/ }).getAttribute('aria-selected')).toBe('true');
+    expect(screen.getByRole('complementary', { name: 'Panel de detalle' })).toBeTruthy();
+  });
+
+  it('la leyenda muestra el detalle completo de "Almacén intermedio", sin cortarlo', () => {
+    montarOperacion();
+    fireEvent.click(screen.getByRole('button', { name: 'Capas y leyenda' }));
+    const nombre = screen.getByText('Almacén intermedio', { exact: false, selector: 'li *' });
+    const fila = nombre.closest('li')!;
+    expect(fila.textContent).toContain('barra = stock');
+    expect(fila.querySelector('.truncate')).toBeNull();
   });
 
   it('en un celular: chip de alertas, controles en un cajón, panel como hoja y pestañas al pie con "Más"', () => {

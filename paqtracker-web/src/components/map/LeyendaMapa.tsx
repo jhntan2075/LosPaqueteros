@@ -53,13 +53,13 @@ const IconoUnidad: React.FC<{ tipo: 'AUTO' | 'MOTO' | 'BICICLETA'; hueco?: boole
   return <img src={icono.href} alt="" width={icono.ancho} height={icono.alto} className="block max-w-none" />;
 };
 
-/** Fila de símbolo: columna de ícono de ancho fijo, nombre y, opcional, qué codifica en gris. */
+/** Fila de símbolo: columna de ícono de ancho fijo, nombre y, opcional, qué codifica en gris, en una segunda línea. */
 const Fila: React.FC<{ simbolo: React.ReactNode; nombre: string; detalle?: string }> = ({ simbolo, nombre, detalle }) => (
-  <li className="grid grid-cols-[28px_1fr] items-center gap-x-2.5 h-[26px]">
+  <li className="grid grid-cols-[28px_1fr] items-center gap-x-2.5 min-h-[26px] py-0.5">
     <span className="h-[22px] flex items-center justify-center">{simbolo}</span>
-    <span className="text-body-sm text-neutral-900 truncate">
-      {nombre}
-      {detalle && <span className="text-neutral-600"> · {detalle}</span>}
+    <span className="flex flex-col">
+      <span className="text-body-sm text-neutral-900">{nombre}</span>
+      {detalle && <span className="text-caption text-neutral-600">{detalle}</span>}
     </span>
   </li>
 );

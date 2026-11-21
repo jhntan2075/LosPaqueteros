@@ -27,7 +27,7 @@ import { destinoResaltado, unidadesResaltadas, type SeleccionResaltable } from '
 import { COLOR_SIN_DATO, colorDeUnidad, iconoVehiculo, unidadVacia } from './iconosVehiculo';
 import type { Capa } from './capas';
 import type { ConteosFiltros } from './FiltrosMapa';
-import { ANCHO_COLUMNA_PX, ANCHO_RIEL_PX, ColumnaMapa, type ColumnaMapaProps, type ModoColor } from './ColumnaMapa';
+import { ColumnaMapa, type ColumnaMapaProps, type ModoColor } from './ColumnaMapa';
 import {
   AlmacenCentral,
   AlmacenIntermedio,
@@ -151,12 +151,6 @@ const FACTOR_BOTON = 1.25;
 const PASO_TECLADO_PX = 80;
 /** Duración de las transiciones de la vista: corta, para que se sienta inmediata pero continua. */
 const DURACION_ANIMACION_MS = 200;
-/**
- * La columna de controles se pliega sola a un riel si, junto al panel abierto, achicaría la malla más que
- * esto: el orden de prioridad del espacio es malla, panel y después columna.
- */
-const TOLERANCIA_PLEGADO = 0.98;
-
 /** Sin animación si el usuario pidió menos movimiento o el entorno no puede animar. */
 const sinAnimacion = () =>
   typeof requestAnimationFrame !== 'function' ||
@@ -235,8 +229,6 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
   },
   ref,
 ) {
-  const envolturaRef = useRef<HTMLDivElement>(null);
-  const { ancho: anchoTotal } = useTamanoElemento(envolturaRef);
   const containerRef = useRef<HTMLDivElement>(null);
   const { ancho, alto } = useTamanoElemento(containerRef);
   const lienzo = crearLienzo(ancho, alto, anchoPanelDerecho, altoPanelInferior, compacto);
@@ -278,12 +270,10 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
   const enSimulacion = variante === 'simulacion';
   const [capas, setCapas] = useState<Record<Capa, boolean>>({ rutas: true, unidades: true, destinos: true, bloqueos: true, almacenes: true });
 
-  // Columna de controles: se pliega sola a un riel cuando, junto al panel, achicaría la malla; el usuario
-  // puede forzar lo contrario y se recuerda. Si su elección coincide con la automática, vuelve a ser automática.
-  const escalaConColumna = (anchoColumna: number) =>
-    escalaDeEncuadre(crearLienzo(anchoTotal - anchoColumna, alto, anchoPanelDerecho, 0, false));
-  const plegadaAuto =
-    !compacto && anchoPanelDerecho > 0 && anchoTotal > 0 && alto > 0 && escalaConColumna(ANCHO_COLUMNA_PX) < escalaConColumna(ANCHO_RIEL_PX) * TOLERANCIA_PLEGADO;
+  // Columna de controles: un solo panel lateral a la vez en escritorio, así que abrir un panel derecho la
+  // pliega a un riel. El usuario puede forzar lo contrario y se recuerda; si su elección coincide con la
+  // automática, vuelve a ser automática.
+  const plegadaAuto = !compacto && anchoPanelDerecho > 0;
   const [preferenciaPlegada, setPreferenciaPlegada] = useState<boolean | null>(leerPreferenciaColumna);
   const plegada = preferenciaPlegada ?? plegadaAuto;
   const fijarPlegada = (valor: boolean) => {
@@ -577,7 +567,7 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
   const BOTON_COMPACTO = 'h-11 min-w-11 px-3 bg-superficie shadow-xs rounded-full border border-neutral-200 flex items-center justify-center gap-1.5';
 
   return (
-    <div ref={envolturaRef} className="relative flex-1 flex w-full h-full min-w-0 min-h-0">
+    <div className="relative flex-1 flex w-full h-full min-w-0 min-h-0">
       {!compacto && <ColumnaMapa {...propsColumna} forma={plegada ? 'riel' : 'columna'} onPlegar={() => fijarPlegada(!plegada)} />}
 
       <div
