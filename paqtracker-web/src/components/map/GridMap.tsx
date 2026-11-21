@@ -1258,7 +1258,9 @@ const CapasMapa: React.FC<CapasMapaProps> = ({
           const tardia = modoColor === 'holgura' && !destacada && unidad.paradas.some((p) => p.holguraMinutos < 0);
           const colorPendiente = destacada ? '#1E40AF' : tardia ? COLOR_SEMAFORO.ROJO : 'var(--mapa-ruta)';
           const opacidadPendiente = destacada ? 1 : OPACIDAD_PENDIENTE;
-          const flechas = !destacada && vista.escala >= ESCALA_DETALLE_PX_KM ? flechasDeRecorrido(pendiente, vista, SEPARACION_FLECHA_PX) : [];
+          // La destacada ya indica su sentido con el flujo animado; solo con menos movimiento pedido lleva flechas.
+          const flujo = destacada && !prefiereMenosMovimiento();
+          const flechas = !flujo && vista.escala >= ESCALA_DETALLE_PX_KM ? flechasDeRecorrido(pendiente, vista, SEPARACION_FLECHA_PX) : [];
           return (
             <g key={`ruta-${unidad.codigo}`} opacity={atenuada ? 0.35 : 1}>
               {recorrido.length > 1 && (
@@ -1274,7 +1276,7 @@ const CapasMapa: React.FC<CapasMapaProps> = ({
                 strokeOpacity={opacidadPendiente}
                 strokeDasharray={destacada ? '7 5' : '6 4'}
                 // La destacada fluye hacia su destino (sin animar si se pidió menos movimiento).
-                className={destacada && !prefiereMenosMovimiento() ? 'ruta-fluye' : undefined}
+                className={flujo ? 'ruta-fluye' : undefined}
                 data-ruta-tardia={tardia ? true : undefined}
               />
               {flechas.map((f, i) => (

@@ -398,14 +398,35 @@ describe('Rúbrica · MAPA · rutas dinámicas', () => {
     expect(container.querySelectorAll('path[stroke-dasharray]').length).toBe(2);
   });
 
-  it('la ruta seleccionada no lleva flechas: su movimiento ya indica el sentido', () => {
+  it('con movimiento permitido, la ruta seleccionada no lleva flechas: su flujo ya indica el sentido', () => {
+    // Se acerca con menos movimiento (zoom inmediato) y luego se permite el movimiento antes de seleccionar.
+    let reducido = true;
+    vi.stubGlobal('matchMedia', () => ({ matches: reducido }));
+    const { container } = montarOperacion();
+    acercarHastaElDetalle(container);
+    reducido = false;
+    seleccionar(container, 'A-01');
+    const destacada = container.querySelector('path[stroke="#1E40AF"]')!;
+    expect(destacada.getAttribute('class')).toBe('ruta-fluye');
+    expect(container.querySelectorAll('[data-flecha]').length).toBeGreaterThan(0);
+    expect(destacada.parentElement!.querySelector('[data-flecha]')).toBeNull();
+  });
+
+  it('con menos movimiento pedido, la ruta seleccionada lleva flechas con su propio trazo azul y sin punteado', () => {
     vi.stubGlobal('matchMedia', () => ({ matches: true }));
     const { container } = montarOperacion();
     seleccionar(container, 'A-01');
     acercarHastaElDetalle(container);
-    const destacada = container.querySelector('path[stroke="#1E40AF"]')!;
-    expect(container.querySelectorAll('[data-flecha]').length).toBeGreaterThan(0);
-    expect(destacada.parentElement!.querySelector('[data-flecha]')).toBeNull();
+    const destacada = container.querySelector('path[stroke="#1E40AF"][stroke-dasharray]')!;
+    expect(destacada.getAttribute('class')).toBeNull();
+    const flechas = Array.from(destacada.parentElement!.querySelectorAll('[data-flecha]'));
+    expect(flechas.length).toBeGreaterThan(0);
+    flechas.forEach((f) => {
+      expect(f.getAttribute('stroke')).toBe('#1E40AF');
+      expect(f.hasAttribute('stroke-dasharray')).toBe(false);
+    });
+    // Las flechas no cuentan como rutas: sigue habiendo una ruta por unidad en ruta.
+    expect(container.querySelectorAll('path[stroke-dasharray]').length).toBe(2);
   });
 
   it('en modo Holgura, la ruta de una unidad con un pedido que llega tarde va en rojo y marcada', () => {
