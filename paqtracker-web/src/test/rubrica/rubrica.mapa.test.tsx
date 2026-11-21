@@ -440,6 +440,62 @@ describe('Rúbrica · MAPA · rutas dinámicas', () => {
     expect(lineas[1].getAttribute('stroke-dasharray')).toBe('7 5');
     expect(lineas[2].getAttribute('stroke')).toBe(COLOR_SEMAFORO.ROJO);
   });
+
+  describe('paradas numeradas de la ruta seleccionada', () => {
+    const paradasDibujadas = (container: HTMLElement) => Array.from(container.querySelectorAll('[data-parada]'));
+    const textos = (parada: Element) => Array.from(parada.querySelectorAll('text')).map((t) => t.textContent);
+    /** A-01 con dos paradas: la del escenario y una segunda, con la hora que se indique. */
+    const datosConDosParadas = (etaSegunda: string) => {
+      const datos = datosRubrica();
+      const a01 = datos.flota.find((u) => u.codigo === 'A-01')!;
+      a01.paradas.push({ ...a01.paradas[0], pedido: '#1005', destino: { x: 40, y: 24 }, eta: etaSegunda });
+      return { datos, a01 };
+    };
+
+    it('sin selección no se dibuja ninguna parada numerada', () => {
+      const { container } = montarOperacion({ datos: datosConDosParadas('04/03 23:45').datos });
+      expect(paradasDibujadas(container)).toHaveLength(0);
+    });
+
+    it('al seleccionar A-01 se numera cada parada, en orden, con su hora', () => {
+      const { datos, a01 } = datosConDosParadas('04/03 23:45');
+      const { container } = montarOperacion({ datos });
+      seleccionar(container, 'A-01');
+      const paradas = paradasDibujadas(container);
+      expect(paradas).toHaveLength(a01.paradas.length);
+      expect(paradas.map((p) => p.getAttribute('data-parada'))).toEqual(['1', '2']);
+      paradas.forEach((p) => expect(p.getAttribute('data-unidad')).toBe('A-01'));
+      expect(textos(paradas[0])).toEqual(['1', a01.paradas[0].eta.match(/(\d{2}:\d{2})\s*$/)![1]]);
+      expect(textos(paradas[1])).toEqual(['2', '23:45']);
+      const circulo = paradas[0].querySelector('circle')!;
+      expect(circulo.getAttribute('r')).toBe('8');
+      expect(circulo.getAttribute('fill')).toBe('#1E40AF');
+    });
+
+    it('las paradas no estorban al puntero: se puede tocar el destino que tienen debajo', () => {
+      const { container } = montarOperacion({ datos: datosConDosParadas('04/03 23:45').datos });
+      seleccionar(container, 'A-01');
+      expect(paradasDibujadas(container).length).toBeGreaterThan(0);
+      paradasDibujadas(container).forEach((p) => expect(p.getAttribute('pointer-events')).toBe('none'));
+      // Van después de los destinos para no quedar tapadas por sus marcadores.
+      const ultimoDestino = Array.from(container.querySelectorAll('[data-objeto^="pedido:"]')).pop()!;
+      expect(ultimoDestino.compareDocumentPosition(paradasDibujadas(container)[0]) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    });
+
+    it('una parada con hora ilegible se dibuja sin hora, sin fallar', () => {
+      const { container } = montarOperacion({ datos: datosConDosParadas('—').datos });
+      seleccionar(container, 'A-01');
+      const paradas = paradasDibujadas(container);
+      expect(paradas).toHaveLength(2);
+      expect(textos(paradas[1])).toEqual(['2']);
+    });
+
+    it('no se numeran las paradas de las unidades que no están seleccionadas', () => {
+      const { container } = montarOperacion({ datos: datosConDosParadas('04/03 23:45').datos });
+      seleccionar(container, 'A-01');
+      expect(paradasDibujadas(container).some((p) => p.getAttribute('data-unidad') === 'M-01')).toBe(false);
+    });
+  });
 });
 
 describe('Rúbrica · MAPA · GridMap aislado', () => {

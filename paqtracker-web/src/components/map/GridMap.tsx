@@ -1265,6 +1265,32 @@ const CapasMapa: React.FC<CapasMapaProps> = ({
             );
           })}
 
+      {/* --- PARADAS NUMERADAS de la ruta destacada: orden de entrega y hora estimada. Van después de los
+          destinos para no quedar bajo sus marcadores, y sobre el destino (no encima) para no tapar su pin;
+          sin captar el puntero, tocar el destino de abajo sigue funcionando. --- */}
+      {capas.destinos &&
+        unidades
+          .filter((u) => unidadesDestacadas.has(u.codigo))
+          .flatMap((u) =>
+            u.paradas.map((parada, i) => {
+              const { x, y } = proyectar(vista, parada.destino);
+              const hora = parada.eta.match(/(\d{2}:\d{2})\s*$/)?.[1];
+              return (
+                <g key={`parada-${u.codigo}-${i}`} data-parada={i + 1} data-unidad={u.codigo} transform={`translate(${x}, ${y})`} pointerEvents="none">
+                  <circle cy={-16 * f} r={8 * f} fill="#1E40AF" stroke="#FFFFFF" strokeWidth="1.5" />
+                  <text y={-16 * f} fill="#FFFFFF" fontSize={tamRotulo(11)} fontWeight="700" textAnchor="middle" dominantBaseline="central">
+                    {i + 1}
+                  </text>
+                  {hora && (
+                    <text x={8 * f + 4} y={-16 * f} fill="#475569" fontSize={tamRotulo(11)} dominantBaseline="central" {...halo}>
+                      {hora}
+                    </text>
+                  )}
+                </g>
+              );
+            }),
+          )}
+
       {/* --- UNIDADES en ruta (color por ocupación, CF-02) y averiadas en el punto de la avería --- */}
       {capas.unidades && enCalle.map((u) => dibujarUnidad(u, 0))}
 
