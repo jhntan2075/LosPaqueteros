@@ -12,7 +12,6 @@ import {
   Package,
   SearchX,
   Check,
-  MoreHorizontal,
   SlidersHorizontal,
 } from 'lucide-react';
 import { UNIDADES, type PlazoHoras } from '../../config/dominio';
@@ -20,12 +19,11 @@ import { ESTADO_EN_ESPERA, etiquetaPlazo } from '../../config/glosario';
 import { capitalizar, formatearMiles } from '../../lib/formato';
 import { cn } from '../../lib/clases';
 import { useAnchoAngosto } from '../../hooks/useAnchoAngosto';
-import { useCerrarConEscape } from '../../hooks/useCerrarConEscape';
 import { useColaPedidos } from '../../hooks/usePedidos';
 import { useDatosOperacion } from '../../hooks/useDatosOperacion';
 import type { EstadoPedidoCola, NivelHolgura, PedidoEnCola } from '../../types/pedidos';
 import { InsigniaPlazo } from './InsigniaPlazo';
-import { Boton, EncabezadoPagina, Entrada, EstadoCarga, EstadoError, EstadoVacio, Insignia, Tarjeta } from '../ui';
+import { Boton, EncabezadoPagina, Entrada, EstadoCarga, EstadoError, EstadoVacio, Insignia, MenuAcciones, Tarjeta } from '../ui';
 import { DetallePedido } from './DetallePedido';
 import { COLOR_HOLGURA, TONO_ESTADO } from './estilos';
 import { PuntoHolgura } from './iconos';
@@ -177,40 +175,6 @@ const FiltroRapido: React.FC<{ activo: boolean; tono: 'critical' | 'primary'; on
   </button>
 );
 
-/** Menú "Más acciones" del encabezado en celular: lo secundario fuera de la vista principal. */
-const MenuMasAcciones: React.FC<{ onExportar: () => void }> = ({ onExportar }) => {
-  const [abierto, setAbierto] = useState(false);
-  useCerrarConEscape(abierto, () => setAbierto(false));
-  return (
-    <div className="relative !flex-none">
-      <Boton
-        icono={MoreHorizontal}
-        aria-label="Más acciones"
-        aria-haspopup="menu"
-        aria-expanded={abierto}
-        onClick={() => setAbierto(!abierto)}
-        className="size-11"
-      />
-      {abierto && (
-        <div role="menu" className="absolute right-0 top-full z-30 mt-1 w-48 rounded-card border border-neutral-200 bg-superficie py-1 shadow-overlay">
-          <button
-            type="button"
-            role="menuitem"
-            onClick={() => {
-              setAbierto(false);
-              onExportar();
-            }}
-            className="flex h-11 w-full cursor-pointer items-center gap-2.5 px-3 text-left text-body text-neutral-900 hover:bg-neutral-50"
-          >
-            <Download className="size-4" aria-hidden="true" />
-            Exportar CSV
-          </button>
-        </div>
-      )}
-    </div>
-  );
-};
-
 function exportarCsv(pedidos: PedidoEnCola[]) {
   const encabezado = ['Código', 'Cliente', 'Destino', 'Cantidad', 'Plazo', 'Hora límite', 'Salida', 'Llegada estimada', 'Holgura', 'Unidad', 'Unidades', 'Estado'];
   const filas = pedidos.map((p) => [
@@ -245,6 +209,10 @@ export const ColaPedidos: React.FC<{
   const datos = useDatosOperacion();
   const angosto = useAnchoAngosto();
   const [hojaAbierta, setHojaAbierta] = useState(false);
+  // Al ensanchar la pantalla la hoja de filtros deja de existir: no debe reaparecer al volver a estrechar.
+  useEffect(() => {
+    if (!angosto) setHojaAbierta(false);
+  }, [angosto]);
   const [busqueda, setBusqueda] = useState('');
   const [filtros, setFiltros] = useState<Filtros>(SIN_FILTROS);
   const [orden, setOrden] = useState<Orden | null>(null);
@@ -320,7 +288,10 @@ export const ColaPedidos: React.FC<{
               <Boton variante="primario" tamano="lg" icono={Plus} onClick={onRegistrar} className="min-h-11">
                 Registrar pedido
               </Boton>
-              <MenuMasAcciones onExportar={() => exportarCsv(visibles)} />
+              <MenuAcciones
+                etiqueta="Más acciones"
+                items={[{ clave: 'exportar', etiqueta: 'Exportar CSV', icono: Download, onSelect: () => exportarCsv(visibles) }]}
+              />
             </>
           ) : (
             <>

@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, screen, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { clienteApi } from '../../services/clienteApi';
 import { pedidosColaRubrica } from '../../test/rubrica/escenario';
@@ -103,5 +103,43 @@ describe('Pedidos · escritorio', () => {
     expect(screen.getByRole('button', { name: 'Exportar CSV' })).toBeTruthy();
     expect(screen.getByLabelText('Filtrar por Estado')).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Filtros' })).toBeNull();
+  });
+});
+
+describe('Pedidos · celular · foco de la hoja de filtros', () => {
+  it('al abrirla el foco entra a la hoja y Escape lo devuelve al botón Filtros', async () => {
+    await montar(true);
+    const filtros = screen.getByRole('button', { name: 'Filtros' });
+    filtros.focus();
+    fireEvent.click(filtros);
+    const hoja = screen.getByRole('dialog', { name: 'Filtros de pedidos' });
+    expect(hoja.contains(document.activeElement)).toBe(true);
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(screen.queryByRole('dialog', { name: 'Filtros de pedidos' })).toBeNull();
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Filtros' }));
+  });
+
+  it('la hoja no reaparece al ensanchar y volver a estrechar la pantalla', async () => {
+    let angosto = true;
+    const oyentes = new Set<() => void>();
+    vi.stubGlobal('matchMedia', () => ({
+      get matches() {
+        return angosto;
+      },
+      addEventListener: (_: string, f: () => void) => oyentes.add(f),
+      removeEventListener: (_: string, f: () => void) => oyentes.delete(f),
+    }));
+    renderConDatos(<ColaPedidos onRegistrar={() => {}} />);
+    await screen.findAllByText(/^#\d+$/);
+    fireEvent.click(screen.getByRole('button', { name: 'Filtros' }));
+    expect(screen.getByRole('dialog', { name: 'Filtros de pedidos' })).toBeTruthy();
+    const cambiarAncho = (valor: boolean) => {
+      angosto = valor;
+      act(() => oyentes.forEach((f) => f()));
+    };
+    cambiarAncho(false);
+    expect(screen.queryByRole('dialog', { name: 'Filtros de pedidos' })).toBeNull();
+    cambiarAncho(true);
+    expect(screen.queryByRole('dialog', { name: 'Filtros de pedidos' })).toBeNull();
   });
 });

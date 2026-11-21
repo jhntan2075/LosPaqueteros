@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useCerrarConEscape } from '../../hooks/useCerrarConEscape';
 import { useFocoAtrapado } from '../../hooks/useFocoAtrapado';
 import type { PlazoHoras } from '../../config/dominio';
@@ -45,6 +45,11 @@ const Hoja: React.FC<Omit<HojaFiltrosPedidosProps, 'abierta'>> = ({ filtros, vis
   const hojaRef = useRef<HTMLDivElement>(null);
   useFocoAtrapado(hojaRef);
   useCerrarConEscape(true, onCerrar);
+  // Al abrir, el foco entra a la hoja (useFocoAtrapado solo ata Tab y devuelve el foco al cerrar). Va después de
+  // useFocoAtrapado para que este guarde antes el botón que la abrió.
+  useEffect(() => {
+    hojaRef.current?.querySelector('select')?.focus();
+  }, []);
 
   return (
     <div className="fixed inset-0 z-50 flex items-end md:hidden">

@@ -12,3 +12,4 @@ export { EstadoVacio } from './EstadoVacio';
 export { EstadoCarga } from './EstadoCarga';
 export { EstadoError } from './EstadoError';
 export { Pestanas, type OpcionPestana } from './Pestanas';
+export { MenuAcciones, type ItemMenuAcciones } from './MenuAcciones';

@@ -11,7 +11,7 @@ afterEach(cleanup);
 
 const pedidoCon = (holguraMinutos: number, nivelHolgura: Pedido['nivelHolgura']): Pedido => ({
   codigo: 'PED-1',
-  borrador: { cliente: 'Acme', destino: { x: 10, y: 10 }, cantidad: 5, plazoHoras: 24 },
+  borrador: { cliente: 'Acme', destino: { x: 10, y: 10 }, cantidad: 5, plazoHoras: 12 },
   almacenOrigen: null,
   horaLimite: new Date(2026, 0, 2, 10, 0),
   vehiculo: null,

@@ -1,9 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { MoreHorizontal, RotateCcw, Save, SlidersHorizontal, RefreshCw } from 'lucide-react';
+import { RotateCcw, Save, SlidersHorizontal, RefreshCw } from 'lucide-react';
 import { ALMACENES, formatearDuracion } from '../../config/dominio';
 import { useAnchoAngosto } from '../../hooks/useAnchoAngosto';
 import { useAvisos } from '../../hooks/useAvisos';
-import { useCerrarConEscape } from '../../hooks/useCerrarConEscape';
 import { formatearNumero, leerDecimal } from '../../lib/formato';
 import { proyectar } from '../../lib/malla';
 import { validarParametros } from '../../lib/parametrosDominio';
@@ -14,7 +13,7 @@ import { DialogoRangosSemaforo } from '../map/DialogoRangosSemaforo';
 import { MiniMapaMalla } from '../map/MiniMapaMalla';
 import { DialogoConfirmacion } from '../modals/DialogoConfirmacion';
 import { AlmacenCentral, AlmacenIntermedio } from '../map/simbolos';
-import { Aviso, Boton, Campo, EncabezadoPagina, EstadoCarga, EstadoError, Entrada, Tarjeta } from '../ui';
+import { Aviso, Boton, Campo, EncabezadoPagina, EstadoCarga, EstadoError, Entrada, MenuAcciones, Tarjeta } from '../ui';
 import type { EntradaProps } from '../ui/Campo';
 
 // Configuración del dominio (rúbrica B02, B04, B06, B07-B09): ubicación y capacidad de los almacenes,
@@ -105,53 +104,6 @@ const CampoNumero: React.FC<CampoNumeroProps> = ({ id, etiqueta, valor, error, v
 const RotuloFila: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <span className="col-span-2 flex h-8 items-center md:col-span-1 md:mt-5 text-body font-semibold text-neutral-900">{children}</span>
 );
-
-/** Menú "Más acciones" de la barra de guardado en celular: lo secundario fuera de la vista principal. */
-const MenuMasAcciones: React.FC<{ puedeDescartar: boolean; deshabilitado: boolean; onDescartar: () => void; onRestablecer: () => void }> = ({
-  puedeDescartar,
-  deshabilitado,
-  onDescartar,
-  onRestablecer,
-}) => {
-  const [abierto, setAbierto] = useState(false);
-  useCerrarConEscape(abierto, () => setAbierto(false));
-  const clase =
-    'flex h-11 w-full cursor-pointer items-center gap-2.5 px-3 text-left text-body text-neutral-900 hover:bg-neutral-50 disabled:cursor-not-allowed disabled:text-neutral-400 disabled:hover:bg-transparent';
-  return (
-    <div className="relative">
-      <Boton icono={MoreHorizontal} aria-label="Más acciones" aria-haspopup="menu" aria-expanded={abierto} onClick={() => setAbierto(!abierto)} className="size-11" />
-      {abierto && (
-        <div role="menu" className="absolute bottom-full right-0 z-30 mb-1 w-64 rounded-card border border-neutral-200 bg-superficie py-1 shadow-overlay">
-          <button
-            type="button"
-            role="menuitem"
-            disabled={!puedeDescartar || deshabilitado}
-            onClick={() => {
-              setAbierto(false);
-              onDescartar();
-            }}
-            className={clase}
-          >
-            Descartar cambios
-          </button>
-          <button
-            type="button"
-            role="menuitem"
-            disabled={deshabilitado}
-            onClick={() => {
-              setAbierto(false);
-              onRestablecer();
-            }}
-            className={clase}
-          >
-            <RotateCcw className="size-4" aria-hidden="true" />
-            Restablecer valores por defecto
-          </button>
-        </div>
-      )}
-    </div>
-  );
-};
 
 const CAMPOS_AVERIA: { campo: keyof ParametrosAveriaApi; etiqueta: string; ayuda: string }[] = [
   { campo: 'tipo1Minutos', etiqueta: 'Tipo 1 · detención en el lugar', ayuda: 'Luego sigue su ruta.' },
@@ -477,14 +429,27 @@ export const ModuloConfiguracion: React.FC = () => {
             )}
             {angosto ? (
               <div className="ml-auto">
-                <MenuMasAcciones
-                  puedeDescartar={hayCambios}
-                  deshabilitado={enCurso}
-                  onDescartar={() => setConfirmacion('descartar')}
-                  onRestablecer={() => {
-                    setConfirmacion('restablecer');
-                    setErrorConfirmacion(null);
-                  }}
+                <MenuAcciones
+                  etiqueta="Más acciones"
+                  direccion="arriba"
+                  items={[
+                    {
+                      clave: 'descartar',
+                      etiqueta: 'Descartar cambios',
+                      disabled: !hayCambios || enCurso,
+                      onSelect: () => setConfirmacion('descartar'),
+                    },
+                    {
+                      clave: 'restablecer',
+                      etiqueta: 'Restablecer valores por defecto',
+                      icono: RotateCcw,
+                      disabled: enCurso,
+                      onSelect: () => {
+                        setConfirmacion('restablecer');
+                        setErrorConfirmacion(null);
+                      },
+                    },
+                  ]}
                 />
               </div>
             ) : (
