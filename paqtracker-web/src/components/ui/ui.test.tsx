@@ -125,6 +125,37 @@ describe('Campo respeta lo que trae el control', () => {
     expect(input.getAttribute('aria-invalid')).toBe('true');
     expect(input.getAttribute('aria-describedby')).toBe('error-login clave-ayuda');
   });
+
+  it('con un envoltorio <div> no le copia aria-invalid ni aria-describedby; el control de adentro conserva los suyos', () => {
+    render(
+      <Campo htmlFor="cli" etiqueta="Cliente" error="Ingresa el cliente.">
+        <div data-testid="envoltorio">
+          <Entrada id="cli" aria-invalid aria-describedby="cli-error" />
+        </div>
+      </Campo>,
+    );
+    const envoltorio = screen.getByTestId('envoltorio');
+    expect(envoltorio.hasAttribute('aria-invalid')).toBe(false);
+    expect(envoltorio.hasAttribute('aria-describedby')).toBe(false);
+    expect(screen.getByLabelText('Cliente').getAttribute('aria-describedby')).toBe('cli-error');
+  });
+
+  it('un select o un textarea nativo sí reciben el error y la ayuda', () => {
+    render(
+      <>
+        <Campo htmlFor="est" etiqueta="Estado" error="Elige un estado.">
+          <select id="est" />
+        </Campo>
+        <Campo htmlFor="nota" etiqueta="Nota" ayuda="Opcional">
+          <textarea id="nota" />
+        </Campo>
+      </>,
+    );
+    const select = screen.getByLabelText('Estado');
+    expect(select.getAttribute('aria-invalid')).toBe('true');
+    expect(select.getAttribute('aria-describedby')).toBe('est-error');
+    expect(screen.getByLabelText('Nota').getAttribute('aria-describedby')).toBe('nota-ayuda');
+  });
 });
 
 describe('EstadoCarga', () => {

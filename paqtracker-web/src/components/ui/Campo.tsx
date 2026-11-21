@@ -2,7 +2,9 @@ import React, { forwardRef } from 'react';
 import { cn } from '../../lib/clases';
 
 // Campo de formulario: etiqueta + control + ayuda + error. El control recibe `aria-describedby` y
-// `aria-invalid` automáticamente, para que el lector de pantalla lea la ayuda y el error.
+// `aria-invalid` automáticamente, para que el lector de pantalla lea la ayuda y el error. Solo lo reciben
+// los controles (un componente o un input, select o textarea): un envoltorio `<div>` los deja pasar sin
+// tocarlos, y el control de adentro lleva sus propios atributos.
 
 interface CampoProps {
   /** id del control: une la etiqueta con él. */
@@ -15,6 +17,8 @@ interface CampoProps {
   children: React.ReactElement;
 }
 
+const ELEMENTOS_DE_CONTROL = new Set<string>(['input', 'select', 'textarea']);
+
 export const Campo: React.FC<CampoProps> = ({ htmlFor, etiqueta, ayuda, error, obligatorio = false, className, children }) => {
   const idAyuda = ayuda ? `${htmlFor}-ayuda` : undefined;
   const idError = error ? `${htmlFor}-error` : undefined;
@@ -22,10 +26,11 @@ export const Campo: React.FC<CampoProps> = ({ htmlFor, etiqueta, ayuda, error, o
   const describedBy = idError ?? idAyuda;
   // Se suma a lo que el control ya trae (por ejemplo, un `aria-invalid` que el formulario marca sin mensaje
   // propio en este campo), sin pisarlo.
-  const propio = React.isValidElement<Record<string, unknown>>(children) ? children.props : {};
+  const esControl = React.isValidElement(children) && (typeof children.type !== 'string' || ELEMENTOS_DE_CONTROL.has(children.type));
+  const propio = esControl ? (children.props as Record<string, unknown>) : {};
   const describedByFinal = [propio['aria-describedby'], describedBy].filter(Boolean).join(' ') || undefined;
-  const control = React.isValidElement<Record<string, unknown>>(children)
-    ? React.cloneElement(children, {
+  const control = esControl
+    ? React.cloneElement(children as React.ReactElement<Record<string, unknown>>, {
         'aria-describedby': describedByFinal,
         'aria-invalid': error ? true : propio['aria-invalid'],
       })
