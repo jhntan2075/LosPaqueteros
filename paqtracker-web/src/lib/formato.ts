@@ -49,9 +49,11 @@ export const formatearHolgura = (minutos: number) => {
   return minutos < 0 ? `-${texto}` : texto;
 };
 
-/** Holgura legible: 67 → "1 h 07 min", 0 → "0 min", -67 → "1 h 07 min tarde". */
-export const formatearHolguraLegible = (minutos: number) =>
-  minutos < 0 ? `${formatearDuracion(-minutos)} tarde` : formatearDuracion(minutos);
+/** Holgura legible: 67 → "1 h 07 min", 0 → "0 min", -67 → "1 h 07 min tarde" (redondea a minutos: -0,3 → "0 min"). */
+export const formatearHolguraLegible = (minutos: number) => {
+  const redondeados = Math.round(minutos);
+  return redondeados < 0 ? `${formatearDuracion(-redondeados)} tarde` : formatearDuracion(redondeados);
+};
 
 /** 2464 → "2 464"; 65.42 con 1 decimal → "65,4" (coma decimal, siempre con los decimales pedidos). */
 export const formatearNumero = (valor: number, decimales = 0) => {

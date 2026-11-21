@@ -90,6 +90,8 @@ describe('formatos únicos', () => {
     expect(formatearHolguraLegible(67)).toBe('1 h 07 min');
     expect(formatearHolguraLegible(0)).toBe('0 min');
     expect(formatearHolguraLegible(-67)).toBe('1 h 07 min tarde');
+    expect(formatearHolguraLegible(-0.3)).toBe('0 min');
+    expect(formatearHolguraLegible(-0.6)).toBe('1 min tarde');
   });
 
   it('números con coma decimal y espacio de miles', () => {

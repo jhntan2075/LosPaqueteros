@@ -2,7 +2,7 @@ import React from 'react';
 import { CheckCircle2, Map as MapIcon, Plus, ArrowLeft, Truck, Clock, RefreshCw, User, ClipboardList } from 'lucide-react';
 import { ALMACENES, UNIDADES } from '../../config/dominio';
 import { ESTADO_EN_ESPERA, etiquetaPlazo } from '../../config/glosario';
-import { capitalizar, formatearDiaMesHora, formatearHolgura } from '../../lib/formato';
+import { capitalizar, formatearDiaMesHora, formatearHolguraLegible } from '../../lib/formato';
 import { cn } from '../../lib/clases';
 import { proyectar, tramoOrtogonal, trazado } from '../../lib/malla';
 import type { Coordenada } from '../../types/domain';
@@ -177,7 +177,7 @@ export const PedidoRegistrado: React.FC<PedidoRegistradoProps> = ({
                 valor={
                   <span className="flex items-center gap-1.5">
                     <PuntoHolgura nivel={pedido.nivelHolgura} />
-                    <ValorKpi className={COLOR_HOLGURA[pedido.nivelHolgura]}>{formatearHolgura(pedido.holguraMinutos)}</ValorKpi>
+                    <ValorKpi className={COLOR_HOLGURA[pedido.nivelHolgura]}>{formatearHolguraLegible(pedido.holguraMinutos)}</ValorKpi>
                   </span>
                 }
               />
