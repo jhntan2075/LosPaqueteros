@@ -198,7 +198,7 @@ export interface ResumenPedidos {
   enRuta: number;
   enEspera: number;
   sinRuta: number;
-  /** Minutos hasta la próxima entrega en tránsito; null si no hay ninguna en camino. */
+  /** Minutos hasta la próxima entrega en tránsito; null si no hay ninguna en tránsito. */
   proximaEntregaMin: number | null;
   saturacion: number;
 }

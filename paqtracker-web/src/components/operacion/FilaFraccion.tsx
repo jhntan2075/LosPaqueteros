@@ -7,9 +7,9 @@ import type { Coordenada } from '../../types/domain';
 import type { EstadoFraccion, Fraccion } from '../../types/operacion';
 
 // Fila de una fracción de pedido (la parte que lleva una unidad), compartida por el detalle del almacén
-// (en camino / por salir / entregados), la lista de pedidos y el detalle del pedido.
+// (en tránsito / por salir / entregados), la lista de pedidos y el detalle del pedido.
 
-/** Qué hora destaca la segunda línea: la salida (por salir), la llegada (en camino) o la entrega. */
+/** Qué hora destaca la segunda línea: la salida (por salir), la llegada (en tránsito) o la entrega. */
 export type ContextoFraccion = 'salida' | 'llegada' | 'entrega' | 'ruta';
 
 const COLOR_ESTADO: Record<EstadoFraccion, string> = {

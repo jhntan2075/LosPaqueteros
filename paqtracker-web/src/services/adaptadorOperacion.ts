@@ -77,7 +77,7 @@ const EVENTO: Record<TipoEventoApi, { titulo: string; categoria: CategoriaEvento
   UNIDAD_AVERIADA: { titulo: 'Unidad averiada', categoria: 'INCIDENCIA', color: 'rojo' },
   TRASBORDO: { titulo: 'Trasbordo de carga', categoria: 'INCIDENCIA', color: 'ambar' },
   UNIDAD_REINCORPORADA: { titulo: 'Unidad reincorporada', categoria: 'INCIDENCIA', color: 'gris' },
-  EJECUCION_FINALIZADA: { titulo: 'Ejecución finalizada', categoria: 'OPERACION', color: 'gris' },
+  EJECUCION_FINALIZADA: { titulo: 'Simulación completada', categoria: 'OPERACION', color: 'gris' },
 };
 
 const dosDigitos = (n: number) => String(n).padStart(2, '0');

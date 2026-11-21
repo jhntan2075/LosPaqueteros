@@ -117,7 +117,7 @@ describe('Rúbrica 91.EvaSw · lista de almacenes', () => {
     expect(within(intermedio1).getByRole('img', { name: 'Stock medio' })).toBeTruthy();
     expect(fila('[data-almacen="CENTRAL"]').textContent).toContain('Sin tope');
     // Cada fila adelanta sus envíos: el central tiene 2 en camino, 1 por salir y 1 entregado en la ventana.
-    expect(fila('[data-almacen="CENTRAL"]').textContent).toContain('↗ 2 en camino · ⏱ 1 por salir · ✓ 1 entregados');
+    expect(fila('[data-almacen="CENTRAL"]').textContent).toContain('↗ 2 en tránsito · ⏱ 1 por salir · ✓ 1 entregados');
   });
 
   it('F05 · mapa → lista: tocar un almacén con la lista abierta marca su fila y la lista se queda', () => {

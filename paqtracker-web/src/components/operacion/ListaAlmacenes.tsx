@@ -13,7 +13,7 @@ import { TituloSeccion } from './comunes';
 import { FilaFraccion, type ContextoFraccion } from './FilaFraccion';
 
 // Pestaña "Almacenes" del panel (rúbrica 91.EvaSw E18, E19, F05) y las listas de envíos de cada almacén
-// (E20 en camino, E21 por salir en las próximas 4 h, E22 entregados en las últimas 4 h).
+// (E20 en tránsito, E21 por salir en las próximas 4 h, E22 entregados en las últimas 4 h).
 
 interface ListaAlmacenesProps {
   resaltado: SeleccionResaltable | null;
@@ -22,10 +22,10 @@ interface ListaAlmacenesProps {
   onCentrar: (punto: Coordenada) => void;
 }
 
-/** Contadores compactos de una fila: lo que va en camino, lo que sale pronto y lo entregado. */
+/** Contadores compactos de una fila: lo que está en tránsito, lo que sale pronto y lo entregado. */
 const Contadores: React.FC<{ enCamino: number; porSalir: number; entregadas: number }> = ({ enCamino, porSalir, entregadas }) => (
   <span className="text-caption text-neutral-600 tabular-nums">
-    ↗ {enCamino} en camino · ⏱ {porSalir} por salir · ✓ {entregadas} entregados
+    ↗ {enCamino} en tránsito · ⏱ {porSalir} por salir · ✓ {entregadas} entregados
   </span>
 );
 
@@ -119,7 +119,7 @@ export const ListaAlmacenes: React.FC<ListaAlmacenesProps> = ({ resaltado, onRes
 type Vista = 'enCamino' | 'porSalir' | 'entregadas';
 
 const VACIO: Record<Vista, (desde: string) => string> = {
-  enCamino: () => 'Ningún envío de este almacén va en camino ahora.',
+  enCamino: () => 'Este almacén no tiene envíos en tránsito ahora.',
   porSalir: () => `Ninguna unidad sale de este almacén en las próximas ${VENTANA_PANEL_HORAS} h.`,
   entregadas: (desde) => `Nada entregado desde este almacén en las últimas ${VENTANA_PANEL_HORAS} h (desde las ${desde}).`,
 };
@@ -127,7 +127,7 @@ const VACIO: Record<Vista, (desde: string) => string> = {
 const CONTEXTO: Record<Vista, ContextoFraccion> = { enCamino: 'llegada', porSalir: 'salida', entregadas: 'entrega' };
 
 /**
- * Subpestañas del detalle de un almacén con sus envíos: en camino (E20), por salir en las próximas 4 h (E21)
+ * Subpestañas del detalle de un almacén con sus envíos: en tránsito (E20), por salir en las próximas 4 h (E21)
  * y entregados en las últimas 4 h (E22). Las ventanas usan el reloj simulado de la ejecución.
  */
 export const EnviosAlmacen: React.FC<{ almacen: IdAlmacen; onSeleccionar: (seleccion: SeleccionPanel) => void }> = ({ almacen, onSeleccionar }) => {

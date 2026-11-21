@@ -112,7 +112,7 @@ export const EncabezadoCorrida: React.FC<EncabezadoCorridaProps> = ({
         </span>
         <span className="ml-auto opacity-90">
           {colapso
-            ? 'Simulación finalizada por colapso logístico'
+            ? 'Simulación detenida por colapso logístico'
             : estado === 'COMPLETADA'
               ? 'Simulación completada'
               : estado === 'DETENIDA'

@@ -41,7 +41,7 @@ const ORDENES: { valor: OrdenPedidos; etiqueta: string }[] = [
 
 const VACIO: Record<FiltroPedidos, string> = {
   TODOS: 'No hay pedidos activos ni entregados en las últimas 4 h.',
-  EN_CAMINO: 'Ningún pedido va en camino ahora.',
+  EN_CAMINO: 'No hay pedidos en tránsito ahora.',
   EN_ESPERA: 'Ningún pedido espera unidad.',
   POR_ENTREGAR_4H: `Ningún pedido llega a su destino en las próximas ${VENTANA_PANEL_HORAS} h.`,
   ENTREGADOS_4H: `Ningún pedido se entregó en las últimas ${VENTANA_PANEL_HORAS} h.`,

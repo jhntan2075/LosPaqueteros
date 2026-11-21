@@ -26,6 +26,8 @@ const PROHIBIDOS = [
   'Saturación de la flota',
   'Nueva corrida',
   'Vehículo recomendado',
+  'En camino',
+  'en camino',
 ];
 
 const archivosCon = (texto: string, lista: readonly (readonly [string, string])[]) =>

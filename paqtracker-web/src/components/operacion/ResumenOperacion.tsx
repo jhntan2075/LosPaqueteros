@@ -77,7 +77,7 @@ export const ResumenOperacion: React.FC<{ onSeleccionar: (seleccion: SeleccionPa
           titulo="Pedidos en tránsito"
           valor={resumen.enRuta}
           linea1={`En ${flota.enRuta} ${flota.enRuta === 1 ? 'unidad' : 'unidades'} en ruta`}
-          linea2={resumen.proximaEntregaMin === null ? 'Sin llegadas en camino' : `Próxima llegada: ${resumen.proximaEntregaMin} min`}
+          linea2={resumen.proximaEntregaMin === null ? 'Sin llegadas en tránsito' : `Próxima llegada: ${resumen.proximaEntregaMin} min`}
         />
         <Ficha
           titulo="Pedidos en espera"
