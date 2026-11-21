@@ -1,5 +1,20 @@
 # Propuesta: unificación visual de PaqTracker
 
+> **Nota (20-11-2026).** Esta propuesta quedó superada en parte por
+> [la especificación de mejoras UX/UI](superpowers/specs/2026-11-20-mejoras-ux-ui.md); donde choquen,
+> manda la especificación. Cambió:
+>
+> - **Semáforo, formas y color:** un significado por color, una forma por nivel y almacenes
+>   intermedios con verde = lleno.
+> - **Glosario y formatos:** un término único por concepto y formatos legibles de holgura, duración,
+>   números e instantes.
+> - **Celular:** reglas para pantallas de menos de 768 px.
+> - **Patrones de estado y formularios:** `EstadoCarga`, `EstadoError`, confirmaciones con tono y
+>   validación al enviar.
+> - **Mapa:** destinos circulares, rutas animadas, paradas numeradas y unidades agrupadas.
+>
+> El estado vigente está en [design-system.md](design-system.md).
+
 Alcance: pestañas **Pedidos**, **Simulación**, **Métricas** y **Configuración** de `paqtracker-web`
 (Operación y la barra superior se usan como referencia, porque comparten los mismos problemas).
 Complementa [design-system.md](design-system.md), que ya define la paleta pero todavía no se aplica.
