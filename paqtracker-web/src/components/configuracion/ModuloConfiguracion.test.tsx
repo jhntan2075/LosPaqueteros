@@ -168,6 +168,32 @@ describe('ModuloConfiguracion (B02, B04, B07-B09)', () => {
     await waitFor(() => expect(guardar).toHaveBeenCalledWith(nuevos));
   });
 
+  it('un costo guardado con más de dos decimales se muestra completo y no se redondea al guardar otro campo', async () => {
+    const guardados = porDefecto();
+    guardados.unidades[1] = { ...guardados.unidades[1], costoPorKm: 0.125 };
+    vi.spyOn(clienteApi, 'consultarParametros').mockResolvedValue(guardados);
+    const nuevos = { ...guardados, unidades: guardados.unidades.map((u, i) => (i === 0 ? { ...u, capacidad: 30 } : u)) };
+    const guardar = vi.spyOn(clienteApi, 'guardarParametros').mockResolvedValue(nuevos);
+    render(<ModuloConfiguracion />);
+    const costo = (await screen.findByLabelText('Costo por km', { selector: '#unidad-1-costo' })) as HTMLInputElement;
+    expect(costo.value).toBe('0,125');
+    fireEvent.change(screen.getByLabelText('Capacidad', { selector: '#unidad-0-capacidad' }), { target: { value: '30' } });
+    fireEvent.click(screen.getByRole('button', { name: /Guardar cambios/ }));
+    await waitFor(() => expect(guardar).toHaveBeenCalledWith(nuevos));
+    expect(guardar.mock.calls[0][0].unidades[1].costoPorKm).toBe(0.125);
+  });
+
+  it('al salir del campo el costo conserva los decimales escritos (mínimo dos)', async () => {
+    render(<ModuloConfiguracion />);
+    const costo = (await screen.findByLabelText('Costo por km', { selector: '#unidad-1-costo' })) as HTMLInputElement;
+    fireEvent.change(costo, { target: { value: '0,0375' } });
+    fireEvent.blur(costo);
+    expect(costo.value).toBe('0,0375');
+    fireEvent.change(costo, { target: { value: '2' } });
+    fireEvent.blur(costo);
+    expect(costo.value).toBe('2,00');
+  });
+
   it('un costo con texto inválido muestra "Ingresa un número válido."', async () => {
     render(<ModuloConfiguracion />);
     const costo = await screen.findByLabelText('Costo por km', { selector: '#unidad-1-costo' });
@@ -175,6 +201,19 @@ describe('ModuloConfiguracion (B02, B04, B07-B09)', () => {
     fireEvent.blur(costo);
     expect(screen.getByText('Ingresa un número válido.')).toBeTruthy();
     expect((costo as HTMLInputElement).value).toBe('1,2,3');
+  });
+});
+
+describe('ModuloConfiguracion · error de carga', () => {
+  it('si la primera carga falla muestra el error y "Reintentar" vuelve a cargar y muestra el formulario', async () => {
+    const consultar = vi.spyOn(clienteApi, 'consultarParametros').mockRejectedValueOnce(new Error('sin conexión'));
+    render(<ModuloConfiguracion />);
+    expect(await screen.findByText(/No se pudieron cargar los parámetros/)).toBeTruthy();
+    expect(screen.queryByLabelText('Costo por km', { selector: '#unidad-1-costo' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Reintentar' }));
+    expect(await screen.findByLabelText('Costo por km', { selector: '#unidad-1-costo' })).toBeTruthy();
+    expect(consultar).toHaveBeenCalledTimes(2);
+    expect(screen.queryByText(/No se pudieron cargar los parámetros/)).toBeNull();
   });
 });
 

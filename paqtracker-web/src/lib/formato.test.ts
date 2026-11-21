@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   capitalizar,
+  decimalesDe,
   diasDeDiferencia,
   formatearCronometro,
   formatearDiasHoras,
@@ -99,6 +100,16 @@ describe('formatos únicos', () => {
     expect(formatearNumero(65.42, 1)).toBe('65,4');
     expect(formatearNumero(0.6, 2)).toBe('0,60');
     expect(formatearNumero(-1234.5, 1)).toBe('-1 234,5');
+  });
+
+  it('decimales significativos, hasta 6', () => {
+    expect(decimalesDe(2)).toBe(0);
+    expect(decimalesDe(1.2)).toBe(1);
+    expect(decimalesDe(0.125)).toBe(3);
+    expect(decimalesDe(0.15)).toBe(2);
+    expect(decimalesDe(0.1234567)).toBe(6);
+    expect(decimalesDe(1e-9)).toBe(0);
+    expect(decimalesDe(Number.NaN)).toBe(0);
   });
 
   it('soles', () => {

@@ -1,9 +1,9 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { RotateCcw, Save, SlidersHorizontal, RefreshCw } from 'lucide-react';
 import { ALMACENES, formatearDuracion } from '../../config/dominio';
 import { useAnchoAngosto } from '../../hooks/useAnchoAngosto';
 import { useAvisos } from '../../hooks/useAvisos';
-import { formatearNumero, leerDecimal } from '../../lib/formato';
+import { decimalesDe, formatearNumero, leerDecimal } from '../../lib/formato';
 import { proyectar } from '../../lib/malla';
 import { validarParametros } from '../../lib/parametrosDominio';
 import { ErrorDeApi, clienteApi } from '../../services/clienteApi';
@@ -30,9 +30,12 @@ type Formulario = {
   averias: Record<keyof ParametrosAveriaApi, string>;
 };
 
+/** Costo para el campo: dos decimales como mínimo y los que tenga de más (hasta 6), para no redondearlo en silencio. */
+const formatearCosto = (valor: number) => formatearNumero(valor, Math.max(2, decimalesDe(valor)));
+
 const aFormulario = (p: ParametrosDominioApi): Formulario => ({
   almacenes: p.almacenes.map((a) => ({ codigo: a.codigo, x: String(a.x), y: String(a.y), capacidad: a.capacidad === null ? '' : String(a.capacidad) })),
-  unidades: p.unidades.map((u) => ({ tipo: u.tipo, capacidad: String(u.capacidad), velocidadKmH: String(u.velocidadKmH), costoPorKm: formatearNumero(u.costoPorKm, 2) })),
+  unidades: p.unidades.map((u) => ({ tipo: u.tipo, capacidad: String(u.capacidad), velocidadKmH: String(u.velocidadKmH), costoPorKm: formatearCosto(u.costoPorKm) })),
   averias: {
     tipo1Minutos: String(p.averias.tipo1Minutos),
     permanenciaSitioMinutos: String(p.averias.permanenciaSitioMinutos),
@@ -152,21 +155,29 @@ export const ModuloConfiguracion: React.FC = () => {
   /** Hubo un guardado desde que se abrió: la operación día a día sigue con los parámetros anteriores. */
   const [pendienteDiaADia, setPendienteDiaADia] = useState(false);
 
+  const montado = useRef(true);
   useEffect(() => {
-    let vigente = true;
-    void cargarParametrosDominio().then((p) => {
-      if (!vigente) return;
-      if (p) {
-        setGuardados(p);
-        setFormulario(aFormulario(p));
-      } else {
-        setErrorCarga('No se pudieron cargar los parámetros. Revisa la conexión con el servidor.');
-      }
-    });
+    montado.current = true;
     return () => {
-      vigente = false;
+      montado.current = false;
     };
   }, []);
+
+  const cargar = useCallback(async () => {
+    setErrorCarga(null);
+    const p = await cargarParametrosDominio();
+    if (!montado.current) return;
+    if (p) {
+      setGuardados(p);
+      setFormulario(aFormulario(p));
+    } else {
+      setErrorCarga('No se pudieron cargar los parámetros. Revisa la conexión con el servidor.');
+    }
+  }, []);
+
+  useEffect(() => {
+    void cargar();
+  }, [cargar]);
 
   const parametros = useMemo(() => (formulario ? aParametros(formulario) : null), [formulario]);
   const errores = useMemo(() => (parametros ? validarParametros(parametros) : {}), [parametros]);
@@ -180,7 +191,7 @@ export const ModuloConfiguracion: React.FC = () => {
       <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-superficie">
         {encabezado}
         <div className="flex flex-1 items-center justify-center p-4 sm:p-6">
-          {errorCarga ? <EstadoError titulo={errorCarga} /> : <EstadoCarga texto="Cargando configuración…" />}
+          {errorCarga ? <EstadoError titulo={errorCarga} onReintentar={() => void cargar()} /> : <EstadoCarga texto="Cargando configuración…" />}
         </div>
       </div>
     );
@@ -371,7 +382,7 @@ export const ModuloConfiguracion: React.FC = () => {
                     onSalir={() => {
                       tocar(`unidades.${i}.costoPorKm`);
                       const valor = leerCosto(formulario.unidades[i].costoPorKm);
-                      if (!Number.isNaN(valor)) fijar((f) => ((f.unidades[i].costoPorKm = formatearNumero(valor, 2)), f));
+                      if (!Number.isNaN(valor)) fijar((f) => ((f.unidades[i].costoPorKm = formatearCosto(valor)), f));
                     }}
                   />
                 </div>

@@ -62,6 +62,16 @@ export const formatearNumero = (valor: number, decimales = 0) => {
   return valor < 0 && Number(texto.replace(/\s/g, '').replace(',', '.')) !== 0 ? `-${texto}` : texto;
 };
 
+/** Máximo de decimales que `decimalesDe` distingue (más allá se considera redondeo de coma flotante). */
+const DECIMALES_MAXIMOS = 6;
+
+/** Decimales significativos de un número, hasta 6: 0.125 → 3, 1.2 → 1, 2 → 0 (sin ceros a la derecha). */
+export const decimalesDe = (valor: number) => {
+  if (!Number.isFinite(valor)) return 0;
+  const [, fraccion = ''] = String(Number(valor.toFixed(DECIMALES_MAXIMOS))).split('.');
+  return fraccion.length;
+};
+
 /** 1.2 → "S/ 1,20". */
 export const formatearSoles = (valor: number) => `S/ ${formatearNumero(valor, 2)}`;
 
