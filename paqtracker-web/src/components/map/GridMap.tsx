@@ -21,6 +21,7 @@ import {
   type Lienzo,
   type Vista,
 } from '../../lib/malla';
+import { agruparCercanas } from '../../lib/agrupacion';
 import { prefiereMenosMovimiento } from '../../lib/movimiento';
 import { fueraDelAlmacen, ocupacionAlmacenes, ocupacionFlota } from '../../lib/operacion';
 import { almacenPasaFiltros, cantidadFiltros, guardarFiltros, leerFiltros, SIN_FILTROS, unidadPasaFiltros, type FiltrosMapa as Filtros } from '../../lib/filtrosMapa';
@@ -65,8 +66,11 @@ export interface DestinoMapa {
  */
 export type ObjetoMapa = SeleccionResaltable;
 
-/** Objeto bajo el cursor: muestra su tooltip. Los bloqueos tienen tooltip pero no se seleccionan. */
-type ObjetoHover = { tipo: ObjetoMapa['tipo'] | 'bloqueo'; codigo: string };
+/**
+ * Objeto bajo el cursor: muestra su tooltip. Los bloqueos tienen tooltip pero no se seleccionan; un grupo de
+ * unidades (vista lejana) tampoco: tocarlo acerca la vista, y su código son los de sus miembros separados por coma.
+ */
+type ObjetoHover = { tipo: ObjetoMapa['tipo'] | 'bloqueo' | 'grupo'; codigo: string };
 
 export interface GridMapHandle {
   /**
@@ -149,6 +153,8 @@ const TOLERANCIA_CLIC_PX = 4;
 const ESCALA_AL_CENTRAR = 26;
 /** Zoom de los botones y de las teclas + y -. */
 const FACTOR_BOTON = 1.25;
+/** Zoom al tocar un grupo de unidades: lo bastante para que se separen sin perder el contexto. */
+const FACTOR_GRUPO = 2;
 /** Desplazamiento de las flechas del teclado. */
 const PASO_TECLADO_PX = 80;
 /** Duración de las transiciones de la vista: corta, para que se sienta inmediata pero continua. */
@@ -445,7 +451,14 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
     const fueClic = Math.hypot(e.clientX - a.inicioX, e.clientY - a.inicioY) <= TOLERANCIA_CLIC_PX;
     if (!fueClic || !a.objeto) return;
     const [tipo, codigo] = a.objeto.split(':');
-    if (tipo !== 'bloqueo') onSeleccionar({ tipo: tipo as 'pedido' | 'vehiculo' | 'almacen', codigo });
+    if (tipo === 'grupo') {
+      // Un grupo no se selecciona: se acerca la vista al doble, centrada en él.
+      const primera = unidades.find((u) => u.codigo === codigo.split(',')[0]);
+      if (primera && vista) {
+        const { x, y } = proyectar(vista, primera.posicion);
+        animarA(acercarEn(vista, FACTOR_GRUPO, x, y, lienzo));
+      }
+    } else if (tipo !== 'bloqueo') onSeleccionar({ tipo: tipo as 'pedido' | 'vehiculo' | 'almacen', codigo });
   };
 
   const buscar = (evento: React.FormEvent) => {
@@ -737,6 +750,8 @@ interface CapasMapaProps {
 const ESCALA_DETALLE_PX_KM = 20;
 /** Área tocable mínima de una unidad (WCAG 2.5.8), aunque la silueta sea más chica. */
 const AREA_TOQUE_PX = 28;
+/** Distancia (px de pantalla) a la que dos unidades se agrupan en la vista lejana. */
+const RADIO_AGRUPACION_PX = 10;
 /** Área tocable de un destino: el marcador mide 8–14 px, pero se toca como uno de 24. */
 const AREA_TOQUE_DESTINO_PX = 24;
 /** Opacidad de las rutas no destacadas: siguen a la vista, pero quedan como contexto. */
@@ -787,6 +802,8 @@ const fraccionRestante = (desde: Date, vuelve: Date, ahora: Date) => {
 
 /** Pedidos que se nombran en el tooltip de un almacén; el resto se resume como "+N". */
 const MAX_PEDIDOS_TOOLTIP = 3;
+/** Unidades que se nombran en el tooltip de un grupo; el resto se resume como "+N". */
+const MAX_UNIDADES_TOOLTIP = 4;
 
 /** Pedidos a bordo de las unidades que salieron del almacén, p. ej. "Salen: #1001, #1002 +3". */
 function pedidosQueSalen(unidades: UnidadOperacion[], almacen: AlmacenOperacion['id']): string | undefined {
@@ -834,6 +851,18 @@ function contenidoTooltip(
           : SITUACION_UNIDAD[u.situacion],
       color: colorDeUnidad(u),
       punto: u.posicion,
+      alzaPx: 16,
+    };
+  }
+  if (objeto.tipo === 'grupo') {
+    const codigos = objeto.codigo.split(',');
+    const primera = datos.unidades.find((x) => x.codigo === codigos[0]);
+    if (!primera) return null;
+    const resto = codigos.length - MAX_UNIDADES_TOOLTIP;
+    return {
+      titulo: `${codigos.length} unidades`,
+      detalle: `${codigos.slice(0, MAX_UNIDADES_TOOLTIP).join(', ')}${resto > 0 ? ` +${resto}` : ''}`,
+      punto: primera.posicion,
       alzaPx: 16,
     };
   }
@@ -1018,6 +1047,19 @@ const CapasMapa: React.FC<CapasMapaProps> = ({
   const esSeleccionada = (u: UnidadOperacion) =>
     (seleccion?.tipo === 'vehiculo' && seleccion.codigo === u.codigo) || (seleccion?.tipo === 'fraccion' && seleccion.unidad === u.codigo);
 
+  // Vista lejana: las unidades que quedarían a 10 px o menos se dibujan como un grupo con su número. Siguen
+  // sueltas las seleccionadas o destacadas, las averiadas y la que está bajo el cursor.
+  const agrupando = capas.unidades && vista.escala < ESCALA_DETALLE_PX_KM;
+  const gruposEnCalle: UnidadOperacion[][] = agrupando
+    ? agruparCercanas(
+        enCalle,
+        (u) => proyectar(vista, u.posicion),
+        RADIO_AGRUPACION_PX,
+        (u) => esSeleccionada(u) || unidadesDestacadas.has(u.codigo) || u.estado === 'AVERIADA' || unidadBajoCursor === u.codigo,
+      ).map((g) => g.miembros)
+    : enCalle.map((u) => [u]);
+  const unidadesSueltas = gruposEnCalle.filter((g) => g.length === 1).map((g) => g[0]);
+
   // Rótulos que se pisan (p. ej. varias unidades saliendo del central): en la vista lejana se omite el
   // rótulo de carga de la unidad que chocaría con otro ya puesto. La carga sigue en el color del ícono,
   // en el tooltip y en el panel, y vuelve al acercar, pasar el mouse o seleccionar la unidad.
@@ -1033,7 +1075,12 @@ const CapasMapa: React.FC<CapasMapaProps> = ({
     }
     const prioridad = (u: UnidadOperacion) =>
       esSeleccionada(u) || unidadBajoCursor === u.codigo ? 2 : u.estado === 'AVERIADA' ? 1.5 : u.carga / Math.max(1, u.capacidad);
-    for (const u of [...enCalle].sort((a, b) => prioridad(b) - prioridad(a))) {
+    // El ícono y la insignia de un grupo (que no lleva rótulo) también ocupan su lugar.
+    for (const grupo of gruposEnCalle.filter((g) => g.length > 1)) {
+      const { x, y } = proyectar(vista, grupo[0].posicion);
+      ocupados.push({ x1: x - AREA_TOQUE_PX / 2, y1: y - AREA_TOQUE_PX / 2, x2: x + AREA_TOQUE_PX / 2, y2: y + AREA_TOQUE_PX / 2 });
+    }
+    for (const u of [...unidadesSueltas].sort((a, b) => prioridad(b) - prioridad(a))) {
       const { x, y } = proyectar(vista, u.posicion);
       const inicio = x + iconoVehiculo(u.tipo, '#000').medioAnchoVisible * f + 4;
       const anchoCaracter = ANCHO_CARACTER_PX * (compacto ? 0.85 : 1);
@@ -1116,6 +1163,40 @@ const CapasMapa: React.FC<CapasMapaProps> = ({
               )}
             </>
           )}
+        </g>
+      </g>
+    );
+  };
+
+  // Un grupo de unidades cercanas: el ícono de la más cargada y la cantidad en una insignia. Lo desliza
+  // useDeslizamientoUnidades como a su primer miembro (los demás no se dibujan, así que hay un solo
+  // [data-mover] por unidad). Tocarlo acerca la vista; no lleva rótulo de carga.
+  const dibujarGrupo = (miembros: UnidadOperacion[]) => {
+    const [primera] = miembros;
+    const masCargada = miembros.reduce((a, u) => (u.carga / Math.max(1, u.capacidad) > a.carga / Math.max(1, a.capacidad) ? u : a));
+    const icono =
+      modoColor === 'holgura' ? iconoVehiculo(masCargada.tipo, colorHolguraDeUnidad(masCargada)) : iconoVehiculo(masCargada.tipo, colorDeUnidad(masCargada), unidadVacia(masCargada));
+    const { x, y } = proyectar(vista, primera.posicion);
+    const codigos = miembros.map((u) => u.codigo).join(',');
+    return (
+      <g
+        key={`grupo:${codigos}`}
+        transform={`translate(${x}, ${y})`}
+        className="cursor-pointer"
+        data-objeto={`grupo:${codigos}`}
+        data-mover={primera.codigo}
+        data-kx={primera.posicion.x}
+        data-ky={primera.posicion.y}
+      >
+        <rect x={-AREA_TOQUE_PX / 2} y={-AREA_TOQUE_PX / 2} width={AREA_TOQUE_PX} height={AREA_TOQUE_PX} fill="transparent" />
+        <g transform={escalar}>
+          <image href={icono.href} x={-icono.centroX} y={-icono.centroY} width={icono.ancho} height={icono.alto} />
+        </g>
+        <g transform={`translate(${9 * f}, ${-9 * f})`}>
+          <circle r={7 * f} fill="#0F172A" stroke="#FFFFFF" strokeWidth="1.5" />
+          <text fill="#FFFFFF" fontSize={tamRotulo(10)} fontWeight="700" textAnchor="middle" dominantBaseline="central">
+            {miembros.length}
+          </text>
         </g>
       </g>
     );
@@ -1292,7 +1373,7 @@ const CapasMapa: React.FC<CapasMapaProps> = ({
           )}
 
       {/* --- UNIDADES en ruta (color por ocupación, CF-02) y averiadas en el punto de la avería --- */}
-      {capas.unidades && enCalle.map((u) => dibujarUnidad(u, 0))}
+      {capas.unidades && gruposEnCalle.map((g) => (g.length > 1 ? dibujarGrupo(g) : dibujarUnidad(g[0], 0)))}
 
       {/* --- ALMACENES (posiciones de ConfiguracionDominio): al final, para que su símbolo y su rótulo
           nunca queden tapados por una ruta o una unidad que pase cerca. --- */}
