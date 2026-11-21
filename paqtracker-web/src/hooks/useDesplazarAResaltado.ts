@@ -1,7 +1,6 @@
 import { useEffect, type RefObject } from 'react';
+import { prefiereMenosMovimiento } from '../lib/movimiento';
 
-const prefiereMenosMovimiento = () =>
-  typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 /**
  * Lleva a la vista la fila resaltada de una lista (F01, F05) cuando cambia lo resaltado, no con cada

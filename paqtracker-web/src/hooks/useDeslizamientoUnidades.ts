@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef, type RefObject } from 'react';
 import { proyectar, type Vista } from '../lib/malla';
+import { prefiereMenosMovimiento } from '../lib/movimiento';
 import type { Coordenada } from '../types/domain';
 
 // Movimiento fluido de las unidades (C29). React recalcula las posiciones con cada tic del reloj
@@ -35,9 +36,7 @@ const interpolar = (d: Deslizamiento, ahora: number): Coordenada => {
 /** Unidad que aparece o se reubica: se coloca directamente. */
 const quieto = (punto: Coordenada, ahora: number): Deslizamiento => ({ desde: punto, hasta: punto, t0: ahora, duracion: DURACION_MINIMA_MS, suave: false });
 
-const sinAnimacion = () =>
-  typeof requestAnimationFrame !== 'function' ||
-  (typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+const sinAnimacion = () => typeof requestAnimationFrame !== 'function' || prefiereMenosMovimiento();
 
 export function useDeslizamientoUnidades(svgRef: RefObject<SVGSVGElement | null>, vista: Vista) {
   const deslizamientos = useRef(new Map<string, Deslizamiento>());

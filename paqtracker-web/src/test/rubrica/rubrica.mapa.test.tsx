@@ -330,6 +330,118 @@ describe('Rúbrica · MAPA · línea de la ruta', () => {
   });
 });
 
+describe('Rúbrica · MAPA · rutas dinámicas', () => {
+  // El modo de color se recuerda en localStorage: cada prueba parte de Carga y no deja Holgura a las demás.
+  beforeEach(() => localStorage.clear());
+  afterEach(() => localStorage.clear());
+
+  const rutaDe = (container: HTMLElement, codigo: string) => {
+    const unidad = posicionEnPantalla(objetoMapa(container, `vehiculo:${codigo}`)!);
+    return Array.from(container.querySelectorAll('path[stroke-dasharray]')).find((r) => (r.getAttribute('d') ?? '').startsWith(`M ${unidad.x} ${unidad.y}`))!;
+  };
+  const seleccionar = (container: HTMLElement, codigo: string) => {
+    const unidad = objetoMapa(container, `vehiculo:${codigo}`)!;
+    fireEvent.pointerDown(unidad, { button: 0, clientX: 50, clientY: 50, pointerId: 1 });
+    fireEvent.pointerUp(unidad, { button: 0, clientX: 50, clientY: 50, pointerId: 1 });
+  };
+  /** Pulsa "Acercar" hasta superar la escala de detalle (20 px/km); sin animación para que el zoom sea inmediato. */
+  const acercarHastaElDetalle = (container: HTMLElement) => {
+    for (let i = 0; i < 6 && !container.querySelector('[data-flecha]'); i++) fireEvent.click(screen.getByRole('button', { name: 'Acercar' }));
+  };
+
+  it('la ruta seleccionada fluye hacia su destino: lleva la clase de la animación', () => {
+    const { container } = montarOperacion();
+    expect(container.querySelector('.ruta-fluye')).toBeNull();
+    seleccionar(container, 'A-01');
+    const destacada = container.querySelector('path[stroke="#1E40AF"]')!;
+    expect(destacada.getAttribute('class')).toBe('ruta-fluye');
+    expect(container.querySelectorAll('.ruta-fluye').length).toBe(1);
+  });
+
+  it('con menos movimiento pedido, la ruta seleccionada no se anima', () => {
+    vi.stubGlobal('matchMedia', () => ({ matches: true }));
+    const { container } = montarOperacion();
+    seleccionar(container, 'A-01');
+    expect(container.querySelector('path[stroke="#1E40AF"]')).toBeTruthy();
+    expect(container.querySelector('.ruta-fluye')).toBeNull();
+  });
+
+  it('con zoom de detalle aparecen flechas de sentido sobre las rutas pendientes; en la vista inicial no', () => {
+    vi.stubGlobal('matchMedia', () => ({ matches: true }));
+    const { container } = montarOperacion();
+    expect(container.querySelector('[data-flecha]')).toBeNull();
+    acercarHastaElDetalle(container);
+    const flechas = Array.from(container.querySelectorAll('[data-flecha]'));
+    expect(flechas.length).toBeGreaterThan(0);
+    flechas.forEach((f) => {
+      expect(f.getAttribute('d')).toBe('M-3 -3 L1 0 L-3 3');
+      expect(f.getAttribute('transform')).toMatch(/^translate\(.+\) rotate\(.+\)$/);
+      expect(f.hasAttribute('stroke-dasharray')).toBe(false);
+      expect(f.getAttribute('pointer-events')).toBe('none');
+    });
+    // Las flechas no cuentan como rutas: C30 sigue viendo una por unidad en ruta.
+    expect(container.querySelectorAll('path[stroke-dasharray]').length).toBe(2);
+  });
+
+  it('la ruta seleccionada no lleva flechas: su movimiento ya indica el sentido', () => {
+    vi.stubGlobal('matchMedia', () => ({ matches: true }));
+    const { container } = montarOperacion();
+    seleccionar(container, 'A-01');
+    acercarHastaElDetalle(container);
+    const destacada = container.querySelector('path[stroke="#1E40AF"]')!;
+    expect(container.querySelectorAll('[data-flecha]').length).toBeGreaterThan(0);
+    expect(destacada.parentElement!.querySelector('[data-flecha]')).toBeNull();
+  });
+
+  it('en modo Holgura, la ruta de una unidad con un pedido que llega tarde va en rojo y marcada', () => {
+    const datos = datosRubrica();
+    datos.flota.find((u) => u.codigo === 'M-01')!.paradas[0].holguraMinutos = -10;
+    const { container } = montarOperacion({ datos });
+    fireEvent.click(screen.getByRole('radio', { name: 'Holgura' }));
+    const tardia = container.querySelectorAll('[data-ruta-tardia]');
+    expect(tardia.length).toBe(1);
+    expect(tardia[0]).toBe(rutaDe(container, 'M-01'));
+    expect(tardia[0].getAttribute('stroke')).toBe(COLOR_SEMAFORO.ROJO);
+    // Sigue siendo contextual: mismo punteado, grosor y opacidad que cualquier ruta pendiente.
+    expect(tardia[0].getAttribute('stroke-dasharray')).toBe('6 4');
+    expect(tardia[0].getAttribute('stroke-width')).toBe('2');
+    expect(tardia[0].getAttribute('stroke-opacity')).toBe('0.55');
+    expect(rutaDe(container, 'A-01').hasAttribute('data-ruta-tardia')).toBe(false);
+  });
+
+  it('en modo Carga no se marcan rutas tardías', () => {
+    const datos = datosRubrica();
+    datos.flota.find((u) => u.codigo === 'M-01')!.paradas[0].holguraMinutos = -10;
+    const { container } = montarOperacion({ datos });
+    expect(container.querySelector('[data-ruta-tardia]')).toBeNull();
+    expect(rutaDe(container, 'M-01').getAttribute('stroke')).toBe('#94A3B8');
+  });
+
+  it('la ruta tardía también lleva flechas, del color de la ruta', () => {
+    vi.stubGlobal('matchMedia', () => ({ matches: true }));
+    const datos = datosRubrica();
+    datos.flota.find((u) => u.codigo === 'M-01')!.paradas[0].holguraMinutos = -10;
+    const { container } = montarOperacion({ datos });
+    fireEvent.click(screen.getByRole('radio', { name: 'Holgura' }));
+    acercarHastaElDetalle(container);
+    const flechas = Array.from(rutaDe(container, 'M-01').parentElement!.querySelectorAll('[data-flecha]'));
+    expect(flechas.length).toBeGreaterThan(0);
+    flechas.forEach((f) => expect(f.getAttribute('stroke')).toBe(COLOR_SEMAFORO.ROJO));
+  });
+
+  it('la leyenda explica la ruta que avanza y la ruta tardía, después del tramo pendiente', () => {
+    render(<LeyendaMapa onCerrar={() => {}} />);
+    const leyenda = screen.getByRole('region', { name: 'Capas y leyenda' });
+    expect(leyenda.textContent).toContain('La ruta seleccionada avanza hacia su destino');
+    expect(leyenda.textContent).toContain('Ruta con un pedido que llega tarde (modo Holgura)');
+    const lineas = Array.from(leyenda.querySelectorAll('line[stroke-dasharray]'));
+    expect(lineas[0].getAttribute('stroke')).toBe('#94A3B8');
+    expect(lineas[1].getAttribute('stroke')).toBe('#1E40AF');
+    expect(lineas[1].getAttribute('stroke-dasharray')).toBe('7 5');
+    expect(lineas[2].getAttribute('stroke')).toBe(COLOR_SEMAFORO.ROJO);
+  });
+});
+
 describe('Rúbrica · MAPA · GridMap aislado', () => {
   it('C2 · sin unidades ni pedidos el mapa sigue mostrando la malla y los almacenes', () => {
     const { container } = renderConDatos(<GridMap unidades={[]} destinos={[]} bloqueos={[]} seleccion={null} riesgo={{ rojo: 0, ambar: 0 }} onSeleccionar={() => {}} onAbrirIncidencias={() => {}} />, datosRubrica({ unidades: [], pedidos: [] }));

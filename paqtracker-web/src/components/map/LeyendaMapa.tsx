@@ -159,6 +159,22 @@ export const LeyendaMapa: React.FC<LeyendaMapaProps> = ({ onCerrar, capas, onCam
       <Fila
         simbolo={
           <Simbolo caja="-14 -11 28 22">
+            <line x1="-12" y1="0" x2="12" y2="0" stroke="#1E40AF" strokeWidth="3" strokeDasharray="7 5" />
+          </Simbolo>
+        }
+        nombre="La ruta seleccionada avanza hacia su destino"
+      />
+      <Fila
+        simbolo={
+          <Simbolo caja="-14 -11 28 22">
+            <line x1="-12" y1="0" x2="12" y2="0" stroke={ROJO} strokeWidth="2" strokeOpacity={0.55} strokeDasharray="6 4" />
+          </Simbolo>
+        }
+        nombre="Ruta con un pedido que llega tarde (modo Holgura)"
+      />
+      <Fila
+        simbolo={
+          <Simbolo caja="-14 -11 28 22">
             <LineaBloqueo />
             <MarcaBloqueo />
           </Simbolo>

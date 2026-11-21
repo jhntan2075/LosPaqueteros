@@ -58,6 +58,21 @@ body {
 :root.oscuro .lienzo-mapa [stroke="#9EABBA"] { stroke: #4B5A76; }
 :root.oscuro .lienzo-mapa rect[fill="#CBD5E1"] { fill: #3C4A64; }
 
+/* Ruta seleccionada: el punteado avanza hacia el destino (el ciclo es el largo de "7 5"). */
+@keyframes ruta-fluye {
+  to {
+    stroke-dashoffset: -12;
+  }
+}
+.ruta-fluye {
+  animation: ruta-fluye 1.2s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ruta-fluye {
+    animation: none;
+  }
+}
+
 /* Impresión del reporte de planificación (G08–G10): solo se imprime lo marcado con data-imprimible, sin
    botones ni la interfaz alrededor. */
 @media print {

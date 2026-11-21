@@ -11,6 +11,7 @@ import {
   acercarEn,
   escalaDeEncuadre,
   escalaMinimaPermitida,
+  flechasDeRecorrido,
   limitarVista,
   nodoEn,
   pasoCuadricula,
@@ -20,6 +21,7 @@ import {
   type Lienzo,
   type Vista,
 } from '../../lib/malla';
+import { prefiereMenosMovimiento } from '../../lib/movimiento';
 import { fueraDelAlmacen, ocupacionAlmacenes, ocupacionFlota } from '../../lib/operacion';
 import { almacenPasaFiltros, cantidadFiltros, guardarFiltros, leerFiltros, SIN_FILTROS, unidadPasaFiltros, type FiltrosMapa as Filtros } from '../../lib/filtrosMapa';
 import { COLOR_HOLGURA_HEX, COLOR_SEMAFORO, NIVELES_CARGA, nivelDeOcupacion, type NivelCarga } from '../../lib/semaforo';
@@ -740,6 +742,9 @@ const AREA_TOQUE_DESTINO_PX = 24;
 /** Opacidad de las rutas no destacadas: siguen a la vista, pero quedan como contexto. */
 const OPACIDAD_PENDIENTE = 0.55;
 const OPACIDAD_RECORRIDO = 0.4;
+/** Sentido de la ruta pendiente: una punta de flecha cada tanto, solo con el mapa lo bastante acercado. */
+const SEPARACION_FLECHA_PX = 80;
+const TRAZO_FLECHA = 'M-3 -3 L1 0 L-3 3';
 /** Orden de dibujo de los destinos: lo urgente al final, para que nunca quede tapado. */
 const ORDEN_DIBUJO_DESTINO: Record<VarianteDestino, number> = { CERRADO: 0, VERDE: 1, AMBAR: 2, ROJO: 3, ENTREGA: 4 };
 /** Ancho aproximado (px) de un carácter de los rótulos de 11–13 px, para detectar rótulos que se pisan. */
@@ -1167,6 +1172,12 @@ const CapasMapa: React.FC<CapasMapaProps> = ({
           const { recorrido, pendiente } = dividirRuta(unidad);
           const destacada = unidadesDestacadas.has(unidad.codigo);
           const atenuada = unidadesDestacadas.size > 0 && !destacada;
+          // En modo Holgura, la ruta de una unidad con algún pedido que llegará tarde va en rojo; sigue siendo
+          // contextual (mismo punteado y opacidad) para no competir con la ruta seleccionada.
+          const tardia = modoColor === 'holgura' && !destacada && unidad.paradas.some((p) => p.holguraMinutos < 0);
+          const colorPendiente = destacada ? '#1E40AF' : tardia ? COLOR_SEMAFORO.ROJO : '#94A3B8';
+          const opacidadPendiente = destacada ? 1 : OPACIDAD_PENDIENTE;
+          const flechas = !destacada && vista.escala >= ESCALA_DETALLE_PX_KM ? flechasDeRecorrido(pendiente, vista, SEPARACION_FLECHA_PX) : [];
           return (
             <g key={`ruta-${unidad.codigo}`} opacity={atenuada ? 0.35 : 1}>
               {recorrido.length > 1 && (
@@ -1177,11 +1188,27 @@ const CapasMapa: React.FC<CapasMapaProps> = ({
               <path
                 d={trazado(vista, pendiente)}
                 fill="none"
-                stroke={destacada ? '#1E40AF' : '#94A3B8'}
+                stroke={colorPendiente}
                 strokeWidth={destacada ? 3 : 2}
-                strokeOpacity={destacada ? 1 : OPACIDAD_PENDIENTE}
+                strokeOpacity={opacidadPendiente}
                 strokeDasharray={destacada ? '7 5' : '6 4'}
+                // La destacada fluye hacia su destino (sin animar si se pidió menos movimiento).
+                className={destacada && !prefiereMenosMovimiento() ? 'ruta-fluye' : undefined}
+                data-ruta-tardia={tardia ? true : undefined}
               />
+              {flechas.map((f, i) => (
+                <path
+                  key={i}
+                  d={TRAZO_FLECHA}
+                  fill="none"
+                  stroke={colorPendiente}
+                  strokeWidth="1.5"
+                  strokeOpacity={opacidadPendiente}
+                  transform={`translate(${f.x} ${f.y}) rotate(${f.angulo})`}
+                  pointerEvents="none"
+                  data-flecha
+                />
+              ))}
             </g>
           );
         })}
