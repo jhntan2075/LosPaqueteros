@@ -1,5 +1,5 @@
 import React from 'react';
-import { NOMBRE_ESTADO_SIMULACION } from '../../config/glosario';
+import { NOMBRE_ESTADO_SIMULACION, nombreEscenario } from '../../config/glosario';
 import { formatearFechaLarga, formatearMiles } from '../../lib/formato';
 import type { EjecucionApi, EstadoEjecucionApi, ResultadoGuardadoApi } from '../../types/api';
 import { Aviso, Boton, EncabezadoPagina, FilaDato, Tarjeta } from '../ui';
@@ -48,7 +48,7 @@ interface ResultadoHistoricoProps {
 
 export const ResultadoHistorico: React.FC<ResultadoHistoricoProps> = ({ ejecucion, onSalir }) => {
   const resultado = ejecucion.resultado;
-  const escenario = ejecucion.tipoEscenario === 'COLAPSO_LOGISTICO' ? 'Hasta el colapso' : `Simulación ${ejecucion.dias} días`;
+  const escenario = nombreEscenario(ejecucion.tipoEscenario, ejecucion.dias);
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <EncabezadoPagina

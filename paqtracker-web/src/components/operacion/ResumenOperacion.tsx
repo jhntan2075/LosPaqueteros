@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { ArrowRight, ClipboardList } from 'lucide-react';
+import { ACTIVIDAD_RECIENTE, SIN_INCIDENCIAS_RECIENTES, VER_ACTIVIDAD } from '../../config/glosario';
 import { DialogoReporteCierre } from '../reporte/DialogoReporteCierre';
 import { useDatosOperacion } from '../../hooks/useDatosOperacion';
 import { decimalesDe, formatearFechaLarga, formatearMiles, formatearNumero } from '../../lib/formato';
@@ -117,10 +118,10 @@ export const ResumenOperacion: React.FC<ResumenOperacionProps> = ({ onSelecciona
           esAlerta={flota.averiadas.length > 0 || quiebre}
         />
       </section>
-      <section aria-label="Actividad reciente" className="px-3 pb-3 flex flex-col gap-1.5">
-        <TituloSeccion>Actividad reciente</TituloSeccion>
+      <section aria-label={ACTIVIDAD_RECIENTE} className="px-3 pb-3 flex flex-col gap-1.5">
+        <TituloSeccion>{ACTIVIDAD_RECIENTE}</TituloSeccion>
         {incidencias.length === 0 ? (
-          <p className="text-body-sm text-neutral-600">Sin incidencias recientes.</p>
+          <p className="text-body-sm text-neutral-600">{SIN_INCIDENCIAS_RECIENTES}</p>
         ) : (
           <ul className="flex flex-col">
             {incidencias.map((e) => (
@@ -136,7 +137,7 @@ export const ResumenOperacion: React.FC<ResumenOperacionProps> = ({ onSelecciona
           onClick={() => onSeleccionar({ tipo: 'bitacora' })}
           className="min-h-11 self-start font-sans text-body-sm font-medium text-primary-600 hover:underline"
         >
-          Ver actividad
+          {VER_ACTIVIDAD}
         </button>
       </section>
       {simulacion && (

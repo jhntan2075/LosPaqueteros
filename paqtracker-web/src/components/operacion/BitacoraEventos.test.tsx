@@ -1,7 +1,11 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, screen, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { AHORA_MS, datosRubrica } from '../../test/rubrica/escenario';
+import { ContextoAverias } from '../../hooks/useAverias';
+import { ContextoAvisos } from '../../hooks/useAvisos';
+import { ContextoDatosOperacion } from '../../hooks/useDatosOperacion';
+import { averiasFalsas } from '../../test/rubrica/escenario';
 import { renderConDatos } from '../../test/rubrica/montaje';
 import type { CategoriaEvento, EventoBitacora } from '../../types/operacion';
 import { BitacoraEventos } from './BitacoraEventos';
@@ -71,5 +75,35 @@ describe('BitacoraEventos (Actividad)', () => {
     expect(screen.getByText('Avería vieja')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Todos' }).getAttribute('aria-pressed')).toBe('true');
     expect(screen.getByRole('button', { name: 'Últimos 30 min' }).getAttribute('aria-pressed')).toBe('false');
+  });
+
+  it('un grupo expandido sigue expandido cuando llega un evento más nuevo del mismo tipo', () => {
+    const conDatos = (eventos: EventoBitacora[]) => (
+      <ContextoDatosOperacion.Provider value={{ ...datosRubrica(), eventos }}>
+        <ContextoAverias.Provider value={averiasFalsas()}>
+          <ContextoAvisos.Provider value={() => {}}>
+            <BitacoraEventos onSeleccionar={vi.fn()} />
+          </ContextoAvisos.Provider>
+        </ContextoAverias.Provider>
+      </ContextoDatosOperacion.Provider>
+    );
+    const { rerender } = render(conDatos([evento('2', 'PLAN_ACTUALIZADO', 2), evento('1', 'PLAN_ACTUALIZADO', 3)]));
+    fireEvent.click(screen.getByRole('button', { name: /2 replanificaciones/ }));
+    expect(screen.getByText('Evento 1')).toBeTruthy();
+
+    rerender(conDatos([evento('3', 'PLAN_ACTUALIZADO', 1), evento('2', 'PLAN_ACTUALIZADO', 2), evento('1', 'PLAN_ACTUALIZADO', 3)]));
+
+    const grupo = screen.getByRole('button', { name: /3 replanificaciones/ });
+    expect(grupo.getAttribute('aria-expanded')).toBe('true');
+    expect(screen.getByText('Evento 3')).toBeTruthy();
+  });
+
+  it('en pantallas angostas, filtros, grupos y "Ver todos" miden al menos 44 px', () => {
+    montar([evento('2', 'PLAN_ACTUALIZADO', 2), evento('1', 'PLAN_ACTUALIZADO', 3)]);
+    for (const nombre of ['Todos', 'Incidencias', 'Planificador', 'Entregas', 'Últimos 30 min', /replanificaciones/]) {
+      expect(screen.getByRole('button', { name: nombre }).className).toContain('max-md:min-h-11');
+    }
+    fireEvent.click(screen.getByRole('button', { name: 'Entregas' }));
+    expect(screen.getByRole('button', { name: 'Ver todos' }).className).toContain('max-md:min-h-11');
   });
 });

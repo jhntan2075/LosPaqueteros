@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Download } from 'lucide-react';
+import { nombreEscenario } from '../../config/glosario';
 import { ReportePlanificacion } from '../reporte/ReportePlanificacion';
 import { useDatosOperacion } from '../../hooks/useDatosOperacion';
 import type { DatosOperacion } from '../../types/operacion';
@@ -32,7 +33,7 @@ function exportarCsv(ejecucion: EjecucionApi, estado: EstadoCorrida, datos: Dato
   const porcentaje = (valor: number) => `${valor.toFixed(1).replace('.', ',')} %`;
   const filas: [string, string][] = [
     ['Estado', ESTADO_CORRIDA[estado].texto],
-    ['Escenario', ejecucion.tipoEscenario === 'COLAPSO_LOGISTICO' ? 'Hasta el colapso' : `Simulación ${ejecucion.dias} días`],
+    ['Escenario', nombreEscenario(ejecucion.tipoEscenario, ejecucion.dias)],
     [colapso ? 'Instante del colapso' : 'Reloj simulado', formatearFechaLarga(datos.reloj, false)],
     ['Operación soportada', formatearDiasHoras(datos.transcurridoSimuladoMs)],
     ['Tiempo de ejecución', formatearCronometro(datos.transcurridoRealMs)],
@@ -137,7 +138,7 @@ export const InformeCorrida: React.FC<InformeCorridaProps> = ({ ejecucion, estad
           ) : (
             <div className="grid grid-cols-1 items-start gap-4 p-4 sm:p-6 lg:grid-cols-3">
               <SeccionInforme titulo="Resultado">
-                <Fila etiqueta="Escenario" valor={ejecucion.tipoEscenario === 'COLAPSO_LOGISTICO' ? 'Hasta el colapso' : `Simulación ${ejecucion.dias} días`} />
+                <Fila etiqueta="Escenario" valor={nombreEscenario(ejecucion.tipoEscenario, ejecucion.dias)} />
                 <Fila
                   etiqueta={colapso ? 'Instante del colapso' : 'Reloj simulado'}
                   valor={formatearFechaLarga(datos.reloj, false)}

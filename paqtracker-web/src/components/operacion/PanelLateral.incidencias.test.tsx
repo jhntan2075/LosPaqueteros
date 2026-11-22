@@ -109,6 +109,22 @@ describe('Incidencias · pedidos', () => {
     expect(screen.queryByText(/#1004/)).toBeNull();
   });
 
+  it('los ajustados desplegados también se limitan: 8 filas y "Ver los N restantes"', () => {
+    const ajustados = Array.from({ length: 12 }, (_, i) => pedido(`#${2000 + i}`, 'AMBAR', 60 + i));
+    montar({ pedidos: ajustados });
+    fireEvent.click(screen.getByRole('button', { name: 'Ver 12 ajustados' }));
+
+    const seccion = region('Ajustados');
+    expect(seccion.getByText(/#2007/)).toBeTruthy();
+    expect(seccion.queryByText(/#2008/)).toBeNull();
+    const mas = seccion.getByRole('button', { name: 'Ver los 4 restantes' });
+    expect(mas.className).toContain('max-md:min-h-11');
+
+    fireEvent.click(mas);
+    expect(seccion.getByText(/#2011/)).toBeTruthy();
+    expect(seccion.getByRole('button', { name: 'Ver menos' })).toBeTruthy();
+  });
+
   it('un pedido en verde no aparece en ninguna sección de riesgo', () => {
     montar(MENSAJE_MIXTO);
     expect(screen.queryByText(/#1006/)).toBeNull();

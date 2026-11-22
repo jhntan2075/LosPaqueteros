@@ -3,6 +3,10 @@ import { CheckCircle2, Plus } from 'lucide-react';
 import { ALMACENES, CORTE_OCUPACION, UNIDADES } from '../../config/dominio';
 import {
   OCULTAR_AJUSTADOS,
+  SECCION_AJUSTADOS,
+  SECCION_EN_RIESGO,
+  SECCION_LLEGARAN_TARDE,
+  SECCION_STOCK_BAJO,
   SIN_INCIDENCIAS,
   alertaStockBajo,
   etiquetaPlazo,
@@ -588,19 +592,12 @@ function useIrASeccion(pedido: PanelLateralProps['seccionIncidencias']) {
   return { ref, clase };
 }
 
-/** Sección de pedidos de Incidencias (llegarán tarde, en riesgo) con "Ver los N restantes" si es larga. */
-const SeccionPedidos: React.FC<{
-  nombre: string;
-  pedidos: PedidoOperacion[];
-  onSeleccionar: PanelLateralProps['onSeleccionar'];
-  referencia: (elemento: HTMLElement | null) => void;
-  className: string;
-}> = ({ nombre, pedidos, onSeleccionar, referencia, className }) => {
+/** Filas de pedidos con "Ver los N restantes" si la lista es larga. */
+const FilasLimitadas: React.FC<{ pedidos: PedidoOperacion[]; onSeleccionar: PanelLateralProps['onSeleccionar'] }> = ({ pedidos, onSeleccionar }) => {
   const [verTodo, setVerTodo] = useState(false);
   const visibles = verTodo ? pedidos : pedidos.slice(0, LIMITE_FILAS_VISIBLE);
   return (
-    <section ref={referencia} aria-label={nombre} className={className}>
-      <TituloSeccion derecha={<Insignia>{pedidos.length}</Insignia>}>{nombre}</TituloSeccion>
+    <>
       {visibles.map((p) => (
         <FilaPedidoEnRiesgo key={p.codigo} pedido={p} onSeleccionar={onSeleccionar} />
       ))}
@@ -608,14 +605,28 @@ const SeccionPedidos: React.FC<{
         <button
           type="button"
           onClick={() => setVerTodo(!verTodo)}
-          className="self-start font-sans text-body-sm font-medium text-primary-600 hover:underline"
+          className="self-start max-md:min-h-11 font-sans text-body-sm font-medium text-primary-600 hover:underline"
         >
           {verTodo ? 'Ver menos' : `Ver los ${pedidos.length - LIMITE_FILAS_VISIBLE} restantes`}
         </button>
       )}
-    </section>
+    </>
   );
 };
+
+/** Sección de pedidos de Incidencias (llegarán tarde, en riesgo) con "Ver los N restantes" si es larga. */
+const SeccionPedidos: React.FC<{
+  nombre: string;
+  pedidos: PedidoOperacion[];
+  onSeleccionar: PanelLateralProps['onSeleccionar'];
+  referencia: (elemento: HTMLElement | null) => void;
+  className: string;
+}> = ({ nombre, pedidos, onSeleccionar, referencia, className }) => (
+  <section ref={referencia} aria-label={nombre} className={className}>
+    <TituloSeccion derecha={<Insignia>{pedidos.length}</Insignia>}>{nombre}</TituloSeccion>
+    <FilasLimitadas pedidos={pedidos} onSeleccionar={onSeleccionar} />
+  </section>
+);
 
 const FilaPedidoEnRiesgo: React.FC<{ pedido: PedidoOperacion; onSeleccionar: PanelLateralProps['onSeleccionar'] }> = ({ pedido, onSeleccionar }) => (
   <FilaConBarra
@@ -647,14 +658,14 @@ const ListaIncidencias: React.FC<
     <div className="flex-1 min-h-0 overflow-y-auto divide-y divide-neutral-200">
       {!hayIncidencias && <EstadoVacio icono={CheckCircle2} titulo={SIN_INCIDENCIAS} className="py-6" />}
       {llegaranTarde.length > 0 && (
-        <SeccionPedidos nombre="Llegarán tarde" pedidos={llegaranTarde} onSeleccionar={onSeleccionar} referencia={ref('tarde')} className={clase('tarde')} />
+        <SeccionPedidos nombre={SECCION_LLEGARAN_TARDE} pedidos={llegaranTarde} onSeleccionar={onSeleccionar} referencia={ref('tarde')} className={clase('tarde')} />
       )}
       {criticos.length > 0 && (
-        <SeccionPedidos nombre="En riesgo" pedidos={criticos} onSeleccionar={onSeleccionar} referencia={ref('riesgo')} className={clase('riesgo')} />
+        <SeccionPedidos nombre={SECCION_EN_RIESGO} pedidos={criticos} onSeleccionar={onSeleccionar} referencia={ref('riesgo')} className={clase('riesgo')} />
       )}
       {ajustados.length > 0 && (
-        <section ref={ref('ajustados')} aria-label="Ajustados" className={clase('ajustados')}>
-          <TituloSeccion derecha={<Insignia>{ajustados.length}</Insignia>}>Ajustados</TituloSeccion>
+        <section ref={ref('ajustados')} aria-label={SECCION_AJUSTADOS} className={clase('ajustados')}>
+          <TituloSeccion derecha={<Insignia>{ajustados.length}</Insignia>}>{SECCION_AJUSTADOS}</TituloSeccion>
           <button
             type="button"
             aria-expanded={verAjustados}
@@ -663,7 +674,7 @@ const ListaIncidencias: React.FC<
           >
             {verAjustados ? OCULTAR_AJUSTADOS : etiquetaVerAjustados(ajustados.length)}
           </button>
-          {verAjustados && ajustados.map((p) => <FilaPedidoEnRiesgo key={p.codigo} pedido={p} onSeleccionar={onSeleccionar} />)}
+          {verAjustados && <FilasLimitadas pedidos={ajustados} onSeleccionar={onSeleccionar} />}
         </section>
       )}
       <section ref={ref('averias')} aria-label="Averías activas" className={clase('averias')}>
@@ -711,8 +722,8 @@ const ListaIncidencias: React.FC<
         ))}
       </section>
       {stockBajo.length > 0 && (
-        <section ref={ref('stock')} aria-label="Almacenes con stock bajo" className={clase('stock')}>
-          <TituloSeccion derecha={<Insignia>{stockBajo.length}</Insignia>}>Almacenes con stock bajo</TituloSeccion>
+        <section ref={ref('stock')} aria-label={SECCION_STOCK_BAJO} className={clase('stock')}>
+          <TituloSeccion derecha={<Insignia>{stockBajo.length}</Insignia>}>{SECCION_STOCK_BAJO}</TituloSeccion>
           {stockBajo.map((a) => (
             <button
               key={a.id}

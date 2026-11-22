@@ -1,4 +1,5 @@
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
+import { FILTRO_ULTIMOS_30_MIN, SIN_ACTIVIDAD, SIN_EVENTOS_CON_FILTROS, VER_TODOS } from '../../config/glosario';
 import { useDatosOperacion } from '../../hooks/useDatosOperacion';
 import { agruparActividad } from '../../lib/eventos';
 import type { CategoriaEvento, DatosOperacion, EventoBitacora, SeleccionPanel } from '../../types/operacion';
@@ -60,7 +61,8 @@ export const BitacoraEventos: React.FC<{ onSeleccionar: (seleccion: SeleccionPan
   const fuente = congelados ?? eventos;
   const porVentana = soloRecientes ? fuente.filter((e) => reloj.getTime() - e.instanteMs <= VENTANA_RECIENTES_MS) : fuente;
   const visibles = filtro === 'TODOS' ? porVentana : porVentana.filter((e) => e.categoria === filtro);
-  const filas = useMemo(() => agruparActividad(visibles), [visibles]);
+  // `visibles` es un arreglo nuevo en cada render, así que memoizar sobre él no ahorraría nada: agrupar es barato.
+  const filas = agruparActividad(visibles);
   const hayFiltros = filtro !== 'TODOS' || soloRecientes;
 
   const alternar = (clave: string) =>
@@ -100,7 +102,7 @@ export const BitacoraEventos: React.FC<{ onSeleccionar: (seleccion: SeleccionPan
               type="button"
               aria-pressed={filtro === valor}
               onClick={() => setFiltro(valor)}
-              className={`px-2 py-1 rounded text-body-sm font-sans ${filtro === valor ? CLASES_CHIP_ACTIVO : CLASES_CHIP_INACTIVO}`}
+              className={`px-2 py-1 max-md:min-h-11 rounded text-body-sm font-sans ${filtro === valor ? CLASES_CHIP_ACTIVO : CLASES_CHIP_INACTIVO}`}
             >
               {etiqueta}
             </button>
@@ -109,9 +111,9 @@ export const BitacoraEventos: React.FC<{ onSeleccionar: (seleccion: SeleccionPan
             type="button"
             aria-pressed={soloRecientes}
             onClick={() => setSoloRecientes(!soloRecientes)}
-            className={`px-2 py-1 rounded text-body-sm font-sans ${soloRecientes ? CLASES_CHIP_ACTIVO : CLASES_CHIP_INACTIVO}`}
+            className={`px-2 py-1 max-md:min-h-11 rounded text-body-sm font-sans ${soloRecientes ? CLASES_CHIP_ACTIVO : CLASES_CHIP_INACTIVO}`}
           >
-            Últimos 30 min
+            {FILTRO_ULTIMOS_30_MIN}
           </button>
         </div>
         <div className="flex items-center text-body-sm">
@@ -142,7 +144,7 @@ export const BitacoraEventos: React.FC<{ onSeleccionar: (seleccion: SeleccionPan
                 type="button"
                 aria-expanded={abierto}
                 onClick={() => alternar(f.clave)}
-                className="w-full flex items-center gap-2 px-3 py-2 min-h-10 text-left font-sans text-body-sm text-neutral-600 hover:bg-neutral-50"
+                className="w-full flex items-center gap-2 px-3 py-2 min-h-10 max-md:min-h-11 text-left font-sans text-body-sm text-neutral-600 hover:bg-neutral-50"
               >
                 <span className="flex-1 min-w-0 truncate">{f.titulo}</span>
                 <span aria-hidden="true">{abierto ? '▾' : '▸'}</span>
@@ -154,13 +156,13 @@ export const BitacoraEventos: React.FC<{ onSeleccionar: (seleccion: SeleccionPan
         {visibles.length === 0 && (
           <li className="px-3 py-3.5 font-sans text-body-sm text-neutral-600">
             {fuente.length === 0 ? (
-              'Aún no hay actividad en esta ejecución.'
+              SIN_ACTIVIDAD
             ) : (
               <>
-                <p>Ningún evento con estos filtros.</p>
+                <p>{SIN_EVENTOS_CON_FILTROS}</p>
                 {hayFiltros && (
-                  <button type="button" onClick={verTodos} className="mt-1 font-medium text-primary-600 hover:underline">
-                    Ver todos
+                  <button type="button" onClick={verTodos} className="mt-1 max-md:min-h-11 font-medium text-primary-600 hover:underline">
+                    {VER_TODOS}
                   </button>
                 )}
               </>
