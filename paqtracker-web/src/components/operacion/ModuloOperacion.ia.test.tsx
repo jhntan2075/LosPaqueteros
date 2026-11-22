@@ -86,6 +86,27 @@ describe('Operación · espacio y presentación', () => {
     expect(screen.getByRole('complementary', { name: 'Panel de detalle' })).toBeTruthy();
   });
 
+  it('en escritorio el lado derecho es un solo bloque: pestañas arriba y panel debajo; oculto queda la tira', () => {
+    simularTamano(1600, 800);
+    montarOperacion();
+    // Sin panel: solo la tira vertical, fuera de cualquier bloque.
+    expect(screen.queryByRole('region', { name: 'Bloque derecho' })).toBeNull();
+    expect(screen.getByRole('tablist', { name: 'Paneles del mapa' }).getAttribute('aria-orientation')).toBe('vertical');
+
+    fireEvent.click(screen.getByRole('tab', { name: /Flota/ }));
+    const bloque = within(screen.getByRole('region', { name: 'Bloque derecho' }));
+    // Las seis pestañas y el panel viven dentro del mismo bloque; la tira vertical ya no se ve.
+    expect(bloque.getAllByRole('tab')).toHaveLength(6);
+    expect(bloque.getByRole('tablist', { name: 'Paneles del mapa' }).getAttribute('aria-orientation')).toBe('horizontal');
+    expect(bloque.getByRole('complementary', { name: 'Panel de detalle' })).toBeTruthy();
+    expect(screen.getAllByRole('tablist', { name: 'Paneles del mapa' })).toHaveLength(1);
+
+    // El chevron oculta el panel y vuelve la tira vertical.
+    fireEvent.click(bloque.getByRole('button', { name: 'Ocultar panel' }));
+    expect(screen.queryByRole('region', { name: 'Bloque derecho' })).toBeNull();
+    expect(screen.getByRole('tablist', { name: 'Paneles del mapa' }).getAttribute('aria-orientation')).toBe('vertical');
+  });
+
   it('la leyenda muestra el detalle completo de "Almacén intermedio", sin cortarlo', () => {
     montarOperacion();
     fireEvent.click(screen.getByRole('button', { name: 'Capas y leyenda' }));

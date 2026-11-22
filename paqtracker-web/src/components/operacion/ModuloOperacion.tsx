@@ -7,6 +7,7 @@ import { usePresentacionMapa } from '../../hooks/usePresentacionMapa';
 import type { SubvistaOperacion } from '../../types/operacion';
 import { GridMap, type DestinoMapa, type GridMapHandle } from '../map/GridMap';
 import { BarraPaneles } from './BarraPaneles';
+import { BloqueDerecho } from './BloqueDerecho';
 import { PanelLateral } from './PanelLateral';
 
 // Operación día a día: mapa en vivo de la ejecución que difunde paqtracker-api. Cada zona tiene una sola
@@ -15,7 +16,6 @@ import { PanelLateral } from './PanelLateral';
 // del panel, igual que en la corrida de simulación. En pantallas angostas el panel es una hoja inferior y
 // las pestañas van al pie (usePresentacionMapa).
 
-const ANCHO_PANEL_PX = 340 + 12;
 
 interface ModuloOperacionProps {
   subvista: SubvistaOperacion;
@@ -95,7 +95,7 @@ export const ModuloOperacion: React.FC<ModuloOperacionProps> = ({
           bloqueos={datos.bloqueos}
           almacenes={datos.almacenes}
           seleccion={nav.seleccionMapa}
-          anchoPanelDerecho={panelAbierto && panelLateral ? ANCHO_PANEL_PX : 0}
+          panelLateralAbierto={panelAbierto && panelLateral}
           altoPanelInferior={presentacion.altoPanelInferior}
           compacto={presentacion.compacto}
           riesgo={riesgo}
@@ -105,7 +105,7 @@ export const ModuloOperacion: React.FC<ModuloOperacionProps> = ({
           onAbrirAlmacenes={() => nav.seleccionar({ tipo: 'almacenes' })}
           onHoverCoordenada={onHoverCoordenada}
         >
-          {panelAbierto && (
+          {panelAbierto && !panelLateral && (
             <PanelLateral
               seleccion={nav.seleccionPanel}
               onSeleccionar={nav.seleccionar}
@@ -122,12 +122,29 @@ export const ModuloOperacion: React.FC<ModuloOperacionProps> = ({
             />
           )}
         </GridMap>
-        <BarraPaneles
-          activa={panelAbierto ? nav.pestanaActiva : null}
-          onSeleccionar={(tipo) => nav.seleccionar({ tipo })}
-          alertas={alertas}
-          orientacion={presentacion.compacto ? 'horizontal' : 'vertical'}
-        />
+        {panelAbierto && panelLateral ? (
+          <BloqueDerecho activa={nav.pestanaActiva} onSeleccionar={(tipo) => nav.seleccionar({ tipo })} alertas={alertas} onOcultar={nav.cerrar}>
+            <PanelLateral
+              seleccion={nav.seleccionPanel}
+              onSeleccionar={nav.seleccionar}
+              onCerrar={nav.cerrar}
+              onCentrar={(punto) => mapaRef.current?.centrarEn(punto)}
+              onVolver={nav.volver}
+              etiquetaVolver={nav.etiquetaVolver}
+              resaltado={nav.resaltado}
+              onResaltar={nav.resaltar}
+              seccionIncidencias={nav.seccionIncidencias}
+              presentacion="bloque"
+            />
+          </BloqueDerecho>
+        ) : (
+          <BarraPaneles
+            activa={panelAbierto ? nav.pestanaActiva : null}
+            onSeleccionar={(tipo) => nav.seleccionar({ tipo })}
+            alertas={alertas}
+            orientacion={presentacion.compacto ? 'horizontal' : 'vertical'}
+          />
+        )}
       </main>
     </div>
   );

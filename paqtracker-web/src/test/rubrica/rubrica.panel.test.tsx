@@ -21,8 +21,11 @@ import { montarOperacion, renderConDatos } from './montaje';
 // Rúbrica c.1inf54.26-2 · "MAPA ENLAZADO AL PANEL BIDIRECCIONAL" (48–54) y "PANEL" (59–76). Las brechas
 // van con `it.fails` (ver rubrica.mapa.test.tsx).
 
-/** El panel lateral mide 340 px + 12 de margen: el mapa centra en el área que queda libre. */
-const CENTRO_LIBRE = { x: (ANCHO_MAPA - 352) / 2, y: ALTO_MAPA / 2 };
+/**
+ * El panel lateral va en un bloque junto al mapa (no encima): el lienzo del mapa ya es el área libre, así que
+ * centrar un punto es llevarlo al centro del lienzo.
+ */
+const CENTRO_LIBRE = { x: ANCHO_MAPA / 2, y: ALTO_MAPA / 2 };
 
 beforeEach(() => {
   prepararEntornoMapa();

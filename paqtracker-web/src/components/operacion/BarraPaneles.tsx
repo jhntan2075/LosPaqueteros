@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { AlertTriangle, BarChart3, MoreHorizontal, Package, ScrollText, Truck, Warehouse } from 'lucide-react';
+import { AlertTriangle, BarChart3, ChevronRight, MoreHorizontal, Package, ScrollText, Truck, Warehouse } from 'lucide-react';
 import { useCerrarConEscape } from '../../hooks/useCerrarConEscape';
 import type { PestanaPanel } from '../../types/operacion';
 
@@ -24,8 +24,13 @@ interface BarraPanelesProps {
    * que suman las alertas del mapa. Las demás pestañas solo navegan.
    */
   alertas?: number;
-  /** 'vertical' (por defecto): a la derecha del mapa. 'horizontal': pestañas al pie, para celulares. */
-  orientacion?: 'vertical' | 'horizontal';
+  /**
+   * 'vertical' (por defecto): tira a la derecha del mapa, con el panel oculto. 'horizontal': pestañas al pie,
+   * para celulares. 'superior': fila de pestañas con ícono y nombre en la cabecera del bloque del panel.
+   */
+  orientacion?: 'vertical' | 'horizontal' | 'superior';
+  /** Solo en 'superior': oculta el panel (queda la tira vertical). */
+  onOcultar?: () => void;
 }
 
 const Insignia: React.FC<{ conteo: number; className: string }> = ({ conteo, className }) => (
@@ -44,7 +49,7 @@ const nombreAccesible = (etiqueta: string, conteo: number) =>
  * Barra de pestañas del panel, siempre visible: solo navega. En escritorio es vertical, junto al panel que
  * abre (cercanía entre el control y su efecto); en celular va al pie, al alcance del pulgar.
  */
-export const BarraPaneles: React.FC<BarraPanelesProps> = ({ activa, onSeleccionar, alertas = 0, orientacion = 'vertical' }) => {
+export const BarraPaneles: React.FC<BarraPanelesProps> = ({ activa, onSeleccionar, alertas = 0, orientacion = 'vertical', onOcultar }) => {
   const [masAbierto, setMasAbierto] = useState(false);
   const masRef = useRef<HTMLDivElement>(null);
   useCerrarConEscape(masAbierto, () => setMasAbierto(false));
@@ -52,6 +57,44 @@ export const BarraPaneles: React.FC<BarraPanelesProps> = ({ activa, onSelecciona
   const visibles = horizontal ? PESTANAS.slice(0, VISIBLES_EN_HORIZONTAL) : PESTANAS;
   const enMas = horizontal ? PESTANAS.slice(VISIBLES_EN_HORIZONTAL) : [];
   const masActiva = enMas.some((p) => p.tipo === activa);
+
+  if (orientacion === 'superior') {
+    return (
+      <nav aria-label="Paneles del mapa" role="tablist" aria-orientation="horizontal" className="h-14 shrink-0 bg-superficie border-b border-neutral-200 flex items-stretch">
+        {onOcultar && (
+          <button
+            type="button"
+            onClick={onOcultar}
+            aria-label="Ocultar panel"
+            className="w-9 shrink-0 flex items-center justify-center text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900"
+          >
+            <ChevronRight className="size-4" aria-hidden="true" />
+          </button>
+        )}
+        {PESTANAS.map(({ tipo, etiqueta, Icono }) => {
+          const esActiva = activa === tipo;
+          const conteo = tipo === 'incidencias' ? alertas : 0;
+          return (
+            <button
+              key={tipo}
+              type="button"
+              role="tab"
+              aria-selected={esActiva}
+              onClick={() => onSeleccionar(tipo)}
+              aria-label={nombreAccesible(etiqueta, conteo)}
+              className={`relative flex-1 min-w-0 flex flex-col items-center justify-center gap-1 border-b-2 transition ${
+                esActiva ? 'border-primary-600 bg-primary-50 text-primary-600' : 'border-transparent text-neutral-600 hover:bg-neutral-50 hover:text-neutral-900'
+              }`}
+            >
+              <Icono className="size-[18px]" />
+              <span className="font-sans text-caption leading-none truncate max-w-full px-0.5">{etiqueta}</span>
+              {conteo > 0 && <Insignia conteo={conteo} className="top-1 left-1/2 ml-1.5" />}
+            </button>
+          );
+        })}
+      </nav>
+    );
+  }
 
   return (
     <nav

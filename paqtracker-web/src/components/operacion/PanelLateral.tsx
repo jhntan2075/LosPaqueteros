@@ -58,7 +58,7 @@ interface PanelLateralProps {
    * 'lateral' (por defecto): columna a la derecha del mapa. 'hoja': hoja inferior para pantallas angostas
    * o verticales, con dos alturas (media y completa).
    */
-  presentacion?: 'lateral' | 'hoja';
+  presentacion?: 'lateral' | 'hoja' | 'bloque';
   /** Con presentación 'hoja': altura actual y cómo cambiarla. */
   hojaCompleta?: boolean;
   onAlternarHoja?: () => void;
@@ -689,7 +689,9 @@ export const PanelLateral: React.FC<PanelLateralProps> = ({
       className={
         presentacion === 'hoja'
           ? `absolute inset-x-0 bottom-0 z-20 ${hojaCompleta ? 'top-2' : 'h-[48%]'} bg-superficie border-t border-neutral-200 rounded-t-card shadow-overlay flex flex-col overflow-hidden transition-[height] duration-200`
-          : 'absolute right-3 top-0 bottom-0 z-20 w-[340px] bg-superficie border border-neutral-200 rounded-card shadow-overlay flex flex-col overflow-hidden'
+          : presentacion === 'bloque'
+            ? 'flex-1 min-h-0 bg-superficie flex flex-col overflow-hidden'
+            : 'absolute right-3 top-0 bottom-0 z-20 w-[340px] bg-superficie border border-neutral-200 rounded-card shadow-overlay flex flex-col overflow-hidden'
       }
       data-sin-zoom
       onPointerDown={(e) => e.stopPropagation()}

@@ -11,6 +11,7 @@ import { EstadoConexion } from '../layout/EstadoConexion';
 import { FooterBar } from '../layout/FooterBar';
 import { GridMap, type DestinoMapa, type GridMapHandle } from '../map/GridMap';
 import { BarraPaneles } from '../operacion/BarraPaneles';
+import { BloqueDerecho } from '../operacion/BloqueDerecho';
 import { PanelLateral } from '../operacion/PanelLateral';
 import { useNavegacionPanel } from '../../hooks/useNavegacionPanel';
 import { usePresentacionMapa } from '../../hooks/usePresentacionMapa';
@@ -23,6 +24,7 @@ import { InformeCorrida } from './InformeCorrida';
 // bitácora, detalle de pedido o vehículo, y "· Hasta el colapso"). Muestra en vivo la ejecución que
 // corre en paqtracker-api: cualquier dispositivo que la abra ve lo mismo.
 
+/** Ancho que reserva el diagnóstico del colapso (340 px + margen) a la derecha del mapa. */
 const ANCHO_PANEL_PX = 340 + 12;
 const DIA_MS = 24 * 3600 * 1000;
 /** Margen para no confundir una corrida que llegó a su horizonte con una detenida a mano. */
@@ -122,7 +124,8 @@ const CorridaEnVivo: React.FC<CorridaSimulacionProps & { recibidoEnMs: number }>
           bloqueos={datos.bloqueos}
           almacenes={datos.almacenes}
           seleccion={nav.seleccionMapa}
-          anchoPanelDerecho={(panelAbierto && panelLateral) || verDiagnostico ? ANCHO_PANEL_PX : 0}
+          anchoPanelDerecho={verDiagnostico ? ANCHO_PANEL_PX : 0}
+          panelLateralAbierto={panelAbierto && panelLateral}
           altoPanelInferior={presentacion.altoPanelInferior}
           compacto={presentacion.compacto}
           riesgo={resumenRiesgo(datos)}
@@ -131,7 +134,7 @@ const CorridaEnVivo: React.FC<CorridaSimulacionProps & { recibidoEnMs: number }>
           onAbrirFlota={() => seleccionar({ tipo: 'flota' })}
           onAbrirAlmacenes={() => seleccionar({ tipo: 'almacenes' })}
         >
-          {panelAbierto && (
+          {panelAbierto && !panelLateral && (
             <PanelLateral
               seleccion={nav.seleccionPanel}
               onSeleccionar={seleccionar}
@@ -166,12 +169,29 @@ const CorridaEnVivo: React.FC<CorridaSimulacionProps & { recibidoEnMs: number }>
             </Boton>
           )}
         </GridMap>
-        <BarraPaneles
-          activa={panelAbierto || verDiagnostico ? nav.pestanaActiva : null}
-          onSeleccionar={(tipo) => seleccionar({ tipo })}
-          alertas={riesgo.length}
-          orientacion={presentacion.compacto ? 'horizontal' : 'vertical'}
-        />
+        {panelAbierto && panelLateral ? (
+          <BloqueDerecho activa={nav.pestanaActiva} onSeleccionar={(tipo) => seleccionar({ tipo })} alertas={riesgo.length} onOcultar={nav.cerrar}>
+            <PanelLateral
+              seleccion={nav.seleccionPanel}
+              onSeleccionar={seleccionar}
+              onCerrar={nav.cerrar}
+              onCentrar={(punto) => mapaRef.current?.centrarEn(punto)}
+              onVolver={nav.volver}
+              etiquetaVolver={nav.etiquetaVolver}
+              resaltado={nav.resaltado}
+              onResaltar={nav.resaltar}
+              seccionIncidencias={nav.seccionIncidencias}
+              presentacion="bloque"
+            />
+          </BloqueDerecho>
+        ) : (
+          <BarraPaneles
+            activa={panelAbierto || verDiagnostico ? nav.pestanaActiva : null}
+            onSeleccionar={(tipo) => seleccionar({ tipo })}
+            alertas={riesgo.length}
+            orientacion={presentacion.compacto ? 'horizontal' : 'vertical'}
+          />
+        )}
       </main>
       {/* Terminada la corrida el servidor deja de difundir: la antigüedad del dato ya no indica un problema. */}
       <FooterBar
