@@ -7,10 +7,14 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import pe.pucp.paqtracker.comun.excepcion.SolicitudInvalidaException;
 import pe.pucp.paqtracker.modulos.difusion.aplicacion.dto.MensajeEstadoEjecucion;
+import pe.pucp.paqtracker.modulos.difusion.aplicacion.dto.MensajeEventoEjecucion;
+import pe.pucp.paqtracker.modulos.difusion.aplicacion.servicio.HistorialEventos;
+import pe.pucp.paqtracker.modulos.difusion.aplicacion.servicio.ServicioDifusion;
 import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.casouso.CasoUsoControlarEjecucion;
 import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.casouso.CasoUsoEjecutarColapso;
 import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.casouso.CasoUsoEjecutarDiaADia;
@@ -35,6 +39,7 @@ public class ControladorEjecuciones {
     private final CasoUsoControlarEjecucion casoUsoControlar;
     private final ServicioEjecucion servicioEjecucion;
     private final CasoUsoEjecutarDiaADia casoUsoDiaADia;
+    private final ServicioDifusion servicioDifusion;
 
     /**
      * @param casoUsoPeriodo    CU-16
@@ -42,16 +47,18 @@ public class ControladorEjecuciones {
      * @param casoUsoControlar  control del reloj
      * @param servicioEjecucion consultas
      * @param casoUsoDiaADia    CU-15, para reiniciar la operacion con los parametros vigentes
+     * @param servicioDifusion  historial de eventos ya difundidos
      */
     public ControladorEjecuciones(CasoUsoEjecutarSimulacionPeriodo casoUsoPeriodo,
                                   CasoUsoEjecutarColapso casoUsoColapso,
                                   CasoUsoControlarEjecucion casoUsoControlar, ServicioEjecucion servicioEjecucion,
-                                  CasoUsoEjecutarDiaADia casoUsoDiaADia) {
+                                  CasoUsoEjecutarDiaADia casoUsoDiaADia, ServicioDifusion servicioDifusion) {
         this.casoUsoPeriodo = casoUsoPeriodo;
         this.casoUsoColapso = casoUsoColapso;
         this.casoUsoControlar = casoUsoControlar;
         this.servicioEjecucion = servicioEjecucion;
         this.casoUsoDiaADia = casoUsoDiaADia;
+        this.servicioDifusion = servicioDifusion;
     }
 
     /**
@@ -108,6 +115,21 @@ public class ControladorEjecuciones {
     @GetMapping("/{id}/estado")
     public MensajeEstadoEjecucion estado(@PathVariable String id) {
         return servicioEjecucion.instantanea(id);
+    }
+
+    /**
+     * Eventos que la ejecucion ya difundio por STOMP, para quien se conecta tarde (la bitacora no puede
+     * depender de haber estado suscrito desde el principio).
+     *
+     * @param id     identificador de la ejecucion
+     * @param limite maximo de eventos (por defecto y como maximo 800)
+     * @return eventos del instante simulado mas reciente al mas antiguo; lista vacia si la ejecucion no existe o
+     *         aun no difundio ninguno
+     */
+    @GetMapping("/{id}/eventos")
+    public List<MensajeEventoEjecucion> eventos(@PathVariable String id,
+            @RequestParam(defaultValue = "" + HistorialEventos.LIMITE_MAXIMO) int limite) {
+        return servicioDifusion.historialEventos(id, Math.min(limite, HistorialEventos.LIMITE_MAXIMO));
     }
 
     /**

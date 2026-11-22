@@ -8,8 +8,9 @@ import java.util.Map;
  * @param id                  identificador unico del evento
  * @param ejecucionId         ejecucion a la que pertenece
  * @param tipo                NUEVO_PEDIDO, PLAN_ACTUALIZADO, PEDIDO_ENTREGADO, ALERTA_COLAPSO, BLOQUEO_INICIADO,
- *                            BLOQUEO_LEVANTADO, UNIDAD_AVERIADA, TRASBORDO, UNIDAD_REINCORPORADA o
- *                            EJECUCION_FINALIZADA
+ *                            BLOQUEO_LEVANTADO, UNIDAD_AVERIADA, TRASBORDO, UNIDAD_REINCORPORADA, STOCK_BAJO
+ *                            (un almacen intermedio entra en nivel rojo de inventario), PEDIDO_TARDE (la llegada
+ *                            estimada de un pedido supera su hora limite) o EJECUCION_FINALIZADA
  * @param mensaje             texto legible para la bitacora
  * @param timestampSimuladoMs instante simulado del evento, epoch en milisegundos
  * @param detalle             datos adicionales segun el tipo

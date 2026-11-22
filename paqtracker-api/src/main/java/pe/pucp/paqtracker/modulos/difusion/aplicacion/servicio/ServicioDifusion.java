@@ -6,6 +6,7 @@ import pe.pucp.paqtracker.modulos.difusion.aplicacion.dto.MensajeEstadoEjecucion
 import pe.pucp.paqtracker.modulos.difusion.aplicacion.dto.MensajeEventoEjecucion;
 import pe.pucp.paqtracker.modulos.difusion.dominio.PuertoDifusion;
 import pe.pucp.paqtracker.simulacion.SimulacionEnCurso;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -18,14 +19,18 @@ public class ServicioDifusion {
 
     private final ConstructorInstantanea constructorInstantanea;
     private final PuertoDifusion puertoDifusion;
+    private final HistorialEventos historial;
 
     /**
      * @param constructorInstantanea constructor de la instantanea
      * @param puertoDifusion         canal de difusion
+     * @param historial              historial en memoria de los eventos difundidos
      */
-    public ServicioDifusion(ConstructorInstantanea constructorInstantanea, PuertoDifusion puertoDifusion) {
+    public ServicioDifusion(ConstructorInstantanea constructorInstantanea, PuertoDifusion puertoDifusion,
+                            HistorialEventos historial) {
         this.constructorInstantanea = constructorInstantanea;
         this.puertoDifusion = puertoDifusion;
+        this.historial = historial;
     }
 
     /**
@@ -42,7 +47,16 @@ public class ServicioDifusion {
     }
 
     /**
-     * Difunde un evento puntual de la ejecucion.
+     * @param ejecucionId ejecucion consultada
+     * @param limite      maximo de eventos a devolver
+     * @return eventos ya difundidos, del mas reciente al mas antiguo; vacia si la ejecucion no difundio ninguno
+     */
+    public List<MensajeEventoEjecucion> historialEventos(String ejecucionId, int limite) {
+        return historial.consultar(ejecucionId, limite);
+    }
+
+    /**
+     * Difunde un evento puntual de la ejecucion y lo guarda en su historial.
      *
      * @param ejecucionId         ejecucion
      * @param tipo                tipo de evento
@@ -52,7 +66,9 @@ public class ServicioDifusion {
      */
     public void difundirEvento(String ejecucionId, String tipo, String mensaje, long timestampSimuladoMs,
                                Map<String, Object> detalle) {
-        puertoDifusion.publicarEvento(new MensajeEventoEjecucion(UUID.randomUUID().toString(), ejecucionId, tipo,
-                mensaje, timestampSimuladoMs, detalle));
+        MensajeEventoEjecucion evento = new MensajeEventoEjecucion(UUID.randomUUID().toString(), ejecucionId, tipo,
+                mensaje, timestampSimuladoMs, detalle);
+        historial.registrar(evento);
+        puertoDifusion.publicarEvento(evento);
     }
 }

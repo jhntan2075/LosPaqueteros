@@ -14,6 +14,7 @@ import pe.pucp.paqtracker.modelo.Pedido;
 import pe.pucp.paqtracker.modelo.TipoAveria;
 import pe.pucp.paqtracker.modelo.Tramo;
 import pe.pucp.paqtracker.modelo.Vehiculo;
+import pe.pucp.paqtracker.modulos.difusion.aplicacion.dto.AlmacenEnMapa;
 import pe.pucp.paqtracker.modulos.difusion.aplicacion.dto.AveriaEnCurso;
 import pe.pucp.paqtracker.modulos.difusion.aplicacion.dto.ContextoInstantanea;
 import pe.pucp.paqtracker.modulos.difusion.aplicacion.dto.MensajeEstadoEjecucion;
@@ -91,6 +92,7 @@ public final class MotorEjecucion {
     private final CodigosFlota codigosFlota;
     private final Set<Integer> bloqueosVigentes = new HashSet<>();
     private final GestorEventos agenda = new GestorEventos();
+    private final DetectorAlertas alertas = new DetectorAlertas();
     /** Averias aplicadas que siguen vigentes, por unidad; se difunden en cada instantanea. */
     private final Map<Integer, AveriaEnCurso> averiasEnCurso = new HashMap<>();
     private volatile EstadoEjecucion estado = EstadoEjecucion.CONFIGURADA;
@@ -672,6 +674,27 @@ public final class MotorEjecucion {
                 seguimiento.indicadores(simulacion, minuto),
                 Map.copyOf(averiasEnCurso));
         ultimaInstantanea = difusion.difundirEstado(contexto, simulacion);
+        difundirAlertas(ultimaInstantanea);
+    }
+
+    /**
+     * Emite STOCK_BAJO cuando un almacen intermedio entra en rojo y PEDIDO_TARDE cuando la llegada estimada de un
+     * pedido supera su hora limite. Parte de la instantanea ya construida, para usar exactamente el nivel de
+     * inventario y la llegada estimada que ve el visualizador, sin recalcularlos en cada paso.
+     */
+    private void difundirAlertas(MensajeEstadoEjecucion instantanea) {
+        long instanteMs = instantanea.relojSimuladoMs();
+        for (AlmacenEnMapa almacen : alertas.almacenesQueEntranEnRojo(instantanea.almacenes())) {
+            int porcentaje = DetectorAlertas.porcentajeStock(almacen);
+            evento("STOCK_BAJO", "Stock bajo en " + almacen.nombre() + " (" + porcentaje + " %)", instanteMs,
+                    Map.of("almacen", almacen.id(), "porcentaje", porcentaje));
+        }
+        for (PedidoEnMapa pedido : alertas.pedidosQueLlegaranTarde(instantanea.pedidos())) {
+            int minutos = DetectorAlertas.minutosTarde(pedido);
+            evento("PEDIDO_TARDE", "Pedido " + pedido.codigo() + " llegará tarde ("
+                    + DetectorAlertas.formatearDuracion(minutos) + ")", instanteMs,
+                    Map.of("codigoPedido", pedido.codigo(), "minutosTarde", minutos));
+        }
     }
 
     private void evento(String tipo, String mensaje, long instanteMs, Map<String, Object> detalle) {
