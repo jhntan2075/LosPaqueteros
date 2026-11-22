@@ -187,4 +187,25 @@ export const OCULTAR_AJUSTADOS = 'Ocultar los ajustados';
 export const SIN_INCIDENCIAS = 'Sin incidencias: todo va en plazo.';
 
 /** Nombre del escenario de una simulación, como lo ve el usuario. */
-export const nombreEscenario = (tipo: string, dias: number) => (tipo === 'COLAPSO_LOGISTICO' ? 'Hasta el colapso' : `Simulación ${dias} días`);
+export const nombreEscenario = (tipo: string, dias: number) =>
+  tipo === 'COLAPSO_LOGISTICO' ? 'Hasta el colapso' : `Simulación ${dias} ${dias === 1 ? 'día' : 'días'}`;
+
+/** Secciones de la pestaña Incidencias. */
+export const SECCION_LLEGARAN_TARDE = 'Llegarán tarde';
+export const SECCION_EN_RIESGO = 'En riesgo';
+export const SECCION_AJUSTADOS = 'Ajustados';
+export const SECCION_STOCK_BAJO = 'Almacenes con stock bajo';
+
+/** Resumen: bloque de actividad reciente. */
+export const ACTIVIDAD_RECIENTE = 'Actividad reciente';
+export const VER_ACTIVIDAD = 'Ver actividad';
+export const SIN_INCIDENCIAS_RECIENTES = 'Sin incidencias recientes.';
+
+/** Pestaña Actividad: listas vacías, filtros y grupos de eventos rutinarios. */
+export const SIN_ACTIVIDAD = 'Aún no hay actividad en esta ejecución.';
+export const SIN_EVENTOS_CON_FILTROS = 'Ningún evento con estos filtros.';
+export const VER_TODOS = 'Ver todos';
+export const FILTRO_ULTIMOS_30_MIN = 'Últimos 30 min';
+export const tituloGrupoReplanificaciones = (cantidad: number, horaUltima: string) => `${cantidad} replanificaciones · última ${horaUltima}`;
+export const tituloGrupoPedidos = (cantidad: number) => `+${cantidad} pedidos registrados`;
+export const tituloGrupoEntregas = (cantidad: number) => `${cantidad} entregas`;

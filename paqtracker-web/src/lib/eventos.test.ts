@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { MensajeEventoApi } from '../types/api';
 import type { EventoBitacora } from '../types/operacion';
-import { MAXIMO_IMPORTANTES, MAXIMO_RUTINARIOS, agruparActividad, combinarEventos } from './eventos';
+import { MAXIMO_ALERTAS, MAXIMO_IMPORTANTES, MAXIMO_RUTINARIOS, agruparActividad, combinarEventos } from './eventos';
 
 const evento = (id: string, ts: number, tipo: MensajeEventoApi['tipo'] = 'NUEVO_PEDIDO'): MensajeEventoApi => ({
   id,
@@ -49,10 +49,26 @@ describe('combinarEventos', () => {
     expect(r.filter((e) => e.tipo === 'NUEVO_PEDIDO')).toHaveLength(MAXIMO_RUTINARIOS);
   });
 
-  it('trata STOCK_BAJO y PEDIDO_TARDE como importantes', () => {
-    const rutinarios = Array.from({ length: MAXIMO_RUTINARIOS + 10 }, (_, i) => evento(`r${i}`, 100 + i));
-    const r = combinarEventos([evento('s', 1, 'STOCK_BAJO'), evento('t', 2, 'PEDIDO_TARDE')], rutinarios);
-    expect(r.map((e) => e.id)).toEqual(expect.arrayContaining(['s', 't']));
+  it('STOCK_BAJO y PEDIDO_TARDE tienen su propio cupo: no desalojan a los importantes ni a los rutinarios', () => {
+    const importante = evento('colapso', 1, 'ALERTA_COLAPSO');
+    const rutinario = evento('pedido', 2);
+    const alertas = Array.from({ length: MAXIMO_ALERTAS + 50 }, (_, i) => evento(`a${i}`, 100 + i, i % 2 === 0 ? 'PEDIDO_TARDE' : 'STOCK_BAJO'));
+    const r = combinarEventos([importante, rutinario], alertas);
+    expect(r.map((e) => e.id)).toEqual(expect.arrayContaining(['colapso', 'pedido']));
+    expect(r.filter((e) => e.tipo === 'PEDIDO_TARDE' || e.tipo === 'STOCK_BAJO')).toHaveLength(MAXIMO_ALERTAS);
+    expect(r[0].id).toBe(`a${MAXIMO_ALERTAS + 49}`);
+  });
+
+  it('los importantes no desalojan a las alertas', () => {
+    const importantes = Array.from({ length: MAXIMO_IMPORTANTES + 20 }, (_, i) => evento(`i${i}`, 100 + i, 'UNIDAD_AVERIADA'));
+    const r = combinarEventos([evento('tarde', 1, 'PEDIDO_TARDE')], importantes);
+    expect(r.some((e) => e.id === 'tarde')).toBe(true);
+    expect(r).toHaveLength(MAXIMO_IMPORTANTES + 1);
+  });
+
+  it('a igual instante simulado, el entrante (el más nuevo) va primero, como en el servidor', () => {
+    const r = combinarEventos([evento('viejo', 10)], [evento('nuevo', 10)]);
+    expect(r.map((e) => e.id)).toEqual(['nuevo', 'viejo']);
   });
 });
 
@@ -99,5 +115,30 @@ describe('agruparActividad', () => {
       fila('t', 'PEDIDO_ENTREGADO', MIN, 'rojo'),
     ]);
     expect(r.map((f) => f.clase)).toEqual(['evento', 'evento', 'grupo', 'evento']);
+  });
+});
+
+describe('agruparActividad · clave de grupo', () => {
+  const MIN = 60_000;
+  const fila = (id: string, ts: number): EventoBitacora => ({
+    id,
+    tipo: 'PLAN_ACTUALIZADO',
+    instanteMs: ts,
+    hora: `h-${id}`,
+    titulo: 'plan',
+    detalle: '',
+    categoria: 'PLANIFICADOR',
+    color: 'gris',
+  });
+
+  it('la clave del grupo no cambia cuando se suma un evento más nuevo (el grupo abierto no se cierra)', () => {
+    const clave = (filas: ReturnType<typeof agruparActividad>) => {
+      const f = filas[0];
+      if (f.clase !== 'grupo') throw new Error('se esperaba un grupo');
+      return f.clave;
+    };
+    const antes = clave(agruparActividad([fila('2', 2 * MIN), fila('1', MIN)]));
+    const despues = clave(agruparActividad([fila('3', 3 * MIN), fila('2', 2 * MIN), fila('1', MIN)]));
+    expect(despues).toBe(antes);
   });
 });

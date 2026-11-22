@@ -1,12 +1,14 @@
+import { tituloGrupoEntregas, tituloGrupoPedidos, tituloGrupoReplanificaciones } from '../config/glosario';
 import type { MensajeEventoApi, TipoEventoApi } from '../types/api';
 import type { EventoBitacora } from '../types/operacion';
 
 // Lista de eventos de una ejecución en el cliente: mezcla el historial cargado por REST con los eventos
-// que llegan por STOMP, sin duplicados y con el más reciente primero. Igual que el servidor, usa dos
-// cupos: los eventos importantes no se pierden porque los rutinarios (pedidos, replanificaciones)
-// lleguen a montones.
+// que llegan por STOMP, sin duplicados y con el más reciente primero. Igual que el servidor, usa tres
+// cupos: los eventos importantes no se pierden porque los rutinarios (pedidos, replanificaciones) ni las
+// alertas repetitivas (pedido tarde, stock bajo) lleguen a montones.
 
 export const MAXIMO_IMPORTANTES = 500;
+export const MAXIMO_ALERTAS = 300;
 export const MAXIMO_RUTINARIOS = 300;
 
 const IMPORTANTES: ReadonlySet<TipoEventoApi> = new Set<TipoEventoApi>([
@@ -16,30 +18,35 @@ const IMPORTANTES: ReadonlySet<TipoEventoApi> = new Set<TipoEventoApi>([
   'UNIDAD_REINCORPORADA',
   'BLOQUEO_INICIADO',
   'BLOQUEO_LEVANTADO',
-  'STOCK_BAJO',
-  'PEDIDO_TARDE',
   'EJECUCION_FINALIZADA',
 ]);
+
+const ALERTAS: ReadonlySet<TipoEventoApi> = new Set<TipoEventoApi>(['STOCK_BAJO', 'PEDIDO_TARDE']);
 
 export const esEventoImportante = (evento: MensajeEventoApi): boolean => IMPORTANTES.has(evento.tipo);
 
 /**
  * Une `actuales` con `entrantes`: sin repetir ids (gana la copia que ya estaba), el más reciente primero
- * por instante simulado y con los cupos por tipo. A igual instante conserva el orden de llegada.
+ * por instante simulado y con los cupos por tipo. A igual instante, igual que el servidor, el entrante (el
+ * más nuevo) va primero.
  */
 export function combinarEventos(actuales: MensajeEventoApi[], entrantes: MensajeEventoApi[]): MensajeEventoApi[] {
-  const vistos = new Set<string>();
-  const unicos: MensajeEventoApi[] = [];
-  for (const evento of [...actuales, ...entrantes]) {
+  const vistos = new Set(actuales.map((evento) => evento.id));
+  const nuevos: MensajeEventoApi[] = [];
+  for (const evento of entrantes) {
     if (vistos.has(evento.id)) continue;
     vistos.add(evento.id);
-    unicos.push(evento);
+    nuevos.push(evento);
   }
+  // `sort` es estable: en un empate, lo que se ponga antes queda antes. Los nuevos van primero.
+  const unicos = [...nuevos, ...actuales];
   unicos.sort((a, b) => b.timestampSimuladoMs - a.timestampSimuladoMs);
   let importantes = 0;
+  let alertas = 0;
   let rutinarios = 0;
   return unicos.filter((evento) => {
     if (esEventoImportante(evento)) return importantes++ < MAXIMO_IMPORTANTES;
+    if (ALERTAS.has(evento.tipo)) return alertas++ < MAXIMO_ALERTAS;
     return rutinarios++ < MAXIMO_RUTINARIOS;
   });
 }
@@ -62,9 +69,9 @@ function claveDeGrupo(evento: EventoBitacora): string | null {
 
 function tituloDeGrupo(clave: string, eventos: EventoBitacora[]): string {
   const n = eventos.length;
-  if (clave === 'plan') return `${n} replanificaciones · última ${eventos[0].hora}`;
-  if (clave.startsWith('pedido:')) return `+${n} pedidos registrados`;
-  return `${n} entregas`;
+  if (clave === 'plan') return tituloGrupoReplanificaciones(n, eventos[0].hora);
+  if (clave.startsWith('pedido:')) return tituloGrupoPedidos(n);
+  return tituloGrupoEntregas(n);
 }
 
 /**
@@ -80,7 +87,8 @@ export function agruparActividad(eventos: EventoBitacora[]): FilaActividad[] {
     let fin = i + 1;
     if (clave) while (fin < eventos.length && claveDeGrupo(eventos[fin]) === clave) fin++;
     const miembros = eventos.slice(i, fin);
-    if (clave && miembros.length > 1) filas.push({ clase: 'grupo', clave: `${clave}#${miembros[0].id}`, titulo: tituloDeGrupo(clave, miembros), eventos: miembros });
+    // La clave usa el miembro más antiguo (el último): un evento nuevo se suma por delante sin cerrar el grupo abierto.
+    if (clave && miembros.length > 1) filas.push({ clase: 'grupo', clave: `${clave}#${miembros[miembros.length - 1].id}`, titulo: tituloDeGrupo(clave, miembros), eventos: miembros });
     else filas.push({ clase: 'evento', evento: eventos[i] });
     i = clave && miembros.length > 1 ? fin : i + 1;
   }
