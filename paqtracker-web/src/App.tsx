@@ -44,7 +44,7 @@ export default function App() {
   // Registro y confirmación traen su propio encabezado y no llevan barra inferior
   const pantallaCompleta = tabActiva === 'pedidos' && vistaPedidos !== 'cola';
 
-  // Panel del mapa de Operación: 'vivo' sin panel, o su pestaña abierta (incidencias, flota, bitácora)
+  // Panel del mapa de Operación: 'vivo' sin panel, o su pestaña abierta (incidencias, flota, actividad)
   const [subvistaOperacion, setSubvistaOperacion] = useParametroUrlCerrado('panel', SUBVISTAS_VALIDAS, 'vivo');
   const abrirOperacion = (subvista: SubvistaOperacion) => {
     setSubvistaOperacion(subvista);

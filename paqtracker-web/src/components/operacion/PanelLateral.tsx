@@ -858,7 +858,7 @@ export const PanelLateral: React.FC<PanelLateralProps> = ({
             onSeleccionar({ tipo: 'vehiculo', codigo: respuesta.unidad });
             mostrarAviso({
               texto: `Avería registrada en ${respuesta.unidad} · vuelve a operar ${formatearMomento(new Date(respuesta.reincorporacionMs), datos.reloj)}`,
-              // Deshacer es la acción más valiosa justo después de registrar; la bitácora está a una pestaña.
+              // Deshacer es la acción más valiosa justo después de registrar; la actividad está a una pestaña.
               accion: { etiqueta: 'Deshacer', alHacer: () => deshacerAveria(respuesta.unidad) },
             });
           }}

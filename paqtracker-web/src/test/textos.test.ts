@@ -28,6 +28,8 @@ const PROHIBIDOS = [
   'Vehículo recomendado',
   'En camino',
   'en camino',
+  'Bitácora',
+  'bitácora',
 ];
 
 const archivosCon = (texto: string, lista: readonly (readonly [string, string])[]) =>

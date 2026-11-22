@@ -1,7 +1,7 @@
 import React from 'react';
 import { TituloGrupo } from '../ui';
 
-// Piezas compartidas por los paneles de Operación (flota, bitácora, incidencias, detalles).
+// Piezas compartidas por los paneles de Operación (flota, actividad, incidencias, detalles).
 
 export const TituloSeccion: React.FC<{ children: React.ReactNode; derecha?: React.ReactNode }> = ({ children, derecha }) => (
   <TituloGrupo nivel={2} derecha={derecha} className="gap-3">
@@ -16,7 +16,7 @@ const COLOR_BARRA = {
   gris: 'bg-neutral-400',
 } as const;
 
-/** Fila con barra de color a la izquierda: usada por "Requiere atención", bitácora e incidencias. */
+/** Fila con barra de color a la izquierda: usada por "Requiere atención", actividad e incidencias. */
 export const FilaConBarra: React.FC<{
   color: keyof typeof COLOR_BARRA;
   titulo: string;

@@ -22,7 +22,7 @@ import { EncabezadoCorrida } from './EncabezadoCorrida';
 import { InformeCorrida } from './InformeCorrida';
 
 // Corrida de simulación (Figma "Corrida de Simulación" y variantes con panel de incidencias, flota,
-// bitácora, detalle de pedido o vehículo, y "· Hasta el colapso"). Muestra en vivo la ejecución que
+// actividad, detalle de pedido o vehículo, y "· Hasta el colapso"). Muestra en vivo la ejecución que
 // corre en paqtracker-api: cualquier dispositivo que la abra ve lo mismo.
 
 /** Ancho que reserva el diagnóstico del colapso (340 px + margen) a la derecha del mapa. */
@@ -92,7 +92,7 @@ const CorridaEnVivo: React.FC<CorridaSimulacionProps & { recibidoEnMs: number }>
     () => datos.flota.flatMap((u) => u.paradas.map((p) => ({ pedido: p.pedido, destino: p.destino, nivel: p.nivel, holgura: p.holgura, unidad: u.codigo }))),
     [datos.flota],
   );
-  // Las marcas de avance salen de la bitácora: planificaciones e incidencias.
+  // Las marcas de avance salen de la actividad: planificaciones e incidencias.
   const marcas: MarcaAvance[] = useMemo(
     () =>
       datos.eventos

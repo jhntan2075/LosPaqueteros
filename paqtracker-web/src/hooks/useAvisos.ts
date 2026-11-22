@@ -6,7 +6,7 @@ export interface Aviso {
   texto: string;
   /** "exito" (por defecto) confirma una acción; "error" informa que no se pudo hacer. */
   tipo?: 'exito' | 'error';
-  /** Acción opcional, p. ej. "Ver en bitácora". */
+  /** Acción opcional, p. ej. "Ver en actividad". */
   accion?: { etiqueta: string; alHacer: () => void };
 }
 

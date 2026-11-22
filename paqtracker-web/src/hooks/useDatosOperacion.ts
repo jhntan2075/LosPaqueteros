@@ -6,7 +6,7 @@ import { useRelojSimulado } from './useRelojSimulado';
 
 // Estado en vivo de la ejecución que muestra una pantalla (Operación: el día a día; Simulación: la
 // corrida elegida). La pantalla lo obtiene con useEjecucionEnVivo y lo reparte por contexto, así el
-// mapa, los paneles y la bitácora leen el mismo estado sin recibirlo por props.
+// mapa, los paneles y la actividad leen el mismo estado sin recibirlo por props.
 
 export const ContextoDatosOperacion = createContext<DatosOperacion | null>(null);
 

@@ -8,7 +8,7 @@ import { ProveedorAvisos } from './Avisos';
 const Disparador: React.FC<{ texto: string; alHacer?: () => void }> = ({ texto, alHacer }) => {
   const avisar = useAvisos();
   return (
-    <button onClick={() => avisar({ texto, accion: alHacer ? { etiqueta: 'Ver en bitácora', alHacer } : undefined })}>mostrar {texto}</button>
+    <button onClick={() => avisar({ texto, accion: alHacer ? { etiqueta: 'Ver en actividad', alHacer } : undefined })}>mostrar {texto}</button>
   );
 };
 
@@ -58,7 +58,7 @@ describe('ProveedorAvisos', () => {
     const alHacer = vi.fn();
     montar(alHacer);
     fireEvent.click(screen.getByText('mostrar uno'));
-    fireEvent.click(screen.getByText('Ver en bitácora'));
+    fireEvent.click(screen.getByText('Ver en actividad'));
     expect(alHacer).toHaveBeenCalledOnce();
     expect(screen.getByRole('status').textContent).toBe('');
   });
