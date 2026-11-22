@@ -17,6 +17,7 @@ import pe.pucp.paqtracker.modulos.difusion.aplicacion.dto.MensajeEventoEjecucion
 import pe.pucp.paqtracker.modulos.difusion.aplicacion.dto.UnidadEnMapa;
 import pe.pucp.paqtracker.modulos.difusion.aplicacion.servicio.CodigosFlota;
 import pe.pucp.paqtracker.modulos.difusion.aplicacion.servicio.ConstructorInstantanea;
+import pe.pucp.paqtracker.modulos.difusion.aplicacion.servicio.HistorialEventos;
 import pe.pucp.paqtracker.modulos.difusion.aplicacion.servicio.NomenclaturaOperacion;
 import pe.pucp.paqtracker.modulos.difusion.aplicacion.servicio.ServicioDifusion;
 import pe.pucp.paqtracker.modulos.difusion.dominio.PuertoDifusion;
@@ -603,6 +604,40 @@ class MotorEjecucionTest {
         assertThrows(RecursoNoEncontradoException.class, () -> motor.cancelarAveria("Z-99"));
     }
 
+    @Test
+    void procesarTick_pedidoQueLlegaraTarde_avisaUnaVezConLosMinutosDeRetraso() {
+        // Plazo de un minuto a 40 km del central sin detener en el colapso: sale, pero llega tarde.
+        MotorEjecucion motor = crearMotor(List.of(new Pedido(1, new Nodo(67, 14), 2, 0, 1)), false);
+        motor.preparar();
+        motor.iniciar();
+
+        pared.avanzar(Duration.ofSeconds(30));
+        motor.procesarTickAhora();
+        pared.avanzar(Duration.ofSeconds(30));
+        motor.procesarTickAhora();
+
+        List<MensajeEventoEjecucion> tarde = eventos.stream().filter(e -> e.tipo().equals("PEDIDO_TARDE")).toList();
+        assertEquals(1, tarde.size());
+        MensajeEventoEjecucion aviso = tarde.get(0);
+        assertEquals(NomenclaturaOperacion.codigoPedido(1), aviso.detalle().get("codigoPedido"));
+        int minutos = (Integer) aviso.detalle().get("minutosTarde");
+        assertTrue(minutos > 0);
+        assertEquals("Pedido " + NomenclaturaOperacion.codigoPedido(1) + " llegará tarde ("
+                + DetectorAlertas.formatearDuracion(minutos) + ")", aviso.mensaje());
+    }
+
+    @Test
+    void procesarTick_pedidosATiempo_noAvisanPedidoTarde() {
+        MotorEjecucion motor = crearMotor(pedidos(), false);
+        motor.preparar();
+        motor.iniciar();
+
+        pared.avanzar(Duration.ofMinutes(12));
+        motor.procesarTickAhora();
+
+        assertFalse(hayEvento("PEDIDO_TARDE"));
+    }
+
     private boolean hayEvento(String tipo) {
         return eventos.stream().anyMatch(evento -> evento.tipo().equals(tipo));
     }
@@ -677,7 +712,7 @@ class MotorEjecucionTest {
         };
         return new MotorEjecucion(configuracion, lineaTiempo, 0, HORIZONTE, simulacion, seguimiento,
                 new RelojEjecucion(pared, 0, FACTOR), pared,
-                new ServicioDifusion(new ConstructorInstantanea(semaforo), puerto),
+                new ServicioDifusion(new ConstructorInstantanea(semaforo), puerto, new HistorialEventos()),
                 PersistenciaEjecucion.soloRegistro(repositorio),
                 Executors.newSingleThreadScheduledExecutor());
     }
