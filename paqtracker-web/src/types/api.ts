@@ -182,6 +182,8 @@ export type TipoEventoApi =
   | 'UNIDAD_AVERIADA'
   | 'TRASBORDO'
   | 'UNIDAD_REINCORPORADA'
+  | 'STOCK_BAJO'
+  | 'PEDIDO_TARDE'
   | 'EJECUCION_FINALIZADA';
 
 /** Evento de /topic/ejecuciones/{id}/eventos. */

@@ -77,6 +77,8 @@ const EVENTO: Record<TipoEventoApi, { titulo: string; categoria: CategoriaEvento
   UNIDAD_AVERIADA: { titulo: 'Unidad averiada', categoria: 'INCIDENCIA', color: 'rojo' },
   TRASBORDO: { titulo: 'Trasbordo de carga', categoria: 'INCIDENCIA', color: 'ambar' },
   UNIDAD_REINCORPORADA: { titulo: 'Unidad reincorporada', categoria: 'INCIDENCIA', color: 'gris' },
+  STOCK_BAJO: { titulo: 'Stock bajo', categoria: 'INCIDENCIA', color: 'ambar' },
+  PEDIDO_TARDE: { titulo: 'Pedido llegará tarde', categoria: 'INCIDENCIA', color: 'rojo' },
   EJECUCION_FINALIZADA: { titulo: 'Simulación completada', categoria: 'OPERACION', color: 'gris' },
 };
 
@@ -241,7 +243,7 @@ const plural = (n: number, singular: string, pluralTexto: string) => `${n} ${n =
 const lista = (valor: unknown) => (Array.isArray(valor) ? (valor as string[]) : []);
 
 /**
- * Texto de la bitácora para los eventos de averías, armado con su detalle (el mensaje del servidor no lleva
+ * Texto de la actividad para los eventos de averías, armado con su detalle (el mensaje del servidor no lleva
  * tildes ni la ubicación). Devuelve null si el detalle no trae lo necesario y se usa el mensaje original.
  */
 function detalleDeAveria(evento: MensajeEventoApi): string | null {
@@ -271,13 +273,14 @@ function detalleDeAveria(evento: MensajeEventoApi): string | null {
   return null;
 }
 
-/** Evento de la API como entrada de la bitácora. */
+/** Evento de la API como entrada de la actividad. */
 export function adaptarEvento(evento: MensajeEventoApi): EventoBitacora {
-  // Un tipo que el servidor agregue después no rompe la bitácora: se muestra con su mensaje.
-  const formato = EVENTO[evento.tipo] ?? { titulo: 'Evento', categoria: 'OPERACION', color: 'gris' };
+  // Un tipo que el servidor agregue después no rompe la actividad: se muestra con su mensaje.
+  const formato = EVENTO[evento.tipo] ?? { titulo: evento.tipo, categoria: 'OPERACION', color: 'gris' };
   const tarde = evento.tipo === 'PEDIDO_ENTREGADO' && evento.detalle.aTiempo === false;
   return {
     id: evento.id,
+    tipo: evento.tipo,
     instanteMs: evento.timestampSimuladoMs,
     hora: horaConSegundos(new Date(evento.timestampSimuladoMs)),
     titulo: tarde ? 'Entrega con retraso' : formato.titulo,

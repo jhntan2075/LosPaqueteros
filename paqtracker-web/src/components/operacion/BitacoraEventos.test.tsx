@@ -1,0 +1,75 @@
+// @vitest-environment jsdom
+import { cleanup, fireEvent, screen, within } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { AHORA_MS, datosRubrica } from '../../test/rubrica/escenario';
+import { renderConDatos } from '../../test/rubrica/montaje';
+import type { CategoriaEvento, EventoBitacora } from '../../types/operacion';
+import { BitacoraEventos } from './BitacoraEventos';
+
+afterEach(cleanup);
+
+const MIN = 60_000;
+const evento = (id: string, tipo: string, haceMin: number, categoria: CategoriaEvento = 'PLANIFICADOR', titulo = `Evento ${id}`): EventoBitacora => ({
+  id,
+  tipo,
+  instanteMs: AHORA_MS - haceMin * MIN,
+  hora: `10:${String(60 - haceMin).padStart(2, '0')}:00`,
+  titulo,
+  detalle: `detalle ${id}`,
+  categoria,
+  color: 'gris',
+});
+
+function montar(eventos: EventoBitacora[]) {
+  const datos = { ...datosRubrica(), eventos };
+  return renderConDatos(<BitacoraEventos onSeleccionar={vi.fn()} />, datos);
+}
+
+const lista = () => within(screen.getByRole('list', { name: 'Eventos' }));
+
+describe('BitacoraEventos (Actividad)', () => {
+  it('por defecto muestra todos los eventos, también los de hace más de 30 min', () => {
+    montar([evento('a', 'UNIDAD_AVERIADA', 5, 'INCIDENCIA'), evento('b', 'UNIDAD_AVERIADA', 120, 'INCIDENCIA')]);
+    expect(screen.getByText('2 eventos')).toBeTruthy();
+    expect(lista().getByText('Evento b')).toBeTruthy();
+  });
+
+  it('el filtro "Últimos 30 min" oculta los más viejos', () => {
+    montar([evento('a', 'UNIDAD_AVERIADA', 5, 'INCIDENCIA'), evento('b', 'UNIDAD_AVERIADA', 120, 'INCIDENCIA')]);
+    fireEvent.click(screen.getByRole('button', { name: 'Últimos 30 min' }));
+    expect(screen.getByText('1 evento')).toBeTruthy();
+    expect(lista().queryByText('Evento b')).toBeNull();
+  });
+
+  it('colapsa replanificaciones consecutivas y se expanden al pulsar', () => {
+    montar([evento('3', 'PLAN_ACTUALIZADO', 1), evento('2', 'PLAN_ACTUALIZADO', 2), evento('1', 'PLAN_ACTUALIZADO', 3)]);
+    const grupo = screen.getByRole('button', { name: /3 replanificaciones · última 10:59:00/ });
+    expect(grupo.getAttribute('aria-expanded')).toBe('false');
+    expect(screen.queryByText('Evento 2')).toBeNull();
+    fireEvent.click(grupo);
+    expect(grupo.getAttribute('aria-expanded')).toBe('true');
+    expect(screen.getByText('Evento 2')).toBeTruthy();
+  });
+
+  it('un único pedido registrado se muestra como fila normal', () => {
+    montar([evento('p', 'NUEVO_PEDIDO', 1, 'ENTREGA', 'Pedido registrado')]);
+    expect(screen.getByText('Pedido registrado')).toBeTruthy();
+  });
+
+  it('sin eventos muestra el estado vacío de la ejecución', () => {
+    montar([]);
+    expect(screen.getByText('Aún no hay actividad en esta ejecución.')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Ver todos' })).toBeNull();
+  });
+
+  it('si los filtros ocultan todo, lo dice y "Ver todos" los limpia', () => {
+    montar([evento('b', 'UNIDAD_AVERIADA', 120, 'INCIDENCIA', 'Avería vieja')]);
+    fireEvent.click(screen.getByRole('button', { name: 'Últimos 30 min' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Entregas' }));
+    expect(screen.getByText('Ningún evento con estos filtros.')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Ver todos' }));
+    expect(screen.getByText('Avería vieja')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Todos' }).getAttribute('aria-pressed')).toBe('true');
+    expect(screen.getByRole('button', { name: 'Últimos 30 min' }).getAttribute('aria-pressed')).toBe('false');
+  });
+});

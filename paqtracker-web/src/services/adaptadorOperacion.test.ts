@@ -182,14 +182,19 @@ describe('adaptador de la instantánea', () => {
   });
 });
 
-describe('adaptarEvento (bitácora)', () => {
+describe('adaptarEvento (actividad)', () => {
   it('traduce el tipo a título, categoría y color', () => {
     expect(adaptarEvento(evento({ tipo: 'PLAN_ACTUALIZADO' }))).toMatchObject({ titulo: 'Replanificación', categoria: 'PLANIFICADOR', color: 'azul', hora: '08:01:05' });
   });
 
+  it('traduce los avisos de stock bajo y de pedido tarde como incidencias', () => {
+    expect(adaptarEvento(evento({ tipo: 'STOCK_BAJO', mensaje: 'Stock bajo en Lima (8 %)' }))).toMatchObject({ titulo: 'Stock bajo', categoria: 'INCIDENCIA', color: 'ambar', detalle: 'Stock bajo en Lima (8 %)' });
+    expect(adaptarEvento(evento({ tipo: 'PEDIDO_TARDE' }))).toMatchObject({ titulo: 'Pedido llegará tarde', categoria: 'INCIDENCIA', color: 'rojo' });
+  });
+
   it('un tipo desconocido no rompe y conserva el mensaje', () => {
     const e = adaptarEvento(evento({ tipo: 'TIPO_FUTURO' as MensajeEventoApi['tipo'] }));
-    expect(e).toMatchObject({ titulo: 'Evento', categoria: 'OPERACION', detalle: 'mensaje del servidor' });
+    expect(e).toMatchObject({ titulo: 'TIPO_FUTURO', categoria: 'OPERACION', color: 'gris', detalle: 'mensaje del servidor' });
   });
 
   it('una entrega fuera de plazo se marca con retraso en rojo', () => {

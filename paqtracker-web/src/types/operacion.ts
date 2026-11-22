@@ -4,7 +4,7 @@ import type { NivelCarga } from '../lib/semaforo';
 import type { NivelHolgura } from './pedidos';
 import type { EstadoEjecucionApi, EstadoFraccionApi, IndicadoresApi, TipoEscenarioApi } from './api';
 
-// Modelos de vista del módulo Operación (lienzo en vivo, OP-07 flota, OP-09 bitácora).
+// Modelos de vista del módulo Operación (lienzo en vivo, OP-07 flota, OP-09 actividad).
 
 /** Mapa de Operación: 'vivo' sin panel, o la pestaña abierta del panel lateral. */
 export type SubvistaOperacion = 'vivo' | 'resumen' | 'incidencias' | 'pedidos' | 'flota' | 'almacenes' | 'bitacora';
@@ -181,6 +181,8 @@ export type CategoriaEvento = 'INCIDENCIA' | 'PLANIFICADOR' | 'ENTREGA' | 'OPERA
 export interface EventoBitacora {
   /** Identificador único del evento (lo asigna la API). */
   id: string;
+  /** Tipo de evento de la API; la lista lo usa para agrupar los rutinarios. */
+  tipo?: string;
   /** Instante simulado (epoch ms) del evento. */
   instanteMs: number;
   hora: string;

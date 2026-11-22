@@ -1,19 +1,19 @@
 import { useEffect, useState } from 'react';
 import { ErrorDeApi, clienteApi } from '../services/clienteApi';
-import { suscribir } from '../services/clienteStomp';
+import { combinarEventos } from '../lib/eventos';
+import { alCambiarConexion, suscribir } from '../services/clienteStomp';
 import type { MensajeEstadoApi, MensajeEventoApi } from '../types/api';
 
 // Estado en vivo de una ejecución: al montarse pide la última instantánea por REST (quien se conecta
 // tarde ve el estado actual de inmediato) y luego se suscribe a los tópicos de estado y eventos de esa
-// ejecución. Sin polling: las actualizaciones llegan solo por STOMP.
-
-const MAXIMO_EVENTOS = 300;
+// ejecución. Sin polling: las actualizaciones llegan solo por STOMP. El historial de eventos se pide por
+// REST al abrir, al reconectar el socket y al volver a la pestaña (el tópico no re-envía lo ya publicado).
 
 export interface EstadoEjecucion {
   mensaje: MensajeEstadoApi | null;
   /** Instante real (Date.now) en que llegó la instantánea, para interpolar desde ahí. */
   recibidoEnMs: number;
-  /** Eventos recibidos desde que se abrió la vista, el más reciente primero. */
+  /** Historial cargado más los eventos recibidos en vivo, el más reciente primero. */
   eventos: MensajeEventoApi[];
   error: string | null;
 }
@@ -51,18 +51,44 @@ export function useEstadoEjecucion(ejecucionId: string | null): EstadoEjecucion 
         setEstado((anterior) => ({ ...deEsta(anterior), error: texto }));
       });
 
+    // Mezcla con lo que ya llegó por STOMP: una respuesta tardía no descarta eventos en vivo.
+    const cargarHistorial = () => {
+      clienteApi
+        .eventos(ejecucionId)
+        .then((historial) => {
+          if (!vigente) return;
+          setEstado((anterior) => {
+            const previo = deEsta(anterior);
+            return { ...previo, eventos: combinarEventos(previo.eventos, historial) };
+          });
+        })
+        .catch(() => {
+          // Sin historial la actividad sigue mostrando lo que llega en vivo; el próximo intento lo recupera.
+        });
+    };
+    cargarHistorial();
+    const cancelarConexion = alCambiarConexion((conectado) => {
+      if (conectado) cargarHistorial();
+    });
+    const alVolverAVer = () => {
+      if (document.visibilityState === 'visible') cargarHistorial();
+    };
+    document.addEventListener('visibilitychange', alVolverAVer);
+
     const cancelarEstado = suscribir(`/topic/ejecuciones/${ejecucionId}/estado`, (cuerpo) => aplicar(cuerpo as MensajeEstadoApi));
     const cancelarEventos = suscribir(`/topic/ejecuciones/${ejecucionId}/eventos`, (cuerpo) => {
       if (!vigente) return;
       setEstado((anterior) => {
         const previo = deEsta(anterior);
-        return { ...previo, eventos: [cuerpo as MensajeEventoApi, ...previo.eventos].slice(0, MAXIMO_EVENTOS) };
+        return { ...previo, eventos: combinarEventos(previo.eventos, [cuerpo as MensajeEventoApi]) };
       });
     });
 
     return () => {
       vigente = false;
       cancelarEstado();
+      cancelarConexion();
+      document.removeEventListener('visibilitychange', alVolverAVer);
       cancelarEventos();
     };
   }, [ejecucionId]);

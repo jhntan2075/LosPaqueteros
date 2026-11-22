@@ -4,6 +4,7 @@ import type {
   ErrorApi,
   ImportacionApi,
   MensajeEstadoApi,
+  MensajeEventoApi,
   PedidoApi,
   ParametrosDominioApi,
   PlanEstableApi,
@@ -97,6 +98,8 @@ export const clienteApi = {
   detener: (id: string) => enviarJson<EjecucionApi>(`/ejecuciones/${encodeURIComponent(id)}/detener`),
   /** Última instantánea: la pide quien se conecta tarde, antes de suscribirse al tópico. */
   estado: (id: string) => solicitar<MensajeEstadoApi>(`/ejecuciones/${encodeURIComponent(id)}/estado`),
+  /** Historial de eventos de la ejecución (el más reciente primero): lo que el tópico no re-envía al recargar. */
+  eventos: (id: string) => solicitar<MensajeEventoApi[]>(`/ejecuciones/${encodeURIComponent(id)}/eventos`),
   /** Última planificación estable (G08–G10); 404 si la ejecución aún no planificó. */
   planEstable: (id: string) => solicitar<PlanEstableApi>(`/ejecuciones/${encodeURIComponent(id)}/plan-estable`),
 
