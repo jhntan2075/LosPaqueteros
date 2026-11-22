@@ -37,6 +37,10 @@ beforeEach(() => {
   // aquí) y sin tópicos reales.
   vi.spyOn(clienteApi, 'estado').mockReturnValue(new Promise(() => {}));
   vi.spyOn(clienteStomp, 'suscribir').mockReturnValue(() => {});
+  // useEstadoEjecucion también pide el historial de eventos por REST y vigila la conexión del socket: sin
+  // estos dos mocks abriría un WebSocket y un fetch reales.
+  vi.spyOn(clienteStomp, 'alCambiarConexion').mockReturnValue(() => {});
+  vi.spyOn(clienteApi, 'eventos').mockResolvedValue([]);
 });
 
 afterEach(() => {
