@@ -101,13 +101,41 @@ class HistorialEventosTest {
     }
 
     @Test
-    void consultar_limiteMayorAlMaximo_seAcotaA800() {
+    void registrar_alertas_descartanLasMasAntiguasAlPasarDe300() {
+        for (int i = 0; i < 350; i++) {
+            historial.registrar(evento("a" + i, i % 2 == 0 ? "PEDIDO_TARDE" : "STOCK_BAJO", i));
+        }
+
+        List<MensajeEventoEjecucion> eventos = historial.consultar(EJECUCION, 1_100);
+
+        assertEquals(300, eventos.size());
+        assertEquals("a349", eventos.get(0).id());
+        assertEquals("a50", eventos.get(299).id());
+    }
+
+    @Test
+    void registrar_alertasEnExceso_noDesplazanAImportantesNiARutina() {
+        historial.registrar(evento("grave", "UNIDAD_AVERIADA", 0));
+        historial.registrar(evento("pedido", "NUEVO_PEDIDO", 1));
+        for (int i = 0; i < 1_000; i++) {
+            historial.registrar(evento("t" + i, "PEDIDO_TARDE", 10 + i));
+        }
+
+        List<MensajeEventoEjecucion> eventos = historial.consultar(EJECUCION, 1_100);
+
+        assertEquals(302, eventos.size());
+        assertTrue(ids(eventos).containsAll(List.of("grave", "pedido")));
+    }
+
+    @Test
+    void consultar_limiteMayorAlMaximo_seAcotaA1100() {
         for (int i = 0; i < 600; i++) {
             historial.registrar(evento("i" + i, "TRASBORDO", i));
+            historial.registrar(evento("a" + i, "STOCK_BAJO", i));
             historial.registrar(evento("r" + i, "NUEVO_PEDIDO", i));
         }
 
-        assertEquals(800, historial.consultar(EJECUCION, 5_000).size());
+        assertEquals(1_100, historial.consultar(EJECUCION, 5_000).size());
     }
 
     @Test

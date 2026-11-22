@@ -8,6 +8,8 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
 import pe.pucp.paqtracker.modelo.Pedido;
+import pe.pucp.paqtracker.modulos.difusion.aplicacion.dto.MensajeEventoEjecucion;
+import pe.pucp.paqtracker.modulos.difusion.aplicacion.servicio.HistorialEventos;
 import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.casouso.CasoUsoControlarEjecucion;
 import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.casouso.CasoUsoEjecutarDiaADia;
 import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.dto.DatosEscenario;
@@ -68,6 +70,9 @@ class IntegracionRecuperacionDiaADiaTest {
     @Autowired
     private CargadorDatosEscenario cargadorDatos;
 
+    @Autowired
+    private HistorialEventos historialEventos;
+
     @Test
     void ejecutar_trasUnReinicio_retomaLoPendienteMarcaLoVencidoYSumaElResultado() {
         repositorioEjecucion.guardar(mesGuardado());
@@ -98,6 +103,22 @@ class IntegracionRecuperacionDiaADiaTest {
                 .orElseThrow();
         assertEquals(5 - 2, pendiente.getCantidad(), "solo entra lo que falta entregar");
         assertEquals(2, datos.entregadasPrevias().get((int) parcial));
+    }
+
+    @Test
+    void reiniciar_olvidaLosEventosDeLaEjecucionAnterior() {
+        repositorioEjecucion.guardar(mesGuardado());
+        casoUsoDiaADia.ejecutar();
+        historialEventos.registrar(new MensajeEventoEjecucion("viejo", ServicioEjecucion.ID_DIA_A_DIA,
+                "PEDIDO_TARDE", "evento de la ejecucion anterior", 1, Map.of()));
+        assertTrue(historialEventos.consultar(ServicioEjecucion.ID_DIA_A_DIA, 10).stream()
+                .anyMatch(evento -> evento.id().equals("viejo")));
+
+        casoUsoDiaADia.reiniciar();
+        controlar.ejecutar(ServicioEjecucion.ID_DIA_A_DIA, CasoUsoControlarEjecucion.Accion.DETENER);
+
+        assertFalse(historialEventos.consultar(ServicioEjecucion.ID_DIA_A_DIA, 100).stream()
+                .anyMatch(evento -> evento.id().equals("viejo")));
     }
 
     private RegistroEjecucion mesGuardado() {

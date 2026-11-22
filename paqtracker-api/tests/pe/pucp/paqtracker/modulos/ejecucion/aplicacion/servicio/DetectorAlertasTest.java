@@ -95,6 +95,13 @@ class DetectorAlertasTest {
     }
 
     @Test
+    void minutosTarde_redondeaHaciaArribaYNuncaEsCero() {
+        assertEquals(1, DetectorAlertas.minutosTarde(pedido(1, "EN_TRANSITO", LIMITE_MS + 30_000)));
+        assertEquals(1, DetectorAlertas.minutosTarde(pedido(1, "EN_TRANSITO", LIMITE_MS + 1)));
+        assertEquals(68, DetectorAlertas.minutosTarde(pedido(1, "EN_TRANSITO", LIMITE_MS + 67 * MINUTO_MS + 1_000)));
+    }
+
+    @Test
     void formatearDuracion_enEspanolLegible() {
         assertEquals("38 min", DetectorAlertas.formatearDuracion(38));
         assertEquals("1 h 07 min", DetectorAlertas.formatearDuracion(67));

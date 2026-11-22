@@ -122,7 +122,7 @@ public class ControladorEjecuciones {
      * depender de haber estado suscrito desde el principio).
      *
      * @param id     identificador de la ejecucion
-     * @param limite maximo de eventos (por defecto y como maximo 800)
+     * @param limite maximo de eventos (por defecto y como maximo 1100)
      * @return eventos del instante simulado mas reciente al mas antiguo; lista vacia si la ejecucion no existe o
      *         aun no difundio ninguno
      */

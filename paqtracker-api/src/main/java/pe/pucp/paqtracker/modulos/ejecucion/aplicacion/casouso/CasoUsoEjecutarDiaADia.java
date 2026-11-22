@@ -4,6 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import pe.pucp.paqtracker.comun.configuracion.PropiedadesDominio;
+import pe.pucp.paqtracker.modulos.difusion.aplicacion.servicio.HistorialEventos;
 import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.dto.DatosEscenario;
 import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.dto.RespuestaEjecucion;
 import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.mapeador.MapeadorEjecucion;
@@ -52,6 +53,7 @@ public class CasoUsoEjecutarDiaADia {
     private final PuertoPedidos pedidos;
     private final RepositorioEjecucion repositorioEjecucion;
     private final Clock relojPared;
+    private final HistorialEventos historialEventos;
 
     /**
      * @param cargadorDatos        lector de los datos del mes
@@ -62,11 +64,13 @@ public class CasoUsoEjecutarDiaADia {
      * @param pedidos              pedidos guardados, donde se marcan los vencidos
      * @param repositorioEjecucion ejecuciones guardadas, con el resultado del mes
      * @param relojPared           reloj real
+     * @param historialEventos     historial de eventos, que se limpia cuando una ejecucion nueva toma el lugar
      */
     public CasoUsoEjecutarDiaADia(CargadorDatosEscenario cargadorDatos, CreadorEjecucion creador,
                                   RegistroEjecuciones registro, MapeadorEjecucion mapeador,
                                   PropiedadesDominio propiedades, PuertoPedidos pedidos,
-                                  RepositorioEjecucion repositorioEjecucion, Clock relojPared) {
+                                  RepositorioEjecucion repositorioEjecucion, Clock relojPared,
+                                  HistorialEventos historialEventos) {
         this.cargadorDatos = cargadorDatos;
         this.creador = creador;
         this.registro = registro;
@@ -75,6 +79,7 @@ public class CasoUsoEjecutarDiaADia {
         this.pedidos = pedidos;
         this.repositorioEjecucion = repositorioEjecucion;
         this.relojPared = relojPared;
+        this.historialEventos = historialEventos;
     }
 
     /**
@@ -99,6 +104,9 @@ public class CasoUsoEjecutarDiaADia {
         ResultadoEjecucion previo = mesGuardado.map(RegistroEjecucion::resultado).orElse(ResultadoEjecucion.VACIO)
                 .conIncumplimientos(carga.vencidos().size());
         DatosEscenario datos = carga.datos().conResultadoPrevio(previo);
+        // El motor nuevo conserva el id y arranca con un detector de alertas vacio: sin esto, los eventos de la
+        // ejecucion anterior quedarian mezclados con los nuevos.
+        historialEventos.olvidar(ServicioEjecucion.ID_DIA_A_DIA);
         MotorEjecucion motor = creador.crear(ServicioEjecucion.ID_DIA_A_DIA, NOMBRE, TipoEscenario.DIA_A_DIA,
                 AlgoritmoPlanificacion.desde(propiedades.planificador().algoritmo()), primerDia, LocalTime.MIDNIGHT,
                 ahora.toLocalDate().lengthOfMonth(), TIEMPO_REAL, datos, ComposicionFlota.porDefecto());

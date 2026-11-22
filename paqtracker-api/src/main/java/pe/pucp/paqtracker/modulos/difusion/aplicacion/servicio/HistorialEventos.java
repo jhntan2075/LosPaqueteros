@@ -15,25 +15,28 @@ import java.util.concurrent.atomic.AtomicLong;
  * Historial en memoria de los eventos difundidos por cada ejecucion, para quien se conecta tarde (carga o
  * recarga de la pagina, reconexion): el canal STOMP solo entrega lo que ocurre despues de suscribirse.
  *
- * Cada ejecucion guarda dos cubetas acotadas, de modo que los eventos de rutina (pedidos nuevos, entregas,
- * replanificaciones) no desplacen a los importantes: al llenarse una cubeta se descarta su evento mas
- * antiguo. Es seguro entre hilos: el motor de cada ejecucion escribe desde el suyo y las peticiones HTTP leen
+ * Cada ejecucion guarda tres cubetas acotadas, de modo que ni los eventos de rutina (pedidos nuevos, entregas,
+ * replanificaciones) ni las alertas repetitivas (pedido tarde, stock bajo) desplacen a los importantes: al
+ * llenarse una cubeta se descarta su evento mas antiguo. Es seguro entre hilos: el motor de cada ejecucion escribe desde el suyo y las peticiones HTTP leen
  * a la vez.
  */
 @Component
 public class HistorialEventos {
 
-    /** Cuantos eventos importantes conserva cada ejecucion. */
+    /** Cuantos eventos importantes (averias, trasbordos, bloqueos, colapso, fin) conserva cada ejecucion. */
     public static final int CAPACIDAD_IMPORTANTES = 500;
+    /** Cuantas alertas repetitivas (pedido tarde, stock bajo) conserva cada ejecucion. */
+    public static final int CAPACIDAD_ALERTAS = 300;
     /** Cuantos eventos de rutina conserva cada ejecucion. */
     public static final int CAPACIDAD_RUTINA = 300;
     /** Maximo de eventos que devuelve una consulta. */
-    public static final int LIMITE_MAXIMO = CAPACIDAD_IMPORTANTES + CAPACIDAD_RUTINA;
+    public static final int LIMITE_MAXIMO = CAPACIDAD_IMPORTANTES + CAPACIDAD_ALERTAS + CAPACIDAD_RUTINA;
 
-    /** Tipos que se conservan en la cubeta de importantes; los demas son de rutina. */
+    /** Tipos que se conservan en la cubeta de importantes. */
     private static final Set<String> TIPOS_IMPORTANTES = Set.of("ALERTA_COLAPSO", "UNIDAD_AVERIADA", "TRASBORDO",
-            "UNIDAD_REINCORPORADA", "BLOQUEO_INICIADO", "BLOQUEO_LEVANTADO", "STOCK_BAJO", "PEDIDO_TARDE",
-            "EJECUCION_FINALIZADA");
+            "UNIDAD_REINCORPORADA", "BLOQUEO_INICIADO", "BLOQUEO_LEVANTADO", "EJECUCION_FINALIZADA");
+    /** Tipos que se conservan en la cubeta de alertas; los demas son de rutina. */
+    private static final Set<String> TIPOS_ALERTA = Set.of("STOCK_BAJO", "PEDIDO_TARDE");
 
     private final Map<String, Cubetas> porEjecucion = new ConcurrentHashMap<>();
     private final AtomicLong secuencia = new AtomicLong();
@@ -48,6 +51,8 @@ public class HistorialEventos {
         Cubetas cubetas = porEjecucion.computeIfAbsent(evento.ejecucionId(), id -> new Cubetas());
         if (TIPOS_IMPORTANTES.contains(evento.tipo())) {
             cubetas.importantes.agregar(entrada, CAPACIDAD_IMPORTANTES);
+        } else if (TIPOS_ALERTA.contains(evento.tipo())) {
+            cubetas.alertas.agregar(entrada, CAPACIDAD_ALERTAS);
         } else {
             cubetas.rutina.agregar(entrada, CAPACIDAD_RUTINA);
         }
@@ -56,7 +61,7 @@ public class HistorialEventos {
     /**
      * @param ejecucionId ejecucion consultada
      * @param limite      maximo de eventos a devolver; se acota a {@link #LIMITE_MAXIMO}
-     * @return eventos de ambas cubetas, del instante simulado mas reciente al mas antiguo (a igual instante,
+     * @return eventos de las tres cubetas, del instante simulado mas reciente al mas antiguo (a igual instante,
      *         el ultimo registrado primero); vacia si la ejecucion es desconocida o nunca difundio eventos
      */
     public List<MensajeEventoEjecucion> consultar(String ejecucionId, int limite) {
@@ -65,6 +70,7 @@ public class HistorialEventos {
             return List.of();
         }
         List<Entrada> todas = new ArrayList<>(cubetas.importantes.copiar());
+        todas.addAll(cubetas.alertas.copiar());
         todas.addAll(cubetas.rutina.copiar());
         todas.sort(Comparator.comparingLong((Entrada e) -> e.evento().timestampSimuladoMs())
                 .thenComparingLong(Entrada::secuencia).reversed());
@@ -85,6 +91,7 @@ public class HistorialEventos {
 
     private static final class Cubetas {
         private final Cubeta importantes = new Cubeta();
+        private final Cubeta alertas = new Cubeta();
         private final Cubeta rutina = new Cubeta();
     }
 

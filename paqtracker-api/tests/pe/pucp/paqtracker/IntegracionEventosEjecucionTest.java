@@ -82,6 +82,6 @@ class IntegracionEventosEjecucionTest {
 
         assertEquals(1, uno.size());
         assertEquals(todos.get(0).get("id"), uno.get(0).get("id"));
-        assertTrue(todos.size() <= 800);
+        assertTrue(todos.size() <= 1_100);
     }
 }

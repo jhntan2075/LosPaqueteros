@@ -64,10 +64,12 @@ final class DetectorAlertas {
 
     /**
      * @param pedido pedido con llegada estimada
-     * @return minutos que la llegada estimada excede la hora limite
+     * @return minutos que la llegada estimada excede la hora limite, redondeados hacia arriba (al menos 1: un
+     *         pedido que llega tarde nunca se anuncia con 0 min)
      */
     static int minutosTarde(PedidoEnMapa pedido) {
-        return (int) ((pedido.etaMs() - pedido.horaLimiteMs()) / MILISEGUNDOS_POR_MINUTO);
+        long exceso = pedido.etaMs() - pedido.horaLimiteMs();
+        return (int) Math.max(1L, (exceso + MILISEGUNDOS_POR_MINUTO - 1) / MILISEGUNDOS_POR_MINUTO);
     }
 
     /**
