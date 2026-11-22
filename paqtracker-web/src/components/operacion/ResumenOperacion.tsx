@@ -2,10 +2,11 @@ import React, { useState } from 'react';
 import { ArrowRight, ClipboardList } from 'lucide-react';
 import { DialogoReporteCierre } from '../reporte/DialogoReporteCierre';
 import { useDatosOperacion } from '../../hooks/useDatosOperacion';
-import { formatearMiles, formatearNumero } from '../../lib/formato';
+import { decimalesDe, formatearFechaLarga, formatearMiles, formatearNumero } from '../../lib/formato';
 import { estadoFlota } from '../../lib/operacion';
 import type { SeleccionPanel } from '../../types/operacion';
-import { Boton } from '../ui';
+import type { ConfiguracionCorrida } from '../../types/simulacion';
+import { Boton, FilaDato } from '../ui';
 import { TituloSeccion } from './comunes';
 import { MarcaSemaforo } from '../map/simbolos';
 
@@ -48,7 +49,16 @@ const Ficha: React.FC<FichaProps> = ({ titulo, valor, linea1, linea2, onClick, e
   );
 };
 
-export const ResumenOperacion: React.FC<{ onSeleccionar: (seleccion: SeleccionPanel) => void }> = ({ onSeleccionar }) => {
+/** Incidencias que se listan en "Actividad reciente". */
+const INCIDENCIAS_RECIENTES = 5;
+
+interface ResumenOperacionProps {
+  onSeleccionar: (seleccion: SeleccionPanel) => void;
+  /** Solo en una simulación: con qué configuración corre. En el día a día no hay bloque de simulación. */
+  simulacion?: ConfiguracionCorrida;
+}
+
+export const ResumenOperacion: React.FC<ResumenOperacionProps> = ({ onSeleccionar, simulacion }) => {
   const datos = useDatosOperacion();
   const { resumen } = datos;
   const flota = estadoFlota(datos);
@@ -59,6 +69,8 @@ export const ResumenOperacion: React.FC<{ onSeleccionar: (seleccion: SeleccionPa
   const porcentaje = (resumen.total === 0 ? 0 : (resumen.entregados / resumen.total) * 100).toFixed(1).replace('.', ',');
   const enRutaDe = (tipo: string) => flota.porTipo.find((t) => t.tipo === tipo)?.enRuta ?? 0;
   const diaADia = datos.tipoEscenario === 'DIA_A_DIA';
+  // Los eventos llegan del más nuevo al más antiguo.
+  const incidencias = datos.eventos.filter((e) => e.categoria === 'INCIDENCIA').slice(0, INCIDENCIAS_RECIENTES);
   // Instante del reloj en que se generó el reporte; null con el diálogo cerrado.
   const [generadoEn, setGeneradoEn] = useState<Date | null>(null);
 
@@ -105,6 +117,40 @@ export const ResumenOperacion: React.FC<{ onSeleccionar: (seleccion: SeleccionPa
           esAlerta={flota.averiadas.length > 0 || quiebre}
         />
       </section>
+      <section aria-label="Actividad reciente" className="px-3 pb-3 flex flex-col gap-1.5">
+        <TituloSeccion>Actividad reciente</TituloSeccion>
+        {incidencias.length === 0 ? (
+          <p className="text-body-sm text-neutral-600">Sin incidencias recientes.</p>
+        ) : (
+          <ul className="flex flex-col">
+            {incidencias.map((e) => (
+              <li key={e.id} className="min-h-7 flex items-baseline gap-2 text-body-sm">
+                <span className="tabular-nums text-neutral-600 shrink-0">{e.hora}</span>
+                <span className="font-sans text-neutral-900 truncate">{e.titulo}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+        <button
+          type="button"
+          onClick={() => onSeleccionar({ tipo: 'bitacora' })}
+          className="min-h-11 self-start font-sans text-body-sm font-medium text-primary-600 hover:underline"
+        >
+          Ver actividad
+        </button>
+      </section>
+      {simulacion && (
+        <section aria-label="Simulación" className="px-3 pb-3 flex flex-col gap-1">
+          <TituloSeccion>Simulación</TituloSeccion>
+          <FilaDato etiqueta="Escenario" valor={simulacion.escenario} texto />
+          <FilaDato etiqueta="Inicio" valor={formatearFechaLarga(simulacion.inicio, false)} />
+          <FilaDato
+            etiqueta="Flota"
+            valor={`${simulacion.flota.autos} autos · ${simulacion.flota.motos} motos · ${simulacion.flota.bicicletas} bicis`}
+          />
+          <FilaDato etiqueta="Ritmo" valor={`×${formatearNumero(simulacion.factorAceleracion, decimalesDe(simulacion.factorAceleracion))}`} />
+        </section>
+      )}
       <div className="px-3 pb-3">
         {/* G09: la última planificación estable como reporte de cierre; no detiene la operación. */}
         <Boton variante="secundario" icono={ClipboardList} onClick={() => setGeneradoEn(datos.reloj)} className="w-full">

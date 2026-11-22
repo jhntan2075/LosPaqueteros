@@ -1,7 +1,17 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Plus } from 'lucide-react';
+import { CheckCircle2, Plus } from 'lucide-react';
 import { ALMACENES, CORTE_OCUPACION, UNIDADES } from '../../config/dominio';
-import { alertaStockBajo, NOMBRE_CARGA, NOMBRE_STOCK, SITUACION_UNIDAD, etiquetaPlazo, nombreAveria } from '../../config/glosario';
+import {
+  OCULTAR_AJUSTADOS,
+  SIN_INCIDENCIAS,
+  alertaStockBajo,
+  etiquetaPlazo,
+  etiquetaVerAjustados,
+  nombreAveria,
+  NOMBRE_CARGA,
+  NOMBRE_STOCK,
+  SITUACION_UNIDAD,
+} from '../../config/glosario';
 import { admisionDeAverias, useAveriaPendiente, useAverias } from '../../hooks/useAverias';
 import { useDatosOperacion } from '../../hooks/useDatosOperacion';
 import { useTrazabilidadPedido } from '../../hooks/useTrazabilidadPedido';
@@ -13,7 +23,8 @@ import type { Coordenada } from '../../types/domain';
 import type { PedidoOperacion, SeccionIncidencias, SeleccionPanel, UnidadOperacion } from '../../types/operacion';
 import { TITULO_PESTANA } from '../../hooks/useNavegacionPanel';
 import { buscarPedido, type SeleccionResaltable } from '../../lib/envios';
-import { Boton, Insignia } from '../ui';
+import type { ConfiguracionCorrida } from '../../types/simulacion';
+import { Boton, EstadoVacio, Insignia } from '../ui';
 import { FilaFraccion } from './FilaFraccion';
 import { EnviosAlmacen, ListaAlmacenes } from './ListaAlmacenes';
 import { ListaPedidos } from './ListaPedidos';
@@ -32,7 +43,7 @@ import { EstadoFlota } from './EstadoFlota';
 import { ResumenOperacion } from './ResumenOperacion';
 
 // Panel derecho del mapa (Figma 1:4793 detalle de pedido, 1:5300 detalle de vehículo), el mismo en
-// Operación y en la corrida: Resumen, Incidencias, Flota y Bitácora se eligen desde la barra vertical
+// Operación y en la corrida: Incidencias, Resumen, Flota y Actividad se eligen desde la barra vertical
 // de paneles (fuera de este componente); aquí solo vive el contenido de la pestaña activa y el detalle
 // del objeto seleccionado. Implementado sobre las capturas de los frames: el contexto de diseño no
 // estuvo disponible (límite de llamadas de Figma).
@@ -54,6 +65,8 @@ interface PanelLateralProps {
   onResaltar?: (objeto: SeleccionResaltable) => void;
   /** Sección de Incidencias a la que llevar (pedida por una alerta del mapa). */
   seccionIncidencias?: { seccion: SeccionIncidencias; vez: number } | null;
+  /** Solo en una simulación: su configuración, que el Resumen muestra. */
+  simulacion?: ConfiguracionCorrida;
   /**
    * 'lateral' (por defecto): columna a la derecha del mapa. 'hoja': hoja inferior para pantallas angostas
    * o verticales, con dos alturas (media y completa).
@@ -533,8 +546,8 @@ const DetalleAlmacen: React.FC<{ codigo: string } & Omit<PanelLateralProps, 'sel
 
 // --- Incidencias ---------------------------------------------------------------------------------
 
-/** Filas de "Pedidos en riesgo" que se muestran antes de ofrecer "ver más": con 26 en riesgo no tenía sentido listarlos todos de una. */
-const LIMITE_RIESGO_VISIBLE = 8;
+/** Filas de una sección de pedidos que se muestran antes de ofrecer "ver más": con 26 en riesgo no tenía sentido listarlos todos de una. */
+const LIMITE_FILAS_VISIBLE = 8;
 
 /** Qué se dice de un pedido en riesgo: su holgura y cuándo llega; sin unidad, cuánto falta para que venza. */
 const detalleRiesgo = (p: PedidoOperacion) => {
@@ -542,65 +555,118 @@ const detalleRiesgo = (p: PedidoOperacion) => {
   return p.holguraMinutos < 0 ? `Sin unidad asignada · ${p.holgura}` : `Sin unidad asignada · vence en ${formatearDuracion(p.holguraMinutos)}`;
 };
 
+type SeccionVisible = 'tarde' | 'riesgo' | 'ajustados' | 'averias' | 'bloqueos' | 'stock';
+
+/** Secciones a las que puede llevar cada alerta del mapa, en orden de preferencia (las vacías no se dibujan). */
+const DESTINOS_ALERTA: Record<SeccionIncidencias, SeccionVisible[]> = {
+  riesgo: ['tarde', 'riesgo', 'ajustados'],
+  averias: ['averias'],
+  bloqueos: ['bloqueos'],
+};
+
 /** Lleva la lista a la sección pedida y la marca un instante, para que el ojo la encuentre. */
 function useIrASeccion(pedido: PanelLateralProps['seccionIncidencias']) {
-  const riesgoRef = useRef<HTMLElement>(null);
-  const averiasRef = useRef<HTMLElement>(null);
-  const bloqueosRef = useRef<HTMLElement>(null);
-  const [marcada, setMarcada] = useState<SeccionIncidencias | null>(null);
+  const referencias = useRef<Partial<Record<SeccionVisible, HTMLElement | null>>>({});
+  const [marcada, setMarcada] = useState<SeccionVisible | null>(null);
   const vez = pedido?.vez;
   const seccion = pedido?.seccion;
   useEffect(() => {
     if (!seccion) return;
-    const elemento = (seccion === 'riesgo' ? riesgoRef : seccion === 'averias' ? averiasRef : bloqueosRef).current;
-    elemento?.scrollIntoView?.({ block: 'start', behavior: 'smooth' });
-    setMarcada(seccion);
+    const destino = DESTINOS_ALERTA[seccion].find((s) => referencias.current[s]);
+    if (!destino) return;
+    referencias.current[destino]?.scrollIntoView?.({ block: 'start', behavior: 'smooth' });
+    setMarcada(destino);
     const temporizador = setTimeout(() => setMarcada(null), 1200);
     return () => clearTimeout(temporizador);
-    // refs son estables; se reacciona a cada pedido (vez), aunque sea la misma sección.
+    // las referencias son estables; se reacciona a cada pedido (vez), aunque sea la misma sección.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [seccion, vez]);
-  const clase = (s: SeccionIncidencias) => `scroll-mt-1 transition-colors duration-500 ${marcada === s ? 'bg-primary-50' : ''}`;
-  return { riesgoRef, averiasRef, bloqueosRef, clase };
+  const ref = (s: SeccionVisible) => (elemento: HTMLElement | null) => {
+    referencias.current[s] = elemento;
+  };
+  const clase = (s: SeccionVisible) => `px-3 pt-2.5 pb-2 flex flex-col gap-1 scroll-mt-1 transition-colors duration-500 ${marcada === s ? 'bg-primary-50' : ''}`;
+  return { ref, clase };
 }
+
+/** Sección de pedidos de Incidencias (llegarán tarde, en riesgo) con "Ver los N restantes" si es larga. */
+const SeccionPedidos: React.FC<{
+  nombre: string;
+  pedidos: PedidoOperacion[];
+  onSeleccionar: PanelLateralProps['onSeleccionar'];
+  referencia: (elemento: HTMLElement | null) => void;
+  className: string;
+}> = ({ nombre, pedidos, onSeleccionar, referencia, className }) => {
+  const [verTodo, setVerTodo] = useState(false);
+  const visibles = verTodo ? pedidos : pedidos.slice(0, LIMITE_FILAS_VISIBLE);
+  return (
+    <section ref={referencia} aria-label={nombre} className={className}>
+      <TituloSeccion derecha={<Insignia>{pedidos.length}</Insignia>}>{nombre}</TituloSeccion>
+      {visibles.map((p) => (
+        <FilaPedidoEnRiesgo key={p.codigo} pedido={p} onSeleccionar={onSeleccionar} />
+      ))}
+      {pedidos.length > LIMITE_FILAS_VISIBLE && (
+        <button
+          type="button"
+          onClick={() => setVerTodo(!verTodo)}
+          className="self-start font-sans text-body-sm font-medium text-primary-600 hover:underline"
+        >
+          {verTodo ? 'Ver menos' : `Ver los ${pedidos.length - LIMITE_FILAS_VISIBLE} restantes`}
+        </button>
+      )}
+    </section>
+  );
+};
+
+const FilaPedidoEnRiesgo: React.FC<{ pedido: PedidoOperacion; onSeleccionar: PanelLateralProps['onSeleccionar'] }> = ({ pedido, onSeleccionar }) => (
+  <FilaConBarra
+    color={pedido.nivel === 'ROJO' ? 'rojo' : 'ambar'}
+    titulo={`${pedido.codigo} · ${pedido.unidad}`}
+    detalle={detalleRiesgo(pedido)}
+    detalleMono
+    onClick={() => onSeleccionar({ tipo: 'pedido', codigo: pedido.codigo })}
+    className="py-1.5 rounded"
+  />
+);
 
 const ListaIncidencias: React.FC<
   Pick<PanelLateralProps, 'onSeleccionar' | 'onCentrar' | 'seccionIncidencias'> & { onRegistrarAveria: AbrirRegistroAveria }
 > = ({ onSeleccionar, onCentrar, onRegistrarAveria, seccionIncidencias }) => {
   const datos = useDatosOperacion();
-  const { riesgoRef, averiasRef, bloqueosRef, clase } = useIrASeccion(seccionIncidencias);
-  const riesgo = pedidosEnRiesgo(datos);
+  const { ref, clase } = useIrASeccion(seccionIncidencias);
+  const enRiesgo = pedidosEnRiesgo(datos);
+  const llegaranTarde = enRiesgo.filter((p) => p.holguraMinutos < 0);
+  const criticos = enRiesgo.filter((p) => p.nivel === 'ROJO' && p.holguraMinutos >= 0);
+  const ajustados = enRiesgo.filter((p) => p.nivel === 'AMBAR' && p.holguraMinutos >= 0);
   const averiadas = datos.flota.filter((u) => u.estado === 'AVERIADA');
   const admision = admisionDeAverias(datos);
   const bloqueos = datos.bloqueos;
-  const [verTodoElRiesgo, setVerTodoElRiesgo] = useState(false);
-  const riesgoVisible = verTodoElRiesgo ? riesgo : riesgo.slice(0, LIMITE_RIESGO_VISIBLE);
+  const stockBajo = datos.almacenes.filter((a) => a.stockBajo);
+  const [verAjustados, setVerAjustados] = useState(false);
+  const hayIncidencias = enRiesgo.length + averiadas.length + bloqueos.length + stockBajo.length > 0;
   return (
-    <div className="flex-1 min-h-0 overflow-y-auto">
-      <section ref={riesgoRef} aria-label="En riesgo" className={`px-3 pt-2.5 pb-2 flex flex-col gap-1 border-b border-neutral-200 ${clase('riesgo')}`}>
-        <TituloSeccion derecha={<Insignia>{riesgo.length}</Insignia>}>En riesgo · menor holgura</TituloSeccion>
-        {riesgoVisible.map((p) => (
-          <FilaConBarra
-            key={p.codigo}
-            color={p.nivel === 'ROJO' ? 'rojo' : 'ambar'}
-            titulo={`${p.codigo} · ${p.unidad}`}
-            detalle={detalleRiesgo(p)}
-            detalleMono
-            onClick={() => onSeleccionar({ tipo: 'pedido', codigo: p.codigo })}
-            className="py-1.5 rounded"
-          />
-        ))}
-        {riesgo.length > LIMITE_RIESGO_VISIBLE && (
+    <div className="flex-1 min-h-0 overflow-y-auto divide-y divide-neutral-200">
+      {!hayIncidencias && <EstadoVacio icono={CheckCircle2} titulo={SIN_INCIDENCIAS} className="py-6" />}
+      {llegaranTarde.length > 0 && (
+        <SeccionPedidos nombre="Llegarán tarde" pedidos={llegaranTarde} onSeleccionar={onSeleccionar} referencia={ref('tarde')} className={clase('tarde')} />
+      )}
+      {criticos.length > 0 && (
+        <SeccionPedidos nombre="En riesgo" pedidos={criticos} onSeleccionar={onSeleccionar} referencia={ref('riesgo')} className={clase('riesgo')} />
+      )}
+      {ajustados.length > 0 && (
+        <section ref={ref('ajustados')} aria-label="Ajustados" className={clase('ajustados')}>
+          <TituloSeccion derecha={<Insignia>{ajustados.length}</Insignia>}>Ajustados</TituloSeccion>
           <button
             type="button"
-            onClick={() => setVerTodoElRiesgo(!verTodoElRiesgo)}
-            className="self-start font-sans text-body-sm font-medium text-primary-600 hover:underline"
+            aria-expanded={verAjustados}
+            onClick={() => setVerAjustados(!verAjustados)}
+            className="min-h-11 self-start font-sans text-body-sm font-medium text-primary-600 hover:underline"
           >
-            {verTodoElRiesgo ? 'Ver menos' : `Ver los ${riesgo.length - LIMITE_RIESGO_VISIBLE} restantes`}
+            {verAjustados ? OCULTAR_AJUSTADOS : etiquetaVerAjustados(ajustados.length)}
           </button>
-        )}
-      </section>
-      <section ref={averiasRef} aria-label="Averías" className={`px-3 pt-2.5 pb-2 flex flex-col gap-1 border-b border-neutral-200 ${clase('averias')}`}>
+          {verAjustados && ajustados.map((p) => <FilaPedidoEnRiesgo key={p.codigo} pedido={p} onSeleccionar={onSeleccionar} />)}
+        </section>
+      )}
+      <section ref={ref('averias')} aria-label="Averías activas" className={clase('averias')}>
         <TituloSeccion
           derecha={
             <span className="flex items-center gap-2.5">
@@ -613,7 +679,7 @@ const ListaIncidencias: React.FC<
             </span>
           }
         >
-          Averías
+          Averías activas
         </TituloSeccion>
         {!admision.admite && <p className="text-body-sm text-neutral-600">{admision.motivo}</p>}
         {averiadas.length === 0 && <p className="text-body-sm text-neutral-600">Ninguna unidad averiada.</p>}
@@ -630,8 +696,8 @@ const ListaIncidencias: React.FC<
           />
         ))}
       </section>
-      <section ref={bloqueosRef} aria-label="Bloqueos" className={`px-3 pt-2.5 pb-2 flex flex-col gap-1 ${clase('bloqueos')}`}>
-        <TituloSeccion derecha={<Insignia>{cantidadBloqueos(datos)}</Insignia>}>Bloqueos</TituloSeccion>
+      <section ref={ref('bloqueos')} aria-label="Bloqueos activos" className={clase('bloqueos')}>
+        <TituloSeccion derecha={<Insignia>{cantidadBloqueos(datos)}</Insignia>}>Bloqueos activos</TituloSeccion>
         {bloqueos.length === 0 && <p className="text-body-sm text-neutral-600">Ningún bloqueo activo.</p>}
         {bloqueos.map((b) => (
           <FilaConBarra
@@ -644,6 +710,23 @@ const ListaIncidencias: React.FC<
           />
         ))}
       </section>
+      {stockBajo.length > 0 && (
+        <section ref={ref('stock')} aria-label="Almacenes con stock bajo" className={clase('stock')}>
+          <TituloSeccion derecha={<Insignia>{stockBajo.length}</Insignia>}>Almacenes con stock bajo</TituloSeccion>
+          {stockBajo.map((a) => (
+            <button
+              key={a.id}
+              type="button"
+              onClick={() => onSeleccionar({ tipo: 'almacen', codigo: a.id })}
+              className="min-h-11 w-full px-1 -mx-1 rounded flex items-center gap-2 text-left text-body-sm hover:bg-neutral-50 transition"
+            >
+              {a.nivelStock && <MarcaSemaforo nivel={a.nivelStock} />}
+              <span className="font-sans font-semibold text-neutral-900 truncate">{ALMACENES.find((x) => x.id === a.id)?.nombre ?? a.id}</span>
+              {a.porcentajeStock !== null && <span className="ml-auto tabular-nums text-neutral-600">{a.porcentajeStock} %</span>}
+            </button>
+          ))}
+        </section>
+      )}
     </div>
   );
 };
@@ -658,6 +741,7 @@ export const PanelLateral: React.FC<PanelLateralProps> = ({
   resaltado = null,
   onResaltar,
   seccionIncidencias = null,
+  simulacion,
   presentacion = 'lateral',
   hojaCompleta = false,
   onAlternarHoja,
@@ -752,7 +836,7 @@ export const PanelLateral: React.FC<PanelLateralProps> = ({
           etiquetaVolver={etiquetaVolver}
         />
       )}
-      {seleccion.tipo === 'resumen' && <ResumenOperacion onSeleccionar={onSeleccionar} />}
+      {seleccion.tipo === 'resumen' && <ResumenOperacion onSeleccionar={onSeleccionar} simulacion={simulacion} />}
       {seleccion.tipo === 'incidencias' && (
         <ListaIncidencias
           onSeleccionar={onSeleccionar}

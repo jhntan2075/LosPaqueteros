@@ -180,3 +180,11 @@ export const SITUACION_UNIDAD: Record<SituacionUnidad, string> = {
 
 /** Pedido registrado que aún no sale a ruta (estado REGISTRADO del servidor). */
 export const ESTADO_EN_ESPERA = 'En espera';
+
+/** Pestaña Incidencias: pedidos en ámbar plegados y estado sin nada que atender. */
+export const etiquetaVerAjustados = (cantidad: number) => `Ver ${cantidad} ${cantidad === 1 ? 'ajustado' : 'ajustados'}`;
+export const OCULTAR_AJUSTADOS = 'Ocultar los ajustados';
+export const SIN_INCIDENCIAS = 'Sin incidencias: todo va en plazo.';
+
+/** Nombre del escenario de una simulación, como lo ve el usuario. */
+export const nombreEscenario = (tipo: string, dias: number) => (tipo === 'COLAPSO_LOGISTICO' ? 'Hasta el colapso' : `Simulación ${dias} días`);

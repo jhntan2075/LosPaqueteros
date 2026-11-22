@@ -46,7 +46,7 @@ describe('Operación · alertas y navegación', () => {
     const controles = within(screen.getByRole('complementary', { name: 'Controles del mapa' }));
     fireEvent.click(controles.getByRole('button', { name: /^1 avería\. Ver en Incidencias/ }));
     expect(screen.getByRole('tab', { name: /Incidencias/ }).getAttribute('aria-selected')).toBe('true');
-    expect(panel().getByRole('region', { name: 'Averías' })).toBeTruthy();
+    expect(panel().getByRole('region', { name: 'Averías activas' })).toBeTruthy();
   });
 
   it('solo Incidencias lleva insignia, con el mismo total que las alertas', () => {
@@ -122,7 +122,7 @@ describe('Operación · espacio y presentación', () => {
     expect(screen.queryByRole('complementary', { name: 'Controles del mapa' })).toBeNull();
     expect(screen.getByRole('tablist', { name: 'Paneles del mapa' }).getAttribute('aria-orientation')).toBe('horizontal');
     fireEvent.click(screen.getByRole('button', { name: 'Más' }));
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Bitácora' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Actividad' }));
     expect(screen.getByRole('button', { name: 'Ampliar el panel' })).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Controles del mapa' }));
     expect(screen.getByRole('complementary', { name: 'Controles del mapa' })).toBeTruthy();

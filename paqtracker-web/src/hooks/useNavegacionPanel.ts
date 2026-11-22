@@ -13,7 +13,7 @@ export const TITULO_PESTANA: Record<PestanaPanel, string> = {
   pedidos: 'Envíos',
   flota: 'Flota',
   almacenes: 'Almacenes',
-  bitacora: 'Bitácora',
+  bitacora: 'Actividad',
 };
 
 /** Nombre corto del objeto de un detalle, para el botón "‹ Volver" del detalle siguiente. */

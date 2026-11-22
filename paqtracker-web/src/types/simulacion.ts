@@ -29,3 +29,13 @@ export interface MarcaAvance {
   minuto: number;
   tipo: 'INCIDENCIA' | 'PLANIFICADOR';
 }
+
+/** Con qué configuración corre una simulación, para mostrarla en el Resumen del panel. */
+export interface ConfiguracionCorrida {
+  /** Nombre del escenario: "Simulación 7 días", "Hasta el colapso". */
+  escenario: string;
+  inicio: Date;
+  flota: { autos: number; motos: number; bicicletas: number };
+  /** Factor de aceleración k del reloj (×k). */
+  factorAceleracion: number;
+}

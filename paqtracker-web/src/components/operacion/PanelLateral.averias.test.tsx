@@ -91,7 +91,7 @@ describe('PanelLateral · averías', () => {
     montar({ tipo: 'incidencias' });
     expect(screen.getByText('Ninguna unidad averiada.')).toBeTruthy();
     expect(screen.getByText('Ningún bloqueo activo.')).toBeTruthy();
-    for (const nombre of ['En riesgo', 'Averías', 'Bloqueos']) {
+    for (const nombre of ['Averías activas', 'Bloqueos activos']) {
       const contador = within(screen.getByRole('region', { name: nombre })).getByText('0');
       expect(contador.className).toContain('rounded-full');
     }

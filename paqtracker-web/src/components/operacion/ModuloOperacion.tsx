@@ -12,7 +12,7 @@ import { PanelLateral } from './PanelLateral';
 
 // Operación día a día: mapa en vivo de la ejecución que difunde paqtracker-api. Cada zona tiene una sola
 // responsabilidad: la columna de la izquierda alerta y filtra, el mapa muestra, el panel detalla y actúa, y
-// la barra de pestañas solo navega. Resumen, Incidencias, Pedidos, Flota, Almacenes y Bitácora son pestañas
+// la barra de pestañas solo navega. Incidencias, Resumen, Envíos, Flota, Almacenes y Actividad son pestañas
 // del panel, igual que en la corrida de simulación. En pantallas angostas el panel es una hoja inferior y
 // las pestañas van al pie (usePresentacionMapa).
 

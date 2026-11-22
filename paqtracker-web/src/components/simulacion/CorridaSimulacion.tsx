@@ -1,4 +1,5 @@
 import React, { useMemo, useRef, useState } from 'react';
+import { nombreEscenario } from '../../config/glosario';
 import { ContextoDatosOperacion, useDatosOperacion, useEjecucionEnVivo } from '../../hooks/useDatosOperacion';
 import { useConexionStomp } from '../../hooks/useConexionStomp';
 import { useControlEjecucion } from '../../hooks/useEjecuciones';
@@ -6,7 +7,7 @@ import { useSegundosDesde } from '../../hooks/useSegundosDesde';
 import { cantidadBloqueos, estadoFlota, fueraDelAlmacen, pedidosEnRiesgo, resumenRiesgo } from '../../lib/operacion';
 import type { EjecucionApi } from '../../types/api';
 import type { PestanaPanel } from '../../types/operacion';
-import type { EscenarioSimulacion, EstadoCorrida, MarcaAvance } from '../../types/simulacion';
+import type { ConfiguracionCorrida, EscenarioSimulacion, EstadoCorrida, MarcaAvance } from '../../types/simulacion';
 import { EstadoConexion } from '../layout/EstadoConexion';
 import { FooterBar } from '../layout/FooterBar';
 import { GridMap, type DestinoMapa, type GridMapHandle } from '../map/GridMap';
@@ -79,6 +80,13 @@ const CorridaEnVivo: React.FC<CorridaSimulacionProps & { recibidoEnMs: number }>
   const verDiagnostico = colapso && !diagnosticoCerrado && !panelAbierto;
   const flota = estadoFlota(datos);
   const riesgo = pedidosEnRiesgo(datos);
+  // Lo que el Resumen del panel muestra de cómo corre esta simulación.
+  const configuracion: ConfiguracionCorrida = {
+    escenario: nombreEscenario(ejecucion.tipoEscenario, ejecucion.dias),
+    inicio: datos.relojInicio,
+    flota: ejecucion.flota,
+    factorAceleracion: datos.factorAceleracion,
+  };
   const dia = `${datos.reloj.getDate()} ${MESES[datos.reloj.getMonth()]}`;
   const destinos: DestinoMapa[] = useMemo(
     () => datos.flota.flatMap((u) => u.paradas.map((p) => ({ pedido: p.pedido, destino: p.destino, nivel: p.nivel, holgura: p.holgura, unidad: u.codigo }))),
@@ -145,6 +153,7 @@ const CorridaEnVivo: React.FC<CorridaSimulacionProps & { recibidoEnMs: number }>
               resaltado={nav.resaltado}
               onResaltar={nav.resaltar}
               seccionIncidencias={nav.seccionIncidencias}
+              simulacion={configuracion}
               presentacion={presentacion.presentacionPanel}
               hojaCompleta={presentacion.hojaCompleta}
               onAlternarHoja={presentacion.alternarHoja}
@@ -181,6 +190,7 @@ const CorridaEnVivo: React.FC<CorridaSimulacionProps & { recibidoEnMs: number }>
               resaltado={nav.resaltado}
               onResaltar={nav.resaltar}
               seccionIncidencias={nav.seccionIncidencias}
+              simulacion={configuracion}
               presentacion="bloque"
             />
           </BloqueDerecho>

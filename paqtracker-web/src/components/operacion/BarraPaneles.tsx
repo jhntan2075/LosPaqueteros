@@ -4,12 +4,12 @@ import { useCerrarConEscape } from '../../hooks/useCerrarConEscape';
 import type { PestanaPanel } from '../../types/operacion';
 
 const PESTANAS: { tipo: PestanaPanel; etiqueta: string; Icono: React.ComponentType<{ className?: string }> }[] = [
-  { tipo: 'resumen', etiqueta: 'Resumen', Icono: BarChart3 },
   { tipo: 'incidencias', etiqueta: 'Incidencias', Icono: AlertTriangle },
+  { tipo: 'resumen', etiqueta: 'Resumen', Icono: BarChart3 },
   { tipo: 'pedidos', etiqueta: 'Envíos', Icono: Package },
   { tipo: 'flota', etiqueta: 'Flota', Icono: Truck },
   { tipo: 'almacenes', etiqueta: 'Almacenes', Icono: Warehouse },
-  { tipo: 'bitacora', etiqueta: 'Bitácora', Icono: ScrollText },
+  { tipo: 'bitacora', etiqueta: 'Actividad', Icono: ScrollText },
 ];
 
 /** En la barra horizontal (celular) caben cuatro pestañas y "Más"; el resto va en el menú, en el mismo orden. */
