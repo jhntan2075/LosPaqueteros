@@ -90,6 +90,8 @@ interface GridMapProps {
   seleccion: ObjetoMapa | null;
   /** Ancho ocupado por un panel flotante a la derecha; los controles de zoom se corren a su izquierda. */
   anchoPanelDerecho?: number;
+  /** Hay un panel lateral abierto junto al mapa (fuera de él): la columna de controles se pliega a su tira. */
+  panelLateralAbierto?: boolean;
   /** Alto de una hoja inferior abierta (pantallas angostas): la malla se encuadra encima de ella. */
   altoPanelInferior?: number;
   /** Pedidos en riesgo por nivel del semáforo de holgura. */
@@ -224,6 +226,7 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
     almacenes = [],
     seleccion,
     anchoPanelDerecho = 0,
+    panelLateralAbierto = false,
     altoPanelInferior = 0,
     riesgo,
     onSeleccionar,
@@ -281,7 +284,7 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
   // Columna de controles: un solo panel lateral a la vez en escritorio, así que abrir un panel derecho la
   // pliega a un riel. El usuario puede forzar lo contrario y se recuerda; si su elección coincide con la
   // automática, vuelve a ser automática.
-  const plegadaAuto = !compacto && anchoPanelDerecho > 0;
+  const plegadaAuto = !compacto && (anchoPanelDerecho > 0 || panelLateralAbierto);
   const [preferenciaPlegada, setPreferenciaPlegada] = useState<boolean | null>(leerPreferenciaColumna);
   const plegada = preferenciaPlegada ?? plegadaAuto;
   const fijarPlegada = (valor: boolean) => {
@@ -1304,7 +1307,7 @@ const CapasMapa: React.FC<CapasMapaProps> = ({
           const m = { x: (a.x + z.x) / 2, y: (a.y + z.y) / 2 };
           return (
             <g key={b.id}>
-              <line x1={a.x} y1={a.y} x2={z.x} y2={z.y} stroke={COLOR_BLOQUEO} strokeWidth={compacto ? 3 : 4} strokeLinecap="round" opacity={OPACIDAD_LINEA_BLOQUEO} />
+              <line x1={a.x} y1={a.y} x2={z.x} y2={z.y} stroke={COLOR_BLOQUEO} strokeWidth={compacto ? 2.5 : 3} strokeLinecap="round" opacity={OPACIDAD_LINEA_BLOQUEO} />
               <g transform={`translate(${m.x}, ${m.y})`} data-objeto={`bloqueo:${b.id}`}>
                 <g transform={escalar}>
                   <MarcaBloqueo />

@@ -194,12 +194,14 @@ export const InsigniaAveria: React.FC<{ tipo: 1 | 2 | 3; restante?: number }> = 
 /** Tramo bloqueado: aspa magenta sobre fondo claro, centrada en el punto medio del tramo. */
 export const MarcaBloqueo: React.FC = () => (
   <>
-    <circle r="10" fill={FONDO_BLOQUEO} />
-    <path d="M -6 -6 L 6 6 M -6 6 L 6 -6" stroke={COLOR_BLOQUEO} strokeWidth="2.5" />
+    {/* Área tocable mayor que el símbolo (que mide 12 px), para que su tooltip siga siendo fácil de abrir. */}
+    <circle r="12" fill="transparent" />
+    <circle r="6" fill={FONDO_BLOQUEO} />
+    <path d="M -3.2 -3.2 L 3.2 3.2 M -3.2 3.2 L 3.2 -3.2" stroke={COLOR_BLOQUEO} strokeWidth="2" strokeLinecap="round" />
   </>
 );
 
 /** Línea del tramo bloqueado, como en el mapa, para la leyenda. */
 export const LineaBloqueo: React.FC = () => (
-  <line x1="-12" y1="0" x2="12" y2="0" stroke={COLOR_BLOQUEO} strokeWidth="4" strokeLinecap="round" opacity={OPACIDAD_LINEA_BLOQUEO} />
+  <line x1="-12" y1="0" x2="12" y2="0" stroke={COLOR_BLOQUEO} strokeWidth="3" strokeLinecap="round" opacity={OPACIDAD_LINEA_BLOQUEO} />
 );
