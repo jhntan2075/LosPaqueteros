@@ -146,6 +146,23 @@ describe('PilaSuperiorMapa', () => {
     Array.from(pila.children).forEach((tarjeta) => expect(tarjeta.hasAttribute('data-sin-zoom')).toBe(true));
   });
 
+  it('la franja de resumen, si la pila la lleva, va bajo las alertas y sobre la ocupación global', () => {
+    const { container } = render(
+      <PilaSuperiorMapa
+        busqueda={BUSQUEDA}
+        alertas={ALERTAS}
+        soloRiesgo={false}
+        onAbrirIncidencias={() => {}}
+        ocupacion={{ flota: ocupacion(28, 36), almacenes: ocupacion(50, 200) }}
+        compacto={false}
+        reducida={false}
+        resumen={<section aria-label="Franja de prueba" data-sin-zoom />}
+      />,
+    );
+    const nombres = Array.from(container.firstElementChild!.children).map((c) => c.getAttribute('aria-label'));
+    expect(nombres).toEqual([null, 'Alertas', 'Franja de prueba', 'Ocupación global']);
+  });
+
   it('sin resultados el aviso no deja un hueco bajo el buscador mientras no hay mensaje', () => {
     render(<BuscadorMapa busqueda={BUSQUEDA} plegable={false} />);
     expect(screen.getByRole('status').textContent).toBe('');

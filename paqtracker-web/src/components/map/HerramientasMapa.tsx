@@ -1,4 +1,4 @@
-import React, { useEffect, useId, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { Eye, Info, Layers, Maximize2, SlidersHorizontal } from 'lucide-react';
 import {
   AYUDA_ENFOQUE,
@@ -11,6 +11,7 @@ import {
   DIALOGO_FILTROS,
   HERRAMIENTAS_MAPA,
 } from '../../config/glosario';
+import { useCierreDePopover } from '../../hooks/useCierreDePopover';
 import type { FiltrosMapa as Filtros } from '../../lib/filtrosMapa';
 import type { Capa, ModoColor } from './capas';
 import { izquierdaDeLaBarra, TARJETA_FLOTANTE } from './estilosMapa';
@@ -48,6 +49,10 @@ export interface HerramientasMapaProps {
   altoHojaPx: number;
   /** Mapa angosto (< 600 px): los popovers se extienden de borde a borde a la izquierda de la barra. */
   angosto: boolean;
+  /** El desplegable del resumen está abierto: solo uno a la vez, así que mientras lo esté no hay popover. */
+  resumenAbierto?: boolean;
+  /** Se abre un popover: quien lleva el desplegable del resumen lo cierra. */
+  onAbrirPopover?: () => void;
 }
 
 export const HerramientasMapa: React.FC<HerramientasMapaProps> = ({
@@ -62,6 +67,8 @@ export const HerramientasMapa: React.FC<HerramientasMapaProps> = ({
   derechaPx,
   altoHojaPx,
   angosto,
+  resumenAbierto = false,
+  onAbrirPopover,
 }) => {
   const [abierta, setAbierta] = useState<Herramienta | null>(null);
   const idBase = useId();
@@ -70,29 +77,27 @@ export const HerramientasMapa: React.FC<HerramientasMapaProps> = ({
   const popoverRef = useRef<HTMLDivElement>(null);
   const barraRef = useRef<HTMLDivElement>(null);
 
+  // Un solo desplegable abierto sobre el mapa: si el resumen se abre, el popover se cierra (ajuste durante el
+  // render, sin repintado extra). La otra mitad: abrir un popover avisa con `onAbrirPopover`.
+  if (resumenAbierto && abierta) setAbierta(null);
+
   // Mientras hay un popover abierto: el foco entra a su primer control; Escape lo cierra y devuelve el foco a
-  // su botón; tocar fuera lo cierra sin mover el foco. Un diálogo modal encima (rangos del semáforo) cuenta
-  // como "dentro": ni su Escape ni sus toques cierran el popover que lo abrió.
+  // su botón; tocar fuera lo cierra sin mover el foco.
   useEffect(() => {
-    if (!abierta) return;
-    popoverRef.current?.querySelector<HTMLElement>(ENFOCABLES)?.focus({ preventScroll: true });
-    const alPresionar = (evento: KeyboardEvent) => {
-      if (evento.key !== 'Escape' || document.querySelector('[aria-modal="true"]')) return;
-      setAbierta(null);
-      botonesRef.current[abierta]?.focus();
-    };
-    const alTocar = (evento: PointerEvent) => {
-      const destino = evento.target as Element | null;
-      if (!destino || popoverRef.current?.contains(destino) || botonesRef.current[abierta]?.contains(destino) || destino.closest?.('[aria-modal="true"]')) return;
-      setAbierta(null);
-    };
-    document.addEventListener('keydown', alPresionar);
-    document.addEventListener('pointerdown', alTocar);
-    return () => {
-      document.removeEventListener('keydown', alPresionar);
-      document.removeEventListener('pointerdown', alTocar);
-    };
+    if (abierta) popoverRef.current?.querySelector<HTMLElement>(ENFOCABLES)?.focus({ preventScroll: true });
   }, [abierta]);
+  const esPropio = useCallback(
+    (destino: Element) => !!popoverRef.current?.contains(destino) || (abierta !== null && !!botonesRef.current[abierta]?.contains(destino)),
+    [abierta],
+  );
+  const alCerrar = useCallback(
+    (motivo: 'escape' | 'fuera') => {
+      setAbierta(null);
+      if (motivo === 'escape' && abierta) botonesRef.current[abierta]?.focus();
+    },
+    [abierta],
+  );
+  useCierreDePopover(abierta !== null, esPropio, alCerrar);
 
   // Barra de herramientas: las flechas arriba y abajo recorren sus botones.
   const alPresionarEnBarra = (evento: React.KeyboardEvent<HTMLDivElement>) => {
@@ -104,7 +109,10 @@ export const HerramientasMapa: React.FC<HerramientasMapaProps> = ({
     botones[(actual + (evento.key === 'ArrowDown' ? 1 : botones.length - 1)) % botones.length].focus();
   };
 
-  const alternar = (herramienta: Herramienta) => setAbierta((actual) => (actual === herramienta ? null : herramienta));
+  const alternar = (herramienta: Herramienta) => {
+    if (abierta !== herramienta) onAbrirPopover?.();
+    setAbierta(abierta === herramienta ? null : herramienta);
+  };
   const botonPopover = (herramienta: Herramienta, etiqueta: string, icono: React.ReactNode, insignia?: number) => (
     <button
       type="button"

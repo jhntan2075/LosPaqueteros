@@ -130,6 +130,7 @@ const CorridaEnVivo: React.FC<CorridaSimulacionProps & { recibidoEnMs: number }>
         <GridMap
           ref={mapaRef}
           variante="simulacion"
+          simulacion={configuracion}
           unidades={datos.flota.filter(fueraDelAlmacen)}
           destinos={destinos}
           bloqueos={datos.bloqueos}

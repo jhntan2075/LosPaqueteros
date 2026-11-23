@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { SIN_FILTROS, type FiltrosMapa as Filtros } from '../../lib/filtrosMapa';
@@ -249,5 +249,44 @@ describe('HerramientasMapa', () => {
     expect(ancho.style.left).toBe('');
     expect(ancho.style.right).toBe('68px');
     expect(ancho.style.width).toBe('320px');
+  });
+});
+
+describe('HerramientasMapa · un solo desplegable sobre el mapa', () => {
+  const propiedades = (extra: Partial<React.ComponentProps<typeof HerramientasMapa>> = {}): React.ComponentProps<typeof HerramientasMapa> => ({
+    capas: { rutas: true, unidades: true, destinos: true, bloqueos: true, almacenes: true },
+    onCambiarCapa: () => {},
+    modoColor: 'carga',
+    onCambiarModoColor: () => {},
+    filtros: { valor: SIN_FILTROS, conteos: CONTEOS, activos: 0, onCambiar: () => {} },
+    onVerTodo: () => {},
+    enfoque: false,
+    onAlternarEnfoque: () => {},
+    derechaPx: 12,
+    altoHojaPx: 0,
+    angosto: false,
+    ...extra,
+  });
+
+  it('abrir un popover avisa al resumen; cerrarlo o cambiar de uno a otro, no vuelve a avisar de más', () => {
+    const onAbrirPopover = vi.fn();
+    render(<HerramientasMapa {...propiedades({ onAbrirPopover })} />);
+    fireEvent.click(boton('Capas'));
+    expect(onAbrirPopover).toHaveBeenCalledTimes(1);
+    fireEvent.click(boton('Capas'));
+    expect(onAbrirPopover).toHaveBeenCalledTimes(1);
+    fireEvent.click(boton('Filtros'));
+    expect(onAbrirPopover).toHaveBeenCalledTimes(2);
+  });
+
+  it('con el resumen abierto, un popover abierto se cierra y no queda "pendiente" al cerrarse el resumen', () => {
+    const { rerender } = render(<HerramientasMapa {...propiedades()} />);
+    fireEvent.click(boton('Capas'));
+    expect(screen.getByRole('dialog', { name: 'Capas del mapa' })).toBeTruthy();
+    rerender(<HerramientasMapa {...propiedades({ resumenAbierto: true })} />);
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(boton('Capas').getAttribute('aria-expanded')).toBe('false');
+    rerender(<HerramientasMapa {...propiedades({ resumenAbierto: false })} />);
+    expect(screen.queryByRole('dialog')).toBeNull();
   });
 });

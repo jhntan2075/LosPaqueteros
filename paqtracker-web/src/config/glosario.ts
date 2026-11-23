@@ -219,6 +219,20 @@ export const reporteDeCierre = (diaADia: boolean) => (diaADia ? 'Generar reporte
 export const notaReporteDeCierre = (diaADia: boolean) =>
   `Rutas y paradas de la última planificación estable. ${diaADia ? 'No detiene la operación.' : 'No detiene la simulación.'}`;
 
+/** Franja de resumen sobre el mapa: cuatro métricas y un desplegable con el resto. */
+export const RESUMEN_OPERACION = 'Resumen de la operación';
+export const RESUMEN_EN_PLAZO = 'En plazo';
+export const RESUMEN_EN_TRANSITO = 'En tránsito';
+export const RESUMEN_EN_ESPERA = ESTADO_EN_ESPERA;
+export const RESUMEN_EN_RUTA = ESTADO_UNIDAD.EN_RUTA;
+export const AYUDA_RESUMEN_EN_PLAZO = 'Entregas hechas en plazo, sobre las entregadas';
+export const AYUDA_RESUMEN_EN_TRANSITO = 'Pedidos que van en ruta a su destino';
+export const AYUDA_RESUMEN_EN_ESPERA = 'Pedidos registrados que aún no salen a ruta';
+export const AYUDA_RESUMEN_EN_RUTA = 'Unidades en ruta, sobre el total de la flota';
+export const VER_MAS_DEL_RESUMEN = 'Ver más del resumen';
+export const MAS_DEL_RESUMEN = 'Más del resumen';
+export const SIN_DATO = '—';
+
 /** Resumen: bloque de actividad reciente. */
 export const ACTIVIDAD_RECIENTE = 'Actividad reciente';
 export const VER_ACTIVIDAD = 'Ver actividad';

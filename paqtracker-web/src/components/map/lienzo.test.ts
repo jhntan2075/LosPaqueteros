@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { vistaCompleta } from '../../lib/malla';
-import { ALTO_PILA_REDUCIDA_PX } from './estilosMapa';
+import { ALTO_PILA_CON_RESUMEN_PX, ALTO_PILA_REDUCIDA_PX } from './estilosMapa';
 import { crearLienzo } from './lienzo';
 
 // El lienzo reserva lugar a los controles que flotan sobre el mapa.
@@ -19,17 +19,18 @@ describe('crearLienzo', () => {
     expect(crearLienzo(1200, 800, 352, 0, false).margenDerecho).toBeGreaterThan(crearLienzo(1200, 800, 0, 0, false).margenDerecho!);
   });
 
-  it('en compacto reserva arriba la pila de búsqueda y alertas: más que el margen normal', () => {
+  it('en compacto reserva arriba la pila de búsqueda y alertas con la franja de resumen: más que el margen normal', () => {
     const l = crearLienzo(390, 700, 0, 0, true);
     expect(l.margenSuperior).toBeGreaterThan(l.margen);
     expect(l.margenSuperior).toBeGreaterThanOrEqual(ALTO_PILA_REDUCIDA_PX);
+    expect(l.margenSuperior).toBeGreaterThanOrEqual(ALTO_PILA_CON_RESUMEN_PX);
   });
 
-  it('en compacto la malla de la vista inicial empieza debajo de la pila reducida', () => {
+  it('en compacto la malla de la vista inicial empieza debajo de la pila reducida y de la franja de resumen', () => {
     const l = crearLienzo(390, 700, 0, 0, true);
     const vista = vistaCompleta(l, { llenarAlto: true });
     // El origen de la malla (0,0) se proyecta en vista.y: no sube más arriba de la reserva.
-    expect(vista.y).toBeGreaterThanOrEqual(ALTO_PILA_REDUCIDA_PX);
+    expect(vista.y).toBeGreaterThanOrEqual(ALTO_PILA_CON_RESUMEN_PX);
   });
 
   it('en compacto con hoja inferior abierta, la malla se encuadra encima de ella', () => {

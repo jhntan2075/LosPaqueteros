@@ -28,11 +28,12 @@ import { destinoResaltado, unidadesResaltadas, type SeleccionResaltable } from '
 import { COLOR_SIN_DATO, colorDeUnidad, iconoVehiculo, unidadVacia } from './iconosVehiculo';
 import type { ConteosFiltros } from './FiltrosMapa';
 import type { Capa, ModoColor } from './capas';
-import { ALTO_MAPA_REDUCIDO_PX, ANCHO_ANGOSTO_PX } from './estilosMapa';
+import { ALTO_MAPA_REDUCIDO_PX, ANCHO_ANGOSTO_PX, ubicarResumen } from './estilosMapa';
 import { crearLienzo, derechaDeControles, INFERIOR_CONTROLES_PX } from './lienzo';
 import { ControlesZoom, BarraEscala } from './ControlesZoom';
 import { HerramientasMapa } from './HerramientasMapa';
 import { PilaSuperiorMapa } from './PilaSuperiorMapa';
+import { ResumenMapa } from './ResumenMapa';
 import {
   AlmacenCentral,
   AlmacenIntermedio,
@@ -49,6 +50,7 @@ import {
 import haloSeleccion from '../../assets/figma/pedidos/halo.svg';
 import type { Coordenada } from '../../types/domain';
 import type { AlmacenOperacion, BloqueoOperacion, SeccionIncidencias, UnidadOperacion } from '../../types/operacion';
+import type { ConfiguracionCorrida } from '../../types/simulacion';
 import type { NivelHolgura } from '../../types/pedidos';
 
 
@@ -109,6 +111,8 @@ interface GridMapProps {
   onModoEnfoque?: (activo: boolean) => void;
   /** 'simulacion': solo alerta del riesgo; tocar un objeto abre su detalle igual que en Operación. */
   variante?: 'operacion' | 'simulacion';
+  /** Solo en una simulación: con qué configuración corre, que el desplegable del resumen muestra. */
+  simulacion?: ConfiguracionCorrida;
   /** Pantalla angosta: el buscador se pliega a un ícono y el zoom es con pellizco ("Ver todo" queda en las herramientas). */
   compacto?: boolean;
   children?: React.ReactNode;
@@ -187,6 +191,7 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
     enfoque = false,
     onModoEnfoque,
     variante = 'operacion',
+    simulacion,
     compacto = false,
     children,
   },
@@ -225,6 +230,10 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
   };
   const filtrosActivos = cantidadFiltros(filtros);
   const enSimulacion = variante === 'simulacion';
+  // Desplegable del resumen: uno solo abierto a la vez junto con los popovers de las herramientas, y ninguno en
+  // modo enfoque (ajuste durante el render, sin repintado extra).
+  const [resumenAbierto, setResumenAbierto] = useState(false);
+  if (enfoque && resumenAbierto) setResumenAbierto(false);
   const [capas, setCapas] = useState<Record<Capa, boolean>>({ rutas: true, unidades: true, destinos: true, bloqueos: true, almacenes: true });
 
   // Zoom continuo (C08): botones, "ver todo" y centrar animan la vista; rueda y arrastre la cancelan.
@@ -442,6 +451,21 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
   const cantidadBloqueos = new Set(bloqueos.map((b) => b.idOriginal)).size;
   const angosto = ancho > 0 && ancho < ANCHO_ANGOSTO_PX;
   const derechaControles = derechaDeControles(anchoPanelDerecho);
+  const pilaReducida = compacto || (alto > 0 && alto < ALTO_MAPA_REDUCIDO_PX);
+  // Sin medir el mapa no hay dónde ubicar la franja de resumen.
+  const ubicacionResumen = ancho > 0 ? ubicarResumen(ancho, derechaControles, compacto) : null;
+  const resumen = ubicacionResumen && (
+    <ResumenMapa
+      ubicacion={ubicacionResumen}
+      abierto={resumenAbierto}
+      onAlternar={setResumenAbierto}
+      altoMapaPx={alto}
+      altoHojaPx={altoPanelInferior}
+      reducida={pilaReducida}
+      simulacion={simulacion}
+      onAbrirFlota={onAbrirFlota}
+    />
+  );
   // Con una hoja inferior abierta, los controles de abajo se apoyan sobre ella.
   const inferiorControles = altoPanelInferior > 0 ? altoPanelInferior + INFERIOR_CONTROLES_PX : INFERIOR_CONTROLES_PX;
 
@@ -507,9 +531,13 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
             onAbrirIncidencias={onAbrirIncidencias}
             ocupacion={{ flota: ocupacionFlota(unidades), almacenes: ocupacionAlmacenes(almacenes), onAbrirFlota, onAbrirAlmacenes }}
             compacto={compacto}
-            reducida={compacto || (alto > 0 && alto < ALTO_MAPA_REDUCIDO_PX)}
+            reducida={pilaReducida}
+            resumen={ubicacionResumen?.donde === 'pila' ? resumen : undefined}
           />
         )}
+
+        {/* 1b. Arriba al centro: franja de resumen, entre la pila y las herramientas (sin espacio, va en la pila) */}
+        {!enfoque && ubicacionResumen?.donde === 'centro' && resumen}
 
         {/* 2. Arriba a la derecha: herramientas que cambian la vista del mapa (capas, filtros, leyenda, ver todo, enfoque) */}
         <HerramientasMapa
@@ -524,6 +552,8 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
           derechaPx={derechaControles}
           altoHojaPx={altoPanelInferior}
           angosto={angosto}
+          resumenAbierto={resumenAbierto}
+          onAbrirPopover={() => setResumenAbierto(false)}
         />
 
         {/* 3. Abajo a la derecha: zoom (en pantallas angostas se acerca con pellizco) */}
