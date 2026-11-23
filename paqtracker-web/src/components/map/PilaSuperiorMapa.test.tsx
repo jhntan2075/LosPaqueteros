@@ -31,6 +31,17 @@ describe('AlertasMapaTarjeta', () => {
     expect(screen.getByRole('button', { name: '1 llegará tarde. Ver Incidencias' })).toBeTruthy();
   });
 
+  it('con averías o bloqueos nunca dice que todo va en plazo, aunque no haya pedidos en riesgo', () => {
+    const sinRiesgo = { rojo: 0, ambar: 0, tarde: 0 };
+    const { rerender } = render(<AlertasMapaTarjeta alertas={{ riesgo: sinRiesgo, bloqueos: 0, averias: 1 }} soloRiesgo={false} onAbrir={() => {}} />);
+    expect(screen.getByRole('button', { name: 'Sin pedidos en riesgo. Ver Incidencias' })).toBeTruthy();
+    rerender(<AlertasMapaTarjeta alertas={{ riesgo: sinRiesgo, bloqueos: 2, averias: 0 }} soloRiesgo={false} onAbrir={() => {}} />);
+    expect(screen.getByRole('button', { name: 'Sin pedidos en riesgo. Ver Incidencias' })).toBeTruthy();
+    // En Simulación no se cuentan averías ni bloqueos: sin riesgo, todo va en plazo.
+    rerender(<AlertasMapaTarjeta alertas={{ riesgo: sinRiesgo, bloqueos: 2, averias: 1 }} soloRiesgo onAbrir={() => {}} />);
+    expect(screen.getByRole('button', { name: 'Todo va en plazo. Ver Incidencias' })).toBeTruthy();
+  });
+
   it('el titular abre Incidencias y cada cifra abre su sección', () => {
     const onAbrir = vi.fn();
     render(<AlertasMapaTarjeta alertas={{ ...ALERTAS, averias: 2 }} soloRiesgo={false} onAbrir={onAbrir} />);

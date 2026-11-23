@@ -52,7 +52,7 @@ const CifraAlerta: React.FC<Cifra & { onClick: () => void }> = ({ numero, texto,
 export const AlertasMapaTarjeta: React.FC<AlertasMapaTarjetaProps> = ({ alertas, soloRiesgo, onAbrir }) => {
   const enRiesgo = alertas.riesgo.rojo + alertas.riesgo.ambar;
   const tarde = alertas.riesgo.tarde ?? 0;
-  const titular = titularAlertas(tarde, enRiesgo);
+  const titular = titularAlertas(tarde, enRiesgo, soloRiesgo ? 0 : alertas.bloqueos + alertas.averias);
   const cifras: Cifra[] = [
     {
       seccion: 'riesgo',

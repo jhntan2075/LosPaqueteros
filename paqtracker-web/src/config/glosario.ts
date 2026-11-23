@@ -222,9 +222,16 @@ export const HERRAMIENTA_ENFOQUE = 'Modo enfoque';
 export const AYUDA_ENFOQUE = 'Ocultar todo menos el mapa';
 export const etiquetaFiltros = (activos: number) => (activos > 0 ? `Filtros (${activos} ${activos === 1 ? 'activo' : 'activos'})` : 'Filtros');
 const ALERTAS_TODO_EN_PLAZO = 'Todo va en plazo';
-/** Titular de la tarjeta de alertas: lo que exige actuar primero. */
-export const titularAlertas = (tarde: number, enRiesgo: number) =>
-  tarde > 0 ? `${tarde} ${tarde === 1 ? 'llegará' : 'llegarán'} tarde` : enRiesgo > 0 ? `${enRiesgo} en riesgo` : ALERTAS_TODO_EN_PLAZO;
+const ALERTAS_SIN_PEDIDOS_EN_RIESGO = 'Sin pedidos en riesgo';
+/** Titular de la tarjeta de alertas: lo que exige actuar primero. `otras`: averías y bloqueos activos. */
+export const titularAlertas = (tarde: number, enRiesgo: number, otras: number) =>
+  tarde > 0
+    ? `${tarde} ${tarde === 1 ? 'llegará' : 'llegarán'} tarde`
+    : enRiesgo > 0
+      ? `${enRiesgo} en riesgo`
+      : otras > 0
+        ? ALERTAS_SIN_PEDIDOS_EN_RIESGO
+        : ALERTAS_TODO_EN_PLAZO;
 export const ALERTAS = 'Alertas';
 export const VER_INCIDENCIAS = 'Ver Incidencias';
 export const DIALOGO_CAPAS = 'Capas del mapa';
