@@ -29,7 +29,7 @@ import { COLOR_SIN_DATO, colorDeUnidad, iconoVehiculo, unidadVacia } from './ico
 import type { ConteosFiltros } from './FiltrosMapa';
 import type { Capa, ModoColor } from './capas';
 import { ALTO_MAPA_REDUCIDO_PX, ANCHO_ANGOSTO_PX, ubicarResumen } from './estilosMapa';
-import { crearLienzo, derechaDeControles, INFERIOR_CONTROLES_PX } from './lienzo';
+import { crearLienzo, derechaDeControles, inferiorDeControles } from './lienzo';
 import { ControlesZoom, BarraEscala } from './ControlesZoom';
 import { HerramientasMapa } from './HerramientasMapa';
 import { PilaSuperiorMapa } from './PilaSuperiorMapa';
@@ -467,7 +467,7 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
     />
   );
   // Con una hoja inferior abierta, los controles de abajo se apoyan sobre ella.
-  const inferiorControles = altoPanelInferior > 0 ? altoPanelInferior + INFERIOR_CONTROLES_PX : INFERIOR_CONTROLES_PX;
+  const inferiorControles = inferiorDeControles(altoPanelInferior);
 
   // Filtros globales: lo seleccionado nunca se oculta, para no perder el contexto de lo que se mira.
   const enMapa = unidades.filter(fueraDelAlmacen);

@@ -67,4 +67,14 @@ describe('Simulación colapsada · modo enfoque', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Modo enfoque' }));
     expect(screen.queryByRole('button', { name: 'Ver diagnóstico del colapso' })).toBeNull();
   });
+
+  it('el acceso para reabrir el diagnóstico va abajo al centro, no en la fila de arriba donde están la franja de resumen y las herramientas', () => {
+    render(<CorridaSimulacion ejecucion={ejecucion} onSalir={() => {}} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Cerrar diagnóstico' }));
+    const acceso = screen.getByRole('button', { name: 'Ver diagnóstico del colapso' });
+    expect(acceso.className).not.toMatch(/(^|\s)(top-\S+|right-\S+)/);
+    expect(acceso.className).toContain('left-1/2');
+    expect(acceso.style.top).toBe('');
+    expect(parseFloat(acceso.style.bottom)).toBeGreaterThanOrEqual(12);
+  });
 });

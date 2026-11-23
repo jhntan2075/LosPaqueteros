@@ -17,6 +17,7 @@ import { PanelLateral } from '../operacion/PanelLateral';
 import { useNavegacionPanel } from '../../hooks/useNavegacionPanel';
 import { useModoEnfoque } from '../../hooks/useModoEnfoque';
 import { usePresentacionMapa } from '../../hooks/usePresentacionMapa';
+import { inferiorDeControles } from '../map/lienzo';
 import { Boton } from '../ui';
 import { DiagnosticoColapso } from './DiagnosticoColapso';
 import { EncabezadoCorrida } from './EncabezadoCorrida';
@@ -47,6 +48,9 @@ export const CorridaSimulacion: React.FC<CorridaSimulacionProps> = (props) => {
     </ContextoDatosOperacion.Provider>
   );
 };
+
+/** En celular, lo que sube el acceso al diagnóstico para quedar sobre la barra de escala (44 px) y su aire. */
+const ALTO_SOBRE_ESCALA_PX = 52;
 
 const CorridaEnVivo: React.FC<CorridaSimulacionProps & { recibidoEnMs: number }> = ({ ejecucion, onSalir, recibidoEnMs }) => {
   const datos = useDatosOperacion();
@@ -171,12 +175,15 @@ const CorridaEnVivo: React.FC<CorridaSimulacionProps & { recibidoEnMs: number }>
               onVerInforme={() => setVerInforme(true)}
             />
           )}
-          {/* El diagnóstico se puede cerrar para ver el mapa completo; este acceso lo reabre. */}
+          {/* El diagnóstico se puede cerrar para ver el mapa completo; este acceso lo reabre. Va abajo al centro, sobre
+              la hoja inferior si está abierta: arriba chocaría con la franja de resumen y las herramientas. En celular
+              sube sobre la barra de escala, que ocupa la esquina de abajo a la izquierda. */}
           {colapso && diagnosticoCerrado && !panelAbierto && !modoEnfoque.enfoque && (
             <Boton
               variante="peligro-secundario"
               onClick={() => setDiagnosticoCerrado(false)}
-              className="absolute right-4 top-3 z-10 rounded-full border-critical-600 px-3.5 text-body-sm shadow-xs"
+              className="absolute left-1/2 -translate-x-1/2 z-10 whitespace-nowrap rounded-full border-critical-600 px-3.5 text-body-sm shadow-xs"
+              style={{ bottom: inferiorDeControles(presentacion.altoPanelInferior) + (presentacion.compacto ? ALTO_SOBRE_ESCALA_PX : 0) }}
             >
               Ver diagnóstico del colapso
             </Boton>
