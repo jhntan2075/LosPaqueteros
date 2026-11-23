@@ -1,8 +1,9 @@
 import React from 'react';
 import { AlertTriangle, ChevronRight } from 'lucide-react';
-import { etiquetaEnRiesgo, textoAverias, textoBloqueos, textoEnRiesgo, titularAlertas, VER_EN_INCIDENCIAS } from '../../config/glosario';
+import { ALERTAS, etiquetaEnRiesgo, textoAverias, textoBloqueos, textoEnRiesgo, titularAlertas, VER_EN_INCIDENCIAS, VER_INCIDENCIAS } from '../../config/glosario';
 import { COLOR_SEMAFORO, type NivelCarga } from '../../lib/semaforo';
 import type { SeccionIncidencias } from '../../types/operacion';
+import { TARJETA_FLOTANTE } from './estilosMapa';
 import { COLOR_BLOQUEO, MarcaSemaforo } from './simbolos';
 
 // Tarjeta de alertas sobre el mapa: lo que exige actuar, de un vistazo. El titular lleva a Incidencias; cada
@@ -69,11 +70,11 @@ export const AlertasMapaTarjeta: React.FC<AlertasMapaTarjetaProps> = ({ alertas,
         ]),
   ];
   return (
-    <section aria-label="Alertas" className="bg-superficie border border-neutral-200 rounded-card shadow-overlay overflow-hidden cursor-default">
+    <section aria-label={ALERTAS} className={`${TARJETA_FLOTANTE} overflow-hidden cursor-default`}>
       <button
         type="button"
         onClick={() => onAbrir()}
-        aria-label={`${titular}. Ver Incidencias`}
+        aria-label={`${titular}. ${VER_INCIDENCIAS}`}
         className="w-full min-h-11 px-3 flex items-center gap-2.5 text-left hover:bg-neutral-50"
       >
         <AlertTriangle className={`size-4 shrink-0 ${tarde > 0 ? 'text-critical-600' : 'text-neutral-600'}`} aria-hidden="true" />

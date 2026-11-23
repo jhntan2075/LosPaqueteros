@@ -3,6 +3,7 @@ import { NOMBRE_CARGA, NOMBRE_STOCK } from '../../config/glosario';
 import type { NivelCarga } from '../../lib/semaforo';
 import type { OcupacionGlobal } from '../../lib/operacion';
 import { TEXTO_SEMAFORO } from '../../lib/semaforo';
+import { TARJETA_FLOTANTE } from './estilosMapa';
 import { MarcaSemaforo } from './simbolos';
 
 // Indicadores globales del mapa (G01–G04): carga de la flota y stock de los almacenes en conjunto, con el
@@ -62,7 +63,7 @@ interface IndicadoresGlobalesProps {
 export const IndicadoresGlobales: React.FC<IndicadoresGlobalesProps> = ({ flota, almacenes, onAbrirFlota, onAbrirAlmacenes }) => (
   <section
     aria-label="Ocupación global"
-    className="grid grid-cols-2 divide-x divide-neutral-200 bg-superficie border border-neutral-200 rounded-card shadow-overlay overflow-hidden cursor-default"
+    className={`grid grid-cols-2 divide-x divide-neutral-200 overflow-hidden cursor-default ${TARJETA_FLOTANTE}`}
   >
     <Indicador
       etiqueta="Carga de flota"

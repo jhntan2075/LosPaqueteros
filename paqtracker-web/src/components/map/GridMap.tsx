@@ -27,7 +27,9 @@ import { COLOR_HOLGURA_HEX, COLOR_SEMAFORO, NIVELES_CARGA, nivelDeOcupacion, typ
 import { destinoResaltado, unidadesResaltadas, type SeleccionResaltable } from '../../lib/envios';
 import { COLOR_SIN_DATO, colorDeUnidad, iconoVehiculo, unidadVacia } from './iconosVehiculo';
 import type { ConteosFiltros } from './FiltrosMapa';
-import { ANCHO_ANGOSTO_PX, SEPARACION_BARRA_PX, type Capa, type ModoColor } from './capas';
+import type { Capa, ModoColor } from './capas';
+import { ANCHO_ANGOSTO_PX } from './estilosMapa';
+import { crearLienzo, derechaDeControles, INFERIOR_CONTROLES_PX } from './lienzo';
 import { ControlesZoom, BarraEscala } from './ControlesZoom';
 import { HerramientasMapa } from './HerramientasMapa';
 import { PilaSuperiorMapa } from './PilaSuperiorMapa';
@@ -110,40 +112,6 @@ interface GridMapProps {
   compacto?: boolean;
   children?: React.ReactNode;
 }
-
-/** Distancia del borde derecho a las herramientas y al zoom, y del borde inferior al zoom y a la escala. */
-const DERECHA_CONTROLES_PX = 12;
-const INFERIOR_CONTROLES_PX = 12;
-/** Un panel flotante a la derecha (diagnóstico de la simulación) empuja las herramientas y el zoom a su izquierda. */
-const derechaDeControles = (anchoPanelDerecho: number) => (anchoPanelDerecho > 0 ? anchoPanelDerecho + 24 : DERECHA_CONTROLES_PX);
-/** Lugar al pie para la barra de escala y la coordenada del nodo. */
-const PIE_PX = 44;
-
-/**
- * La malla de 70 × 50 km se encuadra completa ('contener') y es lo único que lleva cuadrícula: alrededor
- * queda un margen neutro que marca su límite. Los controles flotan sobre el mapa: la barra de herramientas
- * en su margen derecho y la escala al pie, así que ninguno tapa la malla en la vista completa; la pila de
- * búsqueda y alertas, a la izquierda, sí puede cubrir su esquina.
- */
-const crearLienzo = (ancho: number, alto: number, anchoPanelDerecho: number, altoPanelInferior: number, compacto: boolean): Lienzo => {
-  if (compacto) {
-    return {
-      ancho,
-      alto,
-      margen: 12,
-      margenInferior: altoPanelInferior > 0 ? altoPanelInferior + 12 : PIE_PX,
-      ajuste: 'contener',
-    };
-  }
-  return {
-    ancho,
-    alto,
-    margen: 32,
-    margenInferior: PIE_PX,
-    margenDerecho: derechaDeControles(anchoPanelDerecho) + SEPARACION_BARRA_PX,
-    ajuste: 'contener',
-  };
-};
 
 /** Desplazamiento máximo (px) para considerar un toque como clic y no como arrastre. */
 const TOLERANCIA_CLIC_PX = 4;
@@ -557,7 +525,7 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
           enfoque={enfoque}
           onAlternarEnfoque={alternarEnfoque}
           derechaPx={derechaControles}
-          inferiorPx={altoPanelInferior > 0 ? altoPanelInferior + INFERIOR_CONTROLES_PX : 0}
+          altoHojaPx={altoPanelInferior}
           angosto={angosto}
         />
 

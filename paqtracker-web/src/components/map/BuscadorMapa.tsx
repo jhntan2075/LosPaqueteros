@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Search } from 'lucide-react';
+import { TARJETA_FLOTANTE } from './estilosMapa';
 import { BUSCAR_EN_MAPA, BUSCAR_PLACEHOLDER, sinResultadosEnMapa } from '../../config/glosario';
 
 // Buscador del mapa: una tarjeta de 44 px sobre el mapa. Encuentra un pedido, una unidad o un almacén y lo
@@ -20,8 +21,6 @@ interface BuscadorMapaProps {
   plegable: boolean;
 }
 
-const TARJETA = 'bg-superficie border border-neutral-200 rounded-card shadow-overlay';
-
 export const BuscadorMapa: React.FC<BuscadorMapaProps> = ({ busqueda, plegable }) => {
   const [desplegado, setDesplegado] = useState(false);
   const entradaRef = useRef<HTMLInputElement>(null);
@@ -32,7 +31,7 @@ export const BuscadorMapa: React.FC<BuscadorMapaProps> = ({ busqueda, plegable }
 
   if (!visible) {
     return (
-      <button type="button" onClick={() => setDesplegado(true)} aria-label={BUSCAR_EN_MAPA} className={`${TARJETA} size-11 flex items-center justify-center text-neutral-600 hover:text-neutral-900`}>
+      <button type="button" onClick={() => setDesplegado(true)} aria-label={BUSCAR_EN_MAPA} className={`${TARJETA_FLOTANTE} size-11 flex items-center justify-center text-neutral-600 hover:text-neutral-900`}>
         <Search className="size-4" aria-hidden="true" />
       </button>
     );
@@ -40,7 +39,7 @@ export const BuscadorMapa: React.FC<BuscadorMapaProps> = ({ busqueda, plegable }
 
   return (
     <div className="flex flex-col gap-1.5">
-      <form onSubmit={busqueda.onBuscar} role="search" className={`${TARJETA} h-11 pl-3 pr-2 flex items-center gap-2`}>
+      <form onSubmit={busqueda.onBuscar} role="search" className={`${TARJETA_FLOTANTE} h-11 pl-3 pr-2 flex items-center gap-2`}>
         <Search className="size-4 text-neutral-600 shrink-0" aria-hidden="true" />
         <input
           ref={entradaRef}

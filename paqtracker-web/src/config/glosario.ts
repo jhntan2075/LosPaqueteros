@@ -221,10 +221,27 @@ export const HERRAMIENTA_VER_TODO = 'Ver la malla completa';
 export const HERRAMIENTA_ENFOQUE = 'Modo enfoque';
 export const AYUDA_ENFOQUE = 'Ocultar todo menos el mapa';
 export const etiquetaFiltros = (activos: number) => (activos > 0 ? `Filtros (${activos} ${activos === 1 ? 'activo' : 'activos'})` : 'Filtros');
-export const ALERTAS_TODO_EN_PLAZO = 'Todo va en plazo';
+const ALERTAS_TODO_EN_PLAZO = 'Todo va en plazo';
 /** Titular de la tarjeta de alertas: lo que exige actuar primero. */
 export const titularAlertas = (tarde: number, enRiesgo: number) =>
   tarde > 0 ? `${tarde} ${tarde === 1 ? 'llegará' : 'llegarán'} tarde` : enRiesgo > 0 ? `${enRiesgo} en riesgo` : ALERTAS_TODO_EN_PLAZO;
+export const ALERTAS = 'Alertas';
+export const VER_INCIDENCIAS = 'Ver Incidencias';
+export const DIALOGO_CAPAS = 'Capas del mapa';
+export const DIALOGO_FILTROS = 'Filtros del mapa';
+export const LEYENDA_DEL_MAPA = 'Leyenda del mapa';
+export const CAPAS_VISIBLES = 'Capas visibles';
+export const NOMBRE_CAPA = { rutas: 'Rutas', unidades: 'Unidades', destinos: 'Destinos', bloqueos: 'Bloqueos', almacenes: 'Almacenes' } as const;
+export const COLOR_DE_LAS_UNIDADES = 'Color de las unidades';
+export const MODO_COLOR_CARGA = 'Carga';
+export const MODO_COLOR_HOLGURA = 'Holgura';
+export const AYUDA_COLOR_CARGA = 'Semáforo de la carga a bordo de cada unidad.';
+export const AYUDA_COLOR_HOLGURA = 'La holgura del pedido más urgente que lleva cada unidad.';
+export const ZOOM = 'Zoom';
+export const ACERCAR = 'Acercar';
+export const ALEJAR = 'Alejar';
+export const AYUDA_ACERCAR = 'Acercar (+)';
+export const AYUDA_ALEJAR = 'Alejar (-)';
 export const textoEnRiesgo = (cantidad: number) => `${cantidad} en riesgo`;
 export const textoBloqueos = (cantidad: number) => `${cantidad} ${cantidad === 1 ? 'bloqueo' : 'bloqueos'}`;
 export const textoAverias = (cantidad: number) => `${cantidad} ${cantidad === 1 ? 'avería' : 'averías'}`;

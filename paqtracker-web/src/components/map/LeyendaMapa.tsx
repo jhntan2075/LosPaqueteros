@@ -2,6 +2,7 @@ import React, { useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   alertaStockBajo,
+  LEYENDA_DEL_MAPA,
   NOMBRE_CARGA,
   NOMBRE_STOCK,
   RANGO_HOLGURA,
@@ -69,7 +70,7 @@ export const LeyendaMapa: React.FC = () => {
   // Suscrita a los rangos: al guardarlos, la tabla de abajo muestra los nuevos sin esperar a la raíz.
   useRangosSemaforo();
   return (
-  <section aria-label="Leyenda del mapa" className="cursor-default">
+  <section aria-label={LEYENDA_DEL_MAPA} className="cursor-default">
     <ul className="py-2">
       <Fila simbolo={<Simbolo caja="-16 -16 32 32"><AlmacenCentral /></Simbolo>} nombre="Almacén central" />
       <Fila

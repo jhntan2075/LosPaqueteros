@@ -7,10 +7,13 @@ import {
   HERRAMIENTA_ENFOQUE,
   HERRAMIENTA_LEYENDA,
   HERRAMIENTA_VER_TODO,
+  DIALOGO_CAPAS,
+  DIALOGO_FILTROS,
   HERRAMIENTAS_MAPA,
 } from '../../config/glosario';
 import type { FiltrosMapa as Filtros } from '../../lib/filtrosMapa';
-import { SEPARACION_BARRA_PX, type Capa, type ModoColor } from './capas';
+import type { Capa, ModoColor } from './capas';
+import { izquierdaDeLaBarra, TARJETA_FLOTANTE } from './estilosMapa';
 import { SelectorCapas, SelectorColorUnidades } from './ControlesCapas';
 import { FiltrosMapa, type ConteosFiltros } from './FiltrosMapa';
 import { LeyendaMapa } from './LeyendaMapa';
@@ -21,7 +24,7 @@ import { LeyendaMapa } from './LeyendaMapa';
 
 type Herramienta = 'capas' | 'filtros' | 'leyenda';
 
-const DIALOGOS: Record<Herramienta, string> = { capas: 'Capas del mapa', filtros: 'Filtros del mapa', leyenda: HERRAMIENTA_LEYENDA };
+const DIALOGOS: Record<Herramienta, string> = { capas: DIALOGO_CAPAS, filtros: DIALOGO_FILTROS, leyenda: HERRAMIENTA_LEYENDA };
 
 const ENFOCABLES = 'button:not([disabled]), input:not([disabled]), [href], select:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
@@ -41,8 +44,8 @@ export interface HerramientasMapaProps {
   onAlternarEnfoque: () => void;
   /** Distancia (px) del borde derecho del mapa a la barra: crece si un panel flotante ocupa ese borde. */
   derechaPx: number;
-  /** Lugar (px) que dejan libre abajo los popovers: una hoja inferior abierta lo reduce. */
-  inferiorPx: number;
+  /** Alto (px) de una hoja inferior abierta (0 si no hay): los popovers se detienen 12 px sobre ella. */
+  altoHojaPx: number;
   /** Mapa angosto (< 600 px): los popovers se extienden de borde a borde a la izquierda de la barra. */
   angosto: boolean;
 }
@@ -57,7 +60,7 @@ export const HerramientasMapa: React.FC<HerramientasMapaProps> = ({
   enfoque,
   onAlternarEnfoque,
   derechaPx,
-  inferiorPx,
+  altoHojaPx,
   angosto,
 }) => {
   const [abierta, setAbierta] = useState<Herramienta | null>(null);
@@ -128,10 +131,12 @@ export const HerramientasMapa: React.FC<HerramientasMapaProps> = ({
     </button>
   );
 
-  const alturaMaxima = `calc(100% - ${12 + inferiorPx}px)`;
+  // 12 px de aire arriba (top-3) y 12 px abajo, o sobre la hoja inferior si está abierta.
+  const alturaMaxima = `calc(100% - ${24 + altoHojaPx}px)`;
+  const derechaPopover = izquierdaDeLaBarra(derechaPx);
   const estiloPopover: React.CSSProperties = angosto
-    ? { left: 12, right: derechaPx + SEPARACION_BARRA_PX, maxHeight: alturaMaxima }
-    : { right: derechaPx + SEPARACION_BARRA_PX, width: ANCHO_POPOVER_PX, maxHeight: alturaMaxima };
+    ? { left: 12, right: derechaPopover, maxHeight: alturaMaxima }
+    : { right: derechaPopover, width: ANCHO_POPOVER_PX, maxHeight: alturaMaxima };
 
   return (
     <>
@@ -142,7 +147,7 @@ export const HerramientasMapa: React.FC<HerramientasMapaProps> = ({
         aria-orientation="vertical"
         data-sin-zoom
         onKeyDown={alPresionarEnBarra}
-        className="absolute top-3 z-10 p-1 flex flex-col gap-0.5 bg-superficie border border-neutral-200 rounded-card shadow-overlay cursor-default"
+        className={`absolute top-3 z-10 p-1 flex flex-col gap-0.5 cursor-default ${TARJETA_FLOTANTE}`}
         style={{ right: derechaPx }}
       >
         {botonPopover('capas', HERRAMIENTA_CAPAS, <Layers className="size-5" aria-hidden="true" />)}
@@ -174,7 +179,7 @@ export const HerramientasMapa: React.FC<HerramientasMapaProps> = ({
           role="dialog"
           aria-label={DIALOGOS[abierta]}
           data-sin-zoom
-          className="absolute top-3 z-30 p-3 overflow-y-auto bg-superficie border border-neutral-200 rounded-card shadow-overlay cursor-default"
+          className={`absolute top-3 z-30 p-3 overflow-y-auto cursor-default ${TARJETA_FLOTANTE}`}
           style={estiloPopover}
         >
           {abierta === 'capas' && (

@@ -1,5 +1,7 @@
 import React from 'react';
 import { ZoomIn, ZoomOut } from 'lucide-react';
+import { ACERCAR, ALEJAR, AYUDA_ACERCAR, AYUDA_ALEJAR, ZOOM } from '../../config/glosario';
+import { TARJETA_FLOTANTE } from './estilosMapa';
 
 // Zoom del mapa (abajo a la derecha) y su barra de escala (abajo a la izquierda). El zoom no va en pantallas
 // angostas, donde se acerca con pellizco; "Ver todo" vive en la barra de herramientas.
@@ -27,12 +29,12 @@ interface ControlesZoomProps {
 export const ControlesZoom: React.FC<ControlesZoomProps> = ({ porcentaje, alejarDeshabilitado, onAcercar, onAlejar, derechaPx, inferiorPx }) => (
   <div
     role="group"
-    aria-label="Zoom"
+    aria-label={ZOOM}
     data-sin-zoom
-    className="absolute z-10 flex flex-col bg-superficie p-0.5 rounded-card shadow-overlay border border-neutral-200 cursor-default"
+    className={`absolute z-10 flex flex-col p-0.5 cursor-default ${TARJETA_FLOTANTE}`}
     style={{ right: derechaPx, bottom: inferiorPx }}
   >
-    <button type="button" onClick={onAcercar} className={BOTON_ZOOM} title="Acercar (+)" aria-label="Acercar">
+    <button type="button" onClick={onAcercar} className={BOTON_ZOOM} title={AYUDA_ACERCAR} aria-label={ACERCAR}>
       <ZoomIn className="size-5" aria-hidden="true" />
     </button>
     <button
@@ -40,8 +42,8 @@ export const ControlesZoom: React.FC<ControlesZoomProps> = ({ porcentaje, alejar
       onClick={onAlejar}
       disabled={alejarDeshabilitado}
       className={`${BOTON_ZOOM} border-t border-neutral-200 disabled:opacity-40 disabled:cursor-default disabled:hover:bg-transparent`}
-      title="Alejar (-)"
-      aria-label="Alejar"
+      title={AYUDA_ALEJAR}
+      aria-label={ALEJAR}
     >
       <ZoomOut className="size-5" aria-hidden="true" />
     </button>

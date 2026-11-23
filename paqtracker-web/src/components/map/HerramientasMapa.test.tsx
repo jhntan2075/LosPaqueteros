@@ -24,13 +24,14 @@ interface Montaje {
   filtros?: Filtros;
   enfoque?: boolean;
   angosto?: boolean;
+  altoHojaPx?: number;
   onVerTodo?: () => void;
   onAlternarEnfoque?: () => void;
   onCambiarCapa?: (capa: Capa) => void;
 }
 
 /** La barra con su estado de filtros, capas y color como los lleva el mapa. */
-function montar({ filtros = SIN_FILTROS, enfoque = false, angosto = false, onVerTodo = () => {}, onAlternarEnfoque = () => {}, onCambiarCapa }: Montaje = {}) {
+function montar({ filtros = SIN_FILTROS, enfoque = false, angosto = false, altoHojaPx = 0, onVerTodo = () => {}, onAlternarEnfoque = () => {}, onCambiarCapa }: Montaje = {}) {
   const Envoltura = () => {
     const [valor, setValor] = useState<Filtros>(filtros);
     const [modo, setModo] = useState<ModoColor>('carga');
@@ -51,7 +52,7 @@ function montar({ filtros = SIN_FILTROS, enfoque = false, angosto = false, onVer
           enfoque={enfoque}
           onAlternarEnfoque={onAlternarEnfoque}
           derechaPx={12}
-          inferiorPx={0}
+          altoHojaPx={altoHojaPx}
           angosto={angosto}
         />
       </div>
@@ -222,6 +223,16 @@ describe('HerramientasMapa', () => {
     fireEvent.keyDown(boton('Filtros'), { key: 'ArrowUp' });
     fireEvent.keyDown(boton('Capas'), { key: 'ArrowUp' });
     expect(document.activeElement).toBe(boton('Modo enfoque'));
+  });
+
+  it('el popover deja 12 px de aire arriba y abajo, o sobre la hoja inferior si está abierta', () => {
+    montar();
+    fireEvent.click(boton('Capas'));
+    expect(screen.getByRole('dialog').style.maxHeight).toBe('calc(100% - 24px)');
+    cleanup();
+    montar({ altoHojaPx: 300 });
+    fireEvent.click(boton('Capas'));
+    expect(screen.getByRole('dialog').style.maxHeight).toBe('calc(100% - 324px)');
   });
 
   it('en un mapa angosto el popover va de borde a borde a la izquierda de la barra; si no, tiene ancho fijo', () => {

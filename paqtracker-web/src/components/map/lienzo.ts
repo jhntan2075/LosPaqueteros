@@ -1,0 +1,39 @@
+import type { Lienzo } from '../../lib/malla';
+import { izquierdaDeLaBarra } from './estilosMapa';
+
+// Geometría del lienzo del mapa: cuánto espacio se reserva alrededor de la malla para que los controles que
+// flotan encima no la tapen en la vista completa.
+
+/** Distancia del borde derecho a las herramientas y al zoom, y del borde inferior al zoom y a la escala. */
+const DERECHA_CONTROLES_PX = 12;
+export const INFERIOR_CONTROLES_PX = 12;
+/** Un panel flotante a la derecha (diagnóstico de la simulación) empuja las herramientas y el zoom a su izquierda. */
+export const derechaDeControles = (anchoPanelDerecho: number) => (anchoPanelDerecho > 0 ? anchoPanelDerecho + 24 : DERECHA_CONTROLES_PX);
+/** Lugar al pie para la barra de escala y la coordenada del nodo. */
+const PIE_PX = 44;
+
+/**
+ * La malla de 70 × 50 km se encuadra completa ('contener') y es lo único que lleva cuadrícula: alrededor
+ * queda un margen neutro que marca su límite. Los controles flotan sobre el mapa: la barra de herramientas
+ * en su margen derecho y la escala al pie, así que ninguno tapa la malla en la vista completa; la pila de
+ * búsqueda y alertas, a la izquierda, sí puede cubrir su esquina.
+ */
+export const crearLienzo = (ancho: number, alto: number, anchoPanelDerecho: number, altoPanelInferior: number, compacto: boolean): Lienzo => {
+  if (compacto) {
+    return {
+      ancho,
+      alto,
+      margen: 12,
+      margenInferior: altoPanelInferior > 0 ? altoPanelInferior + 12 : PIE_PX,
+      ajuste: 'contener',
+    };
+  }
+  return {
+    ancho,
+    alto,
+    margen: 32,
+    margenInferior: PIE_PX,
+    margenDerecho: izquierdaDeLaBarra(derechaDeControles(anchoPanelDerecho)),
+    ajuste: 'contener',
+  };
+};
