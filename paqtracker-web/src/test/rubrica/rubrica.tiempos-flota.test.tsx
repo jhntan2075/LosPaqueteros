@@ -3,7 +3,7 @@ import { act, cleanup, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { TopNavbar } from '../../components/layout/TopNavbar';
 import { EstadoFlota } from '../../components/operacion/EstadoFlota';
-import { ResumenOperacion } from '../../components/operacion/ResumenOperacion';
+import { ResumenMapa } from '../../components/map/ResumenMapa';
 import { EncabezadoCorrida } from '../../components/simulacion/EncabezadoCorrida';
 import { datosRubrica } from './escenario';
 import { renderConDatos } from './montaje';
@@ -99,16 +99,27 @@ describe('Rúbrica · tiempos de la simulación', () => {
   });
 });
 
+/** El resumen del mapa con su desplegable abierto, donde está el uso de la flota con su semáforo. */
+const resumenMapa = (
+  <ResumenMapa ubicacion={{ donde: 'centro', izquierdaPx: 400, anchoPx: 480, metricas: 4 }} abierto onAlternar={() => {}} altoMapaPx={800} altoHojaPx={0} reducida={false} />
+);
+
 describe('Rúbrica · nivel de uso de la flota total', () => {
   const datos = datosRubrica();
 
   it('C40 · el resumen muestra la flota en números y porcentaje (en ruta de total, con su porcentaje)', () => {
-    renderConDatos(<ResumenOperacion onSeleccionar={() => {}} />, datos);
+    renderConDatos(resumenMapa, datos);
     expect(screen.getByText('Unidades en ruta').parentElement!.parentElement!.textContent).toContain('2 de 4 (50 %)');
   });
 
+  it('C40 · la franja del mapa lleva siempre a la vista las unidades en ruta del total', () => {
+    renderConDatos(resumenMapa, datos);
+    const franja = within(screen.getByRole('region', { name: 'Resumen de la operación' }));
+    expect(franja.getByText('En ruta').nextElementSibling!.textContent).toBe('2 de 4');
+  });
+
   it('C40 · el porcentaje y la marca de la tarjeta siguen las unidades mostradas, no la saturación del servidor', () => {
-    renderConDatos(<ResumenOperacion onSeleccionar={() => {}} />, { ...datos, resumen: { ...datos.resumen, saturacion: 1 } });
+    renderConDatos(resumenMapa, { ...datos, resumen: { ...datos.resumen, saturacion: 1 } });
     const tarjeta = screen.getByText('Unidades en ruta').parentElement!.parentElement!;
     expect(tarjeta.textContent).toContain('2 de 4 (50 %)');
     expect(within(tarjeta).queryByRole('img')).toBeNull();
@@ -119,14 +130,14 @@ describe('Rúbrica · nivel de uso de la flota total', () => {
     [4, '4 de 4 (100 %)', 'Toda la flota en ruta'],
   ])('C40 · con %i unidades en ruta la tarjeta marca el nivel de carga', (enRuta, texto, marca) => {
     const unidades = datos.flota.map((u, i) => ({ ...u, estado: i < enRuta ? ('EN_RUTA' as const) : ('DISPONIBLE' as const) }));
-    renderConDatos(<ResumenOperacion onSeleccionar={() => {}} />, { ...datos, flota: unidades, resumen: { ...datos.resumen, saturacion: 0 } });
+    renderConDatos(resumenMapa, { ...datos, flota: unidades, resumen: { ...datos.resumen, saturacion: 0 } });
     const tarjeta = screen.getByText('Unidades en ruta').parentElement!.parentElement!;
     expect(tarjeta.textContent).toContain(texto);
     expect(within(tarjeta).getByRole('img', { name: marca })).toBeTruthy();
   });
 
   it('C40 · sin unidades la tarjeta dice "0 de 0", sin porcentaje ni marca', () => {
-    renderConDatos(<ResumenOperacion onSeleccionar={() => {}} />, { ...datos, flota: [], resumen: { ...datos.resumen, saturacion: 1 } });
+    renderConDatos(resumenMapa, { ...datos, flota: [], resumen: { ...datos.resumen, saturacion: 1 } });
     const tarjeta = screen.getByText('Unidades en ruta').parentElement!.parentElement!;
     expect(tarjeta.textContent).toContain('0 de 0');
     expect(tarjeta.textContent).not.toContain('%');
@@ -136,7 +147,7 @@ describe('Rúbrica · nivel de uso de la flota total', () => {
   it('C40 · exactamente 70 % en ruta ya marca carga alta (7 de 10)', () => {
     const base = datos.flota[0];
     const unidades = Array.from({ length: 10 }, (_, i) => ({ ...base, codigo: `U${i}`, estado: i < 7 ? ('EN_RUTA' as const) : ('DISPONIBLE' as const) }));
-    renderConDatos(<ResumenOperacion onSeleccionar={() => {}} />, { ...datos, flota: unidades, resumen: { ...datos.resumen, saturacion: 0 } });
+    renderConDatos(resumenMapa, { ...datos, flota: unidades, resumen: { ...datos.resumen, saturacion: 0 } });
     const tarjeta = screen.getByText('Unidades en ruta').parentElement!.parentElement!;
     expect(tarjeta.textContent).toContain('7 de 10 (70 %)');
     expect(within(tarjeta).getByRole('img', { name: 'Flota con carga alta' })).toBeTruthy();

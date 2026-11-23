@@ -83,7 +83,7 @@ const CorridaEnVivo: React.FC<CorridaSimulacionProps & { recibidoEnMs: number }>
   const verDiagnostico = colapso && !diagnosticoCerrado && !panelAbierto && !modoEnfoque.enfoque;
   const flota = estadoFlota(datos);
   const riesgo = pedidosEnRiesgo(datos);
-  // Lo que el Resumen del panel muestra de cómo corre esta simulación.
+  // Lo que el desplegable del resumen del mapa muestra de cómo corre esta simulación.
   const configuracion: ConfiguracionCorrida = {
     escenario: nombreEscenario(ejecucion.tipoEscenario, ejecucion.dias),
     inicio: datos.relojInicio,
@@ -158,7 +158,6 @@ const CorridaEnVivo: React.FC<CorridaSimulacionProps & { recibidoEnMs: number }>
               resaltado={nav.resaltado}
               onResaltar={nav.resaltar}
               seccionIncidencias={nav.seccionIncidencias}
-              simulacion={configuracion}
               presentacion={presentacion.presentacionPanel}
               hojaCompleta={presentacion.hojaCompleta}
               onAlternarHoja={presentacion.alternarHoja}
@@ -195,7 +194,6 @@ const CorridaEnVivo: React.FC<CorridaSimulacionProps & { recibidoEnMs: number }>
               resaltado={nav.resaltado}
               onResaltar={nav.resaltar}
               seccionIncidencias={nav.seccionIncidencias}
-              simulacion={configuracion}
               presentacion="bloque"
             />
           </BloqueDerecho>

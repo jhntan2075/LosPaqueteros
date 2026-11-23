@@ -7,7 +7,7 @@ import type { EstadoEjecucionApi, EstadoFraccionApi, IndicadoresApi, TipoEscenar
 // Modelos de vista del módulo Operación (lienzo en vivo, OP-07 flota, OP-09 actividad).
 
 /** Mapa de Operación: 'vivo' sin panel, o la pestaña abierta del panel lateral. */
-export type SubvistaOperacion = 'vivo' | 'resumen' | 'incidencias' | 'pedidos' | 'flota' | 'almacenes' | 'bitacora';
+export type SubvistaOperacion = 'vivo' | 'incidencias' | 'pedidos' | 'flota' | 'almacenes' | 'bitacora';
 
 /** Pestaña del panel lateral, tal como las muestra la barra vertical de paneles. */
 export type PestanaPanel = Exclude<SubvistaOperacion, 'vivo'>;
@@ -17,7 +17,6 @@ export type PestanaPanel = Exclude<SubvistaOperacion, 'vivo'>;
 export type SeccionIncidencias = 'riesgo' | 'averias' | 'bloqueos';
 
 export type SeleccionPanel =
-  | { tipo: 'resumen' }
   | { tipo: 'incidencias'; seccion?: SeccionIncidencias }
   | { tipo: 'pedidos' }
   | { tipo: 'flota' }

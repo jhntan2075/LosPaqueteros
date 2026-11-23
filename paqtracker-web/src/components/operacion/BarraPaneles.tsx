@@ -1,11 +1,10 @@
 import React, { useRef, useState } from 'react';
-import { AlertTriangle, BarChart3, ChevronRight, MoreHorizontal, Package, ScrollText, Truck, Warehouse } from 'lucide-react';
+import { AlertTriangle, ChevronRight, MoreHorizontal, Package, ScrollText, Truck, Warehouse } from 'lucide-react';
 import { useCerrarConEscape } from '../../hooks/useCerrarConEscape';
 import type { PestanaPanel } from '../../types/operacion';
 
 const PESTANAS: { tipo: PestanaPanel; etiqueta: string; Icono: React.ComponentType<{ className?: string }> }[] = [
   { tipo: 'incidencias', etiqueta: 'Incidencias', Icono: AlertTriangle },
-  { tipo: 'resumen', etiqueta: 'Resumen', Icono: BarChart3 },
   { tipo: 'pedidos', etiqueta: 'Envíos', Icono: Package },
   { tipo: 'flota', etiqueta: 'Flota', Icono: Truck },
   { tipo: 'almacenes', etiqueta: 'Almacenes', Icono: Warehouse },

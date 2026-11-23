@@ -27,7 +27,6 @@ import type { Coordenada } from '../../types/domain';
 import type { PedidoOperacion, SeccionIncidencias, SeleccionPanel, UnidadOperacion } from '../../types/operacion';
 import { TITULO_PESTANA } from '../../hooks/useNavegacionPanel';
 import { buscarPedido, type SeleccionResaltable } from '../../lib/envios';
-import type { ConfiguracionCorrida } from '../../types/simulacion';
 import { Boton, EstadoVacio, Insignia } from '../ui';
 import { FilaFraccion } from './FilaFraccion';
 import { EnviosAlmacen, ListaAlmacenes } from './ListaAlmacenes';
@@ -44,10 +43,9 @@ import { FilaConBarra, TituloSeccion } from './comunes';
 import { useAvisos } from '../../hooks/useAvisos';
 import { DialogoRegistrarAveria } from './DialogoRegistrarAveria';
 import { EstadoFlota } from './EstadoFlota';
-import { ResumenOperacion } from './ResumenOperacion';
 
 // Panel derecho del mapa (Figma 1:4793 detalle de pedido, 1:5300 detalle de vehículo), el mismo en
-// Operación y en la corrida: Incidencias, Resumen, Flota y Actividad se eligen desde la barra vertical
+// Operación y en la corrida: Incidencias, Envíos, Flota, Almacenes y Actividad se eligen desde la barra vertical
 // de paneles (fuera de este componente); aquí solo vive el contenido de la pestaña activa y el detalle
 // del objeto seleccionado. Implementado sobre las capturas de los frames: el contexto de diseño no
 // estuvo disponible (límite de llamadas de Figma).
@@ -69,8 +67,6 @@ interface PanelLateralProps {
   onResaltar?: (objeto: SeleccionResaltable) => void;
   /** Sección de Incidencias a la que llevar (pedida por una alerta del mapa). */
   seccionIncidencias?: { seccion: SeccionIncidencias; vez: number } | null;
-  /** Solo en una simulación: su configuración, que el Resumen muestra. */
-  simulacion?: ConfiguracionCorrida;
   /**
    * 'lateral' (por defecto): columna a la derecha del mapa. 'hoja': hoja inferior para pantallas angostas
    * o verticales, con dos alturas (media y completa).
@@ -752,7 +748,6 @@ export const PanelLateral: React.FC<PanelLateralProps> = ({
   resaltado = null,
   onResaltar,
   seccionIncidencias = null,
-  simulacion,
   presentacion = 'lateral',
   hojaCompleta = false,
   onAlternarHoja,
@@ -847,7 +842,6 @@ export const PanelLateral: React.FC<PanelLateralProps> = ({
           etiquetaVolver={etiquetaVolver}
         />
       )}
-      {seleccion.tipo === 'resumen' && <ResumenOperacion onSeleccionar={onSeleccionar} simulacion={simulacion} />}
       {seleccion.tipo === 'incidencias' && (
         <ListaIncidencias
           onSeleccionar={onSeleccionar}

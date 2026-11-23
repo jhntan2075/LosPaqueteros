@@ -233,11 +233,6 @@ export const VER_MAS_DEL_RESUMEN = 'Ver más del resumen';
 export const MAS_DEL_RESUMEN = 'Más del resumen';
 export const SIN_DATO = '—';
 
-/** Resumen: bloque de actividad reciente. */
-export const ACTIVIDAD_RECIENTE = 'Actividad reciente';
-export const VER_ACTIVIDAD = 'Ver actividad';
-export const SIN_INCIDENCIAS_RECIENTES = 'Sin incidencias recientes.';
-
 /** Pestaña Actividad: listas vacías, filtros y grupos de eventos rutinarios. */
 export const SIN_ACTIVIDAD = 'Aún no hay actividad en esta ejecución.';
 export const SIN_EVENTOS_CON_FILTROS = 'Ningún evento con estos filtros.';

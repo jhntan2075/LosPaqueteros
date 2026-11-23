@@ -26,7 +26,8 @@ import type { VistaPedidos } from './types/pedidos';
 // deshacer con el botón atrás. Un valor fuera de este conjunto (enlace viejo, URL escrita a mano) cae
 // al valor por defecto en vez de romper la pantalla.
 const TABS_VALIDAS: TabModulo[] = ['operacion', 'pedidos', 'simulacion', 'metricas', 'configuracion'];
-const SUBVISTAS_VALIDAS: SubvistaOperacion[] = ['vivo', 'resumen', 'incidencias', 'pedidos', 'flota', 'almacenes', 'bitacora'];
+// (Un enlace viejo con ?panel=resumen ya no es válido y cae a 'vivo': el mapa, donde ahora está el resumen.)
+const SUBVISTAS_VALIDAS: SubvistaOperacion[] = ['vivo', 'incidencias', 'pedidos', 'flota', 'almacenes', 'bitacora'];
 const VISTAS_PEDIDOS_VALIDAS: VistaPedidos[] = ['cola', 'registrar', 'registrado'];
 
 export default function App() {

@@ -8,7 +8,6 @@ import type { PestanaPanel, SeccionIncidencias, SeleccionPanel } from '../types/
 //  - lo que MUESTRA el panel: una pestaña (lista) o el detalle de un objeto, con una pila para "Volver".
 
 export const TITULO_PESTANA: Record<PestanaPanel, string> = {
-  resumen: 'Resumen',
   incidencias: 'Incidencias',
   pedidos: 'Envíos',
   flota: 'Flota',

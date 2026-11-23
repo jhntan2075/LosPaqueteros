@@ -162,8 +162,9 @@ describe('Operación · espacio y presentación', () => {
 
     fireEvent.click(screen.getByRole('tab', { name: /Flota/ }));
     const bloque = within(screen.getByRole('region', { name: 'Bloque derecho' }));
-    // Las seis pestañas y el panel viven dentro del mismo bloque; la tira vertical ya no se ve.
-    expect(bloque.getAllByRole('tab')).toHaveLength(6);
+    // Las cinco pestañas (sin Resumen: es la franja del mapa) y el panel viven dentro del mismo bloque; la tira vertical ya no se ve.
+    expect(bloque.getAllByRole('tab')).toHaveLength(5);
+    expect(bloque.queryByRole('tab', { name: /^Resumen/ })).toBeNull();
     expect(bloque.getByRole('tablist', { name: 'Paneles del mapa' }).getAttribute('aria-orientation')).toBe('horizontal');
     expect(bloque.getByRole('complementary', { name: 'Panel de detalle' })).toBeTruthy();
     expect(screen.getAllByRole('tablist', { name: 'Paneles del mapa' })).toHaveLength(1);
@@ -213,15 +214,26 @@ describe('Operación · espacio y presentación', () => {
 });
 
 describe('Operación · Resumen sin alertas repetidas', () => {
-  it('el Resumen no repite el riesgo, nombra la flota "Unidades en ruta" y deja el reporte al final', () => {
+  it('el resumen del mapa no repite el riesgo, nombra la flota "Unidades en ruta" y no es una pestaña', () => {
     montarOperacion();
-    fireEvent.click(screen.getByRole('tab', { name: /^Resumen/ }));
-    const resumen = panel();
-    expect(resumen.queryByText(/en riesgo/)).toBeNull();
-    expect(resumen.queryByText(/Saturación/)).toBeNull();
-    expect(resumen.getByText('Unidades en ruta')).toBeTruthy();
-    expect(resumen.getByText(/^\d+ de \d+ \(\d+ %\)$/)).toBeTruthy();
-    const botones = resumen.getAllByRole('button');
-    expect(botones[botones.length - 1].textContent).toMatch(/Generar reporte de cierre|Ver la última planificación/);
+    expect(screen.queryByRole('tab', { name: /^Resumen/ })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Ver más del resumen' }));
+    const resumen = screen.getByRole('region', { name: 'Más del resumen' });
+    [within(resumen), within(screen.getByRole('region', { name: 'Resumen de la operación' }))].forEach((zona) => {
+      expect(zona.queryByText(/en riesgo/)).toBeNull();
+      expect(zona.queryByText(/Saturación/)).toBeNull();
+    });
+    expect(within(resumen).getByText('Unidades en ruta')).toBeTruthy();
+    expect(within(resumen).getByText(/^\d+ de \d+ \(\d+ %\)$/)).toBeTruthy();
+  });
+
+  it('el reporte de cierre vive al pie de Actividad, no en el resumen', () => {
+    montarOperacion({ subvista: 'bitacora' });
+    const reporte = panel().getByRole('button', { name: /Generar reporte de cierre|Ver la última planificación/ });
+    const lista = panel().getByRole('list', { name: 'Eventos' });
+    // Después de la lista de eventos, junto al pie de la pestaña.
+    expect(lista.compareDocumentPosition(reporte) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Ver más del resumen' }));
+    expect(within(screen.getByRole('region', { name: 'Más del resumen' })).queryByRole('button', { name: /reporte de cierre|última planificación/ })).toBeNull();
   });
 });
