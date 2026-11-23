@@ -186,7 +186,7 @@ export const LeyendaMapa: React.FC = () => {
         ))}
       </div>
       <p className="text-caption text-neutral-600">La forma también indica el nivel, no solo el color.</p>
-      <Boton tamano="sm" variante="secundario" onClick={() => setConfigurando(true)} className="self-start">
+      <Boton tamano="sm" variante="secundario" onClick={() => setConfigurando(true)} className="self-start h-11">
         Configurar rangos
       </Boton>
     </div>

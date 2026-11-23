@@ -26,17 +26,17 @@ const Chip: React.FC<{ activo: boolean; conteo: number; onClick: () => void; chi
   onClick,
   children,
 }) => (
-  <button
-    type="button"
-    aria-pressed={activo}
-    onClick={onClick}
-    className={`h-7 pl-2 pr-2.5 rounded-full border flex items-center gap-1.5 text-body-sm font-sans transition-colors ${
-      activo ? 'bg-primary-50 border-primary-600 text-primary-600' : 'bg-superficie border-neutral-300 text-neutral-900 hover:bg-neutral-50'
-    }`}
-  >
-    {activo && <Check className="size-3 shrink-0" aria-hidden="true" />}
-    {children}
-    <span className={`tabular-nums ${activo ? 'text-primary-600' : 'text-neutral-600'}`}>{conteo}</span>
+  // El botón mide 44 px de alto (objetivo táctil); el chip que se ve conserva su tamaño dentro de él.
+  <button type="button" aria-pressed={activo} onClick={onClick} className="min-h-11 flex items-center font-sans text-body-sm">
+    <span
+      className={`h-7 pl-2 pr-2.5 rounded-full border flex items-center gap-1.5 transition-colors ${
+        activo ? 'bg-primary-50 border-primary-600 text-primary-600' : 'bg-superficie border-neutral-300 text-neutral-900 hover:bg-neutral-50'
+      }`}
+    >
+      {activo && <Check className="size-3 shrink-0" aria-hidden="true" />}
+      {children}
+      <span className={`tabular-nums ${activo ? 'text-primary-600' : 'text-neutral-600'}`}>{conteo}</span>
+    </span>
   </button>
 );
 
@@ -45,7 +45,7 @@ const Grupo: React.FC<{ titulo: string; nota?: string; children: React.ReactNode
     <legend className="contents">
       <span className="block font-semibold text-body-sm text-neutral-900 mb-1.5">{titulo}</span>
     </legend>
-    <div className="flex flex-wrap gap-1.5">{children}</div>
+    <div className="flex flex-wrap gap-x-1.5">{children}</div>
     {nota && <p className="mt-1.5 text-caption text-neutral-600">{nota}</p>}
   </fieldset>
 );
@@ -109,7 +109,7 @@ export const FiltrosMapa: React.FC<FiltrosMapaProps> = ({ filtros, conteos, onCa
           type="button"
           onClick={() => onCambiar(SIN_FILTROS)}
           disabled={activos === 0}
-          className="ml-auto text-body-sm font-medium text-primary-600 hover:underline disabled:text-neutral-400 disabled:no-underline disabled:cursor-default"
+          className="ml-auto min-h-11 px-2 text-body-sm font-medium text-primary-600 hover:underline disabled:text-neutral-400 disabled:no-underline disabled:cursor-default"
         >
           Limpiar filtros
         </button>

@@ -164,6 +164,25 @@ describe('HerramientasMapa', () => {
     expect(boton('Filtros')).toBeTruthy();
   });
 
+  it('todo lo tocable dentro de los popovers tiene un área de al menos 44 px de alto', () => {
+    const alto44 = (el: Element) => /\b(min-h-11|h-11|size-11)\b/.test(el.className);
+    montar();
+    fireEvent.click(boton('Filtros'));
+    const filtros = within(screen.getByRole('dialog', { name: 'Filtros del mapa' }));
+    const chips = filtros.getAllByRole('button').filter((b) => b.hasAttribute('aria-pressed'));
+    expect(chips.length).toBeGreaterThan(5);
+    chips.forEach((chip) => expect(alto44(chip)).toBe(true));
+    expect(alto44(filtros.getByRole('button', { name: 'Limpiar filtros' }))).toBe(true);
+
+    fireEvent.click(boton('Leyenda'));
+    expect(alto44(boton('Configurar rangos'))).toBe(true);
+
+    fireEvent.click(boton('Capas'));
+    const capas = within(screen.getByRole('dialog', { name: 'Capas del mapa' }));
+    capas.getAllByRole('checkbox').forEach((c) => expect(alto44(c.closest('label')!)).toBe(true));
+    capas.getAllByRole('radio').forEach((r) => expect(alto44(r)).toBe(true));
+  });
+
   it('Capas muestra las capas y el color de las unidades, y los cambios llegan al mapa', () => {
     const onCambiarCapa = vi.fn();
     montar({ onCambiarCapa });
