@@ -40,4 +40,32 @@ describe('ubicarResumen', () => {
     expect(ANCHO_ANGOSTO_PX).toBe(600);
     expect(ubicarResumen(ANCHO_ANGOSTO_PX - 1, DERECHA, false)).toEqual({ donde: 'pila', metricas: 2 });
   });
+
+  it('en los límites: 728 px es lo mínimo para ir al centro; 727 va a la pila', () => {
+    expect(ubicarResumen(727, DERECHA, false).donde).toBe('pila');
+    expect(ubicarResumen(728, DERECHA, false)).toMatchObject({ donde: 'centro', metricas: 2, anchoPx: 288 });
+  });
+
+  it('en los límites: 840 px es lo mínimo para las cuatro métricas; 839 lleva dos', () => {
+    expect(ubicarResumen(839, DERECHA, false)).toMatchObject({ donde: 'centro', metricas: 2 });
+    expect(ubicarResumen(840, DERECHA, false)).toMatchObject({ donde: 'centro', metricas: 4, anchoPx: 400 });
+  });
+
+  it.each([
+    ['sin panel flotante', 0],
+    ['con el panel del diagnóstico (352 px)', 352],
+  ])('de 1024 a 1920 px, %s, nunca toca la pila ni la barra de herramientas', (_nombre, panel) => {
+    const derecha = derechaDeControles(panel);
+    for (let ancho = 1024; ancho <= 1920; ancho += 64) {
+      const u = ubicarResumen(ancho, derecha, false);
+      if (u.donde !== 'centro') continue;
+      // La pila ocupa 12 + 340 px y deja 12 de aire; la barra (44 + relleno) está a `derecha` del borde, con 12 de aire.
+      expect(u.izquierdaPx, `izquierda a ${ancho} px`).toBeGreaterThanOrEqual(364);
+      expect(u.izquierdaPx + u.anchoPx, `derecha a ${ancho} px`).toBeLessThanOrEqual(ancho - (derecha + 64));
+    }
+  });
+
+  it('de 1024 a 1920 px con el espacio de siempre la franja va al centro (solo el panel del diagnóstico la manda a la pila)', () => {
+    for (let ancho = 1024; ancho <= 1920; ancho += 64) expect(ubicarResumen(ancho, DERECHA, false).donde, `${ancho} px`).toBe('centro');
+  });
 });
