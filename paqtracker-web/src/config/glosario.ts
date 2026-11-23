@@ -219,6 +219,9 @@ export const reporteDeCierre = (diaADia: boolean) => (diaADia ? 'Generar reporte
 export const notaReporteDeCierre = (diaADia: boolean) =>
   `Rutas y paradas de la última planificación estable. ${diaADia ? 'No detiene la operación.' : 'No detiene la simulación.'}`;
 
+/** Barra de pestañas de los paneles del mapa (Incidencias, Envíos, Flota…). */
+export const PANELES_DEL_MAPA = 'Paneles del mapa';
+
 /** Franja de resumen sobre el mapa: cuatro métricas y un desplegable con el resto. */
 export const RESUMEN_OPERACION = 'Resumen de la operación';
 export const RESUMEN_EN_PLAZO = 'En plazo';

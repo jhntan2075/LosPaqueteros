@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, screen, within } from '@testing-library/react';
+import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { clienteApi } from '../../services/clienteApi';
 import { datosRubrica, prepararEntornoMapa } from '../../test/rubrica/escenario';
@@ -153,5 +153,14 @@ describe('Franja de resumen sobre el mapa', () => {
     fireEvent.click(screen.getByText('Unidades en ruta').closest('button')!);
     expect(screen.getByRole('tab', { name: /Flota/ }).getAttribute('aria-selected')).toBe('true');
     expect(desplegable()).toBeNull();
+  });
+
+  it('al abrir Flota desde la ficha, el foco pasa a la pestaña Flota del panel (no cae al body)', async () => {
+    simularTamano(1600, 800);
+    montarOperacion();
+    fireEvent.click(disclosure());
+    fireEvent.click(screen.getByText('Unidades en ruta').closest('button')!);
+    expect(document.activeElement).not.toBe(document.body);
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole('tab', { name: /^Flota/ })));
   });
 });

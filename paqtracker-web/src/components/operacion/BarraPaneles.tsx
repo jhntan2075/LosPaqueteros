@@ -1,5 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { AlertTriangle, ChevronRight, MoreHorizontal, Package, ScrollText, Truck, Warehouse } from 'lucide-react';
+import { PANELES_DEL_MAPA } from '../../config/glosario';
 import { useCerrarConEscape } from '../../hooks/useCerrarConEscape';
 import type { PestanaPanel } from '../../types/operacion';
 
@@ -59,7 +60,7 @@ export const BarraPaneles: React.FC<BarraPanelesProps> = ({ activa, onSelecciona
 
   if (orientacion === 'superior') {
     return (
-      <nav aria-label="Paneles del mapa" role="tablist" aria-orientation="horizontal" className="h-14 shrink-0 bg-superficie border-b border-neutral-200 flex items-stretch">
+      <nav aria-label={PANELES_DEL_MAPA} role="tablist" aria-orientation="horizontal" className="h-14 shrink-0 bg-superficie border-b border-neutral-200 flex items-stretch">
         {onOcultar && (
           <button
             type="button"
@@ -97,7 +98,7 @@ export const BarraPaneles: React.FC<BarraPanelesProps> = ({ activa, onSelecciona
 
   return (
     <nav
-      aria-label="Paneles del mapa"
+      aria-label={PANELES_DEL_MAPA}
       role="tablist"
       aria-orientation={orientacion}
       className={

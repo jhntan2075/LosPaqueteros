@@ -67,7 +67,7 @@ describe('ResumenMapa · la franja', () => {
   it('muestra las cuatro métricas, cada una con su etiqueta y su valor', () => {
     montar();
     expect(metricas()).toEqual([
-      ['En plazo', '100 %'],
+      ['En plazo', '100,0 %'],
       ['En tránsito', '2'],
       ['En espera', '1'],
       ['En ruta', '2 de 4'],
@@ -90,10 +90,23 @@ describe('ResumenMapa · la franja', () => {
     expect(metricas()[0]).toEqual(['En plazo', '—']);
   });
 
+  it('"En plazo" lleva un decimal con coma, truncado: con entregas tardías nunca llega a 100', () => {
+    const base = datosRubrica();
+    const conEntregas = (enPlazo: number, fueraDePlazo: number) => ({ ...base, resumen: { ...base.resumen, entregados: enPlazo + fueraDePlazo, enPlazo, fueraDePlazo } });
+    montar({ datos: conEntregas(2, 1) });
+    expect(metricas()[0]).toEqual(['En plazo', '66,6 %']);
+    cleanup();
+    montar({ datos: conEntregas(9999, 1) });
+    expect(metricas()[0]).toEqual(['En plazo', '99,9 %']);
+    cleanup();
+    montar({ datos: conEntregas(0, 3) });
+    expect(metricas()[0]).toEqual(['En plazo', '0,0 %']);
+  });
+
   it('con la ubicación de dos métricas muestra solo En plazo y En ruta', () => {
     montar({ ubicacion: { donde: 'pila', metricas: 2 } });
     expect(metricas()).toEqual([
-      ['En plazo', '100 %'],
+      ['En plazo', '100,0 %'],
       ['En ruta', '2 de 4'],
     ]);
   });
@@ -164,12 +177,14 @@ describe('ResumenMapa · el desplegable', () => {
     expect(bloque.getByText('×120')).toBeTruthy();
   });
 
-  it('la ficha de unidades en ruta abre Flota y cierra el desplegable', () => {
+  it('la ficha de unidades en ruta abre Flota y cierra el desplegable, dejando el foco en el botón si no hay panel', async () => {
     const onAbrirFlota = vi.fn();
     montar({ abierto: true, onAbrirFlota });
     fireEvent.click(screen.getByText('Unidades en ruta').closest('button')!);
     expect(onAbrirFlota).toHaveBeenCalledTimes(1);
     expect(screen.queryByRole('region', { name: 'Más del resumen' })).toBeNull();
+    await Promise.resolve();
+    expect(document.activeElement).toBe(disclosure());
   });
 
   it('Escape lo cierra y el foco vuelve al botón, aunque estuviera dentro del desplegable', () => {

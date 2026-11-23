@@ -6,6 +6,7 @@ import {
   AYUDA_RESUMEN_EN_RUTA,
   AYUDA_RESUMEN_EN_TRANSITO,
   MAS_DEL_RESUMEN,
+  PANELES_DEL_MAPA,
   RESUMEN_EN_ESPERA,
   RESUMEN_EN_PLAZO,
   RESUMEN_EN_RUTA,
@@ -16,6 +17,8 @@ import {
 } from '../../config/glosario';
 import { useCierreDePopover } from '../../hooks/useCierreDePopover';
 import { useDatosOperacion } from '../../hooks/useDatosOperacion';
+import { TITULO_PESTANA } from '../../hooks/useNavegacionPanel';
+import { formatearNumero } from '../../lib/formato';
 import { metricasResumen } from '../../lib/resumen';
 import type { ConfiguracionCorrida } from '../../types/simulacion';
 import { DetalleResumen } from '../resumen/DetalleResumen';
@@ -66,8 +69,20 @@ export const ResumenMapa: React.FC<ResumenMapaProps> = ({ ubicacion, abierto, on
   );
   useCierreDePopover(abierto, esPropio, alCerrar);
 
+  // La ficha de unidades en ruta abre Flota y el desplegable se cierra con el foco dentro: se lleva a la pestaña
+  // Flota del panel (cuando ya se pintó) y, mientras tanto o si no hay panel, al botón de la franja.
+  const abrirFlota = () => {
+    onAlternar(false);
+    onAbrirFlota?.();
+    botonRef.current?.focus();
+    queueMicrotask(() => {
+      const pestanas = document.querySelectorAll<HTMLElement>(`[role="tablist"][aria-label="${PANELES_DEL_MAPA}"] [role="tab"]`);
+      [...pestanas].find((p) => p.textContent?.startsWith(TITULO_PESTANA.flota))?.focus();
+    });
+  };
+
   const metricas = [
-    { clave: 'plazo', etiqueta: RESUMEN_EN_PLAZO, valor: m.porcentajeEnPlazo === null ? SIN_DATO : `${m.porcentajeEnPlazo} %`, ayuda: AYUDA_RESUMEN_EN_PLAZO, corta: true },
+    { clave: 'plazo', etiqueta: RESUMEN_EN_PLAZO, valor: m.porcentajeEnPlazo === null ? SIN_DATO : `${formatearNumero(m.porcentajeEnPlazo, 1)} %`, ayuda: AYUDA_RESUMEN_EN_PLAZO, corta: true },
     { clave: 'transito', etiqueta: RESUMEN_EN_TRANSITO, valor: String(m.resumen.enRuta), ayuda: AYUDA_RESUMEN_EN_TRANSITO, corta: false },
     { clave: 'espera', etiqueta: RESUMEN_EN_ESPERA, valor: String(m.resumen.enEspera), ayuda: AYUDA_RESUMEN_EN_ESPERA, corta: false },
     { clave: 'ruta', etiqueta: RESUMEN_EN_RUTA, valor: `${m.flota.enRuta} de ${m.flota.total}`, ayuda: AYUDA_RESUMEN_EN_RUTA, corta: true },
@@ -121,13 +136,7 @@ export const ResumenMapa: React.FC<ResumenMapaProps> = ({ ubicacion, abierto, on
         >
           <DetalleResumen
             simulacion={simulacion}
-            onAbrirFlota={
-              onAbrirFlota &&
-              (() => {
-                onAlternar(false);
-                onAbrirFlota();
-              })
-            }
+            onAbrirFlota={onAbrirFlota && abrirFlota}
           />
         </div>
       )}

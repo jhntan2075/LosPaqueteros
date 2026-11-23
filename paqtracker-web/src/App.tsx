@@ -126,7 +126,7 @@ export default function App() {
               </main>
 
               {/* Operación no lleva barra inferior: sus datos ya tienen casa (alertas y ocupación en la columna
-                  del mapa, totales en el Resumen, nodo en la esquina del mapa, antigüedad del dato arriba). */}
+                  del mapa, totales en la franja de resumen, nodo en la esquina del mapa, antigüedad del dato arriba). */}
               {datos && !pantallaCompleta && tabActiva !== 'simulacion' && tabActiva !== 'configuracion' && tabActiva !== 'operacion' && (
                 <FooterBar
                   totalPedidos={datos.resumen.total}

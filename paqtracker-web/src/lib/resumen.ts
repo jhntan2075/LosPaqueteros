@@ -23,9 +23,11 @@ export function metricasResumen(datos: DatosOperacion) {
     /** "12,3": entregados sobre el total de pedidos. */
     porcentajeEntregado: entregadosSobreTotal.toFixed(1).replace('.', ','),
     totalPedidos: formatearMiles(resumen.total),
-    /** Entregas en plazo sobre las entregadas, redondeado; null si aún no se entregó ninguna. */
-    porcentajeEnPlazo: resumen.entregados === 0 ? null : Math.round((resumen.enPlazo / resumen.entregados) * 100),
+    /**
+     * Entregas en plazo sobre las entregadas, con un decimal truncado hacia abajo: nunca marca 100 con entregas
+     * tardías (99,96 no se redondea a 100). null si aún no se entregó ninguna.
+     */
+    porcentajeEnPlazo: resumen.entregados === 0 ? null : Math.floor((resumen.enPlazo * 1000) / resumen.entregados) / 10,
     enRutaDe: (tipo: string) => flota.porTipo.find((t) => t.tipo === tipo)?.enRuta ?? 0,
-    diaADia: datos.tipoEscenario === 'DIA_A_DIA',
   };
 }

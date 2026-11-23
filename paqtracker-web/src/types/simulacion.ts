@@ -30,7 +30,7 @@ export interface MarcaAvance {
   tipo: 'INCIDENCIA' | 'PLANIFICADOR';
 }
 
-/** Con qué configuración corre una simulación, para mostrarla en el Resumen del panel. */
+/** Con qué configuración corre una simulación, para mostrarla en el desplegable del resumen del mapa. */
 export interface ConfiguracionCorrida {
   /** Nombre del escenario: "Simulación 7 días", "Hasta el colapso". */
   escenario: string;
