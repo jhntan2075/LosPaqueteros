@@ -38,7 +38,7 @@ export const BuscadorMapa: React.FC<BuscadorMapaProps> = ({ busqueda, plegable }
   }
 
   return (
-    <div className="flex flex-col gap-1.5">
+    <div data-sin-zoom className="flex flex-col">
       <form onSubmit={busqueda.onBuscar} role="search" className={`${TARJETA_FLOTANTE} h-11 pl-3 pr-2 flex items-center gap-2`}>
         <Search className="size-4 text-neutral-600 shrink-0" aria-hidden="true" />
         <input
@@ -64,7 +64,7 @@ export const BuscadorMapa: React.FC<BuscadorMapaProps> = ({ busqueda, plegable }
       </form>
       <span role="status" className="block">
         {busqueda.sinResultados && (
-          <span className={`block px-3 py-1.5 rounded-card border border-critical-600/30 bg-critical-50 font-sans text-body-sm text-critical-600`}>
+          <span className={`block mt-1.5 px-3 py-1.5 rounded-card border border-critical-600/30 bg-critical-50 font-sans text-body-sm text-critical-600`}>
             {sinResultadosEnMapa(busqueda.termino.trim())}
           </span>
         )}

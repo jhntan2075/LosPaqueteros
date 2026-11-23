@@ -58,3 +58,45 @@ describe('Diálogo de rangos del semáforo sobre el mapa', () => {
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Configurar rangos' }));
   });
 });
+
+/** ResizeObserver que informa un tamaño fijo para todo elemento observado. */
+function simularTamano(ancho: number, alto: number) {
+  class Falso {
+    private readonly cb: ResizeObserverCallback;
+    constructor(cb: ResizeObserverCallback) {
+      this.cb = cb;
+    }
+    observe(elemento: Element) {
+      this.cb([{ target: elemento, contentRect: { width: ancho, height: alto } } as unknown as ResizeObserverEntry], this as never);
+    }
+    unobserve() {}
+    disconnect() {}
+  }
+  vi.stubGlobal('ResizeObserver', Falso);
+}
+
+describe('Pila de búsqueda y alertas según el espacio', () => {
+  it('con poca altura (< 560 px) se reduce a buscador y una fila de alertas, aunque el ancho sea de escritorio', () => {
+    simularTamano(1400, 500);
+    montarOperacion();
+    expect(screen.getByRole('search')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Ver detalle' }).getAttribute('aria-expanded')).toBe('false');
+    expect(screen.queryByRole('region', { name: 'Ocupación global' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Ver detalle' }));
+    expect(screen.getByRole('region', { name: 'Ocupación global' })).toBeTruthy();
+  });
+
+  it('con altura suficiente se muestra completa y sin "Ver detalle"', () => {
+    simularTamano(1400, 800);
+    montarOperacion();
+    expect(screen.queryByRole('button', { name: 'Ver detalle' })).toBeNull();
+    expect(screen.getByRole('region', { name: 'Ocupación global' })).toBeTruthy();
+  });
+
+  it('en un celular también va reducida', () => {
+    simularTamano(390, 760);
+    montarOperacion();
+    expect(screen.getByRole('button', { name: 'Ver detalle' })).toBeTruthy();
+    expect(screen.queryByRole('region', { name: 'Ocupación global' })).toBeNull();
+  });
+});

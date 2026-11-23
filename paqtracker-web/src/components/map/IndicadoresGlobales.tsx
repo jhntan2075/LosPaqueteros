@@ -63,6 +63,7 @@ interface IndicadoresGlobalesProps {
 export const IndicadoresGlobales: React.FC<IndicadoresGlobalesProps> = ({ flota, almacenes, onAbrirFlota, onAbrirAlmacenes }) => (
   <section
     aria-label="Ocupación global"
+    data-sin-zoom
     className={`grid grid-cols-2 divide-x divide-neutral-200 overflow-hidden cursor-default ${TARJETA_FLOTANTE}`}
   >
     <Indicador

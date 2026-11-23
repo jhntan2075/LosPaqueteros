@@ -113,9 +113,11 @@ describe('PilaSuperiorMapa', () => {
         onAbrirIncidencias={() => {}}
         ocupacion={{ flota: ocupacion(28, 36), almacenes: ocupacion(50, 200), onAbrirFlota, onAbrirAlmacenes }}
         compacto={false}
+        reducida={false}
       />,
     );
     expect(screen.getByRole('search')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Ver detalle' })).toBeNull();
     expect(screen.getByRole('region', { name: 'Alertas' })).toBeTruthy();
     const global = within(screen.getByRole('region', { name: 'Ocupación global' }));
     fireEvent.click(global.getByRole('button', { name: /^Carga de flota: 78 %/ }));
@@ -123,5 +125,85 @@ describe('PilaSuperiorMapa', () => {
     expect(onAbrirFlota).toHaveBeenCalledTimes(1);
     expect(onAbrirAlmacenes).toHaveBeenCalledTimes(1);
     global.getAllByRole('button').forEach((b) => expect(b.className).toContain('min-h-11'));
+  });
+
+  it('el contenedor de la pila no captura toques: solo sus tarjetas, y el espacio libre a su lado mueve el mapa', () => {
+    const { container } = render(
+      <PilaSuperiorMapa
+        busqueda={BUSQUEDA}
+        alertas={ALERTAS}
+        soloRiesgo={false}
+        onAbrirIncidencias={() => {}}
+        ocupacion={{ flota: ocupacion(28, 36), almacenes: ocupacion(50, 200) }}
+        compacto={false}
+        reducida={false}
+      />,
+    );
+    const pila = container.firstElementChild as HTMLElement;
+    expect(pila.className).toContain('pointer-events-none');
+    expect(pila.className).toContain('[&>*]:pointer-events-auto');
+    // Cada tarjeta se excluye del arrastre y el zoom del mapa.
+    Array.from(pila.children).forEach((tarjeta) => expect(tarjeta.hasAttribute('data-sin-zoom')).toBe(true));
+  });
+
+  it('sin resultados el aviso no deja un hueco bajo el buscador mientras no hay mensaje', () => {
+    render(<BuscadorMapa busqueda={BUSQUEDA} plegable={false} />);
+    expect(screen.getByRole('status').textContent).toBe('');
+    expect(screen.getByRole('search').parentElement!.className).not.toContain('gap-');
+  });
+
+  describe('reducida (celular o mapa de poca altura)', () => {
+    const montarReducida = (onAbrirIncidencias = vi.fn(), compacto = false) =>
+      render(
+        <PilaSuperiorMapa
+          busqueda={BUSQUEDA}
+          alertas={ALERTAS}
+          soloRiesgo={false}
+          onAbrirIncidencias={onAbrirIncidencias}
+          ocupacion={{ flota: ocupacion(28, 36), almacenes: ocupacion(50, 200) }}
+          compacto={compacto}
+          reducida
+        />,
+      );
+
+    it('muestra solo el buscador y una fila de alertas; el detalle queda tras "Ver detalle"', () => {
+      montarReducida();
+      expect(screen.getByRole('search')).toBeTruthy();
+      expect(screen.getByRole('button', { name: /^3 llegarán tarde/ })).toBeTruthy();
+      expect(screen.queryByText('21 en riesgo')).toBeNull();
+      expect(screen.queryByRole('region', { name: 'Ocupación global' })).toBeNull();
+      const detalle = screen.getByRole('button', { name: 'Ver detalle' });
+      expect(detalle.getAttribute('aria-expanded')).toBe('false');
+      expect(detalle.className).toContain('size-11');
+    });
+
+    it('"Ver detalle" despliega las cifras de alertas y la ocupación global, y vuelve a plegarlos', () => {
+      montarReducida();
+      const detalle = screen.getByRole('button', { name: 'Ver detalle' });
+      fireEvent.click(detalle);
+      expect(detalle.getAttribute('aria-expanded')).toBe('true');
+      expect(detalle.getAttribute('aria-controls')).toBe(screen.getByText('21 en riesgo').closest('div')!.id);
+      expect(screen.getByText('1 bloqueo')).toBeTruthy();
+      expect(screen.getByRole('region', { name: 'Ocupación global' })).toBeTruthy();
+      fireEvent.click(detalle);
+      expect(detalle.getAttribute('aria-expanded')).toBe('false');
+      expect(screen.queryByText('21 en riesgo')).toBeNull();
+      expect(screen.queryByRole('region', { name: 'Ocupación global' })).toBeNull();
+    });
+
+    it('el titular sigue abriendo Incidencias', () => {
+      const onAbrir = vi.fn();
+      montarReducida(onAbrir);
+      fireEvent.click(screen.getByRole('button', { name: /^3 llegarán tarde/ }));
+      expect(onAbrir).toHaveBeenCalledWith();
+    });
+
+    it('el buscador solo se pliega a un ícono en compacto, no por tener poca altura', () => {
+      montarReducida();
+      expect(screen.getByRole('search')).toBeTruthy();
+      cleanup();
+      montarReducida(vi.fn(), true);
+      expect(screen.queryByRole('search')).toBeNull();
+    });
   });
 });

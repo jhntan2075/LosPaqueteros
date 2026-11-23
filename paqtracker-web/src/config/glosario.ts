@@ -234,6 +234,7 @@ export const titularAlertas = (tarde: number, enRiesgo: number, otras: number) =
         : ALERTAS_TODO_EN_PLAZO;
 export const ALERTAS = 'Alertas';
 export const VER_INCIDENCIAS = 'Ver Incidencias';
+export const VER_DETALLE = 'Ver detalle';
 export const DIALOGO_CAPAS = 'Capas del mapa';
 export const DIALOGO_FILTROS = 'Filtros del mapa';
 export const LEYENDA_DEL_MAPA = 'Leyenda del mapa';

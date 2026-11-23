@@ -28,7 +28,7 @@ import { destinoResaltado, unidadesResaltadas, type SeleccionResaltable } from '
 import { COLOR_SIN_DATO, colorDeUnidad, iconoVehiculo, unidadVacia } from './iconosVehiculo';
 import type { ConteosFiltros } from './FiltrosMapa';
 import type { Capa, ModoColor } from './capas';
-import { ANCHO_ANGOSTO_PX } from './estilosMapa';
+import { ALTO_MAPA_REDUCIDO_PX, ANCHO_ANGOSTO_PX } from './estilosMapa';
 import { crearLienzo, derechaDeControles, INFERIOR_CONTROLES_PX } from './lienzo';
 import { ControlesZoom, BarraEscala } from './ControlesZoom';
 import { HerramientasMapa } from './HerramientasMapa';
@@ -511,6 +511,7 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
             onAbrirIncidencias={onAbrirIncidencias}
             ocupacion={{ flota: ocupacionFlota(unidades), almacenes: ocupacionAlmacenes(almacenes), onAbrirFlota, onAbrirAlmacenes }}
             compacto={compacto}
+            reducida={compacto || (alto > 0 && alto < ALTO_MAPA_REDUCIDO_PX)}
           />
         )}
 
