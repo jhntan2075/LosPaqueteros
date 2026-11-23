@@ -15,6 +15,7 @@ import { BarraPaneles } from '../operacion/BarraPaneles';
 import { BloqueDerecho } from '../operacion/BloqueDerecho';
 import { PanelLateral } from '../operacion/PanelLateral';
 import { useNavegacionPanel } from '../../hooks/useNavegacionPanel';
+import { useModoEnfoque } from '../../hooks/useModoEnfoque';
 import { usePresentacionMapa } from '../../hooks/usePresentacionMapa';
 import { Boton } from '../ui';
 import { DiagnosticoColapso } from './DiagnosticoColapso';
@@ -59,6 +60,7 @@ const CorridaEnVivo: React.FC<CorridaSimulacionProps & { recibidoEnMs: number }>
   const nav = useNavegacionPanel({ pestana, abrirPestana: setPestana, cerrarPanel: () => setPestana(null) });
   const seleccionar = nav.seleccionar;
   const panelAbierto = nav.panelAbierto;
+  const modoEnfoque = useModoEnfoque(panelAbierto, nav.cerrar);
   const [verInforme, setVerInforme] = useState(false);
   // El diagnóstico se abre solo al detectar el colapso; el usuario puede cerrarlo y reabrirlo.
   const [diagnosticoCerrado, setDiagnosticoCerrado] = useState(false);
@@ -77,7 +79,8 @@ const CorridaEnVivo: React.FC<CorridaSimulacionProps & { recibidoEnMs: number }>
           : 'DETENIDA'
         : 'EJECUCION';
   const colapso = estado === 'COLAPSO';
-  const verDiagnostico = colapso && !diagnosticoCerrado && !panelAbierto;
+  // En modo enfoque el diagnóstico (y su acceso) se oculta junto con el resto de lo que no es el mapa.
+  const verDiagnostico = colapso && !diagnosticoCerrado && !panelAbierto && !modoEnfoque.enfoque;
   const flota = estadoFlota(datos);
   const riesgo = pedidosEnRiesgo(datos);
   // Lo que el Resumen del panel muestra de cómo corre esta simulación.
@@ -140,7 +143,8 @@ const CorridaEnVivo: React.FC<CorridaSimulacionProps & { recibidoEnMs: number }>
           onAbrirIncidencias={(seccion) => seleccionar({ tipo: 'incidencias', seccion })}
           onAbrirFlota={() => seleccionar({ tipo: 'flota' })}
           onAbrirAlmacenes={() => seleccionar({ tipo: 'almacenes' })}
-          onModoEnfoque={(activo) => activo && nav.cerrar()}
+          enfoque={modoEnfoque.enfoque}
+          onModoEnfoque={modoEnfoque.cambiar}
         >
           {panelAbierto && !panelLateral && (
             <PanelLateral
@@ -168,7 +172,7 @@ const CorridaEnVivo: React.FC<CorridaSimulacionProps & { recibidoEnMs: number }>
             />
           )}
           {/* El diagnóstico se puede cerrar para ver el mapa completo; este acceso lo reabre. */}
-          {colapso && diagnosticoCerrado && !panelAbierto && (
+          {colapso && diagnosticoCerrado && !panelAbierto && !modoEnfoque.enfoque && (
             <Boton
               variante="peligro-secundario"
               onClick={() => setDiagnosticoCerrado(false)}

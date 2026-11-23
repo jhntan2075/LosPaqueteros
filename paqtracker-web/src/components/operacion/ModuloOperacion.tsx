@@ -3,6 +3,7 @@ import { useDatosOperacion } from '../../hooks/useDatosOperacion';
 import { cantidadBloqueos, fueraDelAlmacen, resumenRiesgo } from '../../lib/operacion';
 import type { Coordenada } from '../../types/domain';
 import { useNavegacionPanel } from '../../hooks/useNavegacionPanel';
+import { useModoEnfoque } from '../../hooks/useModoEnfoque';
 import { usePresentacionMapa } from '../../hooks/usePresentacionMapa';
 import type { SubvistaOperacion } from '../../types/operacion';
 import { GridMap, type DestinoMapa, type GridMapHandle } from '../map/GridMap';
@@ -57,6 +58,7 @@ export const ModuloOperacion: React.FC<ModuloOperacionProps> = ({
   );
   const unidadesEnMapa = datos.flota.filter(fueraDelAlmacen);
   const { panelAbierto } = nav;
+  const modoEnfoque = useModoEnfoque(panelAbierto, nav.cerrar);
   const mainRef = useRef<HTMLElement>(null);
   const presentacion = usePresentacionMapa(mainRef, panelAbierto);
   const panelLateral = presentacion.presentacionPanel === 'lateral';
@@ -103,7 +105,8 @@ export const ModuloOperacion: React.FC<ModuloOperacionProps> = ({
           onAbrirFlota={() => nav.seleccionar({ tipo: 'flota' })}
           onAbrirAlmacenes={() => nav.seleccionar({ tipo: 'almacenes' })}
           onHoverCoordenada={onHoverCoordenada}
-          onModoEnfoque={(activo) => activo && nav.cerrar()}
+          enfoque={modoEnfoque.enfoque}
+          onModoEnfoque={modoEnfoque.cambiar}
         >
           {panelAbierto && !panelLateral && (
             <PanelLateral

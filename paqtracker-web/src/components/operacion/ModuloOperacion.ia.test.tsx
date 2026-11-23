@@ -107,7 +107,9 @@ describe('Operación · espacio y presentación', () => {
 
     const enfoque = screen.getByRole('button', { name: 'Modo enfoque' });
     expect(enfoque.getAttribute('aria-pressed')).toBe('false');
+    expect(screen.getByText(/^\d+ km$/)).toBeTruthy();
     fireEvent.click(enfoque);
+    expect(screen.queryByText(/^\d+ km$/)).toBeNull();
     expect(enfoque.getAttribute('aria-pressed')).toBe('true');
     expect(screen.queryByRole('complementary', { name: 'Panel de detalle' })).toBeNull();
     expect(screen.queryByLabelText('Buscar pedido o unidad en el mapa')).toBeNull();
@@ -120,7 +122,35 @@ describe('Operación · espacio y presentación', () => {
     expect(enfoque.getAttribute('aria-pressed')).toBe('false');
     expect(screen.getByLabelText('Buscar pedido o unidad en el mapa')).toBeTruthy();
     expect(screen.getByRole('group', { name: 'Zoom' })).toBeTruthy();
+    expect(screen.getByText(/^\d+ km$/)).toBeTruthy();
     expect(screen.queryByRole('complementary', { name: 'Panel de detalle' })).toBeNull();
+  });
+
+  it('abrir un panel con el modo enfoque activo (una pestaña o un objeto del mapa) sale del modo y trae de vuelta la pila', () => {
+    simularTamano(1600, 800);
+    const { container } = montarOperacion();
+    const enfoque = screen.getByRole('button', { name: 'Modo enfoque' });
+    fireEvent.click(enfoque);
+    expect(screen.queryByRole('region', { name: 'Alertas' })).toBeNull();
+
+    fireEvent.click(screen.getByRole('tab', { name: /Flota/ }));
+    expect(screen.getByRole('complementary', { name: 'Panel de detalle' })).toBeTruthy();
+    expect(enfoque.getAttribute('aria-pressed')).toBe('false');
+    expect(screen.getByRole('region', { name: 'Alertas' })).toBeTruthy();
+    expect(screen.getByRole('group', { name: 'Zoom' })).toBeTruthy();
+
+    // Cerrar ese panel no reactiva el modo.
+    fireEvent.click(screen.getByRole('button', { name: 'Ocultar panel' }));
+    expect(enfoque.getAttribute('aria-pressed')).toBe('false');
+
+    // Lo mismo al tocar un objeto del mapa.
+    fireEvent.click(enfoque);
+    expect(enfoque.getAttribute('aria-pressed')).toBe('true');
+    const a01 = objetoMapa(container, 'vehiculo:A-01')!;
+    fireEvent.pointerDown(a01, { button: 0, clientX: 5, clientY: 5, pointerId: 1 });
+    fireEvent.pointerUp(a01, { button: 0, clientX: 5, clientY: 5, pointerId: 1 });
+    expect(screen.getByRole('complementary', { name: 'Panel de detalle' })).toBeTruthy();
+    expect(enfoque.getAttribute('aria-pressed')).toBe('false');
   });
 
   it('en escritorio el lado derecho es un solo bloque: pestañas arriba y panel debajo; oculto queda la tira', () => {

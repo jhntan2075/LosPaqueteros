@@ -104,7 +104,8 @@ interface GridMapProps {
   /** Indicador de stock de los almacenes; sin valor, el indicador solo informa. */
   onAbrirAlmacenes?: () => void;
   onHoverCoordenada?: (coord: Coordenada) => void;
-  /** El modo enfoque se activa o se apaga: quien lo oye cierra el panel de la derecha al activarlo. */
+  /** Modo enfoque (solo el mapa y sus herramientas): lo lleva quien monta el mapa, con useModoEnfoque. */
+  enfoque?: boolean;
   onModoEnfoque?: (activo: boolean) => void;
   /** 'simulacion': solo alerta del riesgo; tocar un objeto abre su detalle igual que en Operación. */
   variante?: 'operacion' | 'simulacion';
@@ -181,6 +182,7 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
     onAbrirFlota,
     onAbrirAlmacenes,
     onHoverCoordenada,
+    enfoque = false,
     onModoEnfoque,
     variante = 'operacion',
     compacto = false,
@@ -209,7 +211,6 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
   const [hover, setHover] = useState<ObjetoHover | null>(null);
   // La retícula y la coordenada del nodo bajo el cursor solo se muestran mientras el cursor está sobre el mapa.
   const [cursorEnMapa, setCursorEnMapa] = useState(false);
-  const [enfoque, setEnfoque] = useState(false);
   const [modoColor, setModoColor] = useState<ModoColor>(() => (leer(CLAVE_COLOR) === 'holgura' ? 'holgura' : 'carga'));
   const cambiarModoColor = (modo: ModoColor) => {
     setModoColor(modo);
@@ -223,13 +224,6 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
   const filtrosActivos = cantidadFiltros(filtros);
   const enSimulacion = variante === 'simulacion';
   const [capas, setCapas] = useState<Record<Capa, boolean>>({ rutas: true, unidades: true, destinos: true, bloqueos: true, almacenes: true });
-
-  // Modo enfoque: deja solo el mapa y sus herramientas; al activarlo se cierra el panel de la derecha, y al
-  // apagarlo el panel no se reabre.
-  const alternarEnfoque = () => {
-    onModoEnfoque?.(!enfoque);
-    setEnfoque(!enfoque);
-  };
 
   // Zoom continuo (C08): botones, "ver todo" y centrar animan la vista; rueda y arrastre la cancelan.
   const animacionRef = useRef<number | null>(null);
@@ -524,7 +518,7 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
           filtros={{ valor: filtros, conteos: conteosFiltros, activos: filtrosActivos, onCambiar: cambiarFiltros }}
           onVerTodo={verTodo}
           enfoque={enfoque}
-          onAlternarEnfoque={alternarEnfoque}
+          onAlternarEnfoque={() => onModoEnfoque?.(!enfoque)}
           derechaPx={derechaControles}
           altoHojaPx={altoPanelInferior}
           angosto={angosto}
@@ -543,7 +537,7 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
         )}
 
         {/* 4. Abajo a la izquierda: barra de escala y, con el cursor sobre el mapa, la coordenada del nodo */}
-        {vista && <BarraEscala pxPorKm={vista.escala} nodo={cursorEnMapa && !compacto ? nodoActivo : null} inferiorPx={inferiorControles} />}
+        {vista && !enfoque && <BarraEscala pxPorKm={vista.escala} nodo={cursorEnMapa && !compacto ? nodoActivo : null} inferiorPx={inferiorControles} />}
 
         {/* 5. Lienzo: la geometría se proyecta con la vista; los marcadores conservan su tamaño en pantalla */}
         {vista && (
