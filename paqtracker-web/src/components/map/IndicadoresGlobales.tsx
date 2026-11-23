@@ -6,8 +6,8 @@ import { TEXTO_SEMAFORO } from '../../lib/semaforo';
 import { MarcaSemaforo } from './simbolos';
 
 // Indicadores globales del mapa (G01–G04): carga de la flota y stock de los almacenes en conjunto, con el
-// semáforo + vacío en color y forma. Van en la columna de controles, junto a la leyenda cuyo color explican,
-// y cada uno abre su detalle. No dependen de los filtros del mapa: miden el conjunto.
+// semáforo + vacío en color y forma. Van en una fila compacta sobre el mapa, bajo las alertas, y cada uno
+// abre su detalle. No dependen de los filtros del mapa: miden el conjunto.
 
 interface IndicadorProps {
   etiqueta: string;
@@ -29,18 +29,18 @@ const Indicador: React.FC<IndicadorProps> = ({ etiqueta, ocupacion, descripcion,
       : `${etiqueta}: ${porcentaje} %, ${nombres[nivel].toLowerCase()} (${ocupacion.cantidad} de ${ocupacion.capacidad})`;
   const contenido = (
     <>
-      <span className="text-body-sm text-neutral-900 font-sans">{etiqueta}</span>
+      <span className="text-caption text-neutral-600 font-sans leading-4">{etiqueta}</span>
       {porcentaje === null || !nivel ? (
-        <span className="ml-auto text-body-sm text-neutral-600">—</span>
+        <span className="text-body-sm text-neutral-600">—</span>
       ) : (
-        <span className="ml-auto flex items-center gap-1">
+        <span className="flex items-center gap-1">
           <MarcaSemaforo nivel={nivel} />
           <span className={`tabular-nums font-semibold text-body ${TEXTO_SEMAFORO[nivel]}`}>{porcentaje} %</span>
         </span>
       )}
     </>
   );
-  const clase = 'w-full h-8 px-2 -mx-2 rounded-control flex items-center gap-2 text-left';
+  const clase = 'w-full min-h-11 px-3 py-1 flex flex-col items-start justify-center text-left';
   return onAbrir ? (
     <button type="button" onClick={onAbrir} aria-label={`${lectura}. ${descripcion}. Ver detalle`} title={descripcion} className={`${clase} hover:bg-neutral-50`}>
       {contenido}
@@ -60,7 +60,10 @@ interface IndicadoresGlobalesProps {
 }
 
 export const IndicadoresGlobales: React.FC<IndicadoresGlobalesProps> = ({ flota, almacenes, onAbrirFlota, onAbrirAlmacenes }) => (
-  <section aria-label="Ocupación global" className="flex flex-col">
+  <section
+    aria-label="Ocupación global"
+    className="grid grid-cols-2 divide-x divide-neutral-200 bg-superficie border border-neutral-200 rounded-card shadow-overlay overflow-hidden cursor-default"
+  >
     <Indicador
       etiqueta="Carga de flota"
       ocupacion={flota}

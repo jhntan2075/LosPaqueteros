@@ -1,0 +1,116 @@
+// @vitest-environment jsdom
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import type { OcupacionGlobal } from '../../lib/operacion';
+import { AlertasMapaTarjeta, type AlertasMapa } from './AlertasMapaTarjeta';
+import { BuscadorMapa, type BusquedaMapa } from './BuscadorMapa';
+import { PilaSuperiorMapa } from './PilaSuperiorMapa';
+
+// La pila de arriba a la izquierda: buscador, tarjeta de alertas y ocupación global.
+
+afterEach(cleanup);
+
+const ALERTAS: AlertasMapa = { riesgo: { rojo: 5, ambar: 16, tarde: 3 }, bloqueos: 1, averias: 0 };
+
+describe('AlertasMapaTarjeta', () => {
+  it('resume lo que llegará tarde y, debajo, el riesgo, los bloqueos y las averías', () => {
+    render(<AlertasMapaTarjeta alertas={ALERTAS} soloRiesgo={false} onAbrir={() => {}} />);
+    const tarjeta = within(screen.getByRole('region', { name: 'Alertas' }));
+    expect(tarjeta.getByRole('button', { name: '3 llegarán tarde. Ver Incidencias' })).toBeTruthy();
+    expect(tarjeta.getByText('21 en riesgo')).toBeTruthy();
+    expect(tarjeta.getByText('1 bloqueo')).toBeTruthy();
+    expect(tarjeta.getByText('0 averías')).toBeTruthy();
+  });
+
+  it('sin pedidos que lleguen tarde, el titular es el riesgo; sin riesgo, que todo va en plazo', () => {
+    const { rerender } = render(<AlertasMapaTarjeta alertas={{ ...ALERTAS, riesgo: { rojo: 2, ambar: 1, tarde: 0 } }} soloRiesgo={false} onAbrir={() => {}} />);
+    expect(screen.getByRole('button', { name: '3 en riesgo. Ver Incidencias' })).toBeTruthy();
+    rerender(<AlertasMapaTarjeta alertas={{ riesgo: { rojo: 0, ambar: 0 }, bloqueos: 0, averias: 0 }} soloRiesgo={false} onAbrir={() => {}} />);
+    expect(screen.getByRole('button', { name: 'Todo va en plazo. Ver Incidencias' })).toBeTruthy();
+    rerender(<AlertasMapaTarjeta alertas={{ ...ALERTAS, riesgo: { rojo: 1, ambar: 0, tarde: 1 } }} soloRiesgo={false} onAbrir={() => {}} />);
+    expect(screen.getByRole('button', { name: '1 llegará tarde. Ver Incidencias' })).toBeTruthy();
+  });
+
+  it('el titular abre Incidencias y cada cifra abre su sección', () => {
+    const onAbrir = vi.fn();
+    render(<AlertasMapaTarjeta alertas={{ ...ALERTAS, averias: 2 }} soloRiesgo={false} onAbrir={onAbrir} />);
+    fireEvent.click(screen.getByRole('button', { name: /^3 llegarán tarde/ }));
+    expect(onAbrir).toHaveBeenLastCalledWith();
+    fireEvent.click(screen.getByRole('button', { name: /^21 pedidos en riesgo: 5 críticos y 16 ajustados\. Ver en Incidencias/ }));
+    expect(onAbrir).toHaveBeenLastCalledWith('riesgo');
+    fireEvent.click(screen.getByRole('button', { name: '1 bloqueo. Ver en Incidencias' }));
+    expect(onAbrir).toHaveBeenLastCalledWith('bloqueos');
+    fireEvent.click(screen.getByRole('button', { name: '2 averías. Ver en Incidencias' }));
+    expect(onAbrir).toHaveBeenLastCalledWith('averias');
+  });
+
+  it('en Simulación solo se alerta del riesgo', () => {
+    render(<AlertasMapaTarjeta alertas={ALERTAS} soloRiesgo onAbrir={() => {}} />);
+    expect(screen.getByText('21 en riesgo')).toBeTruthy();
+    expect(screen.queryByText(/bloqueo/)).toBeNull();
+    expect(screen.queryByText(/avería/)).toBeNull();
+  });
+
+  it('todos sus botones miden al menos 44 px de alto', () => {
+    render(<AlertasMapaTarjeta alertas={ALERTAS} soloRiesgo={false} onAbrir={() => {}} />);
+    screen.getAllByRole('button').forEach((b) => expect(b.className).toContain('min-h-11'));
+  });
+});
+
+const BUSQUEDA: BusquedaMapa = { termino: '', onCambiar: () => {}, sinResultados: false, onBuscar: (e) => e.preventDefault(), opciones: ['#1001', 'A-01'] };
+
+describe('BuscadorMapa', () => {
+  it('es una tarjeta con la entrada de búsqueda de siempre, y avisa cuando no hay resultados', () => {
+    const { rerender } = render(<BuscadorMapa busqueda={BUSQUEDA} plegable={false} />);
+    expect(screen.getByRole('search')).toBeTruthy();
+    expect(screen.getByLabelText('Buscar pedido o unidad en el mapa')).toBeTruthy();
+    rerender(<BuscadorMapa busqueda={{ ...BUSQUEDA, termino: 'zzz', sinResultados: true }} plegable={false} />);
+    expect(screen.getByRole('status').textContent).toBe('No hay pedidos, unidades ni almacenes en el mapa con «zzz»');
+  });
+
+  it('plegable: es un botón de ícono de 44 px que, al tocarlo, despliega la entrada con el foco', () => {
+    render(<BuscadorMapa busqueda={BUSQUEDA} plegable />);
+    expect(screen.queryByRole('search')).toBeNull();
+    const boton = screen.getByRole('button', { name: 'Buscar pedido o unidad en el mapa' });
+    expect(boton.className).toContain('size-11');
+    fireEvent.click(boton);
+    expect(document.activeElement).toBe(screen.getByLabelText('Buscar pedido o unidad en el mapa'));
+    // Sin texto, al salir de la entrada vuelve a plegarse.
+    fireEvent.blur(screen.getByLabelText('Buscar pedido o unidad en el mapa'));
+    expect(screen.queryByRole('search')).toBeNull();
+  });
+
+  it('plegable: con texto escrito no se pliega al salir de la entrada', () => {
+    render(<BuscadorMapa busqueda={{ ...BUSQUEDA, termino: 'A-01' }} plegable />);
+    fireEvent.click(screen.getByRole('button', { name: 'Buscar pedido o unidad en el mapa' }));
+    fireEvent.blur(screen.getByLabelText('Buscar pedido o unidad en el mapa'));
+    expect(screen.getByRole('search')).toBeTruthy();
+  });
+});
+
+describe('PilaSuperiorMapa', () => {
+  const ocupacion = (cantidad: number, capacidad: number): OcupacionGlobal => ({ cantidad, capacidad, fraccion: cantidad / capacidad, nivel: 'AMBAR' });
+
+  it('reúne buscador, alertas y ocupación global, y los botones de la ocupación abren Flota y Almacenes', () => {
+    const onAbrirFlota = vi.fn();
+    const onAbrirAlmacenes = vi.fn();
+    render(
+      <PilaSuperiorMapa
+        busqueda={BUSQUEDA}
+        alertas={ALERTAS}
+        soloRiesgo={false}
+        onAbrirIncidencias={() => {}}
+        ocupacion={{ flota: ocupacion(28, 36), almacenes: ocupacion(50, 200), onAbrirFlota, onAbrirAlmacenes }}
+        compacto={false}
+      />,
+    );
+    expect(screen.getByRole('search')).toBeTruthy();
+    expect(screen.getByRole('region', { name: 'Alertas' })).toBeTruthy();
+    const global = within(screen.getByRole('region', { name: 'Ocupación global' }));
+    fireEvent.click(global.getByRole('button', { name: /^Carga de flota: 78 %/ }));
+    fireEvent.click(global.getByRole('button', { name: /^Stock de almacenes: 25 %/ }));
+    expect(onAbrirFlota).toHaveBeenCalledTimes(1);
+    expect(onAbrirAlmacenes).toHaveBeenCalledTimes(1);
+    global.getAllByRole('button').forEach((b) => expect(b.className).toContain('min-h-11'));
+  });
+});

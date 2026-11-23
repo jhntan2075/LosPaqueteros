@@ -209,3 +209,25 @@ export const FILTRO_ULTIMOS_30_MIN = 'Últimos 30 min';
 export const tituloGrupoReplanificaciones = (cantidad: number, horaUltima: string) => `${cantidad} replanificaciones · última ${horaUltima}`;
 export const tituloGrupoPedidos = (cantidad: number) => `+${cantidad} pedidos registrados`;
 export const tituloGrupoEntregas = (cantidad: number) => `${cantidad} entregas`;
+
+/** Controles sobre el mapa: buscador, tarjeta de alertas y barra de herramientas. */
+export const BUSCAR_EN_MAPA = 'Buscar pedido o unidad en el mapa';
+export const BUSCAR_PLACEHOLDER = 'Pedido, unidad o almacén';
+export const sinResultadosEnMapa = (termino: string) => `No hay pedidos, unidades ni almacenes en el mapa con «${termino}»`;
+export const HERRAMIENTAS_MAPA = 'Herramientas del mapa';
+export const HERRAMIENTA_CAPAS = 'Capas';
+export const HERRAMIENTA_LEYENDA = 'Leyenda';
+export const HERRAMIENTA_VER_TODO = 'Ver la malla completa';
+export const HERRAMIENTA_ENFOQUE = 'Modo enfoque';
+export const AYUDA_ENFOQUE = 'Ocultar todo menos el mapa';
+export const etiquetaFiltros = (activos: number) => (activos > 0 ? `Filtros (${activos} ${activos === 1 ? 'activo' : 'activos'})` : 'Filtros');
+export const ALERTAS_TODO_EN_PLAZO = 'Todo va en plazo';
+/** Titular de la tarjeta de alertas: lo que exige actuar primero. */
+export const titularAlertas = (tarde: number, enRiesgo: number) =>
+  tarde > 0 ? `${tarde} ${tarde === 1 ? 'llegará' : 'llegarán'} tarde` : enRiesgo > 0 ? `${enRiesgo} en riesgo` : ALERTAS_TODO_EN_PLAZO;
+export const textoEnRiesgo = (cantidad: number) => `${cantidad} en riesgo`;
+export const textoBloqueos = (cantidad: number) => `${cantidad} ${cantidad === 1 ? 'bloqueo' : 'bloqueos'}`;
+export const textoAverias = (cantidad: number) => `${cantidad} ${cantidad === 1 ? 'avería' : 'averías'}`;
+export const VER_EN_INCIDENCIAS = 'Ver en Incidencias';
+export const etiquetaEnRiesgo = (total: number, criticos: number, ajustados: number) =>
+  `${total} ${total === 1 ? 'pedido' : 'pedidos'} en riesgo: ${criticos} ${criticos === 1 ? 'crítico' : 'críticos'} y ${ajustados} ${ajustados === 1 ? 'ajustado' : 'ajustados'}`;
