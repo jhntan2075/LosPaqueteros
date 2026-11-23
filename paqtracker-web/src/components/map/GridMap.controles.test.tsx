@@ -100,3 +100,16 @@ describe('Pila de búsqueda y alertas según el espacio', () => {
     expect(screen.queryByRole('region', { name: 'Ocupación global' })).toBeNull();
   });
 });
+
+describe('Preferencias de la columna de controles que ya no existe', () => {
+  it('al cargar el mapa se retiran sus claves huérfanas y se conservan las vigentes', async () => {
+    localStorage.setItem('paqtracker.columnaPlegada', '1');
+    localStorage.setItem('paqtracker.leyendaAbierta', '1');
+    localStorage.setItem('paqtracker.colorUnidades', 'holgura');
+    vi.resetModules();
+    await import('./GridMap');
+    expect(localStorage.getItem('paqtracker.columnaPlegada')).toBeNull();
+    expect(localStorage.getItem('paqtracker.leyendaAbierta')).toBeNull();
+    expect(localStorage.getItem('paqtracker.colorUnidades')).toBe('holgura');
+  });
+});

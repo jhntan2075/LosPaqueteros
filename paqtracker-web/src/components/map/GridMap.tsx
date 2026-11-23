@@ -158,6 +158,8 @@ const guardar = (clave: string, valor: string | null) => {
   }
 };
 const CLAVE_COLOR = 'paqtracker.colorUnidades';
+// Preferencias de la columna de controles, que ya no existe: se limpian una vez, al cargar el módulo.
+['paqtracker.columnaPlegada', 'paqtracker.leyendaAbierta'].forEach((clave) => guardar(clave, null));
 
 const ORDEN_URGENCIA: NivelHolgura[] = ['ROJO', 'AMBAR', 'VERDE', 'CERRADO'];
 
