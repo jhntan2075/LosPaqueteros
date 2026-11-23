@@ -104,6 +104,8 @@ export function resumenRiesgo(datos: DatosOperacion) {
   return {
     rojo: riesgo.filter((p) => p.nivel === 'ROJO').length,
     ambar: riesgo.filter((p) => p.nivel === 'AMBAR').length,
+    /** Los que ya no llegan a tiempo (holgura negativa); también cuentan dentro del riesgo. */
+    tarde: riesgo.filter((p) => p.holguraMinutos < 0).length,
     holguraMinima: riesgo[0]?.holgura ?? '—',
   };
 }

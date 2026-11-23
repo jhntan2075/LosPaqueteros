@@ -69,7 +69,17 @@ describe('riesgo de pedidos', () => {
   });
 
   it('resume el riesgo con la holgura mínima', () => {
-    expect(resumenRiesgo(datos)).toEqual({ rojo: 1, ambar: 1, holguraMinima: '10 min' });
+    expect(resumenRiesgo(datos)).toEqual({ rojo: 1, ambar: 1, tarde: 0, holguraMinima: '10 min' });
+  });
+
+  it('cuenta aparte los pedidos que ya llegarán tarde (holgura negativa)', () => {
+    const conTarde = datosOperacion({
+      pedidos: [
+        pedidoApi({ id: 2, codigo: '#2', nivelHolgura: 'AMBAR', horaLimiteMs: INICIO_MS + 30 * 60_000 }),
+        pedidoApi({ id: 3, codigo: '#3', nivelHolgura: 'ROJO', horaLimiteMs: INICIO_MS - 5 * 60_000 }),
+      ],
+    });
+    expect(resumenRiesgo(conTarde)).toMatchObject({ rojo: 1, ambar: 1, tarde: 1 });
   });
 
   it('sin pedidos en riesgo la holgura mínima es "—"', () => {
