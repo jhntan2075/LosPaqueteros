@@ -16,7 +16,7 @@ afterEach(() => {
 });
 
 const abrir = () => {
-  render(<LeyendaMapa onCerrar={() => {}} />);
+  render(<LeyendaMapa />);
   fireEvent.click(screen.getByRole('button', { name: 'Configurar rangos' }));
   return screen.getByRole('dialog', { name: 'Rangos del semáforo' });
 };

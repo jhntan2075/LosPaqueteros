@@ -300,8 +300,8 @@ describe('Rúbrica · MAPA · línea de la ruta', () => {
   });
 
   it('C32 · los colores de la ruta tienen leyenda (tramo recorrido y pendiente con el mismo trazo que el mapa)', () => {
-    render(<LeyendaMapa onCerrar={() => {}} />);
-    const leyenda = screen.getByRole('region', { name: 'Capas y leyenda' });
+    render(<LeyendaMapa />);
+    const leyenda = screen.getByRole('region', { name: 'Leyenda del mapa' });
     expect(leyenda.textContent).toContain('Tramo recorrido');
     expect(leyenda.textContent).toContain('Tramo pendiente');
     const pendiente = leyenda.querySelector('line[stroke-dasharray]')!;
@@ -466,8 +466,8 @@ describe('Rúbrica · MAPA · rutas dinámicas', () => {
   });
 
   it('la leyenda explica la ruta que avanza y la ruta tardía, después del tramo pendiente', () => {
-    render(<LeyendaMapa onCerrar={() => {}} />);
-    const leyenda = screen.getByRole('region', { name: 'Capas y leyenda' });
+    render(<LeyendaMapa />);
+    const leyenda = screen.getByRole('region', { name: 'Leyenda del mapa' });
     expect(leyenda.textContent).toContain('La ruta seleccionada avanza hacia su destino');
     expect(leyenda.textContent).toContain('Ruta con un pedido que llega tarde (modo Holgura)');
     const lineas = Array.from(leyenda.querySelectorAll('line[stroke-dasharray]'));

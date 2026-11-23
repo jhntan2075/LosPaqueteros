@@ -1,6 +1,9 @@
-// Capas visibles del mapa (GridMap) y su catálogo para el panel de Capas y leyenda (LeyendaMapa).
-// En un archivo propio para no exportar una constante junto al componente de LeyendaMapa (rompería
-// el fast refresh de ese archivo).
+// Capas visibles del mapa (GridMap), su catálogo para el popover de Capas (ControlCapas) y el modo de color
+// de las unidades. En un archivo propio para no exportar constantes junto a un componente (rompería el
+// fast refresh de ese archivo).
+
+/** Qué codifica el color de las unidades: su carga a bordo o la holgura de su pedido más urgente. */
+export type ModoColor = 'carga' | 'holgura';
 
 export type Capa = 'rutas' | 'unidades' | 'destinos' | 'bloqueos' | 'almacenes';
 

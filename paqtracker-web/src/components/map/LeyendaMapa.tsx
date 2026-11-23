@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
-import { X } from 'lucide-react';
 import {
   alertaStockBajo,
   NOMBRE_CARGA,
@@ -14,7 +13,6 @@ import {
 } from '../../config/glosario';
 import { useRangosSemaforo } from '../../hooks/useRangosSemaforo';
 import { COLOR_SEMAFORO, NIVELES_CARGA } from '../../lib/semaforo';
-import { CAPAS, type Capa } from './capas';
 import { Boton } from '../ui';
 import { DialogoRangosSemaforo } from './DialogoRangosSemaforo';
 import { iconoVehiculo } from './iconosVehiculo';
@@ -30,10 +28,9 @@ import {
   MarcaSemaforo,
 } from './simbolos';
 
-// Capas y leyenda del mapa, desplegadas dentro de la columna de controles (o sueltas, con su botón de
-// cerrar, si se pasa onCerrar): se usan sin dejar de ver el mapa. Qué capas
-// se dibujan (rutas, unidades, destinos, bloqueos, almacenes) y qué es cada símbolo; el detalle de cada
-// objeto está en su tooltip y en el panel lateral.
+// Leyenda del mapa, en un popover de la barra de herramientas: se consulta sin dejar de ver el mapa. Qué es
+// cada símbolo y cómo se lee el semáforo; el detalle de cada objeto está en su tooltip y en el panel lateral.
+// Qué capas se dibujan se elige en ControlCapas.
 
 const { ROJO, VERDE, AMBAR } = COLOR_SEMAFORO;
 const GRIS = '#64748B';
@@ -66,46 +63,12 @@ const Fila: React.FC<{ simbolo: React.ReactNode; nombre: string; detalle?: strin
 
 const NIVELES_HOLGURA: ('ROJO' | 'AMBAR' | 'VERDE')[] = ['ROJO', 'AMBAR', 'VERDE'];
 
-interface LeyendaMapaProps {
-  /** Con valor, la leyenda lleva encabezado y botón de cerrar (uso suelto); en la columna no hace falta. */
-  onCerrar?: () => void;
-  /** Qué capas se dibujan; sin valor (o sin onCambiarCapa), el panel no muestra la sección de capas. */
-  capas?: Record<Capa, boolean>;
-  onCambiarCapa?: (clave: Capa) => void;
-}
-
-export const LeyendaMapa: React.FC<LeyendaMapaProps> = ({ onCerrar, capas, onCambiarCapa }) => {
+export const LeyendaMapa: React.FC = () => {
   const [configurando, setConfigurando] = useState(false);
   // Suscrita a los rangos: al guardarlos, la tabla de abajo muestra los nuevos sin esperar a la raíz.
   useRangosSemaforo();
   return (
-  <section aria-label="Capas y leyenda" className="cursor-default">
-    {onCerrar && (
-    <header className="h-9 pl-3 pr-2 flex items-center border-b border-neutral-200">
-      <h2 className="font-semibold text-body text-neutral-900">Capas y leyenda</h2>
-      <button
-        type="button"
-        onClick={onCerrar}
-        aria-label="Cerrar capas y leyenda"
-        className="ml-auto size-6 flex items-center justify-center rounded-control text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900"
-      >
-        <X className="size-3.5" />
-      </button>
-    </header>
-    )}
-
-    {capas && onCambiarCapa && (
-      <fieldset className="py-2 border-b border-neutral-200 flex flex-col gap-0.5">
-        <legend className="sr-only">Capas visibles</legend>
-        {CAPAS.map(({ clave, etiqueta }) => (
-          <label key={clave} className="flex items-center gap-2 py-0.5 text-body-sm font-sans text-neutral-900 cursor-pointer">
-            <input type="checkbox" checked={capas[clave]} onChange={() => onCambiarCapa(clave)} className="accent-primary-600" />
-            {etiqueta}
-          </label>
-        ))}
-      </fieldset>
-    )}
-
+  <section aria-label="Leyenda del mapa" className="cursor-default">
     <ul className="py-2">
       <Fila simbolo={<Simbolo caja="-16 -16 32 32"><AlmacenCentral /></Simbolo>} nombre="Almacén central" />
       <Fila

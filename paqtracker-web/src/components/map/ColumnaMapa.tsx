@@ -3,10 +3,11 @@ import { ChevronDown, ChevronLeft, ChevronRight, ListFilter, MapIcon, Search, X 
 import type { FiltrosMapa as Filtros } from '../../lib/filtrosMapa';
 import type { OcupacionGlobal } from '../../lib/operacion';
 import type { SeccionIncidencias } from '../../types/operacion';
-import type { Capa } from './capas';
+import type { Capa, ModoColor } from './capas';
 import { FiltrosMapa, type ConteosFiltros } from './FiltrosMapa';
 import { IndicadoresGlobales } from './IndicadoresGlobales';
 import { LeyendaMapa } from './LeyendaMapa';
+import { SelectorCapas, SelectorColorUnidades } from './ControlesCapas';
 import { COLOR_SEMAFORO, type NivelCarga } from '../../lib/semaforo';
 import { COLOR_BLOQUEO, MarcaSemaforo } from './simbolos';
 
@@ -21,7 +22,7 @@ import { COLOR_BLOQUEO, MarcaSemaforo } from './simbolos';
 export const ANCHO_COLUMNA_PX = 248;
 export const ANCHO_RIEL_PX = 52;
 
-export type ModoColor = 'carga' | 'holgura';
+export type { ModoColor };
 
 export interface AlertasMapa {
   riesgo: { rojo: number; ambar: number };
@@ -273,30 +274,8 @@ export const ColumnaMapa: React.FC<ColumnaMapaProps> = (props) => {
         </Seccion>
 
         <Seccion titulo="Color de las unidades">
-          <div role="radiogroup" aria-label="Color de las unidades" className="grid grid-cols-2 p-0.5 bg-neutral-100 rounded-control mb-2">
-            {(
-              [
-                ['carga', 'Carga'],
-                ['holgura', 'Holgura'],
-              ] as const
-            ).map(([valor, etiqueta]) => (
-              <button
-                key={valor}
-                type="button"
-                role="radio"
-                aria-checked={modoColor === valor}
-                onClick={() => onCambiarModoColor(valor)}
-                className={`h-7 rounded-control text-body-sm transition ${
-                  modoColor === valor ? 'bg-superficie shadow-xs font-medium text-neutral-900' : 'text-neutral-600 hover:text-neutral-900'
-                }`}
-              >
-                {etiqueta}
-              </button>
-            ))}
-          </div>
-          <p className="text-caption text-neutral-600 mb-1.5">
-            {modoColor === 'carga' ? 'Semáforo de la carga a bordo de cada unidad.' : 'La holgura del pedido más urgente que lleva cada unidad.'}
-          </p>
+          <SelectorColorUnidades modoColor={modoColor} onCambiarModoColor={onCambiarModoColor} />
+          <div className="mb-1.5" />
           <IndicadoresGlobales
             flota={ocupacion.flota}
             almacenes={ocupacion.almacenes}
@@ -336,7 +315,9 @@ export const ColumnaMapa: React.FC<ColumnaMapaProps> = (props) => {
         </Desplegable>
 
         <Desplegable abierto={leyenda.abierta} onAlternar={leyenda.onAlternar} icono={<MapIcon className="size-3.5 text-neutral-600" />} titulo="Capas y leyenda">
-          <LeyendaMapa capas={leyenda.capas} onCambiarCapa={leyenda.onCambiarCapa} />
+          <SelectorCapas capas={leyenda.capas} onCambiarCapa={leyenda.onCambiarCapa} />
+          <div className="my-2 border-t border-neutral-200" />
+          <LeyendaMapa />
         </Desplegable>
       </div>
     </aside>
