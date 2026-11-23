@@ -109,7 +109,7 @@ describe('Rúbrica 91.EvaSw · reporte de la última planificación estable', ()
   it('G09 · en la operación día a día, "Generar reporte de cierre" abre el plan sin detener la operación', async () => {
     vi.spyOn(clienteApi, 'planEstable').mockResolvedValue(plan({ ejecucionId: 'dia-a-dia', tipoEscenario: 'DIA_A_DIA' }));
     const detener = vi.spyOn(clienteApi, 'detener');
-    montarOperacion({ datos: datosRubrica({ tipoEscenario: 'DIA_A_DIA' }), subvista: 'resumen' });
+    montarOperacion({ datos: datosRubrica({ tipoEscenario: 'DIA_A_DIA' }), subvista: 'bitacora' });
     fireEvent.click(screen.getByRole('button', { name: 'Generar reporte de cierre' }));
     const dialogo = within(screen.getByRole('dialog', { name: 'Reporte de cierre · operación día a día' }));
     expect(dialogo.getByText(/No detiene la operación\./)).toBeTruthy();

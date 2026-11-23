@@ -3,6 +3,7 @@ import { FILTRO_ULTIMOS_30_MIN, SIN_ACTIVIDAD, SIN_EVENTOS_CON_FILTROS, VER_TODO
 import { useDatosOperacion } from '../../hooks/useDatosOperacion';
 import { agruparActividad } from '../../lib/eventos';
 import type { CategoriaEvento, DatosOperacion, EventoBitacora, SeleccionPanel } from '../../types/operacion';
+import { BotonReporteCierre } from '../reporte/BotonReporteCierre';
 import { FilaConBarra } from './comunes';
 
 // OP-09 · Actividad: historial de eventos (Figma 1:4555). Implementado sobre la captura del frame: el contexto de
@@ -170,6 +171,9 @@ export const BitacoraEventos: React.FC<{ onSeleccionar: (seleccion: SeleccionPan
           </li>
         )}
       </ol>
+
+      {/* G09: la última planificación estable como reporte de cierre; no detiene la operación. */}
+      <BotonReporteCierre className="px-3 py-2 border-t border-neutral-200 shrink-0" />
 
       <div className="h-8 px-3 flex items-center text-body-sm border-t border-neutral-200 shrink-0">
         <button type="button" onClick={() => exportarCsv(visibles)} className="ml-auto font-sans text-neutral-600 hover:text-neutral-900">

@@ -106,4 +106,20 @@ describe('BitacoraEventos (Actividad)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Entregas' }));
     expect(screen.getByRole('button', { name: 'Ver todos' }).className).toContain('max-md:min-h-11');
   });
+
+  it('al pie lleva el reporte de cierre: un botón secundario a todo el ancho, con su nota, después de la lista', () => {
+    montar([evento('a', 'UNIDAD_AVERIADA', 5, 'INCIDENCIA')]);
+    // La rúbrica trae una simulación: el botón dice "Ver la última planificación" y no detiene la simulación.
+    const boton = screen.getByRole('button', { name: 'Ver la última planificación' });
+    expect(boton.className).toContain('w-full');
+    expect(screen.getByText('Rutas y paradas de la última planificación estable. No detiene la simulación.')).toBeTruthy();
+    expect(screen.getByRole('list', { name: 'Eventos' }).compareDocumentPosition(boton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('en el día a día el botón se llama "Generar reporte de cierre" y no detiene la operación', () => {
+    const datos = { ...datosRubrica({ tipoEscenario: 'DIA_A_DIA' }), eventos: [] };
+    renderConDatos(<BitacoraEventos onSeleccionar={vi.fn()} />, datos);
+    expect(screen.getByRole('button', { name: 'Generar reporte de cierre' })).toBeTruthy();
+    expect(screen.getByText('Rutas y paradas de la última planificación estable. No detiene la operación.')).toBeTruthy();
+  });
 });
