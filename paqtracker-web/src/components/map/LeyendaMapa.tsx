@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   alertaStockBajo,
@@ -65,6 +65,7 @@ const NIVELES_HOLGURA: ('ROJO' | 'AMBAR' | 'VERDE')[] = ['ROJO', 'AMBAR', 'VERDE
 
 export const LeyendaMapa: React.FC = () => {
   const [configurando, setConfigurando] = useState(false);
+  const botonRangos = useRef<HTMLButtonElement>(null);
   // Suscrita a los rangos: al guardarlos, la tabla de abajo muestra los nuevos sin esperar a la raíz.
   useRangosSemaforo();
   return (
@@ -186,12 +187,20 @@ export const LeyendaMapa: React.FC = () => {
         ))}
       </div>
       <p className="text-caption text-neutral-600">La forma también indica el nivel, no solo el color.</p>
-      <Boton tamano="sm" variante="secundario" onClick={() => setConfigurando(true)} className="self-start h-11">
+      <Boton ref={botonRangos} tamano="sm" variante="secundario" onClick={() => setConfigurando(true)} className="self-start h-11">
         Configurar rangos
       </Boton>
     </div>
     {/* En un portal: la leyenda tiene scroll propio y el diálogo debe cubrir toda la pantalla. */}
-    {configurando && createPortal(<DialogoRangosSemaforo onCerrar={() => setConfigurando(false)} />, document.body)}
+    {configurando && createPortal(
+        <DialogoRangosSemaforo
+          onCerrar={() => {
+            setConfigurando(false);
+            botonRangos.current?.focus();
+          }}
+        />,
+        document.body,
+      )}
   </section>
   );
 };

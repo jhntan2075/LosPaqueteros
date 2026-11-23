@@ -316,7 +316,7 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
     const elemento = containerRef.current;
     if (!elemento) return;
     const alGirar = (evento: WheelEvent) => {
-      if ((evento.target as HTMLElement).closest('[data-sin-zoom]')) return;
+      if (!elemento.contains(evento.target as Node) || (evento.target as HTMLElement).closest('[data-sin-zoom]')) return;
       evento.preventDefault();
       const rect = elemento.getBoundingClientRect();
       const l = crearLienzo(rect.width, rect.height, anchoPanelDerecho, altoPanelInferior, compacto);
@@ -346,9 +346,11 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
   // Arrastre con captura de puntero: sigue aunque el cursor salga del mapa, como en un visor de mapas.
   // Con la captura activa el click llega al contenedor, así que un toque sin desplazamiento sobre un
   // elemento [data-objeto] (unidad, pin, almacén) se interpreta como selección.
+  // Los eventos de React burbujean por el árbol de React, no por el del DOM: lo que se monta en un portal
+  // (el diálogo de rangos del semáforo) llegaría aquí aunque esté fuera del mapa. Esos no son del mapa.
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     const destino = e.target as HTMLElement;
-    if (e.button !== 0 || !vista || destino.closest('button, input, a, [data-sin-zoom]')) return;
+    if (!e.currentTarget.contains(destino) || e.button !== 0 || !vista || destino.closest('button, input, a, [data-sin-zoom]')) return;
     cancelarAnimacion();
     e.currentTarget.setPointerCapture?.(e.pointerId);
     if (containerRef.current) punterosRef.current.set(e.pointerId, posicionLocal(e));
@@ -369,7 +371,7 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
   };
 
   const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (!vista || !containerRef.current) return;
+    if (!vista || !containerRef.current || !e.currentTarget.contains(e.target as Node)) return;
     if (punterosRef.current.has(e.pointerId)) punterosRef.current.set(e.pointerId, posicionLocal(e));
     const pellizco = pellizcoRef.current;
     if (pellizco && punterosRef.current.size === 2) {
@@ -400,6 +402,7 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
   };
 
   const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!e.currentTarget.contains(e.target as Node)) return;
     if (e.currentTarget.hasPointerCapture?.(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId);
     punterosRef.current.delete(e.pointerId);
     if (pellizcoRef.current) {
