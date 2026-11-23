@@ -1,54 +1,32 @@
-import React, { useState } from 'react';
-import { ArrowRight, ClipboardList } from 'lucide-react';
-import { ACTIVIDAD_RECIENTE, SIN_INCIDENCIAS_RECIENTES, VER_ACTIVIDAD } from '../../config/glosario';
-import { DialogoReporteCierre } from '../reporte/DialogoReporteCierre';
+import React from 'react';
+import {
+  ACTIVIDAD_RECIENTE,
+  lineaDisponibles,
+  lineaEntregados,
+  lineaPlazo,
+  lineaTiposEnRuta,
+  MARCA_FLOTA_CARGA_ALTA,
+  MARCA_FLOTA_COMPLETA,
+  PROXIMA_LLEGADA,
+  SIN_INCIDENCIAS_RECIENTES,
+  TITULO_PEDIDOS_ENTREGADOS,
+  TITULO_UNIDADES_EN_RUTA,
+  valorProximaLlegada,
+  VER_ACTIVIDAD,
+} from '../../config/glosario';
 import { useDatosOperacion } from '../../hooks/useDatosOperacion';
-import { decimalesDe, formatearFechaLarga, formatearMiles, formatearNumero } from '../../lib/formato';
-import { estadoFlota } from '../../lib/operacion';
+import { formatearNumero } from '../../lib/formato';
+import { metricasResumen } from '../../lib/resumen';
 import type { SeleccionPanel } from '../../types/operacion';
 import type { ConfiguracionCorrida } from '../../types/simulacion';
-import { Boton, FilaDato } from '../ui';
+import { BotonReporteCierre } from '../reporte/BotonReporteCierre';
+import { BloqueSimulacion } from '../resumen/BloqueSimulacion';
+import { FichaResumen } from '../resumen/FichaResumen';
 import { TituloSeccion } from './comunes';
 import { MarcaSemaforo } from '../map/simbolos';
 
 // Pestaña "Resumen" del panel lateral (antes, un popover de métricas flotante sobre el mapa). Los
 // mismos indicadores, en una sola columna angosta: entregas, incidencias y flota de un vistazo.
-
-interface FichaProps {
-  titulo: string;
-  valor: React.ReactNode;
-  linea1: string;
-  linea2: string;
-  onClick?: () => void;
-  esAlerta?: boolean;
-}
-
-const Ficha: React.FC<FichaProps> = ({ titulo, valor, linea1, linea2, onClick, esAlerta }) => {
-  const contenido = (
-    <>
-      <div className="flex items-center justify-between w-full">
-        <span className="font-sans text-caption font-medium text-neutral-600 tracking-tight truncate">{titulo}</span>
-        {onClick && <ArrowRight className="size-3 text-neutral-600 group-hover:text-primary-600 transition shrink-0" />}
-      </div>
-      <span className="flex items-center gap-1.5 tabular-nums text-title text-neutral-900">{valor}</span>
-      <span className="font-sans text-caption text-neutral-600 truncate w-full">{linea1}</span>
-      <span className="font-sans text-caption text-neutral-600 truncate w-full">{linea2}</span>
-    </>
-  );
-  const base = 'w-full bg-superficie border rounded-card px-2.5 py-2 flex flex-col gap-0.5 items-start text-left overflow-hidden transition';
-  const borde = esAlerta ? 'border-critical-600/25 bg-critical-50/40' : 'border-neutral-200';
-  return onClick ? (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`group ${base} ${borde} hover:border-primary-600 hover:shadow-xs focus-visible:ring-2 focus-visible:ring-primary-600/30 cursor-pointer`}
-    >
-      {contenido}
-    </button>
-  ) : (
-    <div className={`${base} ${borde}`}>{contenido}</div>
-  );
-};
 
 /** Incidencias que se listan en "Actividad reciente". */
 const INCIDENCIAS_RECIENTES = 5;
@@ -61,38 +39,27 @@ interface ResumenOperacionProps {
 
 export const ResumenOperacion: React.FC<ResumenOperacionProps> = ({ onSeleccionar, simulacion }) => {
   const datos = useDatosOperacion();
-  const { resumen } = datos;
-  const flota = estadoFlota(datos);
-  // El porcentaje y el semáforo salen de las mismas unidades que se muestran, no del dato del servidor.
-  const usoFlota = flota.total === 0 ? 0 : flota.enRuta / flota.total;
-  const quiebre = flota.total > 0 && usoFlota >= 1;
-  const alertaCarga = usoFlota >= 0.7;
-  const porcentaje = (resumen.total === 0 ? 0 : (resumen.entregados / resumen.total) * 100).toFixed(1).replace('.', ',');
-  const enRutaDe = (tipo: string) => flota.porTipo.find((t) => t.tipo === tipo)?.enRuta ?? 0;
-  const diaADia = datos.tipoEscenario === 'DIA_A_DIA';
+  const { resumen, flota, usoFlota, quiebre, alertaCarga, porcentajeEntregado, totalPedidos, enRutaDe } = metricasResumen(datos);
   // Los eventos llegan del más nuevo al más antiguo.
   const incidencias = datos.eventos.filter((e) => e.categoria === 'INCIDENCIA').slice(0, INCIDENCIAS_RECIENTES);
-  // Instante del reloj en que se generó el reporte; null con el diálogo cerrado.
-  const [generadoEn, setGeneradoEn] = useState<Date | null>(null);
 
   return (
     <div className="flex-1 min-h-0 overflow-y-auto">
-      {generadoEn && <DialogoReporteCierre ejecucionId={datos.ejecucionId} diaADia={diaADia} reloj={generadoEn} onCerrar={() => setGeneradoEn(null)} />}
       <section className="p-3 flex flex-col gap-2">
         <TituloSeccion>Entregas</TituloSeccion>
-        <Ficha
-          titulo="Pedidos entregados"
+        <FichaResumen
+          titulo={TITULO_PEDIDOS_ENTREGADOS}
           valor={resumen.entregados}
-          linea1={`${porcentaje} % de ${formatearMiles(resumen.total)} pedidos`}
-          linea2={`${resumen.enPlazo} en plazo · ${resumen.fueraDePlazo} fuera de plazo`}
+          linea1={lineaEntregados(porcentajeEntregado, totalPedidos)}
+          linea2={lineaPlazo(resumen.enPlazo, resumen.fueraDePlazo)}
         />
-        <Ficha
+        <FichaResumen
           titulo="Pedidos en tránsito"
           valor={resumen.enRuta}
           linea1={`En ${flota.enRuta} ${flota.enRuta === 1 ? 'unidad' : 'unidades'} en ruta`}
-          linea2={resumen.proximaEntregaMin === null ? 'Sin llegadas en tránsito' : `Próxima llegada: ${resumen.proximaEntregaMin} min`}
+          linea2={resumen.proximaEntregaMin === null ? valorProximaLlegada(null) : `${PROXIMA_LLEGADA}: ${resumen.proximaEntregaMin} min`}
         />
-        <Ficha
+        <FichaResumen
           titulo="Pedidos en espera"
           valor={resumen.enEspera}
           linea1="Registrados, aún sin salir a ruta"
@@ -102,18 +69,22 @@ export const ResumenOperacion: React.FC<ResumenOperacionProps> = ({ onSelecciona
         <div className="mt-1">
           <TituloSeccion>Incidencias y flota</TituloSeccion>
         </div>
-        <Ficha
-          titulo="Unidades en ruta"
+        <FichaResumen
+          titulo={TITULO_UNIDADES_EN_RUTA}
           valor={
             <>
-              {quiebre ? <MarcaSemaforo nivel="ROJO" titulo="Toda la flota en ruta" /> : alertaCarga ? <MarcaSemaforo nivel="AMBAR" titulo="Flota con carga alta" /> : null}
+              {quiebre ? (
+                <MarcaSemaforo nivel="ROJO" titulo={MARCA_FLOTA_COMPLETA} />
+              ) : alertaCarga ? (
+                <MarcaSemaforo nivel="AMBAR" titulo={MARCA_FLOTA_CARGA_ALTA} />
+              ) : null}
               <span className={quiebre ? 'text-critical-600' : alertaCarga ? 'text-warn-700' : undefined}>
                 {flota.total === 0 ? '0 de 0' : `${flota.enRuta} de ${flota.total} (${formatearNumero(Math.round(usoFlota * 100))} %)`}
               </span>
             </>
           }
-          linea1={`Auto ${enRutaDe('AUTO')} · Moto ${enRutaDe('MOTO')} · Bici ${enRutaDe('BICICLETA')}`}
-          linea2={`${flota.disponibles} disponibles · ${flota.averiadas.length} averiadas`}
+          linea1={lineaTiposEnRuta(enRutaDe('AUTO'), enRutaDe('MOTO'), enRutaDe('BICICLETA'))}
+          linea2={lineaDisponibles(flota.disponibles, flota.averiadas.length)}
           onClick={() => onSeleccionar({ tipo: 'flota' })}
           esAlerta={flota.averiadas.length > 0 || quiebre}
         />
@@ -140,27 +111,8 @@ export const ResumenOperacion: React.FC<ResumenOperacionProps> = ({ onSelecciona
           {VER_ACTIVIDAD}
         </button>
       </section>
-      {simulacion && (
-        <section aria-label="Simulación" className="px-3 pb-3 flex flex-col gap-1">
-          <TituloSeccion>Simulación</TituloSeccion>
-          <FilaDato etiqueta="Escenario" valor={simulacion.escenario} texto />
-          <FilaDato etiqueta="Inicio" valor={formatearFechaLarga(simulacion.inicio, false)} />
-          <FilaDato
-            etiqueta="Flota"
-            valor={`${simulacion.flota.autos} autos · ${simulacion.flota.motos} motos · ${simulacion.flota.bicicletas} bicis`}
-          />
-          <FilaDato etiqueta="Ritmo" valor={`×${formatearNumero(simulacion.factorAceleracion, decimalesDe(simulacion.factorAceleracion))}`} />
-        </section>
-      )}
-      <div className="px-3 pb-3">
-        {/* G09: la última planificación estable como reporte de cierre; no detiene la operación. */}
-        <Boton variante="secundario" icono={ClipboardList} onClick={() => setGeneradoEn(datos.reloj)} className="w-full">
-          {diaADia ? 'Generar reporte de cierre' : 'Ver la última planificación'}
-        </Boton>
-        <p className="mt-1 text-caption text-neutral-600">
-          Rutas y paradas de la última planificación estable. {diaADia ? 'No detiene la operación.' : 'No detiene la simulación.'}
-        </p>
-      </div>
+      {simulacion && <BloqueSimulacion simulacion={simulacion} className="px-3 pb-3" />}
+      <BotonReporteCierre className="px-3 pb-3" />
     </div>
   );
 };

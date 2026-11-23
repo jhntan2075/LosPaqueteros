@@ -196,6 +196,29 @@ export const SECCION_EN_RIESGO = 'En riesgo';
 export const SECCION_AJUSTADOS = 'Ajustados';
 export const SECCION_STOCK_BAJO = 'Almacenes con stock bajo';
 
+/** Resumen de la operación: fichas del desplegable y bloque de la simulación. */
+export const TITULO_PEDIDOS_ENTREGADOS = 'Pedidos entregados';
+export const lineaEntregados = (porcentaje: string, total: string) => `${porcentaje} % de ${total} pedidos`;
+export const lineaPlazo = (enPlazo: number, fueraDePlazo: number) => `${enPlazo} en plazo · ${fueraDePlazo} fuera de plazo`;
+export const TITULO_UNIDADES_EN_RUTA = 'Unidades en ruta';
+export const lineaTiposEnRuta = (autos: number, motos: number, bicis: number) => `Auto ${autos} · Moto ${motos} · Bici ${bicis}`;
+export const lineaDisponibles = (disponibles: number, averiadas: number) => `${disponibles} disponibles · ${averiadas} averiadas`;
+export const MARCA_FLOTA_COMPLETA = 'Toda la flota en ruta';
+export const MARCA_FLOTA_CARGA_ALTA = 'Flota con carga alta';
+export const PROXIMA_LLEGADA = 'Próxima llegada';
+export const valorProximaLlegada = (minutos: number | null) => (minutos === null ? 'Sin llegadas en tránsito' : `${minutos} min`);
+export const SIMULACION = 'Simulación';
+export const SIM_ESCENARIO = 'Escenario';
+export const SIM_INICIO = 'Inicio';
+export const SIM_FLOTA = 'Flota';
+export const SIM_RITMO = 'Ritmo';
+export const simFlota = (autos: number, motos: number, bicis: number) => `${autos} autos · ${motos} motos · ${bicis} bicis`;
+
+/** Reporte de cierre (la última planificación estable): botón y nota al pie de Actividad. */
+export const reporteDeCierre = (diaADia: boolean) => (diaADia ? 'Generar reporte de cierre' : 'Ver la última planificación');
+export const notaReporteDeCierre = (diaADia: boolean) =>
+  `Rutas y paradas de la última planificación estable. ${diaADia ? 'No detiene la operación.' : 'No detiene la simulación.'}`;
+
 /** Resumen: bloque de actividad reciente. */
 export const ACTIVIDAD_RECIENTE = 'Actividad reciente';
 export const VER_ACTIVIDAD = 'Ver actividad';
