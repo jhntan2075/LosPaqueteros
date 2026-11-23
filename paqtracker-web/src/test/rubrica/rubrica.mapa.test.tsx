@@ -71,8 +71,9 @@ describe('Rúbrica · MAPA · pantalla principal', () => {
     localStorage.clear();
     montarOperacion();
     expect(screen.queryByRole('complementary', { name: 'Panel de detalle' })).toBeNull();
-    expect(screen.queryByRole('region', { name: 'Capas y leyenda' })).toBeNull();
+    expect(screen.queryByRole('region', { name: 'Leyenda del mapa' })).toBeNull();
     expect(screen.queryByRole('group', { name: 'Capas visibles' })).toBeNull();
+    expect(screen.queryByRole('dialog')).toBeNull();
     // Se abre a demanda desde la barra vertical de paneles, siempre visible junto al mapa.
     fireEvent.click(screen.getByRole('tab', { name: /Flota/ }));
     expect(screen.getByRole('complementary', { name: 'Panel de detalle' })).toBeTruthy();
@@ -359,6 +360,11 @@ describe('Rúbrica · MAPA · rutas dinámicas', () => {
     fireEvent.pointerDown(unidad, { button: 0, clientX: 50, clientY: 50, pointerId: 1 });
     fireEvent.pointerUp(unidad, { button: 0, clientX: 50, clientY: 50, pointerId: 1 });
   };
+  /** El color de las unidades se elige en el popover de Capas de la barra de herramientas. */
+  const pasarAHolgura = () => {
+    fireEvent.click(screen.getByRole('button', { name: 'Capas' }));
+    fireEvent.click(screen.getByRole('radio', { name: 'Holgura' }));
+  };
   /** Pulsa "Acercar" hasta superar la escala de detalle (20 px/km); sin animación para que el zoom sea inmediato. */
   const acercarHastaElDetalle = (container: HTMLElement) => {
     for (let i = 0; i < 6 && !container.querySelector('[data-flecha]'); i++) fireEvent.click(screen.getByRole('button', { name: 'Acercar' }));
@@ -433,7 +439,7 @@ describe('Rúbrica · MAPA · rutas dinámicas', () => {
     const datos = datosRubrica();
     datos.flota.find((u) => u.codigo === 'M-01')!.paradas[0].holguraMinutos = -10;
     const { container } = montarOperacion({ datos });
-    fireEvent.click(screen.getByRole('radio', { name: 'Holgura' }));
+    pasarAHolgura();
     const tardia = container.querySelectorAll('[data-ruta-tardia]');
     expect(tardia.length).toBe(1);
     expect(tardia[0]).toBe(rutaDe(container, 'M-01'));
@@ -458,7 +464,7 @@ describe('Rúbrica · MAPA · rutas dinámicas', () => {
     const datos = datosRubrica();
     datos.flota.find((u) => u.codigo === 'M-01')!.paradas[0].holguraMinutos = -10;
     const { container } = montarOperacion({ datos });
-    fireEvent.click(screen.getByRole('radio', { name: 'Holgura' }));
+    pasarAHolgura();
     acercarHastaElDetalle(container);
     const flechas = Array.from(rutaDe(container, 'M-01').parentElement!.querySelectorAll('[data-flecha]'));
     expect(flechas.length).toBeGreaterThan(0);
@@ -545,6 +551,7 @@ describe('Rúbrica · MAPA · GridMap aislado', () => {
 describe('Rúbrica · CIRCUNSTANCIAS · filtros globales del mapa', () => {
   afterEach(() => localStorage.clear());
 
+  // Los filtros viven en el popover de la barra de herramientas del mapa.
   const abrirFiltros = () => fireEvent.click(screen.getByRole('button', { name: 'Filtros' }));
   const grupo = (nombre: string) => within(screen.getByRole('group', { name: nombre }));
 
@@ -555,7 +562,7 @@ describe('Rúbrica · CIRCUNSTANCIAS · filtros globales del mapa', () => {
     expect(objetoMapa(container, 'vehiculo:M-01')).toBeTruthy();
     expect(objetoMapa(container, 'vehiculo:A-01')).toBeNull();
     expect(objetoMapa(container, 'vehiculo:B-01')).toBeNull();
-    expect(screen.getByRole('button', { name: 'Filtros, 1 activo' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Filtros (1 activo)' })).toBeTruthy();
   });
 
   it('D06 · se filtran las unidades por semáforo + vacío de su carga', () => {
@@ -567,7 +574,7 @@ describe('Rúbrica · CIRCUNSTANCIAS · filtros globales del mapa', () => {
     fireEvent.click(grupo('Carga de unidades').getByRole('button', { name: /^Casi lleno/ }));
     expect(objetoMapa(container, 'vehiculo:M-01')).toBeTruthy();
     // Quitar los filtros vuelve a mostrar todo.
-    fireEvent.click(screen.getByRole('button', { name: 'Quitar los filtros' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Limpiar filtros' }));
     expect(objetoMapa(container, 'vehiculo:A-01')).toBeTruthy();
   });
 

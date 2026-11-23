@@ -1,8 +1,6 @@
 import React, { useState, useRef, useEffect, useImperativeHandle, forwardRef } from 'react';
-import { ZoomIn, ZoomOut, Maximize2, Search, SlidersHorizontal, AlertTriangle } from 'lucide-react';
 import { ALMACENES, MALLA_ALTO_KM, MALLA_ANCHO_KM, TIPOS_UNIDAD, UNIDADES, type IdAlmacen } from '../../config/dominio';
 import { alertaStockBajo, NOMBRE_CARGA, NOMBRE_HOLGURA, NOMBRE_STOCK, SITUACION_UNIDAD, nombreAveria } from '../../config/glosario';
-import { useCerrarConEscape } from '../../hooks/useCerrarConEscape';
 import { useTamanoElemento } from '../../hooks/useTamanoElemento';
 import { capitalizar, formatearMomento } from '../../lib/formato';
 import { useDatosOperacion } from '../../hooks/useDatosOperacion';
@@ -24,13 +22,15 @@ import {
 import { agruparCercanas } from '../../lib/agrupacion';
 import { prefiereMenosMovimiento } from '../../lib/movimiento';
 import { fueraDelAlmacen, ocupacionAlmacenes, ocupacionFlota } from '../../lib/operacion';
-import { almacenPasaFiltros, cantidadFiltros, guardarFiltros, leerFiltros, SIN_FILTROS, unidadPasaFiltros, type FiltrosMapa as Filtros } from '../../lib/filtrosMapa';
+import { almacenPasaFiltros, cantidadFiltros, guardarFiltros, leerFiltros, unidadPasaFiltros, type FiltrosMapa as Filtros } from '../../lib/filtrosMapa';
 import { COLOR_HOLGURA_HEX, COLOR_SEMAFORO, NIVELES_CARGA, nivelDeOcupacion, type NivelCarga } from '../../lib/semaforo';
 import { destinoResaltado, unidadesResaltadas, type SeleccionResaltable } from '../../lib/envios';
 import { COLOR_SIN_DATO, colorDeUnidad, iconoVehiculo, unidadVacia } from './iconosVehiculo';
-import type { Capa } from './capas';
 import type { ConteosFiltros } from './FiltrosMapa';
-import { ColumnaMapa, type ColumnaMapaProps, type ModoColor } from './ColumnaMapa';
+import { ANCHO_ANGOSTO_PX, SEPARACION_BARRA_PX, type Capa, type ModoColor } from './capas';
+import { ControlesZoom, BarraEscala } from './ControlesZoom';
+import { HerramientasMapa } from './HerramientasMapa';
+import { PilaSuperiorMapa } from './PilaSuperiorMapa';
 import {
   AlmacenCentral,
   AlmacenIntermedio,
@@ -88,14 +88,12 @@ interface GridMapProps {
   /** Stock de los almacenes con su semáforo de inventario; sin datos se dibujan sin stock. */
   almacenes?: AlmacenOperacion[];
   seleccion: ObjetoMapa | null;
-  /** Ancho ocupado por un panel flotante a la derecha; los controles de zoom se corren a su izquierda. */
+  /** Ancho ocupado por un panel flotante a la derecha; las herramientas y el zoom se corren a su izquierda. */
   anchoPanelDerecho?: number;
-  /** Hay un panel lateral abierto junto al mapa (fuera de él): la columna de controles se pliega a su tira. */
-  panelLateralAbierto?: boolean;
   /** Alto de una hoja inferior abierta (pantallas angostas): la malla se encuadra encima de ella. */
   altoPanelInferior?: number;
-  /** Pedidos en riesgo por nivel del semáforo de holgura. */
-  riesgo: { rojo: number; ambar: number };
+  /** Pedidos en riesgo por nivel del semáforo de holgura, y cuántos ya llegarán tarde. */
+  riesgo: { rojo: number; ambar: number; tarde?: number };
   onSeleccionar: (objeto: ObjetoMapa) => void;
   /** Abre Incidencias, en la sección de la alerta tocada si se indica. */
   onAbrirIncidencias: (seccion?: SeccionIncidencias) => void;
@@ -104,28 +102,28 @@ interface GridMapProps {
   /** Indicador de stock de los almacenes; sin valor, el indicador solo informa. */
   onAbrirAlmacenes?: () => void;
   onHoverCoordenada?: (coord: Coordenada) => void;
+  /** El modo enfoque se activa o se apaga: quien lo oye cierra el panel de la derecha al activarlo. */
+  onModoEnfoque?: (activo: boolean) => void;
   /** 'simulacion': solo alerta del riesgo; tocar un objeto abre su detalle igual que en Operación. */
   variante?: 'operacion' | 'simulacion';
-  /**
-   * Pantalla angosta: sin columna fija. Las alertas se resumen en un chip y los controles se abren en un
-   * cajón sobre el mapa; el zoom es con pellizco (y "ver todo" queda a mano).
-   */
+  /** Pantalla angosta: el buscador se pliega a un ícono y el zoom es con pellizco ("Ver todo" queda en las herramientas). */
   compacto?: boolean;
   children?: React.ReactNode;
 }
 
-/** Distancia del borde derecho a los controles de zoom, y lo que ocupan a lo ancho (botón de 32 px + relleno). */
-const DERECHA_CONTROLES_PX = 16;
-const ANCHO_CONTROLES_ZOOM_PX = 44;
-/** En la presentación compacta, franja superior con el chip de alertas y los botones (44 px + aire). */
-const FRANJA_COMPACTA_PX = 56;
+/** Distancia del borde derecho a las herramientas y al zoom, y del borde inferior al zoom y a la escala. */
+const DERECHA_CONTROLES_PX = 12;
+const INFERIOR_CONTROLES_PX = 12;
+/** Un panel flotante a la derecha (diagnóstico de la simulación) empuja las herramientas y el zoom a su izquierda. */
+const derechaDeControles = (anchoPanelDerecho: number) => (anchoPanelDerecho > 0 ? anchoPanelDerecho + 24 : DERECHA_CONTROLES_PX);
 /** Lugar al pie para la barra de escala y la coordenada del nodo. */
 const PIE_PX = 44;
 
 /**
  * La malla de 70 × 50 km se encuadra completa ('contener') y es lo único que lleva cuadrícula: alrededor
- * queda un margen neutro que marca su límite. Los controles viven en la columna de la izquierda (fuera de
- * este lienzo) y en los márgenes (zoom a la derecha, escala al pie): ninguno tapa la malla en la vista completa.
+ * queda un margen neutro que marca su límite. Los controles flotan sobre el mapa: la barra de herramientas
+ * en su margen derecho y la escala al pie, así que ninguno tapa la malla en la vista completa; la pila de
+ * búsqueda y alertas, a la izquierda, sí puede cubrir su esquina.
  */
 const crearLienzo = (ancho: number, alto: number, anchoPanelDerecho: number, altoPanelInferior: number, compacto: boolean): Lienzo => {
   if (compacto) {
@@ -133,18 +131,16 @@ const crearLienzo = (ancho: number, alto: number, anchoPanelDerecho: number, alt
       ancho,
       alto,
       margen: 12,
-      margenSuperior: FRANJA_COMPACTA_PX + 8,
       margenInferior: altoPanelInferior > 0 ? altoPanelInferior + 12 : PIE_PX,
       ajuste: 'contener',
     };
   }
-  const derechaControles = anchoPanelDerecho > 0 ? anchoPanelDerecho + 24 : DERECHA_CONTROLES_PX;
   return {
     ancho,
     alto,
     margen: 32,
     margenInferior: PIE_PX,
-    margenDerecho: derechaControles + ANCHO_CONTROLES_ZOOM_PX + 16,
+    margenDerecho: derechaDeControles(anchoPanelDerecho) + SEPARACION_BARRA_PX,
     ajuste: 'contener',
   };
 };
@@ -176,13 +172,6 @@ const factorDeRueda = (evento: WheelEvent, altoPagina: number) => {
   return Math.min(2, Math.max(0.5, Math.exp(-delta * sensibilidad)));
 };
 
-/** Longitudes "redondas" para la barra de escala; se elige la que mide entre 40 y 120 px. */
-const LARGOS_ESCALA_KM = [1, 2, 5, 10, 20, 50];
-const barraEscala = (pxPorKm: number) => {
-  const km = LARGOS_ESCALA_KM.find((largo) => largo * pxPorKm >= 40) ?? LARGOS_ESCALA_KM[LARGOS_ESCALA_KM.length - 1];
-  return { km, px: Math.round(km * pxPorKm) };
-};
-
 /** Preferencias por navegador; sin almacenamiento, rigen los valores por defecto. */
 const leer = (clave: string) => {
   try {
@@ -199,13 +188,7 @@ const guardar = (clave: string, valor: string | null) => {
     // Sin almacenamiento disponible: la preferencia dura solo esta sesión.
   }
 };
-const CLAVE_LEYENDA = 'paqtracker.leyendaAbierta';
-const CLAVE_COLUMNA = 'paqtracker.columnaPlegada';
 const CLAVE_COLOR = 'paqtracker.colorUnidades';
-const leerPreferenciaColumna = () => {
-  const valor = leer(CLAVE_COLUMNA);
-  return valor === '1' ? true : valor === '0' ? false : null;
-};
 
 const ORDEN_URGENCIA: NivelHolgura[] = ['ROJO', 'AMBAR', 'VERDE', 'CERRADO'];
 
@@ -215,9 +198,6 @@ const colorHolguraDeUnidad = (u: UnidadOperacion) => {
   return nivel ? COLOR_HOLGURA_HEX[nivel] : COLOR_SIN_DATO;
 };
 
-const ESTILO_BOTON_ZOOM =
-  'w-8 h-8 flex items-center justify-center hover:bg-neutral-100 rounded-control text-neutral-600 hover:text-neutral-900 transition cursor-pointer';
-
 export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
   {
     unidades,
@@ -226,7 +206,6 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
     almacenes = [],
     seleccion,
     anchoPanelDerecho = 0,
-    panelLateralAbierto = false,
     altoPanelInferior = 0,
     riesgo,
     onSeleccionar,
@@ -234,6 +213,7 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
     onAbrirFlota,
     onAbrirAlmacenes,
     onHoverCoordenada,
+    onModoEnfoque,
     variante = 'operacion',
     compacto = false,
     children,
@@ -261,13 +241,8 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
   const [hover, setHover] = useState<ObjetoHover | null>(null);
   // La retícula y la coordenada del nodo bajo el cursor solo se muestran mientras el cursor está sobre el mapa.
   const [cursorEnMapa, setCursorEnMapa] = useState(false);
-  const [leyendaAbierta, setLeyendaAbierta] = useState(() => leer(CLAVE_LEYENDA) === '1');
-  const [filtrosAbiertos, setFiltrosAbiertos] = useState(false);
+  const [enfoque, setEnfoque] = useState(false);
   const [modoColor, setModoColor] = useState<ModoColor>(() => (leer(CLAVE_COLOR) === 'holgura' ? 'holgura' : 'carga'));
-  const alternarLeyenda = (abierta: boolean) => {
-    setLeyendaAbierta(abierta);
-    guardar(CLAVE_LEYENDA, abierta ? '1' : '0');
-  };
   const cambiarModoColor = (modo: ModoColor) => {
     setModoColor(modo);
     guardar(CLAVE_COLOR, modo);
@@ -281,27 +256,11 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
   const enSimulacion = variante === 'simulacion';
   const [capas, setCapas] = useState<Record<Capa, boolean>>({ rutas: true, unidades: true, destinos: true, bloqueos: true, almacenes: true });
 
-  // Columna de controles: un solo panel lateral a la vez en escritorio, así que abrir un panel derecho la
-  // pliega a un riel. El usuario puede forzar lo contrario y se recuerda; si su elección coincide con la
-  // automática, vuelve a ser automática.
-  const plegadaAuto = !compacto && (anchoPanelDerecho > 0 || panelLateralAbierto);
-  const [preferenciaPlegada, setPreferenciaPlegada] = useState<boolean | null>(leerPreferenciaColumna);
-  const plegada = preferenciaPlegada ?? plegadaAuto;
-  const fijarPlegada = (valor: boolean) => {
-    const preferencia = valor === plegadaAuto ? null : valor;
-    setPreferenciaPlegada(preferencia);
-    guardar(CLAVE_COLUMNA, preferencia === null ? null : preferencia ? '1' : '0');
-  };
-  // Pedido de foco para el buscador: cambia cada vez que se pide desde el riel o desde el ícono compacto.
-  const [enfocarBusqueda, setEnfocarBusqueda] = useState(false);
-  const [cajonAbierto, setCajonAbierto] = useState(false);
-  useCerrarConEscape(cajonAbierto, () => setCajonAbierto(false));
-  const desplegar = (seccion?: 'buscar' | 'filtros' | 'leyenda') => {
-    if (compacto) setCajonAbierto(true);
-    else fijarPlegada(false);
-    setEnfocarBusqueda(seccion === 'buscar');
-    if (seccion === 'filtros') setFiltrosAbiertos(true);
-    if (seccion === 'leyenda') alternarLeyenda(true);
+  // Modo enfoque: deja solo el mapa y sus herramientas; al activarlo se cierra el panel de la derecha, y al
+  // apagarlo el panel no se reabre.
+  const alternarEnfoque = () => {
+    onModoEnfoque?.(!enfoque);
+    setEnfoque(!enfoque);
   };
 
   // Zoom continuo (C08): botones, "ver todo" y centrar animan la vista; rueda y arrastre la cancelan.
@@ -472,7 +431,6 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
     const nombre = terminoBusqueda.trim().toLowerCase();
     const almacen = ALMACENES.find((a) => [a.id, a.nombre, a.nombreCorto].some((n) => n.toLowerCase() === nombre));
     setSinResultados(!destino && !unidad && !almacen);
-    if (destino || unidad || almacen) setCajonAbierto(false);
     if (destino) {
       onSeleccionar({ tipo: 'pedido', codigo: destino.pedido });
       centrarEn(destino.destino);
@@ -515,8 +473,10 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
   const averiadas = unidades.filter((u) => u.estado === 'AVERIADA').length;
   // Un bloqueo con una polilínea de varios puntos se parte en varios tramos; se cuenta una sola vez.
   const cantidadBloqueos = new Set(bloqueos.map((b) => b.idOriginal)).size;
-  const derechaControles = anchoPanelDerecho > 0 ? anchoPanelDerecho + 24 : DERECHA_CONTROLES_PX;
-  const totalAlertas = riesgo.rojo + riesgo.ambar + (enSimulacion ? 0 : cantidadBloqueos + averiadas);
+  const angosto = ancho > 0 && ancho < ANCHO_ANGOSTO_PX;
+  const derechaControles = derechaDeControles(anchoPanelDerecho);
+  // Con una hoja inferior abierta, los controles de abajo se apoyan sobre ella.
+  const inferiorControles = altoPanelInferior > 0 ? altoPanelInferior + INFERIOR_CONTROLES_PX : INFERIOR_CONTROLES_PX;
 
   // Filtros globales: lo seleccionado nunca se oculta, para no perder el contexto de lo que se mira.
   const enMapa = unidades.filter(fueraDelAlmacen);
@@ -542,52 +502,8 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
     almacenes: { visibles: ALMACENES.length - almacenesOcultos.size, total: ALMACENES.length },
   };
 
-  const propsColumna: Omit<ColumnaMapaProps, 'forma' | 'onPlegar'> = {
-    onDesplegar: desplegar,
-    soloRiesgo: enSimulacion,
-    alertas: { riesgo, bloqueos: cantidadBloqueos, averias: averiadas },
-    onAbrirAlerta: (seccion) => {
-      setCajonAbierto(false);
-      onAbrirIncidencias(seccion);
-    },
-    busqueda: {
-      termino: terminoBusqueda,
-      onCambiar: (termino) => {
-        setTerminoBusqueda(termino);
-        setSinResultados(false);
-      },
-      sinResultados,
-      onBuscar: buscar,
-      // Pedidos con destino en el mapa, unidades y almacenes.
-      opciones: [...new Set(destinos.map((d) => d.pedido)), ...unidades.map((u) => u.codigo), ...ALMACENES.map((a) => a.nombre)],
-      enfocar: enfocarBusqueda,
-    },
-    ocupacion: { flota: ocupacionFlota(unidades), almacenes: ocupacionAlmacenes(almacenes), onAbrirFlota, onAbrirAlmacenes },
-    modoColor,
-    onCambiarModoColor: cambiarModoColor,
-    filtros: {
-      valor: filtros,
-      conteos: conteosFiltros,
-      activos: filtrosActivos,
-      abiertos: filtrosAbiertos,
-      onAlternar: () => setFiltrosAbiertos(!filtrosAbiertos),
-      onCambiar: cambiarFiltros,
-      onLimpiar: () => cambiarFiltros(SIN_FILTROS),
-    },
-    leyenda: {
-      abierta: leyendaAbierta,
-      onAlternar: () => alternarLeyenda(!leyendaAbierta),
-      capas,
-      onCambiarCapa: (clave) => setCapas({ ...capas, [clave]: !capas[clave] }),
-    },
-  };
-
-  const BOTON_COMPACTO = 'h-11 min-w-11 px-3 bg-superficie shadow-xs rounded-full border border-neutral-200 flex items-center justify-center gap-1.5';
-
   return (
     <div className="relative flex-1 flex w-full h-full min-w-0 min-h-0">
-      {!compacto && <ColumnaMapa {...propsColumna} forma={plegada ? 'riel' : 'columna'} onPlegar={() => fijarPlegada(!plegada)} />}
-
       <div
         ref={containerRef}
         onPointerDown={handlePointerDown}
@@ -606,92 +522,62 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
         }}
         className={`relative flex-1 min-w-0 w-full h-full bg-neutral-100 dark:bg-fondo overflow-hidden select-none touch-none outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-600 ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
       >
-        {/* 1. Presentación compacta: un solo chip con el total de alertas (lleva a Incidencias) y los accesos
-            a búsqueda, controles y "ver todo". Toques de 44 px. */}
-        {compacto && (
-          <div className="absolute left-3 right-3 top-3 z-10 flex items-center gap-2 pointer-events-none [&>*]:pointer-events-auto">
-            <button
-              type="button"
-              onClick={() => onAbrirIncidencias()}
-              aria-label={`${totalAlertas} ${totalAlertas === 1 ? 'alerta' : 'alertas'}. Ver Incidencias`}
-              className={`${BOTON_COMPACTO} ${totalAlertas > 0 ? 'text-critical-600' : 'text-neutral-600'}`}
-            >
-              <AlertTriangle className="size-4" />
-              <span className="tabular-nums font-semibold text-body">{totalAlertas}</span>
-              <span className="text-body-sm text-neutral-900">{totalAlertas === 1 ? 'alerta' : 'alertas'}</span>
-            </button>
-            <span className="flex-1" />
-            <button type="button" onClick={() => desplegar('buscar')} aria-label="Buscar en el mapa" className={BOTON_COMPACTO}>
-              <Search className="size-4 text-neutral-600" />
-            </button>
-            <button
-              type="button"
-              onClick={() => desplegar()}
-              aria-label={filtrosActivos > 0 ? `Controles del mapa, ${filtrosActivos} filtros activos` : 'Controles del mapa'}
-              className={`${BOTON_COMPACTO} relative`}
-            >
-              <SlidersHorizontal className={`size-4 ${filtrosActivos > 0 ? 'text-primary-600' : 'text-neutral-600'}`} />
-              {filtrosActivos > 0 && <span className="absolute top-1.5 right-1.5 size-2 rounded-full bg-primary-600" />}
-            </button>
-            <button type="button" onClick={verTodo} aria-label="Ver la malla completa" className={BOTON_COMPACTO}>
-              <Maximize2 className="size-4 text-neutral-600" />
-            </button>
-          </div>
+        {/* 1. Arriba a la izquierda: buscar, alertas y ocupación global (se ocultan en modo enfoque) */}
+        {!enfoque && (
+          <PilaSuperiorMapa
+            busqueda={{
+              termino: terminoBusqueda,
+              onCambiar: (termino) => {
+                setTerminoBusqueda(termino);
+                setSinResultados(false);
+              },
+              sinResultados,
+              onBuscar: buscar,
+              opciones: [...new Set(destinos.map((d) => d.pedido)), ...unidades.map((u) => u.codigo), ...ALMACENES.map((a) => a.nombre)],
+            }}
+            alertas={{ riesgo, bloqueos: cantidadBloqueos, averias: averiadas }}
+            soloRiesgo={enSimulacion}
+            onAbrirIncidencias={onAbrirIncidencias}
+            ocupacion={{ flota: ocupacionFlota(unidades), almacenes: ocupacionAlmacenes(almacenes), onAbrirFlota, onAbrirAlmacenes }}
+            compacto={compacto}
+          />
         )}
 
-        {/* 2. Controles de zoom, en el margen derecho de la malla (a la izquierda del panel si está abierto) */}
-        {!compacto && (
-          <div
-            className="absolute bottom-12 z-10 flex flex-col gap-1.5 bg-superficie p-1.5 rounded-card shadow-xs border border-neutral-200"
-            style={{ right: derechaControles }}
-          >
-            <button onClick={() => acercarAlCentro(FACTOR_BOTON)} className={ESTILO_BOTON_ZOOM} title="Acercar (+)" aria-label="Acercar">
-              <ZoomIn className="size-4" />
-            </button>
-            <button
-              onClick={() => acercarAlCentro(1 / FACTOR_BOTON)}
-              disabled={enEscalaMinima}
-              className={`${ESTILO_BOTON_ZOOM} disabled:opacity-40 disabled:cursor-default disabled:hover:bg-transparent`}
-              title="Alejar (-)"
-              aria-label="Alejar"
-            >
-              <ZoomOut className="size-4" />
-            </button>
-            <div className="w-full h-px bg-neutral-200 my-0.5"></div>
-            <button onClick={verTodo} className={ESTILO_BOTON_ZOOM} title="Ver la malla completa (0)" aria-label="Ver la malla completa">
-              <Maximize2 className="size-3.5" />
-            </button>
-            <span className="text-caption tabular-nums text-center text-neutral-600 font-semibold block">
-              {vista ? Math.round((vista.escala / escalaBase) * 100) : 100}%
-            </span>
-          </div>
+        {/* 2. Arriba a la derecha: herramientas que cambian la vista del mapa (capas, filtros, leyenda, ver todo, enfoque) */}
+        <HerramientasMapa
+          capas={capas}
+          onCambiarCapa={(clave) => setCapas({ ...capas, [clave]: !capas[clave] })}
+          modoColor={modoColor}
+          onCambiarModoColor={cambiarModoColor}
+          filtros={{ valor: filtros, conteos: conteosFiltros, activos: filtrosActivos, onCambiar: cambiarFiltros }}
+          onVerTodo={verTodo}
+          enfoque={enfoque}
+          onAlternarEnfoque={alternarEnfoque}
+          derechaPx={derechaControles}
+          inferiorPx={altoPanelInferior > 0 ? altoPanelInferior + INFERIOR_CONTROLES_PX : 0}
+          angosto={angosto}
+        />
+
+        {/* 3. Abajo a la derecha: zoom (en pantallas angostas se acerca con pellizco) */}
+        {!enfoque && !angosto && (
+          <ControlesZoom
+            porcentaje={vista ? Math.round((vista.escala / escalaBase) * 100) : 100}
+            alejarDeshabilitado={enEscalaMinima}
+            onAcercar={() => acercarAlCentro(FACTOR_BOTON)}
+            onAlejar={() => acercarAlCentro(1 / FACTOR_BOTON)}
+            derechaPx={derechaControles}
+            inferiorPx={inferiorControles}
+          />
         )}
 
-        {/* 3. Al pie: barra de escala y, con el cursor sobre el mapa, la coordenada del nodo (convención de
-            los visores de mapas; antes estaba en la barra inferior de la aplicación). */}
-        {vista && (
-          <div
-            className="absolute left-3 z-10 flex items-end gap-2 pointer-events-none"
-            style={{ bottom: compacto && altoPanelInferior > 0 ? altoPanelInferior + 8 : 10 }}
-          >
-            <div className="bg-superficie/95 px-2.5 py-1 rounded-control border border-neutral-200 shadow-xs flex flex-col gap-0.5">
-              <span className="tabular-nums text-caption text-neutral-600">{barraEscala(vista.escala).km} km</span>
-              <span className="block h-1.5 border-x-2 border-b-2 border-neutral-600" style={{ width: barraEscala(vista.escala).px }} />
-            </div>
-            {cursorEnMapa && !compacto && (
-              <span className="bg-superficie/95 px-2.5 py-1 rounded-control border border-neutral-200 shadow-xs text-caption tabular-nums text-neutral-600">
-                nodo <span className="font-medium text-neutral-900">({nodoActivo.x},{nodoActivo.y})</span>
-              </span>
-            )}
-          </div>
-        )}
+        {/* 4. Abajo a la izquierda: barra de escala y, con el cursor sobre el mapa, la coordenada del nodo */}
+        {vista && <BarraEscala pxPorKm={vista.escala} nodo={cursorEnMapa && !compacto ? nodoActivo : null} inferiorPx={inferiorControles} />}
 
-        {/* 4. Lienzo: la geometría se proyecta con la vista; los marcadores conservan su tamaño en pantalla */}
+        {/* 5. Lienzo: la geometría se proyecta con la vista; los marcadores conservan su tamaño en pantalla */}
         {vista && (
           <CapasMapa
             vista={vista}
             lienzo={lienzo}
-            franjaSuperior={compacto ? FRANJA_COMPACTA_PX : 0}
             capas={capas}
             unidades={unidadesVisibles}
             destinos={destinosVisibles}
@@ -712,14 +598,6 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
         )}
 
         {children}
-
-        {/* Cajón de controles (presentación compacta): sobre el mapa, con velo que lo cierra al tocar fuera. */}
-        {compacto && cajonAbierto && (
-          <>
-            <div className="absolute inset-0 z-30 bg-velo/30" onPointerDown={(e) => e.stopPropagation()} onClick={() => setCajonAbierto(false)} aria-hidden="true" />
-            <ColumnaMapa {...propsColumna} forma="cajon" onPlegar={() => setCajonAbierto(false)} />
-          </>
-        )}
       </div>
     </div>
   );
@@ -738,8 +616,6 @@ interface CapasMapaProps {
   seleccion: ObjetoMapa | null;
   nodoActivo: Coordenada;
   mostrarReticula: boolean;
-  /** Alto (px) de los controles sobre el borde superior del mapa: los rótulos del eje x se dibujan debajo. */
-  franjaSuperior: number;
   /** Qué codifica el color de las unidades: su carga (por defecto) o la holgura de su pedido más urgente. */
   modoColor: ModoColor;
   /** Unidad bajo el cursor: muestra su detalle aunque la escala no alcance. */
@@ -966,7 +842,6 @@ const CapasMapa: React.FC<CapasMapaProps> = ({
   seleccion,
   nodoActivo,
   mostrarReticula,
-  franjaSuperior,
   modoColor,
   unidadBajoCursor,
 }) => {
@@ -994,8 +869,8 @@ const CapasMapa: React.FC<CapasMapaProps> = ({
   const xFin = Math.min(lienzo.ancho, origen.x + anchoMallaPx);
 
   // Rótulos de los ejes: marcas cada 10 km a lo largo del plano
-  const hayEspacioSuperior = origen.y >= franjaSuperior + 14;
-  const yRotulosX = hayEspacioSuperior ? origen.y - 6 : Math.max(origen.y + 14, franjaSuperior + 14);
+  const hayEspacioSuperior = origen.y >= 14;
+  const yRotulosX = hayEspacioSuperior ? origen.y - 6 : Math.max(origen.y + 14, 14);
 
   const hayEspacioIzquierdo = origen.x >= 28;
   const xRotulosY = hayEspacioIzquierdo ? origen.x - 6 : Math.max(origen.x + 6, 8);

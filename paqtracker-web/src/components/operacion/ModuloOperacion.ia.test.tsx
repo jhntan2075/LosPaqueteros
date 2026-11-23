@@ -43,10 +43,18 @@ afterEach(() => {
 describe('Operación · alertas y navegación', () => {
   it('la alerta de averías lleva a Incidencias, donde se listan y registran (no a Flota)', () => {
     montarOperacion();
-    const controles = within(screen.getByRole('complementary', { name: 'Controles del mapa' }));
-    fireEvent.click(controles.getByRole('button', { name: /^1 avería\. Ver en Incidencias/ }));
+    const alertas = within(screen.getByRole('region', { name: 'Alertas' }));
+    fireEvent.click(alertas.getByRole('button', { name: /^1 avería\. Ver en Incidencias/ }));
     expect(screen.getByRole('tab', { name: /Incidencias/ }).getAttribute('aria-selected')).toBe('true');
     expect(panel().getByRole('region', { name: 'Averías activas' })).toBeTruthy();
+  });
+
+  it('la tarjeta de alertas del mapa abre Incidencias, y su cifra de riesgo, en esa sección', () => {
+    montarOperacion();
+    const alertas = within(screen.getByRole('region', { name: 'Alertas' }));
+    fireEvent.click(alertas.getByRole('button', { name: /\. Ver Incidencias$/ }));
+    expect(screen.getByRole('tab', { name: /Incidencias/ }).getAttribute('aria-selected')).toBe('true');
+    expect(screen.getByRole('complementary', { name: 'Panel de detalle' })).toBeTruthy();
   });
 
   it('solo Incidencias lleva insignia, con el mismo total que las alertas', () => {
@@ -67,23 +75,52 @@ describe('Operación · alertas y navegación', () => {
 });
 
 describe('Operación · espacio y presentación', () => {
-  it('abrir un panel derecho pliega la columna de controles a un riel, aunque sobre espacio', () => {
+  it('abrir un panel derecho no pliega ni oculta nada del mapa: buscador, alertas y herramientas siguen sobre él', () => {
     simularTamano(4000, 700);
     montarOperacion();
-    expect(screen.queryByRole('button', { name: 'Mostrar los controles del mapa' })).toBeNull();
     fireEvent.click(screen.getByRole('tab', { name: /Flota/ }));
-    expect(screen.getByRole('button', { name: 'Mostrar los controles del mapa' })).toBeTruthy();
-    expect(screen.queryByLabelText('Buscar pedido o unidad en el mapa')).toBeNull();
+    expect(screen.getByRole('complementary', { name: 'Panel de detalle' })).toBeTruthy();
+    expect(screen.getByLabelText('Buscar pedido o unidad en el mapa')).toBeTruthy();
+    expect(screen.getByRole('region', { name: 'Alertas' })).toBeTruthy();
+    expect(screen.getByRole('toolbar', { name: 'Herramientas del mapa' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Mostrar los controles del mapa' })).toBeNull();
+    expect(screen.queryByRole('complementary', { name: 'Controles del mapa' })).toBeNull();
   });
 
-  it('volver a expandir la columna no cierra el panel: el usuario manda', () => {
-    simularTamano(4000, 700);
+  it('el mapa ya no reserva una columna a su izquierda: lo ocupa todo y sus controles flotan encima', () => {
+    simularTamano(1200, 800);
+    montarOperacion();
+    const mapa = screen.getByRole('region', { name: /^Mapa de la malla/ });
+    // Nada junto al mapa dentro de su contenedor (antes, la columna de controles de 248 px), y los controles
+    // son hijos del propio mapa.
+    expect(mapa.parentElement!.children).toHaveLength(1);
+    expect(mapa.parentElement!.querySelector('aside')).toBeNull();
+    expect(mapa.contains(screen.getByRole('toolbar', { name: 'Herramientas del mapa' }))).toBe(true);
+    expect(mapa.contains(screen.getByLabelText('Buscar pedido o unidad en el mapa'))).toBe(true);
+  });
+
+  it('el modo enfoque deja solo el mapa y las herramientas, y cierra el panel sin reabrirlo al apagarlo', () => {
+    simularTamano(1600, 800);
     montarOperacion();
     fireEvent.click(screen.getByRole('tab', { name: /Flota/ }));
-    fireEvent.click(screen.getByRole('button', { name: 'Mostrar los controles del mapa' }));
-    expect(screen.getByLabelText('Buscar pedido o unidad en el mapa')).toBeTruthy();
-    expect(screen.getByRole('tab', { name: /Flota/ }).getAttribute('aria-selected')).toBe('true');
     expect(screen.getByRole('complementary', { name: 'Panel de detalle' })).toBeTruthy();
+
+    const enfoque = screen.getByRole('button', { name: 'Modo enfoque' });
+    expect(enfoque.getAttribute('aria-pressed')).toBe('false');
+    fireEvent.click(enfoque);
+    expect(enfoque.getAttribute('aria-pressed')).toBe('true');
+    expect(screen.queryByRole('complementary', { name: 'Panel de detalle' })).toBeNull();
+    expect(screen.queryByLabelText('Buscar pedido o unidad en el mapa')).toBeNull();
+    expect(screen.queryByRole('region', { name: 'Alertas' })).toBeNull();
+    expect(screen.queryByRole('region', { name: 'Ocupación global' })).toBeNull();
+    expect(screen.queryByRole('group', { name: 'Zoom' })).toBeNull();
+    expect(screen.getByRole('toolbar', { name: 'Herramientas del mapa' })).toBeTruthy();
+
+    fireEvent.click(enfoque);
+    expect(enfoque.getAttribute('aria-pressed')).toBe('false');
+    expect(screen.getByLabelText('Buscar pedido o unidad en el mapa')).toBeTruthy();
+    expect(screen.getByRole('group', { name: 'Zoom' })).toBeTruthy();
+    expect(screen.queryByRole('complementary', { name: 'Panel de detalle' })).toBeNull();
   });
 
   it('en escritorio el lado derecho es un solo bloque: pestañas arriba y panel debajo; oculto queda la tira', () => {
@@ -109,26 +146,38 @@ describe('Operación · espacio y presentación', () => {
 
   it('la leyenda muestra el detalle completo de "Almacén intermedio", sin cortarlo', () => {
     montarOperacion();
-    fireEvent.click(screen.getByRole('button', { name: 'Capas y leyenda' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Leyenda' }));
     const nombre = screen.getByText('Almacén intermedio', { exact: false, selector: 'li *' });
     const fila = nombre.closest('li')!;
     expect(fila.textContent).toContain('barra = stock');
     expect(fila.querySelector('.truncate')).toBeNull();
   });
 
-  it('en un celular: chip de alertas, controles en un cajón, panel como hoja y pestañas al pie con "Más"', () => {
+  it('en un celular: mismas herramientas sobre el mapa, buscador plegado, panel como hoja y pestañas al pie con "Más"', () => {
     simularTamano(390, 760);
     montarOperacion();
     expect(screen.queryByRole('complementary', { name: 'Controles del mapa' })).toBeNull();
+    expect(screen.getByRole('toolbar', { name: 'Herramientas del mapa' })).toBeTruthy();
+    // Sin zoom por botones (se acerca con pellizco): "Ver todo" queda en las herramientas.
+    expect(screen.queryByRole('group', { name: 'Zoom' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Ver la malla completa' })).toBeTruthy();
     expect(screen.getByRole('tablist', { name: 'Paneles del mapa' }).getAttribute('aria-orientation')).toBe('horizontal');
     fireEvent.click(screen.getByRole('button', { name: 'Más' }));
     fireEvent.click(screen.getByRole('menuitem', { name: 'Actividad' }));
     expect(screen.getByRole('button', { name: 'Ampliar el panel' })).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: 'Controles del mapa' }));
-    expect(screen.getByRole('complementary', { name: 'Controles del mapa' })).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: 'Cerrar los controles del mapa' }));
-    expect(screen.queryByRole('complementary', { name: 'Controles del mapa' })).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: /alertas?\. Ver Incidencias$/ }));
+
+    // El buscador se pliega a un botón de 44 px con el mismo nombre accesible; al tocarlo despliega la entrada.
+    expect(screen.queryByRole('search')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Buscar pedido o unidad en el mapa' }));
+    expect(document.activeElement).toBe(screen.getByLabelText('Buscar pedido o unidad en el mapa'));
+
+    // Los popovers ocupan el ancho libre a la izquierda de la barra.
+    fireEvent.click(screen.getByRole('button', { name: 'Capas' }));
+    const popover = screen.getByRole('dialog', { name: 'Capas del mapa' });
+    expect(popover.style.left).toBe('12px');
+    expect(popover.style.right).toBe('68px');
+
+    fireEvent.click(screen.getByRole('button', { name: /\. Ver Incidencias$/ }));
     expect(panel().getByRole('region', { name: 'En riesgo' })).toBeTruthy();
   });
 });

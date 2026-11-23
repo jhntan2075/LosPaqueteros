@@ -1,7 +1,7 @@
 import { useState, type RefObject } from 'react';
 import { useTamanoElemento } from './useTamanoElemento';
 
-/** Bajo este ancho (px) el mapa pasa a la presentación compacta: cajón de controles y pestañas al pie. */
+/** Bajo este ancho (px) el mapa pasa a la presentación compacta: buscador plegado, sin zoom por botones y pestañas al pie. */
 export const ANCHO_COMPACTO_PX = 768;
 /** Bajo este ancho, si el contenedor es vertical, el panel se abre como hoja inferior. */
 export const ANCHO_HOJA_VERTICAL_PX = 1280;
@@ -13,9 +13,9 @@ const FRACCION_HOJA = 0.48;
 /**
  * Presentación del mapa y su panel según el espacio real del contenedor (no del viewport: así funciona
  * igual dentro de Operación y de la simulación):
- *  - escritorio: columna de controles, mapa, panel lateral y pestañas verticales;
+ *  - escritorio: mapa con sus controles encima, panel lateral y pestañas verticales;
  *  - tablet vertical: lo mismo, pero el panel se abre como hoja inferior;
- *  - celular (< 768 px): controles en cajón, chip de alertas, hoja inferior y pestañas al pie.
+ *  - celular (< 768 px): los mismos controles sobre el mapa, hoja inferior y pestañas al pie.
  */
 export function usePresentacionMapa(ref: RefObject<HTMLElement | null>, panelAbierto: boolean) {
   const { ancho, alto } = useTamanoElemento(ref);

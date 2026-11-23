@@ -133,7 +133,6 @@ const CorridaEnVivo: React.FC<CorridaSimulacionProps & { recibidoEnMs: number }>
           almacenes={datos.almacenes}
           seleccion={nav.seleccionMapa}
           anchoPanelDerecho={verDiagnostico ? ANCHO_PANEL_PX : 0}
-          panelLateralAbierto={panelAbierto && panelLateral}
           altoPanelInferior={presentacion.altoPanelInferior}
           compacto={presentacion.compacto}
           riesgo={resumenRiesgo(datos)}
@@ -141,6 +140,7 @@ const CorridaEnVivo: React.FC<CorridaSimulacionProps & { recibidoEnMs: number }>
           onAbrirIncidencias={(seccion) => seleccionar({ tipo: 'incidencias', seccion })}
           onAbrirFlota={() => seleccionar({ tipo: 'flota' })}
           onAbrirAlmacenes={() => seleccionar({ tipo: 'almacenes' })}
+          onModoEnfoque={(activo) => activo && nav.cerrar()}
         >
           {panelAbierto && !panelLateral && (
             <PanelLateral

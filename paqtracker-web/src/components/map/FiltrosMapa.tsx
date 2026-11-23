@@ -8,7 +8,7 @@ import { NIVELES_CARGA, NIVELES_STOCK, type NivelCarga } from '../../lib/semafor
 import { iconoVehiculo } from './iconosVehiculo';
 import { MarcaSemaforo } from './simbolos';
 
-// Filtros globales del mapa (D05–D07), desplegados dentro de la columna de controles: se ve el efecto en
+// Filtros globales del mapa (D05–D07), en un popover de la barra de herramientas del mapa: se ve el efecto en
 // el mapa mientras se filtra. Chips de selección múltiple con su conteo; el chip marcado lleva un check
 // además del color, para no depender solo del color.
 

@@ -11,8 +11,8 @@ import { BloqueDerecho } from './BloqueDerecho';
 import { PanelLateral } from './PanelLateral';
 
 // Operación día a día: mapa en vivo de la ejecución que difunde paqtracker-api. Cada zona tiene una sola
-// responsabilidad: la columna de la izquierda alerta y filtra, el mapa muestra, el panel detalla y actúa, y
-// la barra de pestañas solo navega. Incidencias, Resumen, Envíos, Flota, Almacenes y Actividad son pestañas
+// responsabilidad: lo que cambia la vista del mapa (buscar, alertas, capas, filtros) flota sobre él, el panel
+// detalla y actúa, y la barra de pestañas solo navega. Incidencias, Resumen, Envíos, Flota, Almacenes y Actividad son pestañas
 // del panel, igual que en la corrida de simulación. En pantallas angostas el panel es una hoja inferior y
 // las pestañas van al pie (usePresentacionMapa).
 
@@ -49,7 +49,7 @@ export const ModuloOperacion: React.FC<ModuloOperacionProps> = ({
   const [ultimoPedidoAEnfocar, setUltimoPedidoAEnfocar] = useState<string | null>(null);
 
   const riesgo = resumenRiesgo(datos);
-  // Una sola cifra de alertas: la misma que suman las alertas de la columna del mapa.
+  // Una sola cifra de alertas: la misma que suma la tarjeta de alertas del mapa.
   const alertas = riesgo.rojo + riesgo.ambar + cantidadBloqueos(datos) + datos.flota.filter((u) => u.estado === 'AVERIADA').length;
   const destinos: DestinoMapa[] = useMemo(
     () => datos.flota.flatMap((u) => u.paradas.map((p) => ({ pedido: p.pedido, destino: p.destino, nivel: p.nivel, holgura: p.holgura, unidad: u.codigo }))),
@@ -95,7 +95,6 @@ export const ModuloOperacion: React.FC<ModuloOperacionProps> = ({
           bloqueos={datos.bloqueos}
           almacenes={datos.almacenes}
           seleccion={nav.seleccionMapa}
-          panelLateralAbierto={panelAbierto && panelLateral}
           altoPanelInferior={presentacion.altoPanelInferior}
           compacto={presentacion.compacto}
           riesgo={riesgo}
@@ -104,6 +103,7 @@ export const ModuloOperacion: React.FC<ModuloOperacionProps> = ({
           onAbrirFlota={() => nav.seleccionar({ tipo: 'flota' })}
           onAbrirAlmacenes={() => nav.seleccionar({ tipo: 'almacenes' })}
           onHoverCoordenada={onHoverCoordenada}
+          onModoEnfoque={(activo) => activo && nav.cerrar()}
         >
           {panelAbierto && !panelLateral && (
             <PanelLateral
