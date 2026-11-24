@@ -964,7 +964,7 @@ const CapasMapa: React.FC<CapasMapaProps> = ({
   };
 
   return (
-    <svg ref={svgRef} className="lienzo-mapa absolute inset-0 w-full h-full">
+    <svg ref={svgRef} className="absolute inset-0 w-full h-full">
       {/* Cuadrícula continua y uniforme en todo el lienzo */}
       {Array.from({ length: Math.max(0, iMax - iMin + 1) }, (_, idx) => {
         const i = iMin + idx;

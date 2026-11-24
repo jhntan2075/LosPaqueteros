@@ -45,7 +45,9 @@ body {
 
 /* Mapa y minimapas (clase `lienzo-mapa`): lienzo, cuadrícula, rótulos, halos y rutas. Los símbolos con
    significado (semáforo, averías, almacenes, bloqueos) conservan su color: llevan contorno blanco y se
-   distinguen igual sobre fondo oscuro. */
+   distinguen igual sobre fondo oscuro.
+   El mapa principal (GridMap) queda fuera: su lienzo es claro en los dos temas (token `lienzo-mapa`), así que no
+   lleva la clase y conserva los colores originales. Estos ajustes solo rigen en el minimapa y la leyenda. */
 :root.oscuro .lienzo-mapa [fill="#F8FAFC"] { fill: #0F1729; }
 :root.oscuro .lienzo-mapa [stroke="#E2E8F0"] { stroke: #1E293B; }
 :root.oscuro .lienzo-mapa rect[stroke="#CBD5E1"] { stroke: #3C4A64; }
