@@ -1,0 +1,1383 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PaqTracker · Operación</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fira+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ==========================================================================
+   Prototipo v3 · Operación día a día · mapa al máximo + rúbrica 91.EvaSw (Sí3, Sí4 y Sí5)
+   --------------------------------------------------------------------------
+   El mapa toma todo el alto con su proporción 70:50; los paneles usan solo el ancho
+   que la malla no puede aprovechar, así que abrirlos no achica el mapa.
+   Símbolos, semáforos y textos tomados de paqtracker-web (main).
+   ========================================================================== */
+:root{
+  --fondo:#F1F3F5; --superficie:#FFFFFF; --sutil:#F8F9FA; --borde:#E2E5E9; --borde-fuerte:#CBD1D9;
+  --texto:#0D152E; --texto-2:#2F3C57; --texto-3:#5F6F8C; --deco:#8190AA;
+  --primary:#1B4DD9; --primary-50:#EEF2FD; --primary-700:#153CB0;
+  --info-700:#0F6AAE; --info-50:#EAF4FC;
+  --warn:#FB8229; --warn-700:#B44D08; --warn-50:#FFF3EA;
+  --ok:#12805C; --ok-700:#0E6B4C; --ok-50:#E8F5F0;
+  --crit:#C81E3A; --crit-50:#FBEAED;
+  --inverso:#0D152E; --sobre-inverso:#FFFFFF;
+  --mapa-fondo:#FFFFFF; --mapa-linea:#EEF0F3; --mapa-linea-10:#D7DCE3; --mapa-texto:#8190AA; --halo:#FFFFFF;
+  --sombra-xs:0 1px 2px rgba(13,21,46,.06),0 1px 1px rgba(13,21,46,.04);
+  --sombra-overlay:0 8px 24px rgba(13,21,46,.14),0 2px 6px rgba(13,21,46,.08);
+  --res-izq:264px; --res-der:312px; --mini:44px;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --fondo:#070C1C; --superficie:#0F1729; --sutil:#141D33; --borde:#232E48; --borde-fuerte:#33405E;
+    --texto:#F1F3F8; --texto-2:#C9D0DE; --texto-3:#98A3BA; --deco:#66728C;
+    --primary:#5B85F7; --primary-50:#16224A; --primary-700:#86A6FA; --info-700:#7CC0F2; --info-50:#0F2436;
+    --warn:#FB8F3E; --warn-700:#FDB27A; --warn-50:#2E1C0E; --ok:#2DB07F; --ok-700:#5CCB9F; --ok-50:#0D2A20;
+    --crit:#F2627A; --crit-50:#34121A; --inverso:#F1F3F8; --sobre-inverso:#0D152E;
+    --mapa-fondo:#F4F6F9; --mapa-linea:#E6E9EE; --mapa-linea-10:#CBD1DA; --mapa-texto:#66728C;
+    --sombra-xs:0 1px 2px rgba(0,0,0,.4); --sombra-overlay:0 10px 28px rgba(0,0,0,.55);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --fondo:#070C1C; --superficie:#0F1729; --sutil:#141D33; --borde:#232E48; --borde-fuerte:#33405E;
+  --texto:#F1F3F8; --texto-2:#C9D0DE; --texto-3:#98A3BA; --deco:#66728C;
+  --primary:#5B85F7; --primary-50:#16224A; --primary-700:#86A6FA; --info-700:#7CC0F2; --info-50:#0F2436;
+  --warn:#FB8F3E; --warn-700:#FDB27A; --warn-50:#2E1C0E; --ok:#2DB07F; --ok-700:#5CCB9F; --ok-50:#0D2A20;
+  --crit:#F2627A; --crit-50:#34121A; --inverso:#F1F3F8; --sobre-inverso:#0D152E;
+  --mapa-fondo:#F4F6F9; --mapa-linea:#E6E9EE; --mapa-linea-10:#CBD1DA; --mapa-texto:#66728C;
+  --sombra-xs:0 1px 2px rgba(0,0,0,.4); --sombra-overlay:0 10px 28px rgba(0,0,0,.55);
+  color-scheme:dark;
+}
+/* El lienzo del mapa queda claro en los dos temas: los colores del semáforo y de las averías
+   (fijos, como en main) están medidos sobre fondo claro. */
+
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{font-family:"Fira Sans",system-ui,sans-serif;font-size:13px;line-height:20px;color:var(--texto);background:var(--fondo);overflow:hidden;display:grid;grid-template-rows:56px minmax(0,1fr);height:100vh;height:100dvh}
+button,select,input{font:inherit;color:inherit}
+button{background:none;border:0;padding:0;cursor:pointer}
+button:disabled{cursor:default;opacity:.55}
+:focus-visible{outline:2px solid var(--primary);outline-offset:2px;border-radius:6px}
+.num{font-variant-numeric:tabular-nums}
+.overline{font-size:11px;line-height:16px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--texto-3)}
+.caption{font-size:11px;line-height:16px;color:var(--texto-3)}
+.ico{width:14px;height:14px;flex:none;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.ico-16{width:16px;height:16px}.ico-12{width:12px;height:12px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.marca-sem{display:inline-block;width:9px;height:9px;flex:none;vertical-align:middle}
+
+/* ---------- Barra superior ---------- */
+.top{display:flex;align-items:center;gap:10px;padding:0 10px 0 14px;background:var(--superficie);border-bottom:1px solid var(--borde);min-width:0}
+.marca{display:flex;align-items:center;gap:8px;font-weight:600;font-size:14px;white-space:nowrap}
+.marca svg{width:22px;height:22px}
+.modulos{display:flex;gap:2px;height:100%}
+.modulos button{height:100%;padding:0 9px;color:var(--texto-3);border-bottom:2px solid transparent;white-space:nowrap}
+.modulos button[aria-current="page"]{color:var(--primary);border-color:var(--primary);font-weight:500}
+.modulos button:hover{color:var(--texto)}
+.menu-mod{display:none;position:relative}
+.menu-mod>button{height:32px;padding:0 8px;border-radius:6px;display:flex;align-items:center;gap:6px;color:var(--primary);font-weight:500}
+.menu-mod>button:hover{background:var(--sutil)}
+.menu-mod ul{position:absolute;top:36px;left:0;z-index:40;list-style:none;margin:0;padding:4px;min-width:180px;display:none}
+.menu-mod.abierto ul{display:block}
+.menu-mod li button{width:100%;text-align:left;padding:6px 10px;border-radius:6px}
+.menu-mod li button:hover{background:var(--sutil)}
+.pulso{display:flex;align-items:stretch;height:40px;margin:0 auto;border:1px solid var(--borde);border-radius:8px;overflow:hidden;min-width:0}
+.pulso button{display:flex;flex-direction:column;justify-content:center;padding:0 11px;border-right:1px solid var(--borde);text-align:left;white-space:nowrap}
+.pulso button:last-child{border-right:0}
+.pulso button:hover{background:var(--sutil)}
+.pulso button[aria-pressed="true"]{background:var(--primary-50);box-shadow:inset 0 -2px 0 var(--primary)}
+.pulso .et{font-size:11px;line-height:14px;color:var(--texto-3)}
+.pulso .va{font-size:14px;line-height:18px;font-weight:600;display:flex;align-items:center;gap:5px}
+.pulso .va small{font-weight:400;font-size:11px;color:var(--texto-3)}
+.relojes{display:flex;align-items:stretch;height:40px;border:1px solid var(--borde);border-radius:8px;flex:none}
+.reloj{display:flex;flex-direction:column;justify-content:center;padding:0 10px;white-space:nowrap}
+.reloj + .reloj{border-left:1px solid var(--borde)}
+.reloj .et{font-size:11px;line-height:13px;color:var(--texto-3)}
+.reloj .et b{font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--texto-2)}
+.reloj .va{font-size:14px;line-height:18px;font-weight:600}
+.reloj .va small{font-size:11px;font-weight:400;color:var(--texto-3);margin-left:4px}
+.reloj.real .va{font-size:13px;font-weight:500;color:var(--texto-2)}
+.top-der{display:flex;align-items:center;gap:6px;white-space:nowrap}
+.punto{width:8px;height:8px;border-radius:50%;background:var(--ok);flex:none;animation:latir 2s infinite}
+@keyframes latir{0%{box-shadow:0 0 0 0 rgba(18,128,92,.5)}70%,100%{box-shadow:0 0 0 6px transparent}}
+.btn-ico{width:32px;height:32px;display:inline-flex;align-items:center;justify-content:center;border-radius:6px;color:var(--texto-2);flex:none;position:relative}
+.btn-ico:hover{background:var(--sutil)}
+.btn{height:32px;padding:0 10px;border-radius:6px;font-size:12px;display:inline-flex;align-items:center;gap:6px;border:1px solid var(--borde);background:var(--superficie);white-space:nowrap}
+.btn:hover{background:var(--sutil)}
+.btn.sm{height:26px;padding:0 8px}
+.btn.primario{background:var(--primary);border-color:var(--primary);color:#fff}
+.btn.primario:hover{background:var(--primary-700)}
+.btn.peligro{background:var(--crit);border-color:var(--crit);color:#fff}
+.btn[aria-pressed="true"]{background:var(--primary-50);border-color:var(--primary);color:var(--primary-700)}
+
+/* ---------- Área de trabajo ---------- */
+.trabajo{display:flex;gap:8px;padding:8px;min-height:0;min-width:0;justify-content:center}
+.mapa{flex:0 1 auto;height:100%;aspect-ratio:74 / 54;min-width:0;max-width:calc(100% - var(--res-izq) - var(--res-der) - 16px);position:relative;background:var(--mapa-fondo);border:1px solid var(--borde);border-radius:10px;box-shadow:var(--sombra-xs);overflow:hidden;touch-action:none}
+.rail{flex:1 1 0;min-width:var(--res-izq);max-width:460px;background:var(--superficie);border:1px solid var(--borde);border-radius:10px;box-shadow:var(--sombra-xs);display:flex;flex-direction:column;min-height:0;overflow:hidden}
+#railDer{min-width:var(--res-der)}
+body.izq-cerrado{--res-izq:var(--mini)} body.der-cerrado{--res-der:var(--mini)}
+body.izq-cerrado #railIzq,body.der-cerrado #railDer{flex:0 0 var(--mini);min-width:var(--mini)}
+body.izq-cerrado #railIzq>:not(.rail-mini),body.der-cerrado #railDer>:not(.rail-mini){display:none}
+.rail-mini{display:none;flex-direction:column;align-items:center;gap:6px;padding:8px 0}
+body.izq-cerrado #railIzq .rail-mini,body.der-cerrado #railDer .rail-mini{display:flex}
+.rail-mini button{position:relative;width:32px;height:32px;display:flex;align-items:center;justify-content:center;border-radius:6px;color:var(--texto-2)}
+.rail-mini button:hover{background:var(--sutil)}
+.rail-mini .contador{position:absolute;top:-4px;right:-6px;height:16px;min-width:16px;font-size:10px}
+.rail-mini .sep{width:20px;height:1px;background:var(--borde);margin:2px 0}
+body.enfoque{--res-izq:0px;--res-der:0px} body.enfoque .rail{display:none}
+.rail-cab{display:flex;align-items:center;gap:8px;padding:6px 6px 6px 12px;border-bottom:1px solid var(--borde);min-height:44px}
+.rail-cab h2{margin:0;font-size:14px;line-height:20px;font-weight:600;flex:1;white-space:nowrap}
+.contador{min-width:18px;height:18px;padding:0 5px;border-radius:999px;font-size:11px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;background:var(--crit);color:#fff}
+.rail-cuerpo{overflow:auto;min-height:0;flex:1}
+.seccion{padding:10px 12px}
+.seccion+.seccion{border-top:1px solid var(--borde)}
+.seccion-cab{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px}
+.link{color:var(--primary-700);font-size:11px;text-decoration:underline;text-underline-offset:2px}
+
+/* Recursos */
+.apilada{display:flex;height:8px;border-radius:4px;overflow:hidden;background:var(--borde);margin:4px 0 6px;gap:1px}
+.apilada i{display:block;height:100%}
+.estados-flota{display:grid;grid-template-columns:1fr 1fr;gap:2px 8px}
+.estados-flota button{display:flex;align-items:center;gap:6px;font-size:12px;line-height:18px;padding:1px 4px;margin:0 -4px;border-radius:4px;text-align:left}
+.estados-flota button:hover{background:var(--sutil)}
+.estados-flota button[aria-pressed="true"]{background:var(--primary-50)}
+.estados-flota b{font-weight:600;min-width:16px;text-align:right}
+.cuadro{width:8px;height:8px;border-radius:2px;display:inline-block;flex:none}
+.fila-alm{display:grid;grid-template-columns:56px 1fr 74px;gap:8px;align-items:center;font-size:12px;line-height:18px;width:100%;text-align:left;padding:2px 4px;margin:0 -4px;border-radius:4px;width:calc(100% + 8px)}
+.fila-alm:hover{background:var(--sutil)}
+.barra{height:6px;border-radius:3px;background:var(--borde);overflow:hidden;display:block}
+.barra i{display:block;height:100%}
+.estado{display:inline-flex;align-items:center;gap:4px;font-size:11px;line-height:16px;font-weight:600;padding:0 6px;border-radius:4px;white-space:nowrap}
+.estado.ok{color:var(--ok-700);background:var(--ok-50)}.estado.warn{color:var(--warn-700);background:var(--warn-50)}
+.estado.crit{color:var(--crit);background:var(--crit-50)}.estado.info{color:var(--info-700);background:var(--info-50)}
+.estado.neutro{color:var(--texto-3);background:var(--sutil)}.estado.oscuro{color:#fff;background:#0F172A}
+.estado.violeta{color:#fff;background:#7C3AED}
+
+/* Atención */
+.chips{display:flex;gap:4px;flex-wrap:wrap}
+.chip{height:24px;padding:0 8px;border-radius:999px;border:1px solid var(--borde);font-size:12px;display:inline-flex;align-items:center;gap:4px;color:var(--texto-2);white-space:nowrap}
+.chip b{font-weight:600}
+.chip[aria-pressed="true"]{background:var(--primary-50);border-color:var(--primary);color:var(--primary-700)}
+.alertas{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-direction:column;gap:6px}
+.alerta{display:grid;grid-template-columns:4px 1fr auto;gap:0 10px;align-items:start;padding:7px 8px 7px 0;border-radius:6px;background:var(--sutil);border:1px solid transparent;text-align:left;width:100%}
+.alerta:hover{border-color:var(--borde-fuerte)}
+.alerta.sel{border-color:var(--primary);background:var(--primary-50)}
+.alerta .franja{align-self:stretch;border-radius:0 3px 3px 0}
+.alerta.crit .franja{background:var(--crit)}.alerta.warn .franja{background:var(--warn)}
+.alerta-t{font-weight:500;display:flex;align-items:center;gap:6px;font-size:12px;line-height:16px}
+.alerta-d{font-size:11px;line-height:16px;color:var(--texto-3);margin-top:2px;display:block}
+.alerta-h{font-size:11px;line-height:16px;color:var(--texto-3);white-space:nowrap}
+.vacio{display:flex;flex-direction:column;align-items:center;gap:4px;padding:16px;color:var(--texto-3);text-align:center;font-size:12px}
+
+/* Panel derecho */
+.seleccion{border-bottom:1px solid var(--borde);background:var(--sutil);padding:10px 12px;display:none;max-height:52%;overflow:auto}
+.seleccion.abierta{display:block}
+.sel-cab{display:flex;align-items:flex-start;gap:10px}
+.sel-cab h3{margin:0;font-size:14px;line-height:20px;font-weight:600}
+.sel-cab .btn-ico{margin:-4px -4px 0 auto}
+.migas{display:flex;align-items:center;gap:4px;margin-bottom:6px;font-size:11px;color:var(--texto-3)}
+.datos{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 12px;margin-top:8px}
+.dato .caption{display:block}.dato b{font-weight:600}
+.acciones{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
+.paradas{display:flex;flex-direction:column;gap:3px;margin-top:8px}
+.parada{display:flex;align-items:center;gap:8px;min-height:24px;padding:2px 8px;border-radius:4px;font-size:11px;border:1px solid var(--borde);background:var(--superficie);text-align:left;width:100%}
+.parada.hecha{color:var(--texto-3)}
+.parada.actual{border-color:var(--primary);color:var(--primary-700);font-weight:600}
+.parada .der{margin-left:auto;color:var(--texto-3);font-weight:400}
+.pestanas{display:flex;flex:1;min-width:0;align-self:stretch;gap:3px}
+.pestanas button{flex:1 1 0;min-width:0;height:50px;padding:0 1px;color:var(--texto-3);border-bottom:2px solid transparent;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;white-space:nowrap;margin-bottom:-1px;font-size:11px;line-height:12px;position:relative}
+.pestanas button:hover{color:var(--texto);background:var(--sutil)}
+.pestanas button[aria-selected="true"]{color:var(--primary);border-color:var(--primary);font-weight:600}
+.pestanas .contador{position:absolute;top:3px;left:calc(50% + 5px);height:16px;min-width:16px;font-size:10px;padding:0 4px}
+.herr{padding:8px 12px;border-bottom:1px solid var(--borde);display:flex;flex-direction:column;gap:6px;font-size:12px}
+.herr .fila-h{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.herr select,.herr input[type=number],.herr input[type=search]{height:26px;border:1px solid var(--borde-fuerte);border-radius:6px;background:var(--superficie);padding:0 6px;font-size:12px}
+.herr input[type=number]{width:56px}
+.herr input[type=search]{flex:1;min-width:0}
+.seg{display:inline-flex;border:1px solid var(--borde-fuerte);border-radius:6px;overflow:hidden}
+.seg button{height:24px;padding:0 7px;font-size:11px;color:var(--texto-3)}
+.seg button+button{border-left:1px solid var(--borde-fuerte)}
+.seg button[aria-pressed="true"]{background:var(--primary-50);color:var(--primary-700);font-weight:600}
+.lista{list-style:none;margin:0;padding:4px 0}
+.fila{display:grid;grid-template-columns:30px 1fr auto;gap:8px;align-items:center;width:100%;text-align:left;padding:6px 12px;border-left:2px solid transparent}
+.fila:hover{background:var(--sutil)}
+.fila.sel,[aria-selected="true"]>.fila{background:var(--primary-50);border-left-color:var(--primary)}
+.fila-t{display:flex;align-items:center;gap:6px;font-weight:500;font-size:12px;line-height:16px;flex-wrap:wrap}
+.fila-d{font-size:11px;line-height:16px;color:var(--texto-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
+.fila-der{text-align:right;font-size:11px;line-height:16px;color:var(--texto-3);white-space:nowrap}
+.fila-der b{font-size:12px;color:var(--texto);font-weight:600}
+.ico-veh{width:30px;height:20px;display:block}
+.fracciones{list-style:none;margin:0 0 4px;padding:0 12px 0 50px;display:flex;flex-direction:column;gap:2px}
+.fraccion{display:flex;gap:6px;align-items:center;width:100%;text-align:left;font-size:11px;line-height:16px;padding:2px 6px;border-radius:4px;color:var(--texto-2)}
+.fraccion:hover{background:var(--sutil)}
+.fraccion.sel{background:var(--primary-50);color:var(--primary-700);font-weight:600}
+.fraccion .der{margin-left:auto;color:var(--texto-3);white-space:nowrap}
+.tarjeta-alm{border:1px solid var(--borde);border-radius:8px;margin:8px 12px;overflow:hidden}
+.tarjeta-alm.sel{border-color:var(--primary);box-shadow:0 0 0 1px var(--primary)}
+.tarjeta-alm>button{display:block;width:100%;text-align:left;padding:10px}
+.tarjeta-alm>button:hover{background:var(--sutil)}
+.subpestanas{display:flex;border-top:1px solid var(--borde);overflow-x:auto;scrollbar-width:none}
+.subpestanas button{flex:1;height:30px;font-size:11px;color:var(--texto-3);border-bottom:2px solid transparent;white-space:nowrap;padding:0 6px}
+.subpestanas button[aria-selected="true"]{color:var(--primary);border-color:var(--primary);font-weight:600}
+.evento{display:grid;grid-template-columns:40px 8px 1fr;gap:8px;padding:6px 12px;align-items:start}
+.evento .pt{width:8px;height:8px;border-radius:50%;margin-top:4px}
+
+/* ---------- Mapa ---------- */
+#svg{position:absolute;inset:0;width:100%;height:100%;cursor:grab;display:block;font-family:"Fira Sans",system-ui,sans-serif}
+#svg.arrastrando{cursor:grabbing}
+.sobre{position:absolute;z-index:5;display:flex;gap:6px;align-items:center}
+.sup-izq{top:8px;left:8px;right:56px;flex-wrap:wrap;pointer-events:none}
+.sup-izq>*{pointer-events:auto}
+.sup-der{top:8px;right:8px}
+.inf-izq{bottom:8px;left:8px;flex-direction:column;align-items:flex-start}
+.inf-der{bottom:8px;right:8px}
+.caja{background:var(--superficie);border:1px solid var(--borde);border-radius:10px;box-shadow:var(--sombra-xs)}
+.buscar{display:flex;align-items:center;gap:6px;height:32px;padding:0 10px;border-radius:999px;width:220px;position:relative}
+.buscar input{border:0;outline:0;background:transparent;font-size:12px;width:100%;min-width:0}
+.buscar kbd{font:inherit;font-size:10px;color:var(--texto-3);border:1px solid var(--borde);border-radius:4px;padding:0 4px;line-height:16px}
+.sugerencias{position:absolute;top:36px;left:0;width:300px;max-height:300px;overflow:auto;padding:4px;display:none}
+.sugerencias.abierta{display:block}
+.sugerencias button{display:flex;width:100%;gap:8px;align-items:center;padding:6px 8px;border-radius:6px;text-align:left;font-size:12px}
+.sugerencias button:hover,.sugerencias button.activa{background:var(--sutil)}
+.pop{position:relative}
+.pop-cuerpo{position:absolute;top:36px;left:0;padding:8px;display:none;min-width:220px;z-index:10}
+.pop.abierto .pop-cuerpo{display:block}
+.pop-cuerpo label{display:flex;align-items:center;gap:8px;padding:4px 6px;border-radius:6px;cursor:pointer;font-size:12px}
+.pop-cuerpo label:hover{background:var(--sutil)}
+.pop-cuerpo input{accent-color:var(--primary)}
+.grupo-f{margin-bottom:8px}.grupo-f:last-child{margin-bottom:0}
+.grupo-f .chips{margin-top:4px}
+.btn-mapa{height:32px;border-radius:999px}
+.insignia{position:absolute;top:-5px;right:-5px;min-width:16px;height:16px;border-radius:999px;background:var(--primary);color:#fff;font-size:10px;font-weight:600;display:flex;align-items:center;justify-content:center;padding:0 4px}
+.zoom{display:flex;flex-direction:column;padding:3px;gap:1px}
+.leyenda{padding:10px 12px;font-size:11px;line-height:16px;color:var(--texto-2);max-width:380px;max-height:70vh;overflow:auto}
+.leyenda h4{margin:8px 0 4px;font-size:11px;font-weight:600;color:var(--texto-3);text-transform:uppercase;letter-spacing:.06em}
+.leyenda-grid{display:grid;grid-template-columns:repeat(2,auto);gap:4px 14px}
+.leyenda-grid span{display:flex;align-items:center;gap:6px;white-space:nowrap}
+.coord{padding:4px 8px;font-size:11px;color:var(--texto-3);border-radius:6px}
+.pildora-filtro{display:none;align-items:center;gap:8px;height:28px;padding:0 4px 0 10px;border-radius:999px;font-size:12px;background:var(--inverso);color:var(--sobre-inverso)}
+.pildora-filtro.visible{display:inline-flex}
+.pildora-filtro button{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center}
+.tooltip{position:absolute;z-index:8;pointer-events:none;background:var(--inverso);color:var(--sobre-inverso);border-radius:6px;padding:6px 10px;font-size:12px;line-height:16px;box-shadow:var(--sombra-overlay);transform:translate(-50%,calc(-100% - 14px));white-space:nowrap;display:none}
+.tooltip.visible{display:block}
+.tooltip span{opacity:.75}
+.unidad,.almacen,.pin,.bloqueo{cursor:pointer}
+.atenuado{opacity:.22}
+
+dialog{border:1px solid var(--borde);border-radius:10px;background:var(--superficie);color:var(--texto);padding:0;box-shadow:var(--sombra-overlay);width:min(560px,calc(100vw - 32px))}
+dialog.grande{width:min(1100px,calc(100vw - 32px));height:min(760px,calc(100vh - 32px))}
+dialog.grande[open]{display:flex;flex-direction:column}
+dialog::backdrop{background:rgba(13,21,46,.4)}
+.dlg-cab{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px;border-bottom:1px solid var(--borde)}
+.dlg-cab h2{margin:0;font-size:16px;font-weight:600}
+.dlg-cuerpo{padding:12px 16px 16px;overflow:auto;flex:1}
+.dlg-pie{display:flex;justify-content:flex-end;gap:8px;padding:12px 16px;border-top:1px solid var(--borde)}
+.atajos{display:grid;grid-template-columns:auto 1fr;gap:6px 16px;font-size:12px}
+.atajos kbd{font:inherit;font-size:11px;border:1px solid var(--borde);border-bottom-width:2px;border-radius:4px;padding:0 6px;background:var(--sutil);justify-self:start}
+table{border-collapse:collapse;width:100%;font-size:12px}
+th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--borde);vertical-align:top}
+th{font-size:11px;color:var(--texto-3);font-weight:600;position:sticky;top:0;background:var(--superficie)}
+.kpis-rep{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin:0 0 12px}
+.kpis-rep div{border:1px solid var(--borde);border-radius:8px;padding:8px 10px}
+.kpis-rep b{display:block;font-size:18px;line-height:24px;font-weight:600}
+.opcion{display:flex;gap:10px;padding:10px;border:1px solid var(--borde);border-radius:8px;margin-bottom:8px;cursor:pointer}
+.opcion:has(input:checked){border-color:var(--primary);background:var(--primary-50)}
+
+/* ---------- Responsivo por prioridad ---------- */
+@media (max-width:1800px){.modulos{display:none}.menu-mod{display:block}}
+@media (max-width:1600px){.p-baja{display:none!important}.txt-rep{display:none}}
+@media (max-width:1440px){:root{--res-izq:244px;--res-der:296px}.p-media{display:none!important}.marca span{display:none}}
+@media (max-width:1100px){
+  :root{--res-izq:var(--mini);--res-der:var(--mini)}
+  .rail{flex:0 0 var(--mini);min-width:var(--mini)!important}
+  body:not(.izq-movil) #railIzq>:not(.rail-mini),body:not(.der-movil) #railDer>:not(.rail-mini){display:none}
+  body:not(.izq-movil) #railIzq .rail-mini,body:not(.der-movil) #railDer .rail-mini{display:flex}
+  body.izq-movil #railIzq,body.der-movil #railDer{position:fixed;z-index:30;top:64px;bottom:8px;width:min(360px,calc(100vw - 16px));max-width:none;box-shadow:var(--sombra-overlay)}
+  body.izq-movil #railIzq{left:8px} body.der-movil #railDer{right:8px}
+  .mapa{flex:1 1 auto;aspect-ratio:auto}
+  .p-alta{display:none!important}.reloj .et span{display:none}
+}
+@media (max-width:760px){
+  .trabajo{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:minmax(0,1fr) 44px;padding:6px}
+  .mapa{grid-column:1 / -1;order:1;max-width:none;height:auto}
+  .rail{max-width:none;width:100%;min-width:0!important}
+  .rail-mini{flex-direction:row!important;justify-content:center}
+  #railIzq{order:2}#railDer{order:3}
+  body.izq-movil #railIzq,body.der-movil #railDer{top:64px;bottom:58px;left:6px;right:6px;width:auto}
+  .pulso{display:none}.reloj.real{display:none}.sup-izq{right:48px}.buscar{width:100%}.top-der .btn{display:none}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body class="izq-cerrado der-cerrado">
+
+<!-- ===== BARRA SUPERIOR: módulo · indicadores globales y del día · relojes · acciones ===== -->
+<header class="top">
+  <div class="marca"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 3 7l9 5 9-5-9-5Z" fill="#1586D7"/><path d="M3 7v10l9 5V12L3 7Z" fill="#1B4DD9"/><path d="M21 7v10l-9 5V12l9-5Z" fill="#FB8229"/></svg><span>PaqTracker</span></div>
+  <nav class="modulos" aria-label="Módulos"><button aria-current="page">Operación</button><button>Pedidos</button><button>Simulación</button><button>Reportes</button><button>Configuración</button></nav>
+  <div class="menu-mod" id="menuMod"><button id="btnMenuMod" aria-haspopup="true" aria-expanded="false">Operación <svg class="ico ico-12" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></button>
+    <ul class="caja" role="menu"><li><button role="menuitem">Pedidos</button></li><li><button role="menuitem">Simulación</button></li><li><button role="menuitem">Reportes</button></li><li><button role="menuitem">Configuración</button></li></ul></div>
+  <section class="pulso" id="pulso" aria-label="Indicadores globales y del día"></section>
+  <div class="relojes" role="group" aria-label="Relojes">
+    <div class="reloj" role="group" aria-label="Reloj de la operación día a día" title="Fecha y hora de la operación, y tiempo transcurrido desde su inicio"><span class="et"><b>Operación</b> <span id="fOp"></span></span><span class="va num"><span id="hOp"></span><small id="tOp"></small></span></div>
+    <div class="reloj real" role="group" aria-label="Fecha y hora real" title="Fecha y hora real del equipo, y tiempo real transcurrido"><span class="et"><b>Real</b> <span id="fReal"></span></span><span class="va num"><span id="hReal"></span><small id="tReal"></small></span></div>
+  </div>
+  <div class="top-der">
+    <span class="punto" role="status" title="En vivo: recibe instantáneas del servidor" aria-label="En vivo"></span>
+    <button class="btn" id="btnReporte" title="Reporte de la última planificación estable (G09). No detiene la operación"><svg class="ico" viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4M10 9H8M16 13H8M16 17H8"/></svg><span class="txt-rep">Reporte de cierre</span></button>
+    <button class="btn-ico" id="btnTema" aria-label="Cambiar tema claro u oscuro" title="Tema"><svg class="ico ico-16" viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg></button>
+    <button class="btn-ico" id="btnAyuda" aria-label="Ayuda y atajos" title="Ayuda (?)"><svg class="ico ico-16" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3M12 17h.01"/></svg></button>
+  </div>
+</header>
+
+<div class="trabajo">
+  <!-- ===== PANEL IZQUIERDO (cerrado al inicio, E01): recursos + requiere atención ===== -->
+  <aside class="rail" id="railIzq" aria-label="Estado de la operación">
+    <div class="rail-cab"><h2>Estado de la operación</h2><button class="btn-ico" data-colapsar="izq" aria-label="Cerrar panel izquierdo" title="Cerrar ( [ )"><svg class="ico" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></svg></button></div>
+    <div class="rail-cuerpo">
+      <div class="seccion" id="recursos"></div>
+      <div class="seccion">
+        <div class="seccion-cab"><span class="overline" style="display:flex;align-items:center;gap:6px">Requiere atención <span class="contador" id="cntAtencion">0</span></span><span class="caption">por gravedad</span></div>
+        <div class="chips" id="gruposAlerta" role="group" aria-label="Tipo de alerta"></div>
+        <ul class="alertas" id="listaAlertas"></ul>
+      </div>
+    </div>
+    <div class="rail-mini">
+      <button data-expandir="izq" aria-label="Abrir requiere atención" title="Requiere atención"><svg class="ico ico-16" viewBox="0 0 24 24"><path d="m21.7 18-8-14a2 2 0 0 0-3.4 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.7-3Z"/><path d="M12 9v4M12 17h.01"/></svg><span class="contador" id="cntAtencionMini">0</span></button>
+      <button data-expandir="izq" aria-label="Abrir estado de recursos" title="Flota, almacenes y vías"><svg class="ico ico-16" viewBox="0 0 24 24"><path d="M3 3v16a2 2 0 0 0 2 2h16M7 16V9M12 16V5M17 16v-3"/></svg></button>
+    </div>
+  </aside>
+
+  <!-- ===== MAPA 70 × 50 km ===== -->
+  <main class="mapa" id="mapa" aria-label="Mapa de la malla de 70 por 50 km">
+    <svg id="svg" role="application" aria-roledescription="mapa" aria-label="Mapa de operación. + y − acercan, 0 muestra la malla completa" tabindex="0"></svg>
+    <div class="sobre sup-izq">
+      <div class="buscar caja" role="search"><svg class="ico" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg><input id="inpBuscar" type="search" placeholder="Pedido, unidad, almacén…" aria-label="Buscar en el mapa" autocomplete="off" aria-controls="sugerencias"><kbd>/</kbd><div class="sugerencias caja" id="sugerencias" role="listbox"></div></div>
+      <div class="pop" id="popFiltros"><button class="btn caja btn-mapa" id="btnFiltros" aria-expanded="false"><svg class="ico" viewBox="0 0 24 24"><path d="M22 3H2l8 9.46V19l4 2v-8.54L22 3z"/></svg>Filtros<span class="insignia" id="cntFiltros" hidden></span></button><div class="pop-cuerpo caja" id="cuerpoFiltros" style="min-width:290px"></div></div>
+      <div class="pop" id="popCapas"><button class="btn caja btn-mapa" id="btnCapas" aria-expanded="false"><svg class="ico" viewBox="0 0 24 24"><path d="m12.83 2.18 8.58 3.9a1 1 0 0 1 0 1.83l-8.58 3.9a2 2 0 0 1-1.66 0L2.6 7.9a1 1 0 0 1 0-1.83l8.58-3.9a2 2 0 0 1 1.66 0Z"/><path d="m2 12 9.17 4.17a2 2 0 0 0 1.66 0L22 12M2 17l9.17 4.17a2 2 0 0 0 1.66 0L22 17"/></svg>Capas</button><div class="pop-cuerpo caja" id="cuerpoCapas"></div></div>
+      <span class="pildora-filtro" id="pildoraFoco" role="status"><span id="txtFoco"></span><button id="btnQuitarFoco" aria-label="Quitar resaltado" title="Quitar (Esc)"><svg class="ico ico-12" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button></span>
+      <span class="pildora-filtro" id="pildoraFiltros" role="status"><span id="txtFiltros"></span><button id="btnQuitarFiltros" aria-label="Quitar filtros del mapa"><svg class="ico ico-12" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button></span>
+    </div>
+    <div class="sobre sup-der"><div class="zoom caja">
+      <button class="btn-ico" id="zMas" aria-label="Acercar" title="Acercar (+)"><svg class="ico ico-16" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
+      <button class="btn-ico" id="zMenos" aria-label="Alejar" title="Alejar (−)"><svg class="ico ico-16" viewBox="0 0 24 24"><path d="M5 12h14"/></svg></button>
+      <button class="btn-ico" id="zAjustar" aria-label="Ver la malla completa" title="Malla completa (0)"><svg class="ico ico-16" viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg></button>
+      <button class="btn-ico" id="btnEnfoque" aria-pressed="false" aria-label="Modo enfoque: ocultar paneles" title="Modo enfoque (F)"><svg class="ico ico-16" viewBox="0 0 24 24"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg></button>
+    </div></div>
+    <div class="sobre inf-izq"><div class="leyenda caja" id="leyenda" hidden></div><button class="btn caja btn-mapa" id="btnLeyenda" aria-expanded="false"><svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>Leyenda</button></div>
+    <div class="sobre inf-der"><span class="coord caja num" id="txtCoord">x — · y — km</span></div>
+    <div class="tooltip" id="tooltip"></div>
+  </main>
+
+  <!-- ===== PANEL DERECHO (cerrado al inicio, E01): selección + listas ===== -->
+  <aside class="rail" id="railDer" aria-label="Detalle de la operación">
+    <div class="seleccion" id="seleccion" role="region" aria-label="Selección" aria-live="polite"></div>
+    <div class="rail-cab" style="padding-top:0;padding-bottom:0"><div class="pestanas" role="tablist" id="pestanas"></div><button class="btn-ico" data-colapsar="der" aria-label="Cerrar panel derecho" title="Cerrar ( ] )"><svg class="ico" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></button></div>
+    <div class="herr" id="herr"></div>
+    <div class="rail-cuerpo" id="cuerpoDer" role="tabpanel"></div>
+    <div class="rail-mini" id="miniDer"></div>
+  </aside>
+</div>
+
+<dialog id="dlgAyuda" aria-labelledby="ttlAyuda">
+  <div class="dlg-cab"><h2 id="ttlAyuda">Ayuda · Operación</h2><button class="btn-ico" data-cerrar-dlg aria-label="Cerrar"><svg class="ico ico-16" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+  <div class="dlg-cuerpo">
+    <p style="margin:0 0 12px;color:var(--texto-2)"><b style="font-weight:600">Arriba</b>: ocupación global de flota y almacenes, resultados del día y relojes. <b style="font-weight:600">Izquierda</b>: recursos y lo que requiere acción. <b style="font-weight:600">Centro</b>: el mapa. <b style="font-weight:600">Derecha</b>: lo seleccionado y las listas. Los paneles empiezan cerrados; al abrirlos el mapa no se achica, porque usan el ancho que la malla no ocupa. Cualquier cifra resalta en el mapa lo que cuenta.</p>
+    <div class="atajos">
+      <kbd>/</kbd><span>Buscar pedido, unidad, almacén o bloqueo</span>
+      <kbd>+</kbd><span>Acercar</span><kbd>−</kbd><span>Alejar</span><kbd>0</kbd><span>Ver la malla completa</span>
+      <kbd>[</kbd><span>Abrir o cerrar el panel izquierdo</span><kbd>]</kbd><span>Abrir o cerrar el panel derecho</span>
+      <kbd>F</kbd><span>Modo enfoque (oculta los paneles; indicadores y relojes siguen arriba)</span>
+      <kbd>L</kbd><span>Leyenda</span>
+      <kbd>Esc</kbd><span>Quitar la selección; luego el resaltado</span>
+    </div>
+  </div>
+</dialog>
+
+<dialog id="dlgReporte" class="grande" aria-labelledby="ttlReporte">
+  <div class="dlg-cab"><div><h2 id="ttlReporte">Reporte de cierre · última planificación estable</h2><span class="caption" id="metaReporte"></span></div><span class="estado info">No detiene la operación</span><button class="btn-ico" data-cerrar-dlg aria-label="Cerrar"><svg class="ico ico-16" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+  <div class="dlg-cuerpo" id="cuerpoReporte"></div>
+  <div class="dlg-pie"><button class="btn" id="btnCsv">Descargar CSV</button><button class="btn" onclick="window.print()">Imprimir</button><button class="btn primario" data-cerrar-dlg>Cerrar</button></div>
+</dialog>
+
+<dialog id="dlgAveria" aria-labelledby="ttlAveria">
+  <form method="dialog" id="frmAveria">
+    <div class="dlg-cab"><h2 id="ttlAveria">Registrar avería</h2><button class="btn-ico" type="button" data-cerrar-dlg aria-label="Cancelar"><svg class="ico ico-16" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+    <div class="dlg-cuerpo" id="cuerpoAveria"></div>
+    <div class="dlg-pie"><button class="btn" type="button" data-cerrar-dlg>Cancelar</button><button class="btn peligro" value="ok">Registrar avería</button></div>
+  </form>
+</dialog>
+
+<script>
+/* =====================================================================
+   1. Constantes del dominio y del diseño (valores de main)
+   ===================================================================== */
+const ANCHO = 70, ALTO = 50, PAD = 2, RATIO = (ALTO + PAD * 2) / (ANCHO + PAD * 2), SERVICIO_MIN = 60, VENTANA_H = 4;
+const SEM = { VACIO: '#64748B', VERDE: '#15803D', AMBAR: '#B45309', ROJO: '#B91C1C' };
+const NOMBRE_CARGA = { VACIO: 'Vacío', VERDE: 'Con espacio', AMBAR: 'Ocupación alta', ROJO: 'Casi lleno' };
+const NOMBRE_HOLGURA = { ROJO: 'Crítico', AMBAR: 'Ajustado', VERDE: 'Holgado', CERRADO: 'Cerrado' };
+const CORTES = { unidad: { vacio: 0, ambar: 0.7, rojo: 0.9 }, almacen: { vacio: 0, ambar: 0.5, rojo: 0.8 }, inventario: { rojo: 0.2 }, holgura: { rojo: 0.15, ambar: 0.4 } };
+const COLOR_AVERIA = { 1: '#0369A1', 2: '#701A75', 3: '#5B3A1E' };
+const NOMBRE_AVERIA = { 1: 'Leve · sigue tras 2 h en sitio', 2: 'Moderada · 4 h en sitio y traslado al central', 3: 'Grave · 4 h en sitio y 2 días en taller' };
+const DUR_AVERIA = { 1: 120, 2: 240, 3: 240 + 2880 };
+const COLOR_BLOQUEO = '#BE185D', FONDO_BLOQUEO = '#FCE7F3', COLOR_EN_ENTREGA = '#7C3AED', COLOR_DESTACADA = '#1E40AF';
+const TIPOS = { A: { nombre: 'Auto', cap: 24, vel: 40, n: 10, rango: 60 }, M: { nombre: 'Moto', cap: 8, vel: 25, n: 15, rango: 30 }, B: { nombre: 'Bici', cap: 4, vel: 12, n: 12, rango: 13 } };
+const ICONOS_VEH = {
+  A: { svg: "<svg preserveAspectRatio=\"none\" overflow=\"visible\" style=\"display: block;\" width=\"28.3998\" height=\"18.6\" viewBox=\"0 0 28.3998 18.6\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\">\n<g id=\"icono/auto\" filter=\"url(#filter0_d_0_4)\">\n<mask id=\"path-1-outside-1_0_4\" maskUnits=\"userSpaceOnUse\" x=\"2.3\" y=\"1.3\" width=\"24\" height=\"14\" fill=\"black\">\n<rect fill=\"white\" x=\"2.3\" y=\"1.3\" width=\"24\" height=\"14\"/>\n<path d=\"M17.9445 3.3C18.9469 3.3 19.7599 4.11213 19.76 5.11445V5.44453C19.76 5.51761 19.7537 5.58953 19.7453 5.66035H21.7902C23.0658 5.66048 24.0996 6.69438 24.0998 7.96992V8.63008C24.0998 9.77961 23.2598 10.73 22.1604 10.9074C22.1856 11.0343 22.2004 11.1657 22.2004 11.3C22.2002 12.4042 21.3046 13.2997 20.2004 13.3C19.096 13.3 18.2006 12.4044 18.2004 11.3C18.2004 11.1774 18.2125 11.0572 18.2336 10.9406H10.1662C10.1873 11.0572 10.2004 11.1774 10.2004 11.3C10.2002 12.4042 9.3046 13.2997 8.20039 13.3C7.09595 13.3 6.20061 12.4044 6.20039 11.3C6.20039 11.1658 6.21326 11.0342 6.23848 10.9074C5.13958 10.7295 4.3 9.77921 4.3 8.63008V7.96992C4.30018 6.69444 5.3341 5.66058 6.60957 5.66035H9.21406C9.20567 5.58955 9.20039 5.51759 9.20039 5.44453V5.11445C9.20047 4.11215 10.0125 3.30003 11.0148 3.3H17.9445Z\"/>\n</mask>\n<path d=\"M17.9445 3.3C18.9469 3.3 19.7599 4.11213 19.76 5.11445V5.44453C19.76 5.51761 19.7537 5.58953 19.7453 5.66035H21.7902C23.0658 5.66048 24.0996 6.69438 24.0998 7.96992V8.63008C24.0998 9.77961 23.2598 10.73 22.1604 10.9074C22.1856 11.0343 22.2004 11.1657 22.2004 11.3C22.2002 12.4042 21.3046 13.2997 20.2004 13.3C19.096 13.3 18.2006 12.4044 18.2004 11.3C18.2004 11.1774 18.2125 11.0572 18.2336 10.9406H10.1662C10.1873 11.0572 10.2004 11.1774 10.2004 11.3C10.2002 12.4042 9.3046 13.2997 8.20039 13.3C7.09595 13.3 6.20061 12.4044 6.20039 11.3C6.20039 11.1658 6.21326 11.0342 6.23848 10.9074C5.13958 10.7295 4.3 9.77921 4.3 8.63008V7.96992C4.30018 6.69444 5.3341 5.66058 6.60957 5.66035H9.21406C9.20567 5.58955 9.20039 5.51759 9.20039 5.44453V5.11445C9.20047 4.11215 10.0125 3.30003 11.0148 3.3H17.9445Z\" fill=\"#B45309\"/>\n<path d=\"M19.76 5.11445H21.06V5.11435L19.76 5.11445ZM19.7453 5.66035L18.4544 5.50729L18.2821 6.96035H19.7453V5.66035ZM21.7902 5.66035L21.7904 4.36035H21.7902V5.66035ZM24.0998 7.96992H25.3998V7.96974L24.0998 7.96992ZM22.1604 10.9074L21.9532 9.62403L20.6223 9.83882L20.8853 11.1611L22.1604 10.9074ZM22.2004 11.3L23.5004 11.3003V11.3H22.2004ZM20.2004 13.3V14.6H20.2007L20.2004 13.3ZM18.2004 11.3H16.9004V11.3003L18.2004 11.3ZM18.2336 10.9406L19.5127 11.1726L19.7906 9.64062H18.2336V10.9406ZM10.1662 10.9406V9.64062H8.60922L8.88708 11.1726L10.1662 10.9406ZM10.2004 11.3L11.5004 11.3003V11.3H10.2004ZM8.20039 13.3V14.6H8.2007L8.20039 13.3ZM6.20039 11.3H4.90039V11.3003L6.20039 11.3ZM6.23848 10.9074L7.51352 11.1609L7.77627 9.83946L6.44624 9.62413L6.23848 10.9074ZM4.3 7.96992L3 7.96974V7.96992H4.3ZM6.60957 5.66035V4.36035H6.60933L6.60957 5.66035ZM9.21406 5.66035V6.96035H10.6773L10.505 5.50733L9.21406 5.66035ZM9.20039 5.11445L7.90039 5.11435V5.11445H9.20039ZM11.0148 3.3V2H11.0148L11.0148 3.3ZM17.9445 3.3V4.6C18.2297 4.6 18.4599 4.83092 18.46 5.11456L19.76 5.11445L21.06 5.11435C21.0598 3.39333 19.664 2 17.9445 2V3.3ZM19.76 5.11445H18.46V5.44453H19.76H21.06V5.11445H19.76ZM19.76 5.44453H18.46C18.46 5.44419 18.46 5.44852 18.4592 5.45911C18.4584 5.46991 18.457 5.48509 18.4544 5.50729L19.7453 5.66035L21.0363 5.81341C21.0476 5.71773 21.06 5.58953 21.06 5.44453H19.76ZM19.7453 5.66035V6.96035H21.7902V5.66035V4.36035H19.7453V5.66035ZM21.7902 5.66035L21.7901 6.96035C22.3477 6.96041 22.7997 7.41233 22.7998 7.9701L24.0998 7.96992L25.3998 7.96974C25.3995 5.97642 23.7838 4.36055 21.7904 4.36035L21.7902 5.66035ZM24.0998 7.96992H22.7998V8.63008H24.0998H25.3998V7.96992H24.0998ZM24.0998 8.63008H22.7998C22.7998 9.12907 22.4353 9.54624 21.9532 9.62403L22.1604 10.9074L22.3675 12.1908C24.0844 11.9137 25.3998 10.4302 25.3998 8.63008H24.0998ZM22.1604 10.9074L20.8853 11.1611C20.8961 11.2152 20.9004 11.2611 20.9004 11.3H22.2004H23.5004C23.5004 11.0703 23.4751 10.8535 23.4354 10.6538L22.1604 10.9074ZM22.2004 11.3L20.9004 11.2997C20.9003 11.6861 20.5866 11.9999 20.2001 12L20.2004 13.3L20.2007 14.6C22.0226 14.5996 23.5 13.1223 23.5004 11.3003L22.2004 11.3ZM20.2004 13.3V12C19.8142 12 19.5005 11.6866 19.5004 11.2997L18.2004 11.3L16.9004 11.3003C16.9007 13.1222 18.3777 14.6 20.2004 14.6V13.3ZM18.2004 11.3H19.5004C19.5004 11.2626 19.5041 11.2203 19.5127 11.1726L18.2336 10.9406L16.9545 10.7086C16.9208 10.894 16.9004 11.0921 16.9004 11.3H18.2004ZM18.2336 10.9406V9.64062H10.1662V10.9406V12.2406H18.2336V10.9406ZM10.1662 10.9406L8.88708 11.1726C8.89708 11.2277 8.90039 11.2692 8.90039 11.3H10.2004H11.5004C11.5004 11.0856 11.4776 10.8866 11.4453 10.7086L10.1662 10.9406ZM10.2004 11.3L8.90039 11.2997C8.90032 11.6861 8.58662 11.9999 8.20008 12L8.20039 13.3L8.2007 14.6C10.0226 14.5996 11.5 13.1223 11.5004 11.3003L10.2004 11.3ZM8.20039 13.3V12C7.81418 12 7.50047 11.6866 7.50039 11.2997L6.20039 11.3L4.90039 11.3003C4.90074 13.1222 6.37773 14.6 8.20039 14.6V13.3ZM6.20039 11.3H7.50039C7.50039 11.2488 7.50531 11.2022 7.51352 11.1609L6.23848 10.9074L4.96344 10.6539C4.92121 10.8663 4.90039 11.0828 4.90039 11.3H6.20039ZM6.23848 10.9074L6.44624 9.62413C5.96444 9.54613 5.6 9.12889 5.6 8.63008H4.3H3C3 10.4295 4.31471 11.9129 6.03071 12.1907L6.23848 10.9074ZM4.3 8.63008H5.6V7.96992H4.3H3V8.63008H4.3ZM4.3 7.96992L5.6 7.9701C5.60008 7.4125 6.05207 6.96045 6.60981 6.96035L6.60957 5.66035L6.60933 4.36035C4.61613 4.36071 3.00028 5.97638 3 7.96974L4.3 7.96992ZM6.60957 5.66035V6.96035H9.21406V5.66035V4.36035H6.60957V5.66035ZM9.21406 5.66035L10.505 5.50733C10.5012 5.47497 10.5004 5.45538 10.5004 5.44453H9.20039H7.90039C7.90039 5.57981 7.91015 5.70412 7.9231 5.81338L9.21406 5.66035ZM9.20039 5.44453H10.5004V5.11445H9.20039H7.90039V5.44453H9.20039ZM9.20039 5.11445L10.5004 5.11456C10.5004 4.83007 10.7306 4.60001 11.0149 4.6L11.0148 3.3L11.0148 2C9.29448 2.00005 7.90053 3.39422 7.90039 5.11435L9.20039 5.11445ZM11.0148 3.3V4.6H17.9445V3.3V2H11.0148V3.3Z\" fill=\"white\" mask=\"url(#path-1-outside-1_0_4)\"/>\n</g>\n<defs>\n<filter id=\"filter0_d_0_4\" x=\"2.38419e-07\" y=\"0\" width=\"28.3998\" height=\"18.6\" filterUnits=\"userSpaceOnUse\" color-interpolation-filters=\"sRGB\">\n<feFlood flood-opacity=\"0\" result=\"BackgroundImageFix\"/>\n<feColorMatrix in=\"SourceAlpha\" type=\"matrix\" values=\"0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0\" result=\"hardAlpha\"/>\n<feOffset dy=\"1\"/>\n<feGaussianBlur stdDeviation=\"1.5\"/>\n<feColorMatrix type=\"matrix\" values=\"0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.24 0\"/>\n<feBlend mode=\"normal\" in2=\"BackgroundImageFix\" result=\"effect1_dropShadow_0_4\"/>\n<feBlend mode=\"normal\" in=\"SourceGraphic\" in2=\"effect1_dropShadow_0_4\" result=\"shape\"/>\n</filter>\n</defs>\n</svg>", original: '#B45309', w: 28.3998, h: 18.6, cx: 4.3 + 19.8 / 2, cy: 3.3 + 10 / 2 },
+  M: { svg: "<svg preserveAspectRatio=\"none\" overflow=\"visible\" style=\"display: block;\" width=\"29.393\" height=\"19.6566\" viewBox=\"0 0 29.393 19.6566\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\">\n<g id=\"icono/moto\" filter=\"url(#filter0_d_0_7)\">\n<mask id=\"path-1-outside-1_0_7\" maskUnits=\"userSpaceOnUse\" x=\"2.3\" y=\"1.3\" width=\"25\" height=\"15\" fill=\"black\">\n<rect fill=\"white\" x=\"2.3\" y=\"1.3\" width=\"25\" height=\"15\"/>\n<path d=\"M23.9367 5.61055L22.2971 7.79512C23.8801 8.03796 25.0929 9.40587 25.093 11.0568C25.093 12.8794 23.6147 14.3566 21.7922 14.3566C19.9698 14.3564 18.4924 12.8792 18.4924 11.0568C18.4924 10.5386 18.6115 10.0479 18.8244 9.61152L10.8986 11.0305C10.8987 11.0393 10.8996 11.048 10.8996 11.0568C10.8996 12.8794 9.42234 14.3566 7.5998 14.3566C5.77735 14.3565 4.3 12.8793 4.3 11.0568C4.30005 9.23441 5.77739 7.75714 7.5998 7.75703C8.71529 7.75703 9.70073 8.31109 10.298 9.1584L19.9768 7.425V8.1584L22.6164 4.78535L23.9367 5.61055ZM24.1018 4.62031H21.132V3.3H24.1018V4.62031Z\"/>\n</mask>\n<path d=\"M23.9367 5.61055L22.2971 7.79512C23.8801 8.03796 25.0929 9.40587 25.093 11.0568C25.093 12.8794 23.6147 14.3566 21.7922 14.3566C19.9698 14.3564 18.4924 12.8792 18.4924 11.0568C18.4924 10.5386 18.6115 10.0479 18.8244 9.61152L10.8986 11.0305C10.8987 11.0393 10.8996 11.048 10.8996 11.0568C10.8996 12.8794 9.42234 14.3566 7.5998 14.3566C5.77735 14.3565 4.3 12.8793 4.3 11.0568C4.30005 9.23441 5.77739 7.75714 7.5998 7.75703C8.71529 7.75703 9.70073 8.31109 10.298 9.1584L19.9768 7.425V8.1584L22.6164 4.78535L23.9367 5.61055ZM24.1018 4.62031H21.132V3.3H24.1018V4.62031Z\" fill=\"#B45309\"/>\n<path d=\"M23.9367 5.61055L24.9764 6.39092L25.8264 5.25855L24.6257 4.50815L23.9367 5.61055ZM22.2971 7.79512L21.2573 7.01475L19.9542 8.75094L22.1 9.08009L22.2971 7.79512ZM25.093 11.0568H26.393V11.0568L25.093 11.0568ZM21.7922 14.3566L21.792 15.6566H21.7922V14.3566ZM18.4924 11.0568L17.1924 11.0568V11.0568H18.4924ZM18.8244 9.61152L19.9928 10.1815L21.1153 7.88072L18.5953 8.33187L18.8244 9.61152ZM10.8986 11.0305L10.6695 9.75081L9.59006 9.94407L9.59867 11.0407L10.8986 11.0305ZM10.8996 11.0568H12.1996L12.1996 11.0568L10.8996 11.0568ZM7.5998 14.3566L7.59973 15.6566H7.5998V14.3566ZM4.3 11.0568L3 11.0568V11.0568H4.3ZM7.5998 7.75703V6.45703H7.59973L7.5998 7.75703ZM10.298 9.1584L9.23553 9.90743L9.71245 10.584L10.5272 10.438L10.298 9.1584ZM19.9768 7.425H21.2768V5.87149L19.7476 6.14536L19.9768 7.425ZM19.9768 8.1584H18.6768V11.929L21.0005 8.95957L19.9768 8.1584ZM22.6164 4.78535L23.3054 3.68295L22.3135 3.06302L21.5926 3.98417L22.6164 4.78535ZM24.1018 4.62031V5.92031H25.4018V4.62031H24.1018ZM21.132 4.62031H19.832V5.92031H21.132V4.62031ZM21.132 3.3V2H19.832V3.3H21.132ZM24.1018 3.3H25.4018V2H24.1018V3.3ZM23.9367 5.61055L22.897 4.83018L21.2573 7.01475L22.2971 7.79512L23.3368 8.57549L24.9764 6.39092L23.9367 5.61055ZM22.2971 7.79512L22.1 9.08009C23.0584 9.22711 23.7929 10.0576 23.793 11.0569L25.093 11.0568L26.393 11.0568C26.3929 8.75411 24.7018 6.8488 22.4942 6.51015L22.2971 7.79512ZM25.093 11.0568H23.793C23.793 12.1609 22.8973 13.0566 21.7922 13.0566V14.3566V15.6566C24.3322 15.6566 26.393 13.5978 26.393 11.0568H25.093ZM21.7922 14.3566L21.7923 13.0566C20.6877 13.0565 19.7924 12.1611 19.7924 11.0568H18.4924H17.1924C17.1924 13.5974 19.252 15.6563 21.792 15.6566L21.7922 14.3566ZM18.4924 11.0568L19.7924 11.0569C19.7924 10.7396 19.8649 10.4436 19.9928 10.1815L18.8244 9.61152L17.6561 9.0415C17.3581 9.65227 17.1924 10.3375 17.1924 11.0568L18.4924 11.0568ZM18.8244 9.61152L18.5953 8.33187L10.6695 9.75081L10.8986 11.0305L11.1277 12.3101L19.0535 10.8912L18.8244 9.61152ZM10.8986 11.0305L9.59867 11.0407C9.59885 11.0631 9.59952 11.0815 9.60002 11.0931C9.60028 11.099 9.60053 11.104 9.60069 11.1072C9.60084 11.11 9.601 11.113 9.60101 11.1132C9.60106 11.1141 9.601 11.113 9.60091 11.1112C9.60081 11.1093 9.60064 11.1058 9.60046 11.1012C9.60011 11.0922 9.59961 11.0766 9.59961 11.0569L10.8996 11.0568L12.1996 11.0568C12.1996 11.0327 12.199 11.0127 12.1985 10.9993C12.198 10.9867 12.1974 10.976 12.1973 10.9741C12.1972 10.9721 12.1972 10.9729 12.1973 10.9735C12.1973 10.9745 12.1974 10.9773 12.1976 10.981C12.1979 10.9882 12.1985 11.0022 12.1986 11.0203L10.8986 11.0305ZM10.8996 11.0568H9.59961C9.59961 12.1614 8.70437 13.0566 7.5998 13.0566V14.3566V15.6566C10.1403 15.6566 12.1996 13.5973 12.1996 11.0568H10.8996ZM7.5998 14.3566L7.59988 13.0566C6.49527 13.0566 5.6 12.1613 5.6 11.0568H4.3H3C3 13.5974 5.05944 15.6565 7.59973 15.6566L7.5998 14.3566ZM4.3 11.0568L5.6 11.0569C5.60003 9.95242 6.49534 9.0571 7.59988 9.05703L7.5998 7.75703L7.59973 6.45703C5.05944 6.45718 3.00007 8.51639 3 11.0568L4.3 11.0568ZM7.5998 7.75703V9.05703C8.27397 9.05703 8.87081 9.39007 9.23553 9.90743L10.298 9.1584L11.3606 8.40936C10.5306 7.23211 9.15662 6.45703 7.5998 6.45703V7.75703ZM10.298 9.1584L10.5272 10.438L20.2059 8.70464L19.9768 7.425L19.7476 6.14536L10.0689 7.87876L10.298 9.1584ZM19.9768 7.425H18.6768V8.1584H19.9768H21.2768V7.425H19.9768ZM19.9768 8.1584L21.0005 8.95957L23.6402 5.58653L22.6164 4.78535L21.5926 3.98417L18.953 7.35722L19.9768 8.1584ZM22.6164 4.78535L21.9274 5.88775L23.2477 6.71294L23.9367 5.61055L24.6257 4.50815L23.3054 3.68295L22.6164 4.78535ZM24.1018 4.62031V3.32031H21.132V4.62031V5.92031H24.1018V4.62031ZM21.132 4.62031H22.432V3.3H21.132H19.832V4.62031H21.132ZM21.132 3.3V4.6H24.1018V3.3V2H21.132V3.3ZM24.1018 3.3H22.8018V4.62031H24.1018H25.4018V3.3H24.1018Z\" fill=\"white\" mask=\"url(#path-1-outside-1_0_7)\"/>\n</g>\n<defs>\n<filter id=\"filter0_d_0_7\" x=\"2.38419e-07\" y=\"0\" width=\"29.393\" height=\"19.6566\" filterUnits=\"userSpaceOnUse\" color-interpolation-filters=\"sRGB\">\n<feFlood flood-opacity=\"0\" result=\"BackgroundImageFix\"/>\n<feColorMatrix in=\"SourceAlpha\" type=\"matrix\" values=\"0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0\" result=\"hardAlpha\"/>\n<feOffset dy=\"1\"/>\n<feGaussianBlur stdDeviation=\"1.5\"/>\n<feColorMatrix type=\"matrix\" values=\"0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.24 0\"/>\n<feBlend mode=\"normal\" in2=\"BackgroundImageFix\" result=\"effect1_dropShadow_0_7\"/>\n<feBlend mode=\"normal\" in=\"SourceGraphic\" in2=\"effect1_dropShadow_0_7\" result=\"shape\"/>\n</filter>\n</defs>\n</svg>", original: '#B45309', w: 29.393, h: 19.6566, cx: 4.3 + 20.79 / 2, cy: 3.3 + 11.06 / 2 },
+  B: { svg: "<svg preserveAspectRatio=\"none\" overflow=\"visible\" style=\"display: block;\" width=\"30.0502\" height=\"21.6361\" viewBox=\"0 0 30.0502 21.6361\" fill=\"none\" xmlns=\"http://www.w3.org/2000/svg\">\n<g id=\"icono/bici\" filter=\"url(#filter0_d_0_4)\">\n<mask id=\"path-1-outside-1_0_4\" maskUnits=\"userSpaceOnUse\" x=\"2.3\" y=\"1.3\" width=\"25\" height=\"17\" fill=\"black\">\n<rect fill=\"white\" x=\"2.3\" y=\"1.3\" width=\"25\" height=\"17\"/>\n<path d=\"M19.4992 9.64863C20.1611 9.08599 21.0185 8.74638 21.9553 8.74629C24.0512 8.74629 25.7502 10.4453 25.7502 12.5412C25.7502 14.6371 24.0512 16.3361 21.9553 16.3361C19.8595 16.3359 18.1604 14.637 18.1604 12.5412C18.1604 11.7227 18.4199 10.9648 18.8605 10.3449L15.0266 6.60176L11.1896 10.3469C11.6298 10.9666 11.8898 11.7232 11.8898 12.5412C11.8898 14.6371 10.1908 16.3361 8.09492 16.3361C5.99904 16.3361 4.3 14.6371 4.3 12.5412C4.30004 10.4454 5.99906 8.74633 8.09492 8.74629C9.03197 8.74629 9.88896 9.08675 10.551 9.64961L15.0266 5.28242L19.4992 9.64863ZM8.09395 10.3127C6.86373 10.3127 5.86641 11.31 5.86641 12.5402C5.86653 13.7703 6.86381 14.7678 8.09395 14.7678C9.32397 14.7676 10.3214 13.7703 10.3215 12.5402C10.3215 12.1501 10.2204 11.7839 10.0441 11.465L8.0959 13.3674V12.0471L9.42012 10.7541C9.04929 10.4783 8.59153 10.3127 8.09395 10.3127ZM21.9543 10.3127C21.4574 10.3128 20.9996 10.477 20.6291 10.7521L21.9563 12.0471V13.3674L20.0051 11.4621C19.828 11.7816 19.7268 12.1491 19.7268 12.5402C19.7269 13.7702 20.7243 14.7676 21.9543 14.7678C23.1842 14.7675 24.1817 13.7702 24.1818 12.5402C24.1818 11.3102 23.1843 10.3129 21.9543 10.3127ZM15.5197 3.3C15.7931 3.3 16.0148 3.52174 16.0148 3.79512V4.78535C16.0147 5.05857 15.793 5.28047 15.5197 5.28047H14.6945C14.4215 5.28022 14.2006 5.05842 14.2004 4.78535V3.79512C14.2004 3.52189 14.4214 3.30025 14.6945 3.3H15.5197Z\"/>\n</mask>\n<path d=\"M19.4992 9.64863C20.1611 9.08599 21.0185 8.74638 21.9553 8.74629C24.0512 8.74629 25.7502 10.4453 25.7502 12.5412C25.7502 14.6371 24.0512 16.3361 21.9553 16.3361C19.8595 16.3359 18.1604 14.637 18.1604 12.5412C18.1604 11.7227 18.4199 10.9648 18.8605 10.3449L15.0266 6.60176L11.1896 10.3469C11.6298 10.9666 11.8898 11.7232 11.8898 12.5412C11.8898 14.6371 10.1908 16.3361 8.09492 16.3361C5.99904 16.3361 4.3 14.6371 4.3 12.5412C4.30004 10.4454 5.99906 8.74633 8.09492 8.74629C9.03197 8.74629 9.88896 9.08675 10.551 9.64961L15.0266 5.28242L19.4992 9.64863ZM8.09395 10.3127C6.86373 10.3127 5.86641 11.31 5.86641 12.5402C5.86653 13.7703 6.86381 14.7678 8.09395 14.7678C9.32397 14.7676 10.3214 13.7703 10.3215 12.5402C10.3215 12.1501 10.2204 11.7839 10.0441 11.465L8.0959 13.3674V12.0471L9.42012 10.7541C9.04929 10.4783 8.59153 10.3127 8.09395 10.3127ZM21.9543 10.3127C21.4574 10.3128 20.9996 10.477 20.6291 10.7521L21.9563 12.0471V13.3674L20.0051 11.4621C19.828 11.7816 19.7268 12.1491 19.7268 12.5402C19.7269 13.7702 20.7243 14.7676 21.9543 14.7678C23.1842 14.7675 24.1817 13.7702 24.1818 12.5402C24.1818 11.3102 23.1843 10.3129 21.9543 10.3127ZM15.5197 3.3C15.7931 3.3 16.0148 3.52174 16.0148 3.79512V4.78535C16.0147 5.05857 15.793 5.28047 15.5197 5.28047H14.6945C14.4215 5.28022 14.2006 5.05842 14.2004 4.78535V3.79512C14.2004 3.52189 14.4214 3.30025 14.6945 3.3H15.5197Z\" fill=\"#15803D\"/>\n<path d=\"M19.4992 9.64863L18.5911 10.5789L19.4387 11.4063L20.3412 10.6391L19.4992 9.64863ZM21.9553 8.74629V7.44629L21.9551 7.44629L21.9553 8.74629ZM25.7502 12.5412H27.0502V12.5412L25.7502 12.5412ZM21.9553 16.3361L21.9551 17.6361H21.9553V16.3361ZM18.1604 12.5412L16.8604 12.5412V12.5412H18.1604ZM18.8605 10.3449L19.9201 11.0982L20.5645 10.1917L19.7687 9.41473L18.8605 10.3449ZM15.0266 6.60176L15.9347 5.67157L15.0267 4.78503L14.1185 5.67146L15.0266 6.60176ZM11.1896 10.3469L10.2816 9.41658L9.48592 10.1932L10.1298 11.0997L11.1896 10.3469ZM11.8898 12.5412H13.1898V12.5412L11.8898 12.5412ZM8.09492 16.3361L8.0949 17.6361H8.09492V16.3361ZM4.3 12.5412L3 12.5412V12.5412H4.3ZM8.09492 8.74629V7.44629L8.0949 7.44629L8.09492 8.74629ZM10.551 9.64961L9.70891 10.64L10.6112 11.4072L11.4589 10.58L10.551 9.64961ZM15.0266 5.28242L15.9347 4.35218L15.0268 3.46588L14.1187 4.35199L15.0266 5.28242ZM8.09395 10.3127L8.09408 9.0127H8.09395V10.3127ZM5.86641 12.5402H4.56641V12.5404L5.86641 12.5402ZM8.09395 14.7678V16.0678H8.09408L8.09395 14.7678ZM10.3215 12.5402L11.6215 12.5404V12.5402H10.3215ZM10.0441 11.465L11.182 10.8363L10.3567 9.34288L9.13592 10.5349L10.0441 11.465ZM8.0959 13.3674H6.7959V16.4537L9.00412 14.2975L8.0959 13.3674ZM8.0959 12.0471L7.1877 11.1169L6.7959 11.4995V12.0471H8.0959ZM9.42012 10.7541L10.3283 11.6843L11.4183 10.62L10.1959 9.71096L9.42012 10.7541ZM21.9543 10.3127L21.9545 9.0127L21.9541 9.0127L21.9543 10.3127ZM20.6291 10.7521L19.8541 9.70841L18.6297 10.6176L19.7212 11.6826L20.6291 10.7521ZM21.9563 12.0471H23.2562V11.4992L22.8641 11.1166L21.9563 12.0471ZM21.9563 13.3674L21.048 14.2975L23.2562 16.4538V13.3674H21.9563ZM20.0051 11.4621L20.9133 10.532L19.6941 9.34145L18.868 10.8319L20.0051 11.4621ZM19.7268 12.5402H18.4268V12.5404L19.7268 12.5402ZM21.9543 14.7678L21.9541 16.0678H21.9545L21.9543 14.7678ZM24.1818 12.5402L25.4818 12.5404V12.5402H24.1818ZM16.0148 4.78535L17.3148 4.78626V4.78535H16.0148ZM14.6945 5.28047L14.6933 6.58047H14.6945V5.28047ZM14.2004 4.78535H12.9004L12.9004 4.78626L14.2004 4.78535ZM14.6945 3.3V2L14.6933 2L14.6945 3.3ZM19.4992 9.64863L20.3412 10.6391C20.777 10.2687 21.3386 10.0463 21.9554 10.0463L21.9553 8.74629L21.9551 7.44629C20.6984 7.44641 19.5452 7.90334 18.6573 8.65813L19.4992 9.64863ZM21.9553 8.74629V10.0463C23.3332 10.0463 24.4502 11.1633 24.4502 12.5412L25.7502 12.5412L27.0502 12.5412C27.0501 9.72738 24.7692 7.44629 21.9553 7.44629V8.74629ZM25.7502 12.5412H24.4502C24.4502 13.9192 23.3332 15.0361 21.9553 15.0361V16.3361V17.6361C24.7692 17.6361 27.0502 15.3551 27.0502 12.5412H25.7502ZM21.9553 16.3361L21.9554 15.0361C20.5774 15.036 19.4604 13.9189 19.4604 12.5412H18.1604H16.8604C16.8604 15.3551 19.1417 17.6359 21.9551 17.6361L21.9553 16.3361ZM18.1604 12.5412L19.4604 12.5412C19.4604 12.0019 19.6304 11.5056 19.9201 11.0982L18.8605 10.3449L17.801 9.59168C17.2093 10.424 16.8604 11.4436 16.8604 12.5412L18.1604 12.5412ZM18.8605 10.3449L19.7687 9.41473L15.9347 5.67157L15.0266 6.60176L14.1184 7.53195L17.9524 11.2751L18.8605 10.3449ZM15.0266 6.60176L14.1185 5.67146L10.2816 9.41658L11.1896 10.3469L12.0977 11.2772L15.9346 7.53206L15.0266 6.60176ZM11.1896 10.3469L10.1298 11.0997C10.4199 11.5081 10.5898 12.0034 10.5898 12.5412L11.8898 12.5412L13.1898 12.5412C13.1898 11.4431 12.8398 10.425 12.2495 9.59404L11.1896 10.3469ZM11.8898 12.5412H10.5898C10.5898 13.9192 9.47287 15.0361 8.09492 15.0361V16.3361V17.6361C10.9088 17.6361 13.1898 15.3551 13.1898 12.5412H11.8898ZM8.09492 16.3361L8.09495 15.0361C6.71699 15.0361 5.6 13.9191 5.6 12.5412H4.3H3C3 15.3551 5.28109 17.6361 8.0949 17.6361L8.09492 16.3361ZM4.3 12.5412L5.6 12.5412C5.60003 11.1633 6.71704 10.0463 8.09495 10.0463L8.09492 8.74629L8.0949 7.44629C5.28109 7.44635 3.00006 9.72738 3 12.5412L4.3 12.5412ZM8.09492 8.74629V10.0463C8.71094 10.0463 9.27226 10.2688 9.70891 10.64L10.551 9.64961L11.393 8.6592C10.5057 7.90473 9.353 7.44629 8.09492 7.44629V8.74629ZM10.551 9.64961L11.4589 10.58L15.9345 6.21286L15.0266 5.28242L14.1187 4.35199L9.64307 8.71917L10.551 9.64961ZM15.0266 5.28242L14.1185 6.21266L18.5911 10.5789L19.4992 9.64863L20.4073 8.71839L15.9347 4.35218L15.0266 5.28242ZM8.09395 10.3127V9.0127C6.14576 9.0127 4.56641 10.5921 4.56641 12.5402H5.86641H7.16641C7.16641 12.028 7.5817 11.6127 8.09395 11.6127V10.3127ZM5.86641 12.5402L4.56641 12.5404C4.56661 14.4882 6.14571 16.0678 8.09395 16.0678V14.7678V13.4678C7.58191 13.4678 7.16646 13.0525 7.16641 12.5401L5.86641 12.5402ZM8.09395 14.7678L8.09408 16.0678C10.042 16.0676 11.6213 14.4883 11.6215 12.5404L10.3215 12.5402L9.02148 12.5401C9.02143 13.0523 8.60597 13.4677 8.09381 13.4678L8.09395 14.7678ZM10.3215 12.5402H11.6215C11.6215 11.9225 11.4608 11.3408 11.182 10.8363L10.0441 11.465L8.90631 12.0938C8.97996 12.2271 9.02148 12.3778 9.02148 12.5402H10.3215ZM10.0441 11.465L9.13592 10.5349L7.18768 12.4373L8.0959 13.3674L9.00412 14.2975L10.9524 12.3952L10.0441 11.465ZM8.0959 13.3674H9.3959V12.0471H8.0959H6.7959V13.3674H8.0959ZM8.0959 12.0471L9.0041 12.9772L10.3283 11.6843L9.42012 10.7541L8.51192 9.82395L7.1877 11.1169L8.0959 12.0471ZM9.42012 10.7541L10.1959 9.71096C9.61299 9.27744 8.88585 9.01278 8.09408 9.0127L8.09395 10.3127L8.09381 11.6127C8.29721 11.6127 8.4856 11.6792 8.64433 11.7972L9.42012 10.7541ZM21.9543 10.3127L21.9541 9.0127C21.1654 9.0128 20.4382 9.27471 19.8541 9.70841L20.6291 10.7521L21.4041 11.7959C21.561 11.6794 21.7494 11.6127 21.9545 11.6127L21.9543 10.3127ZM20.6291 10.7521L19.7212 11.6826L21.0484 12.9775L21.9563 12.0471L22.8641 11.1166L21.537 9.82168L20.6291 10.7521ZM21.9563 12.0471H20.6563V13.3674H21.9563H23.2562V12.0471H21.9563ZM21.9563 13.3674L22.8645 12.4373L20.9133 10.532L20.0051 11.4621L19.0968 12.3922L21.048 14.2975L21.9563 13.3674ZM20.0051 11.4621L18.868 10.8319C18.5874 11.3384 18.4268 11.922 18.4268 12.5402H19.7268H21.0268C21.0268 12.3762 21.0687 12.2248 21.1421 12.0923L20.0051 11.4621ZM19.7268 12.5402L18.4268 12.5404C18.427 14.4883 20.0063 16.0675 21.9541 16.0678L21.9543 14.7678L21.9545 13.4678C21.4423 13.4677 21.0268 13.0522 21.0268 12.5401L19.7268 12.5402ZM21.9543 14.7678L21.9545 16.0678C23.9021 16.0674 25.4816 14.4883 25.4818 12.5404L24.1818 12.5402L22.8818 12.5401C22.8818 13.0521 22.4663 13.4677 21.9541 13.4678L21.9543 14.7678ZM24.1818 12.5402H25.4818C25.4818 10.5919 23.9021 9.01306 21.9545 9.0127L21.9543 10.3127L21.9541 11.6127C22.4665 11.6128 22.8818 12.0284 22.8818 12.5402H24.1818ZM15.5197 3.3V4.6C15.0751 4.6 14.7148 4.23971 14.7148 3.79512H16.0148H17.3148C17.3148 2.80377 16.5111 2 15.5197 2V3.3ZM16.0148 3.79512H14.7148V4.78535H16.0148H17.3148V3.79512H16.0148ZM16.0148 4.78535L14.7148 4.78445C14.7152 4.3413 15.0741 3.98047 15.5197 3.98047V5.28047V6.58047C16.5119 6.58047 17.3142 5.77584 17.3148 4.78626L16.0148 4.78535ZM15.5197 5.28047V3.98047H14.6945V5.28047V6.58047H15.5197V5.28047ZM14.6945 5.28047L14.6957 3.98047C15.1428 3.98088 15.5001 4.34329 15.5004 4.78445L14.2004 4.78535L12.9004 4.78626C12.9011 5.77354 13.7002 6.57955 14.6933 6.58047L14.6945 5.28047ZM14.2004 4.78535H15.5004V3.79512H14.2004H12.9004V4.78535H14.2004ZM14.2004 3.79512H15.5004C15.5004 4.23772 15.1417 4.59959 14.6957 4.6L14.6945 3.3L14.6933 2C13.701 2.00092 12.9004 2.80607 12.9004 3.79512H14.2004ZM14.6945 3.3V4.6H15.5197V3.3V2H14.6945V3.3Z\" fill=\"white\" mask=\"url(#path-1-outside-1_0_4)\"/>\n</g>\n<defs>\n<filter id=\"filter0_d_0_4\" x=\"2.38419e-07\" y=\"1.19209e-07\" width=\"30.0502\" height=\"21.6361\" filterUnits=\"userSpaceOnUse\" color-interpolation-filters=\"sRGB\">\n<feFlood flood-opacity=\"0\" result=\"BackgroundImageFix\"/>\n<feColorMatrix in=\"SourceAlpha\" type=\"matrix\" values=\"0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0\" result=\"hardAlpha\"/>\n<feOffset dy=\"1\"/>\n<feGaussianBlur stdDeviation=\"1.5\"/>\n<feColorMatrix type=\"matrix\" values=\"0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.24 0\"/>\n<feBlend mode=\"normal\" in2=\"BackgroundImageFix\" result=\"effect1_dropShadow_0_4\"/>\n<feBlend mode=\"normal\" in=\"SourceGraphic\" in2=\"effect1_dropShadow_0_4\" result=\"shape\"/>\n</filter>\n</defs>\n</svg>", original: '#15803D', w: 30.0502, h: 21.6361, cx: 4.3 + 21.45 / 2, cy: 3.3 + 13.04 / 2 },
+};
+const cacheIco = new Map();
+function iconoVeh(tipo, color, hueco) {
+  const k = tipo + color + hueco; if (cacheIco.has(k)) return cacheIco.get(k);
+  const f = ICONOS_VEH[tipo];
+  const relleno = hueco ? `fill="#FFFFFF" stroke="${color}" stroke-width="1.5" stroke-linejoin="round"` : `fill="${color}"`;
+  const href = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(f.svg.replace(`fill="${f.original}"`, relleno));
+  cacheIco.set(k, href); return href;
+}
+
+let semilla = 20261123;
+const rnd = () => { semilla |= 0; semilla = semilla + 0x6D2B79F5 | 0; let t = Math.imul(semilla ^ semilla >>> 15, 1 | semilla); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+const ent = (a, b) => Math.floor(a + rnd() * (b - a + 1));
+const elegir = (a) => a[Math.floor(rnd() * a.length)];
+const fmt = (n, d = 0) => n.toLocaleString('es-PE', { minimumFractionDigits: d, maximumFractionDigits: d });
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+const manh = (a, b) => Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
+
+function nivelCarga(c, cap, cortes) { if (c <= 0 || cap <= 0) return 'VACIO'; const f = c / cap; if (f <= cortes.vacio) return 'VACIO'; if (f >= cortes.rojo) return 'ROJO'; if (f >= cortes.ambar) return 'AMBAR'; return 'VERDE'; }
+/* Marca del semáforo + vacío: la forma también distingue el nivel (anillo, cuadrado, triángulo, círculo) */
+function marcaSem(n, titulo) {
+  const f = { VACIO: `<circle cx="4.5" cy="4.5" r="3.5" fill="#fff" stroke="${SEM.VACIO}" stroke-width="1.5"/>`, VERDE: `<rect x=".5" y=".5" width="8" height="8" rx="1" fill="${SEM.VERDE}"/>`, AMBAR: `<path d="M4.5 .5 8.6 8H.4Z" fill="${SEM.AMBAR}"/>`, ROJO: `<circle cx="4.5" cy="4.5" r="4" fill="${SEM.ROJO}"/>` }[n];
+  return `<svg class="marca-sem" viewBox="0 0 9 9" ${titulo ? `role="img" aria-label="${titulo}"` : 'aria-hidden="true"'}>${f}</svg>`;
+}
+
+/* =====================================================================
+   2. Reloj: 1 s real = 1 min de operación (para la demostración)
+   ===================================================================== */
+const INICIO_OP = new Date(2026, 10, 21, 8, 0, 0);            // inicio de la operación día a día
+const T0 = new Date(2026, 10, 23, 14, 32, 0);                   // "ahora" al abrir el prototipo
+const MIN0 = (T0 - INICIO_OP) / 60000;
+const REAL_INICIO = Date.now() - MIN0 * 60000;                   // inicio real equivalente
+let ahora = 0;                                                   // minutos de operación desde T0
+const fecha = (t) => new Date(T0.getTime() + t * 60000);
+const hhmm = (t) => fecha(t).toTimeString().slice(0, 5);
+const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'set', 'oct', 'nov', 'dic'];
+const fechaLarga = (d) => `${d.getDate()} ${MESES[d.getMonth()]} ${d.getFullYear()}`;
+function duracion(min, conSeg) { const d = Math.floor(min / 1440), h = Math.floor(min % 1440 / 60), m = Math.floor(min % 60), s = Math.floor(min * 60 % 60); return `${d ? d + ' d ' : ''}${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}${conSeg ? ':' + String(s).padStart(2, '0') : ''}`; }
+const textoMin = (m) => { m = Math.round(m); const a = Math.abs(m); const t = a >= 60 ? `${Math.floor(a / 60)} h ${a % 60} min` : `${a} min`; return m < 0 ? `vencido ${t}` : t; };
+
+/* =====================================================================
+   3. Datos simulados (en el sistema real llegan de paqtracker-api)
+   ===================================================================== */
+const ALMACENES = [
+  { id: 'CENTRAL', nombre: 'Central', corto: 'Central', x: 27, y: 14, capacidad: null, stock: null },
+  { id: 'INT1', nombre: 'Intermedio 1', corto: 'Int. 1', x: 12, y: 38, capacidad: 1000, stock: 642 },
+  { id: 'INT2', nombre: 'Intermedio 2', corto: 'Int. 2', x: 57, y: 27, capacidad: 1000, stock: 148 },
+];
+const alm = (id) => ALMACENES.find((a) => a.id === id);
+const NOMBRES = ['R. Quispe', 'L. Mamani', 'C. Flores', 'J. Huamán', 'A. Rojas', 'M. Torres', 'E. Vargas', 'P. Chávez', 'S. Ramos', 'D. Castillo', 'K. Paredes', 'V. Salazar', 'G. Medina', 'N. Cruz', 'F. Díaz'];
+const CLIENTES = ['Bodega San Martín', 'Minimarket Lucía', 'Farmacia Central', 'Tienda El Sol', 'Market Los Andes', 'Bodega Rosita', 'Distribuidora Norte', 'Abarrotes Kevin', 'Panadería Sur', 'Market Pacífico', 'Botica Vida', 'Tienda Don Lucho'];
+const BLOQUEOS = [
+  { id: 'BL-01', puntos: [[20, 22], [20, 30]], ini: -90, fin: 210 },
+  { id: 'BL-02', puntos: [[33, 8], [41, 8], [41, 12]], ini: -30, fin: 120 },
+  { id: 'BL-03', puntos: [[48, 30], [48, 36]], ini: -200, fin: 390 },
+  { id: 'BL-04', puntos: [[8, 44], [16, 44]], ini: 25, fin: 260 },
+  { id: 'BL-05', puntos: [[60, 14], [66, 14]], ini: -60, fin: 280 },
+  { id: 'BL-06', puntos: [[30, 40], [36, 40]], ini: 70, fin: 330 },
+];
+const vigente = (b) => b.ini <= ahora && ahora < b.fin;
+
+let correl = 4200;
+const pedidos = {};
+function nuevoPedido(origen, destino, cantidad) {
+  const codigo = 'P-' + (++correl);
+  return (pedidos[codigo] = { codigo, cliente: elegir(CLIENTES), origen, destino, cantidad, pendiente: cantidad, fracciones: [], registrado: ahora - ent(20, 200), limite: null, plazo: null, salidaPlan: null, entrega: null });
+}
+const codFr = (p, f) => p.fracciones.length > 1 ? `${p.codigo}·${f.indice}` : p.codigo;
+const destinoCerca = (a, r) => ({ x: Math.max(1, Math.min(ANCHO - 1, a.x + ent(-r, r))), y: Math.max(1, Math.min(ALTO - 1, a.y + ent(-r, r))) });
+
+const unidades = [];
+['A', 'M', 'B'].forEach((t) => {
+  for (let i = 1; i <= TIPOS[t].n; i++) {
+    const base = i % 4 === 0 ? 'INT1' : i % 5 === 0 ? 'INT2' : elegir(['CENTRAL', 'CENTRAL', 'INT1', 'INT2']);
+    const b = alm(base);
+    unidades.push({ codigo: `${t}-${String(i).padStart(2, '0')}`, tipo: t, cap: TIPOS[t].cap, vel: TIPOS[t].vel, base, x: b.x, y: b.y, estado: 'DISPONIBLE', conductor: elegir(NOMBRES), carga: 0, paradas: [], ruta: [], seg: [], largo: 0, dist: 0, salida: null, servicioHasta: null, averia: null, pausaHasta: null });
+  }
+});
+const uni = (c) => unidades.find((u) => u.codigo === c);
+
+/* Ruta Manhattan por la cuadrícula, pasando por las paradas en orden de cercanía */
+function construirRuta(u, paradas) {
+  const base = alm(u.base); let actual = { x: base.x, y: base.y }; const orden = [];
+  const resto = [...paradas];
+  while (resto.length) { resto.sort((a, b) => manh(actual, a) - manh(actual, b)); const p = resto.shift(); orden.push(p); actual = p; }
+  let pts = [[base.x, base.y]];
+  const ir = (a, b) => { if (a[0] !== b[0] && a[1] !== b[1]) pts.push(rnd() < 0.5 ? [b[0], a[1]] : [a[0], b[1]]); pts.push(b); };
+  orden.forEach((p) => { ir(pts[pts.length - 1], [p.x, p.y]); p.idx = pts.length - 1; });
+  ir(pts[pts.length - 1], [base.x, base.y]);
+  u.ruta = pts; u.paradas = orden; u.seg = []; let acc = 0;
+  for (let i = 1; i < pts.length; i++) { const l = Math.abs(pts[i][0] - pts[i - 1][0]) + Math.abs(pts[i][1] - pts[i - 1][1]); u.seg.push([acc, l]); acc += l; }
+  u.largo = acc; u.dist = 0; u.x = base.x; u.y = base.y; u.segIdx = 0;
+  orden.forEach((p) => { p.km = p.idx ? u.seg[p.idx - 1][0] + u.seg[p.idx - 1][1] : 0; });
+  u.carga = orden.reduce((s, p) => s + p.cant, 0);
+}
+/* Asigna a la unidad los pedidos pendientes de su almacén; un pedido que no cabe se fracciona */
+function asignar(u, candidatos) {
+  let libre = u.cap; const paradas = []; const maxP = u.tipo === 'B' ? 2 : 4; const base = alm(u.base);
+  for (const p of candidatos) {
+    if (libre <= 0 || paradas.length >= maxP) break;
+    if (p.pendiente <= 0 || manh(base, p.destino) > TIPOS[u.tipo].rango) continue;
+    const cant = Math.min(libre, p.pendiente);
+    const f = { indice: p.fracciones.reduce((m, x) => Math.max(m, x.indice), 0) + 1, unidad: u.codigo, origen: u.base, cantidad: cant, salida: ahora, llegada: null, estado: 'EN_CAMINO' };
+    p.fracciones.push(f); p.pendiente -= cant; libre -= cant;
+    paradas.push({ ped: p.codigo, fi: f.indice, x: p.destino.x, y: p.destino.y, cant, hecha: false });
+  }
+  if (!paradas.length) return false;
+  construirRuta(u, paradas); u.estado = 'EN_RUTA'; u.salida = ahora; u.servicioHasta = null;
+  const b = alm(u.base); if (b.stock !== null) b.stock = Math.max(0, b.stock - u.carga);
+  return true;
+}
+function posicionar(u) {
+  if (!u.ruta.length) return;
+  const d = Math.min(u.dist, u.largo); let i = u.seg.findIndex(([a, l]) => d <= a + l); if (i < 0) i = u.seg.length - 1;
+  const [a, l] = u.seg[i], f = l ? (d - a) / l : 0, p0 = u.ruta[i], p1 = u.ruta[i + 1];
+  u.x = p0[0] + (p1[0] - p0[0]) * f; u.y = p0[1] + (p1[1] - p0[1]) * f; u.segIdx = i;
+  u.rumbo = p1[0] !== p0[0] ? (p1[0] > p0[0] ? 'E' : 'O') : (p1[1] > p0[1] ? 'N' : 'S');
+}
+const pendientes = (u) => u.paradas.filter((p) => !p.hecha);
+const fraccionDe = (p) => pedidos[p.ped]?.fracciones.find((f) => f.indice === p.fi);
+/* Llegada estimada a una parada: viaje + 60 min de servicio en cada parada previa (G05) */
+function etaParada(u, objetivo) {
+  let t = ahora, km = u.dist;
+  if (u.servicioHasta) t = u.servicioHasta;
+  if (u.estado === 'EN_REFRIGERIO') t += Math.max(0, u.pausaHasta - ahora);
+  if (u.estado === 'AVERIADA') t += Math.max(0, u.averia.desde + DUR_AVERIA[u.averia.tipo] - ahora);
+  for (const p of pendientes(u)) {
+    if (p === u.enServicio) { if (p === objetivo) return u.servicioHasta - SERVICIO_MIN; km = p.km; continue; }
+    t +=Math.max(0, p.km - km) / u.vel * 60; km = p.km;
+    if (p === objetivo) return t;
+    t += SERVICIO_MIN;
+  }
+  return t + Math.max(0, u.largo - km) / u.vel * 60;
+}
+const regresoEstimado = (u) => etaParada(u, null);
+/* Tramo en curso: del origen inmediato (almacén o última parada) al destino inmediato */
+function tramo(u) {
+  if (!u.ruta.length || !['EN_RUTA', 'EN_REFRIGERIO'].includes(u.estado)) return null;
+  const hechas = u.paradas.filter((p) => p.hecha), prox = pendientes(u).find((p) => p !== u.enServicio);
+  const desdeKm = u.enServicio ? u.enServicio.km : hechas.length ? hechas[hechas.length - 1].km : 0;
+  const hastaKm = prox ? prox.km : u.largo;
+  const kmAl = Math.max(0, hastaKm - u.dist), kmDesde = Math.max(0, u.dist - desdeKm);
+  const destino = prox ? { texto: codFr(pedidos[prox.ped], fraccionDe(prox)), parada: prox } : { texto: alm(u.base).corto, parada: null };
+  return { kmAl, kmDesde, destino, llegada: prox ? etaParada(u, prox) : regresoEstimado(u), salida: ahora - kmDesde / u.vel * 60 - (u.servicioHasta ? 0 : 0) };
+}
+function situacion(u) {
+  if (u.estado === 'AVERIADA') return `Avería tipo ${u.averia.tipo}`;
+  if (u.estado === 'EN_REFRIGERIO') return 'En refrigerio';
+  if (u.estado === 'DISPONIBLE') return 'Disponible';
+  if (u.estado === 'FUERA_DE_TURNO') return 'Fuera de turno';
+  if (u.enServicio) return 'Entregando';
+  return pendientes(u).length ? 'A entrega' : 'Retornando';
+}
+const enMapa = (u) => ['EN_RUTA', 'EN_REFRIGERIO', 'AVERIADA'].includes(u.estado) && u.ruta.length;
+const nivelU = (u) => nivelCarga(u.carga, u.cap, CORTES.unidad);
+const colorU = (u) => u.estado === 'AVERIADA' ? COLOR_AVERIA[u.averia.tipo] : SEM[nivelU(u)];
+const huecoU = (u) => u.estado !== 'AVERIADA' && nivelU(u) === 'VACIO';
+const nivelA = (a) => a.capacidad ? nivelCarga(a.stock, a.capacidad, CORTES.almacen) : null;
+const stockBajo = (a) => a.capacidad && a.stock / a.capacidad < CORTES.inventario.rojo;
+
+function estadoPedido(p) {
+  if (p.entrega !== null) return 'Entregado';
+  if (!p.fracciones.length) return 'En espera';
+  if (p.fracciones.some((f) => f.estado === 'POR_REASIGNAR')) return 'Por reasignar';
+  return p.pendiente > 0 ? 'Parcial' : 'En camino';
+}
+function etaPedido(p) {
+  let eta = -Infinity;
+  for (const f of p.fracciones) {
+    if (f.estado === 'ENTREGADA') eta = Math.max(eta, f.llegada);
+    else if (f.estado === 'EN_CAMINO') { const u = uni(f.unidad), st = u.paradas.find((s) => s.ped === p.codigo && s.fi === f.indice); eta = Math.max(eta, st ? etaParada(u, st) : ahora); }
+    else eta = Math.max(eta, ahora + 90);
+  }
+  if (p.pendiente > 0) eta = Math.max(eta, (p.salidaPlan ?? ahora) + manh(alm(p.origen), p.destino) / 25 * 60);
+  return eta;
+}
+const holgura = (p) => p.limite - (p.entrega ?? etaPedido(p));
+function nivelHolgura(p) {
+  if (p.entrega !== null) return 'CERRADO';
+  const h = holgura(p), f = h / (p.plazo * 60);
+  return h < 0 || f < CORTES.holgura.rojo ? 'ROJO' : f < CORTES.holgura.ambar ? 'AMBAR' : 'VERDE';
+}
+function llegadaFr(p, f) {
+  if (f.estado === 'ENTREGADA') return f.llegada;
+  if (f.estado !== 'EN_CAMINO') return null;
+  const u = uni(f.unidad), st = u.paradas.find((s) => s.ped === p.codigo && s.fi === f.indice);
+  return st ? etaParada(u, st) : null;
+}
+
+/* --- Escenario inicial --- */
+(function iniciar() {
+  // Pedidos por almacén, algunos grandes para que se fraccionen entre unidades
+  ALMACENES.forEach((a) => { for (let i = 0; i < (a.id === 'CENTRAL' ? 34 : 22); i++) nuevoPedido(a.id, destinoCerca(a, elegir([8, 12, 20, 28])), rnd() < 0.18 ? ent(14, 30) : ent(1, 10)); });
+  const fuera = ['A-07', 'M-13', 'B-11'];
+  const libres = ['A-05', 'M-03', 'M-14', 'B-02', 'B-07', 'A-10', 'M-08'];
+  unidades.forEach((u) => {
+    if (fuera.includes(u.codigo)) { u.estado = 'FUERA_DE_TURNO'; return; }
+    if (libres.includes(u.codigo)) return;
+    const cand = Object.values(pedidos).filter((p) => p.origen === u.base && p.pendiente > 0);
+    if (!asignar(u, cand)) return;
+    u.salida = -ent(10, 150);
+    const avance = u.largo * (0.1 + rnd() * 0.7);
+    u.dist = avance; posicionar(u);
+    u.paradas.forEach((s) => {
+      if (s.km < avance - 0.01) {
+        s.hecha = true; u.carga -= s.cant;
+        const p = pedidos[s.ped], f = fraccionDe(s); f.estado = 'ENTREGADA'; f.llegada = -Math.round((avance - s.km) / u.vel * 60) - ent(5, 40);
+        f.salida = Math.min(f.llegada - 15, u.salida);
+      } else fraccionDe(s).salida = u.salida;
+    });
+  });
+  // Una unidad entregando ahora (60 min de servicio en el cliente)
+  [uni('A-02'), uni('M-05')].forEach((u) => { const s = u && pendientes(u)[0]; if (s) { u.dist = s.km; posicionar(u); u.enServicio = s; u.servicioHasta = ent(8, 50); } });
+  // Refrigerio y averías de cada tipo (D10–D13)
+  [['M-07', 25], ['B-05', 12]].forEach(([c, m]) => { const u = uni(c); if (u.ruta.length) { u.estado = 'EN_REFRIGERIO'; u.pausaHasta = m; } });
+  [['M-11', 1, -50], ['A-03', 2, -70], ['B-09', 3, -200]].forEach(([c, t, d]) => {
+    const u = uni(c);
+    if (!u.ruta.length && asignar(u, Object.values(pedidos).filter((p) => p.pendiente > 0))) { u.dist = Math.min(u.largo * 0.3, u.paradas[0].km * 0.8); posicionar(u); u.salida = -ent(20, 60); u.paradas.forEach((s) => (fraccionDe(s).salida = u.salida)); }
+    u.estado = 'AVERIADA'; u.averia = { tipo: t, desde: d }; u.servicioHasta = null; u.enServicio = null;
+    if (t > 1) pendientes(u).forEach((s) => (fraccionDe(s).estado = 'POR_REASIGNAR'));
+  });
+  // Pedidos completos ya entregados (para E22/E32: entregados en las últimas 4 h)
+  Object.values(pedidos).forEach((p) => { if (p.pendiente === 0 && p.fracciones.every((f) => f.estado === 'ENTREGADA')) p.entrega = Math.max(...p.fracciones.map((f) => f.llegada)); });
+  for (let i = 0; i < 26; i++) {
+    const a = elegir(ALMACENES), p = nuevoPedido(a.id, destinoCerca(a, 15), ent(1, 9)), t = -ent(5, 235);
+    const u = elegir(unidades.filter((v) => v.base === a.id));
+    p.fracciones.push({ indice: 1, unidad: u.codigo, origen: a.id, cantidad: p.cantidad, salida: t - ent(40, 120), llegada: t, estado: 'ENTREGADA' }); p.pendiente = 0; p.entrega = t;
+  }
+  // Pendientes: por salir en las próximas horas (E21)
+  Object.values(pedidos).forEach((p) => { if (p.pendiente > 0) p.salidaPlan = ent(-20, 330); });
+  // Plazos coherentes con la llegada estimada: ~10 % crítico, ~20 % ajustado
+  Object.values(pedidos).forEach((p) => {
+    const eta = p.entrega ?? etaPedido(p); const r = rnd();
+    const frac = p.entrega !== null ? (r < 0.06 ? -0.05 : 0.2 + rnd() * 0.5) : r < 0.1 ? rnd() * 0.12 : r < 0.3 ? 0.17 + rnd() * 0.2 : 0.45 + rnd() * 0.4;
+    p.plazo = [4, 8, 12, 24].find((h) => eta - (1 - frac) * h * 60 <= -10) ?? 24;
+    p.limite = Math.round(eta + frac * p.plazo * 60); p.registrado = p.limite - p.plazo * 60;
+  });
+})();
+const diario = { aTiempo: 298, retraso: 14, replan: 12, ultimoPlan: -2, taMs: 1840 };
+const eventos = [];
+function registrar(tipo, titulo, detalle) { eventos.unshift({ t: ahora, tipo, titulo, detalle }); if (eventos.length > 120) eventos.pop(); }
+[['op', 'Inicio de turno 2', '31 unidades operativas', -92], ['incid', 'Avería tipo 3 · B-09', 'Taller por 2 días; carga por reasignar', -200], ['incid', 'Avería tipo 2 · A-03', 'Traslado al almacén central', -70], ['incid', 'Avería tipo 1 · M-11', 'Sigue su ruta en 2 h', -50], ['incid', 'Bloqueo iniciado BL-02', '(33,8) → (41,12)', -30], ['plan', 'Plan actualizado', '12 rutas recalculadas en 1,8 s', -2]].forEach(([t, a, b, m]) => eventos.unshift({ t: m, tipo: t, titulo: a, detalle: b }));
+eventos.sort((a, b) => b.t - a.t);
+
+/* =====================================================================
+   4. Estado de la interfaz
+   ===================================================================== */
+const guardado = (() => { try { return JSON.parse(localStorage.getItem('paqtracker.proto.v3') || '{}'); } catch (_) { return {}; } })();
+const ui = {
+  seleccion: null,                 // {tipo:'unidad'|'pedido'|'fraccion'|'almacen'|'bloqueo', id, fi?}
+  foco: null,                      // resaltado desde una cifra (atenúa lo demás)
+  filtros: { tipos: new Set(['A', 'M', 'B']), nivU: new Set(Object.keys(SEM)), nivA: new Set(Object.keys(SEM)) }, // D05–D07
+  capas: { rutas: true, destinos: true, bloqueos: true, rotulos: true, almacenes: true },
+  pestana: 'flota', estadoFlota: 'TODAS', orden: guardado.orden || 'CODIGO', sentido: guardado.sentido || 'ASC',
+  busq: { valor: '', mag: 'MIN', ref: 'LLEGADA' }, rangosKm: new Set(guardado.rangosKm || []),
+  filtroPed: 'TODOS', ordenPed: 'LIMITE', textoPed: '', subAlm: 'enCamino', grupoAlerta: 'todas', seguir: false,
+  vista: { x: -PAD, y: -PAD, w: ANCHO + PAD * 2, h: ALTO + PAD * 2 },
+};
+function guardar() { try { localStorage.setItem('paqtracker.proto.v3', JSON.stringify({ orden: ui.orden, sentido: ui.sentido, rangosKm: [...ui.rangosKm], paneles: { izq: !document.body.classList.contains('izq-cerrado'), der: !document.body.classList.contains('der-cerrado') } })); } catch (_) {} }
+if (guardado.paneles) { document.body.classList.toggle('izq-cerrado', !guardado.paneles.izq); document.body.classList.toggle('der-cerrado', !guardado.paneles.der); }
+// Para presentar: ?paneles=abiertos abre los dos paneles sin tocar lo guardado
+if (/paneles=abiertos/.test(location.search)) document.body.classList.remove('izq-cerrado', 'der-cerrado');
+
+/* =====================================================================
+   5. Mapa SVG. Símbolos a tamaño constante en píxeles (como en main)
+   ===================================================================== */
+const NS = 'http://www.w3.org/2000/svg';
+const svg = $('#svg');
+const el = (tag, at = {}, padre) => { const e = document.createElementNS(NS, tag); for (const k in at) e.setAttribute(k, at[k]); if (padre) padre.appendChild(e); return e; };
+const Y = (y) => ALTO - y;
+const capa = () => el('g', {}, svg);
+const gMalla = capa(), gEjes = capa(), gRutas = capa(), gBloq = capa(), gDest = capa(), gAlm = capa(), gUni = capa();
+let K = 1 / 16; // km por píxel
+const pxPorKm = () => { const r = svg.getBoundingClientRect(), v = ui.vista; return Math.min(r.width / v.w, r.height / v.h) || 16; };
+
+(function malla() {
+  el('rect', { x: 0, y: 0, width: ANCHO, height: ALTO, fill: 'var(--mapa-fondo)', stroke: 'var(--mapa-linea-10)', 'stroke-width': 1, 'vector-effect': 'non-scaling-stroke' }, gMalla);
+  for (let x = 1; x < ANCHO; x++) el('line', { x1: x, y1: 0, x2: x, y2: ALTO, stroke: x % 10 ? 'var(--mapa-linea)' : 'var(--mapa-linea-10)', 'stroke-width': 1, 'vector-effect': 'non-scaling-stroke' }, gMalla);
+  for (let y = 1; y < ALTO; y++) el('line', { x1: 0, y1: y, x2: ANCHO, y2: y, stroke: (ALTO - y) % 10 ? 'var(--mapa-linea)' : 'var(--mapa-linea-10)', 'stroke-width': 1, 'vector-effect': 'non-scaling-stroke' }, gMalla);
+})();
+function dibujarEjes() {
+  gEjes.innerHTML = '';
+  const t = (x, y, txt, anc) => { const g = el('g', { transform: `translate(${x} ${y}) scale(${K})` }, gEjes); el('text', { 'font-size': 11, 'text-anchor': anc, fill: 'var(--mapa-texto)', y: 4 }, g).textContent = txt; };
+  for (let x = 0; x <= ANCHO; x += 10) t(x, ALTO + 0.9, x, 'middle');
+  for (let y = 0; y <= ALTO; y += 10) t(-0.5, Y(y), y, 'end');
+}
+
+/* Destacadas: rutas de la selección (F01–F03) */
+function destacadas() {
+  const s = ui.seleccion, set = new Set(); if (!s) return set;
+  if (s.tipo === 'unidad') set.add(s.id);
+  if (s.tipo === 'pedido') pedidos[s.id]?.fracciones.forEach((f) => f.estado !== 'ENTREGADA' && set.add(f.unidad));
+  if (s.tipo === 'fraccion') { const f = pedidos[s.id]?.fracciones.find((x) => x.indice === s.fi); if (f && f.estado !== 'ENTREGADA') set.add(f.unidad); }
+  return set;
+}
+const pasaFiltroU = (u) => ui.filtros.tipos.has(u.tipo) && (u.estado === 'AVERIADA' || ui.filtros.nivU.has(nivelU(u)));
+const pasaFocoU = (u) => !ui.foco?.unidad || ui.foco.unidad(u);
+const pasaFocoP = (p) => !ui.foco?.pedido || ui.foco.pedido(p);
+
+function trazo(pts) { return pts.map((p, i) => `${i ? 'L' : 'M'}${p[0]} ${Y(p[1])}`).join(''); }
+function pintarRutas() {
+  gRutas.innerHTML = ''; if (!ui.capas.rutas) return;
+  const dest = destacadas();
+  unidades.filter((u) => enMapa(u) && pasaFiltroU(u)).sort((a, b) => dest.has(a.codigo) - dest.has(b.codigo)).forEach((u) => {
+    const d = dest.has(u.codigo), aten = (dest.size && !d) || !pasaFocoU(u);
+    const g = el('g', { opacity: aten ? 0.3 : 1 }, gRutas);
+    const rec = u.ruta.slice(0, u.segIdx + 1).concat([[u.x, u.y]]), pen = [[u.x, u.y]].concat(u.ruta.slice(u.segIdx + 1));
+    if (rec.length > 1) el('path', { d: trazo(rec), fill: 'none', stroke: '#9EABBA', 'stroke-width': 2 * K, 'stroke-linejoin': 'round' }, g);
+    el('path', { d: trazo(pen), fill: 'none', stroke: d ? COLOR_DESTACADA : '#94A3B8', 'stroke-width': (d ? 3 : 2.5) * K, 'stroke-dasharray': d ? `${7 * K} ${5 * K}` : `${6 * K} ${4 * K}`, 'stroke-linejoin': 'round' }, g);
+  });
+}
+function dibujarBloqueos() {
+  gBloq.innerHTML = ''; if (!ui.capas.bloqueos) return;
+  BLOQUEOS.filter(vigente).forEach((b) => { // D04: solo los vigentes en el minuto actual
+    const g = el('g', { class: 'bloqueo', 'data-tipo': 'bloqueo', 'data-id': b.id }, gBloq);
+    const sel = ui.seleccion?.tipo === 'bloqueo' && ui.seleccion.id === b.id;
+    el('path', { d: trazo(b.puntos), stroke: 'transparent', 'stroke-width': 14 * K, fill: 'none' }, g);
+    if (sel) el('path', { d: trazo(b.puntos), stroke: COLOR_DESTACADA, 'stroke-width': 9 * K, fill: 'none', opacity: 0.35, 'stroke-linecap': 'round' }, g);
+    el('path', { d: trazo(b.puntos), stroke: COLOR_BLOQUEO, 'stroke-width': 4 * K, fill: 'none', 'stroke-linecap': 'round', 'stroke-linejoin': 'round', opacity: 0.75 }, g);
+    const m = b.puntos[Math.floor((b.puntos.length - 1) / 2)], n = b.puntos[Math.floor((b.puntos.length - 1) / 2) + 1];
+    const mk = el('g', { transform: `translate(${(m[0] + n[0]) / 2} ${Y((m[1] + n[1]) / 2)}) scale(${K})` }, g);
+    el('circle', { r: 10, fill: FONDO_BLOQUEO }, mk); el('path', { d: 'M-6 -6L6 6M-6 6L6 -6', stroke: COLOR_BLOQUEO, 'stroke-width': 2.5 }, mk);
+  });
+}
+const PIN = 'M0 0C-3.4 -5.4 -9 -10.4 -9 -15C-9 -19.97 -4.97 -24 0 -24C4.97 -24 9 -19.97 9 -15C9 -10.4 3.4 -5.4 0 0Z';
+function dibujarDestinos() {
+  gDest.innerHTML = ''; if (!ui.capas.destinos) return;
+  const s = ui.seleccion, dest = destacadas();
+  Object.values(pedidos).filter((p) => p.entrega === null).forEach((p) => {
+    const vivas = p.fracciones.filter((f) => f.estado !== 'ENTREGADA');
+    if (vivas.length && !vivas.some((f) => { const u = uni(f.unidad); return pasaFiltroU(u); })) return;
+    const entregando = vivas.some((f) => uni(f.unidad).enServicio?.ped === p.codigo);
+    const nivel = nivelHolgura(p), color = entregando ? COLOR_EN_ENTREGA : SEM[nivel];
+    const sel = (s?.tipo === 'pedido' || s?.tipo === 'fraccion') && s.id === p.codigo;
+    const ligado = vivas.some((f) => dest.has(f.unidad));
+    const aten = !pasaFocoP(p) || (dest.size && !ligado && !sel);
+    const g = el('g', { class: 'pin' + (aten ? ' atenuado' : ''), 'data-tipo': 'pedido', 'data-id': p.codigo, transform: `translate(${p.destino.x} ${Y(p.destino.y)}) scale(${K * (sel ? 1.15 : 1)})` }, gDest);
+    if (sel) el('circle', { cy: -15, r: 13, fill: 'none', stroke: COLOR_DESTACADA, 'stroke-width': 2 }, g);
+    el('path', { d: PIN, fill: p.fracciones.length ? color : '#fff', stroke: p.fracciones.length ? '#fff' : color, 'stroke-width': p.fracciones.length ? 1.5 : 2.5, 'stroke-linejoin': 'round' }, g);
+    if (!entregando && nivel === 'ROJO') { el('rect', { x: -1, y: -20, width: 2, height: 5.5, rx: 1, fill: p.fracciones.length ? '#fff' : color }, g); el('circle', { cy: -11.6, r: 1.2, fill: p.fracciones.length ? '#fff' : color }, g); }
+    else el('circle', { cy: -15, r: 3, fill: p.fracciones.length ? '#fff' : color }, g);
+  });
+}
+function dibujarAlmacenes() {
+  gAlm.innerHTML = '';
+  ALMACENES.forEach((a) => {
+    const n = nivelA(a); if (n && !ui.filtros.nivA.has(n)) return; // D07
+    const sel = ui.seleccion?.tipo === 'almacen' && ui.seleccion.id === a.id;
+    const g = el('g', { class: 'almacen', 'data-tipo': 'almacen', 'data-id': a.id, transform: `translate(${a.x} ${Y(a.y)}) scale(${K})` }, gAlm);
+    if (sel) el('circle', { r: 20, fill: 'none', stroke: COLOR_DESTACADA, 'stroke-width': 2 }, g);
+    if (!a.capacidad) { el('path', { d: 'M0 -13L14 -4V13H-14V-4Z', fill: '#0F172A', stroke: '#fff', 'stroke-width': 2, 'stroke-linejoin': 'round' }, g); el('rect', { x: -4, y: 3, width: 8, height: 10, rx: 1, fill: '#fff' }, g); }
+    else {
+      const color = SEM[n], alto = 12 * Math.min(1, a.stock / a.capacidad);
+      el('path', { d: 'M0 -11L12 -3V11H-12V-3Z', fill: '#fff', stroke: color, 'stroke-width': 2, 'stroke-linejoin': 'round' }, g);
+      el('rect', { x: -10, y: -2, width: 20, height: 12, rx: 1, fill: '#E2E8F0' }, g);
+      el('rect', { x: -10, y: 10 - alto, width: 20, height: alto, rx: 1, fill: color }, g);
+      if (stockBajo(a)) { const b = el('g', { transform: 'translate(12 -11)' }, g); el('circle', { r: 6, fill: '#0F172A', stroke: '#fff', 'stroke-width': 1.5 }, b); el('path', { d: 'M0 -3V0.8', stroke: '#fff', 'stroke-width': 1.6, 'stroke-linecap': 'round' }, b); el('circle', { cy: 3, r: 0.9, fill: '#fff' }, b); }
+    }
+    // C22: stock fijo en el mapa (número y %), detalle en el tooltip
+    const h = { 'paint-order': 'stroke', stroke: 'var(--halo)', 'stroke-width': 3, 'stroke-linejoin': 'round' };
+    el('text', { x: 18, y: -1, 'font-size': 12, 'font-weight': 600, fill: '#0F172A', ...h }, g).textContent = a.corto;
+    el('text', { x: 18, y: 12, 'font-size': 11, 'font-weight': 500, fill: a.capacidad ? SEM[n] : '#475569', ...h }, g).textContent = a.capacidad ? `${Math.round(a.stock / a.capacidad * 100)} % · ${fmt(a.stock)}` : 'Sin tope';
+  });
+}
+const nodos = {};
+function pintarUnidades() {
+  const dest = destacadas();
+  unidades.forEach((u) => {
+    let n = nodos[u.codigo];
+    if (!n) {
+      const g = el('g', { class: 'unidad', 'data-tipo': 'unidad', 'data-id': u.codigo }, gUni);
+      n = nodos[u.codigo] = { g, halo: el('circle', { r: 19, fill: 'none', stroke: COLOR_DESTACADA, 'stroke-width': 2.5 }, g), golpe: el('circle', { r: 16, fill: 'transparent' }, g), ori: el('g', {}, g), rot: el('g', {}, g), clave: '' };
+      n.img = el('image', {}, n.ori);
+    }
+    const visible = enMapa(u) && pasaFiltroU(u);
+    n.g.style.display = visible ? '' : 'none'; if (!visible) return;
+    const sel = ui.seleccion?.tipo === 'unidad' && ui.seleccion.id === u.codigo, d = dest.has(u.codigo);
+    n.g.setAttribute('transform', `translate(${u.x.toFixed(3)} ${Y(u.y).toFixed(3)}) scale(${K})`);
+    n.g.classList.toggle('atenuado', !pasaFocoU(u) || (dest.size > 0 && !d && ui.seleccion?.tipo !== 'almacen'));
+    n.halo.style.display = sel || d ? '' : 'none';
+    const f = ICONOS_VEH[u.tipo], href = iconoVeh(u.tipo, colorU(u), huecoU(u));
+    if (n.img.getAttribute('href') !== href) { n.img.setAttribute('href', href); n.img.setAttribute('width', f.w); n.img.setAttribute('height', f.h); n.img.setAttribute('x', -f.cx); n.img.setAttribute('y', -f.cy); }
+    // C30: el ícono se voltea o rota con la dirección
+    const ori = { E: '', O: 'scale(-1 1)', N: 'rotate(-90)', S: 'rotate(90)' }[u.rumbo || 'E'];
+    if (n.ori.getAttribute('transform') !== ori) n.ori.setAttribute('transform', ori);
+    // Rótulo: carga n/cap y barra (C28); averiada: insignia del tipo con anillo de tiempo (D10–D13)
+    const restante = u.estado === 'AVERIADA' ? Math.max(0, (u.averia.desde + DUR_AVERIA[u.averia.tipo] - ahora) / DUR_AVERIA[u.averia.tipo]) : 0;
+    const clave = `${ui.capas.rotulos}|${u.estado}|${u.carga}|${sel || d}|${u.averia?.tipo}|${Math.round(restante * 40)}|${u.enServicio ? 1 : 0}`;
+    if (clave !== n.clave) {
+      n.clave = clave; n.rot.innerHTML = '';
+      const h = { 'paint-order': 'stroke', stroke: 'var(--halo)', 'stroke-width': 3, 'stroke-linejoin': 'round' };
+      const x0 = f.cx - 4.3 + (sel ? 6 : 4);
+      if (u.estado === 'AVERIADA') {
+        const c = COLOR_AVERIA[u.averia.tipo], b = el('g', { transform: `translate(${x0 + 9} 0)` }, n.rot), per = 2 * Math.PI * 10;
+        el('circle', { r: 10, fill: '#fff', stroke: '#E2E8F0', 'stroke-width': 2.5 }, b);
+        el('circle', { r: 10, fill: 'none', stroke: c, 'stroke-width': 2.5, 'stroke-dasharray': `${per * restante} ${per}`, transform: 'rotate(-90)' }, b);
+        if (u.averia.tipo === 1) el('circle', { r: 6.5, fill: c }, b);
+        if (u.averia.tipo === 2) el('path', { d: 'M0 -7.5L7.5 0L0 7.5L-7.5 0Z', fill: c }, b);
+        if (u.averia.tipo === 3) el('path', { d: 'M-2.9 -7L2.9 -7L7 -2.9L7 2.9L2.9 7L-2.9 7L-7 2.9L-7 -2.9Z', fill: c }, b);
+        el('text', { y: 3.2, 'text-anchor': 'middle', 'font-size': 9, 'font-weight': 700, fill: '#fff' }, b).textContent = u.averia.tipo;
+        if (ui.capas.rotulos || sel) { el('text', { x: x0 + 23, y: -1, fill: c, 'font-size': 12, 'font-weight': 600, ...h }, n.rot).textContent = `${u.codigo} · avería ${u.averia.tipo}`; el('text', { x: x0 + 23, y: 11, fill: '#475569', 'font-size': 11, ...h }, n.rot).textContent = `vuelve ${hhmm(u.averia.desde + DUR_AVERIA[u.averia.tipo])}`; }
+      } else if (ui.capas.rotulos || sel || d) {
+        if (sel || d) el('text', { x: x0, y: -13, fill: COLOR_DESTACADA, 'font-size': 12, 'font-weight': 600, ...h }, n.rot).textContent = u.codigo;
+        el('text', { x: x0, y: -1, fill: '#64748B', 'font-size': 12, 'font-weight': 500, ...h }, n.rot).textContent = `${u.carga}/${u.cap}${u.estado === 'EN_REFRIGERIO' ? ' · pausa' : ''}`;
+        el('rect', { x: x0, y: 4, width: 24, height: 3, rx: 1.5, fill: '#CBD5E1' }, n.rot);
+        el('rect', { x: x0, y: 4, width: 24 * u.carga / u.cap, height: 3, rx: 1.5, fill: colorU(u) }, n.rot);
+      }
+    }
+    if (sel) gUni.appendChild(n.g);
+  });
+}
+function aplicarVista() {
+  const v = ui.vista; svg.setAttribute('viewBox', `${v.x} ${v.y} ${v.w} ${v.h}`);
+  K = 1 / pxPorKm(); dibujarEjes(); dibujarCapas();
+}
+function dibujarCapas() { pintarRutas(); dibujarBloqueos(); dibujarDestinos(); dibujarAlmacenes(); pintarUnidades(); }
+function limitarVista() { const v = ui.vista; v.w = Math.max(8, Math.min(ANCHO + PAD * 2, v.w)); v.h = v.w * RATIO; v.x = Math.max(-PAD - v.w * 0.3, Math.min(ANCHO + PAD - v.w * 0.7, v.x)); v.y = Math.max(-PAD - v.h * 0.3, Math.min(ALTO + PAD - v.h * 0.7, v.y)); }
+function zoom(f, cx, cy) { const v = ui.vista; if (cx === undefined) { cx = v.x + v.w / 2; cy = v.y + v.h / 2; } const nw = Math.max(8, Math.min(ANCHO + PAD * 2, v.w * f)), nh = nw * RATIO; v.x = cx - (cx - v.x) * nw / v.w; v.y = cy - (cy - v.y) * nh / v.h; v.w = nw; v.h = nh; limitarVista(); aplicarVista(); }
+function ajustar() { ui.vista = { x: -PAD, y: -PAD, w: ANCHO + PAD * 2, h: ALTO + PAD * 2 }; ui.seguir = false; aplicarVista(); renderSeleccion(); }
+function centrarEn(x, y, acercar) { const v = ui.vista; if (acercar && v.w > 36) { v.w = 32; v.h = v.w * RATIO; } const sy = Y(y); if (!acercar && x > v.x + v.w * 0.12 && x < v.x + v.w * 0.88 && sy > v.y + v.h * 0.15 && sy < v.y + v.h * 0.85) return; v.x = x - v.w / 2; v.y = sy - v.h / 2; limitarVista(); aplicarVista(); }
+function puntoSvg(e) { const r = svg.getBoundingClientRect(), v = ui.vista, s = Math.min(r.width / v.w, r.height / v.h) || 1; return { x: v.x + (e.clientX - r.left - (r.width - v.w * s) / 2) / s, y: v.y + (e.clientY - r.top - (r.height - v.h * s) / 2) / s, s }; }
+let arr = null;
+svg.addEventListener('pointerdown', (e) => { arr = { mov: false, vx: ui.vista.x, vy: ui.vista.y, cx: e.clientX, cy: e.clientY }; svg.setPointerCapture?.(e.pointerId); });
+svg.addEventListener('pointermove', (e) => {
+  const p = puntoSvg(e), xk = Math.round(p.x), yk = Math.round(ALTO - p.y);
+  $('#txtCoord').textContent = xk >= 0 && xk <= ANCHO && yk >= 0 && yk <= ALTO ? `x ${xk} · y ${yk} km` : 'x — · y — km';
+  if (arr) { if (Math.abs(e.clientX - arr.cx) + Math.abs(e.clientY - arr.cy) > 4) { arr.mov = true; svg.classList.add('arrastrando'); ui.seguir = false; } if (arr.mov) { ui.vista.x = arr.vx - (e.clientX - arr.cx) / p.s; ui.vista.y = arr.vy - (e.clientY - arr.cy) / p.s; limitarVista(); svg.setAttribute('viewBox', `${ui.vista.x} ${ui.vista.y} ${ui.vista.w} ${ui.vista.h}`); } return ocultarTip(); }
+  mostrarTip(e);
+});
+svg.addEventListener('pointerup', (e) => { svg.classList.remove('arrastrando'); if (arr && !arr.mov) { const o = e.target.closest('[data-tipo]'); seleccionar(o ? { tipo: o.dataset.tipo, id: o.dataset.id } : null, { centrar: false }); } else if (arr) aplicarVista(); arr = null; });
+svg.addEventListener('pointerleave', () => { ocultarTip(); $('#txtCoord').textContent = 'x — · y — km'; });
+svg.addEventListener('wheel', (e) => { e.preventDefault(); const p = puntoSvg(e); zoom(e.deltaY > 0 ? 1.12 : 1 / 1.12, p.x, p.y); }, { passive: false }); // C08: zoom continuo
+svg.addEventListener('dblclick', (e) => { const p = puntoSvg(e); zoom(0.6, p.x, p.y); });
+$('#zMas').onclick = () => zoom(0.75); $('#zMenos').onclick = () => zoom(1 / 0.75); $('#zAjustar').onclick = ajustar;
+new ResizeObserver(() => aplicarVista()).observe($('#mapa'));
+
+const tip = $('#tooltip');
+function mostrarTip(e) {
+  const o = e.target.closest('[data-tipo]'); if (!o) return ocultarTip();
+  const { tipo, id } = o.dataset; let h = '';
+  if (tipo === 'unidad') { const u = uni(id), t = tramo(u); h = `<b>${u.codigo}</b> · ${TIPOS[u.tipo].nombre} <span>· ${situacion(u)}</span><br><span>Carga</span> ${u.carga}/${u.cap} · ${Math.round(u.carga / u.cap * 100)} % <span>· ${NOMBRE_CARGA[nivelU(u)].toLowerCase()}</span>${t ? `<br><span>→</span> ${t.destino.texto} <span>· ${fmt(t.kmAl, 1)} km · llega</span> ${hhmm(t.llegada)}` : ''}`; }
+  if (tipo === 'pedido') { const p = pedidos[id]; h = `<b>${p.codigo}</b> · ${p.cantidad} paq. <span>· ${esc(p.cliente)}</span><br><span>Holgura</span> ${textoMin(holgura(p))} <span>· ${NOMBRE_HOLGURA[nivelHolgura(p)].toLowerCase()} · ${estadoPedido(p).toLowerCase()}</span>`; }
+  if (tipo === 'almacen') { const a = alm(id), n = nivelA(a); h = `<b>Almacén ${a.nombre}</b><br>${a.capacidad ? `<span>Stock</span> ${fmt(a.stock)}/${fmt(a.capacidad)} · ${Math.round(a.stock / a.capacidad * 100)} % <span>· ${NOMBRE_CARGA[n].toLowerCase()}${stockBajo(a) ? ' · stock bajo' : ''}</span>` : '<span>Stock sin tope</span>'}<br><span>En base</span> ${unidades.filter((u) => u.base === a.id && !enMapa(u)).length} <span>unidades</span>`; }
+  if (tipo === 'bloqueo') { const b = BLOQUEOS.find((c) => c.id === id); h = `<b>Bloqueo ${b.id}</b><br><span>Hasta</span> ${hhmm(b.fin)} <span>· ${desviadas(b).length} rutas desviadas</span>`; }
+  const r = $('#mapa').getBoundingClientRect(); tip.innerHTML = h; tip.style.left = (e.clientX - r.left) + 'px'; tip.style.top = (e.clientY - r.top) + 'px'; tip.classList.add('visible');
+}
+const ocultarTip = () => tip.classList.remove('visible');
+
+/* =====================================================================
+   6. Derivados para paneles
+   ===================================================================== */
+function conteoFlota() {
+  const c = { EN_RUTA: 0, EN_REFRIGERIO: 0, DISPONIBLE: 0, FUERA_DE_TURNO: 0, AVERIADA: 0, carga: 0, cap: 0 };
+  unidades.forEach((u) => { c[u.estado]++; if (enMapa(u)) { c.carga += u.carga; c.cap += u.cap; } }); return c;
+}
+const activos = () => Object.values(pedidos).filter((p) => p.entrega === null);
+function ocupacionAlmacenes() { const ints = ALMACENES.filter((a) => a.capacidad); const s = ints.reduce((x, a) => x + a.stock, 0), c = ints.reduce((x, a) => x + a.capacidad, 0); return { s, c, n: nivelCarga(s, c, CORTES.almacen) }; }
+function distSeg(px, py, a, b) { const x = Math.max(Math.min(a[0], b[0]), Math.min(Math.max(a[0], b[0]), px)), y = Math.max(Math.min(a[1], b[1]), Math.min(Math.max(a[1], b[1]), py)); return Math.abs(px - x) + Math.abs(py - y); }
+function desviadas(b) {
+  const m = b.puntos[Math.floor(b.puntos.length / 2)];
+  return unidades.filter((u) => u.estado === 'EN_RUTA' && u.ruta.slice(u.segIdx).some((p, i, arr) => i && distSeg(m[0], m[1], arr[i - 1], p) <= 3)).slice(0, 5);
+}
+function alertas() {
+  const out = [];
+  unidades.filter((u) => u.estado === 'AVERIADA').forEach((u) => { const pr = pendientes(u).filter((s) => fraccionDe(s)?.estado === 'POR_REASIGNAR').length; out.push({ g: 'flota', sev: 'crit', o: 0, sel: { tipo: 'unidad', id: u.codigo }, t: `${u.codigo} averiada · tipo ${u.averia.tipo}`, d: `${u.carga} paq. a bordo · ${pr ? pr + ' fracciones por reasignar' : 'sigue tras la avería'} · vuelve ${hhmm(u.averia.desde + DUR_AVERIA[u.averia.tipo])}` }); });
+  activos().filter((p) => nivelHolgura(p) === 'ROJO').sort((a, b) => holgura(a) - holgura(b)).forEach((p) => out.push({ g: 'pedidos', sev: 'crit', o: 1 + holgura(p) / 1e4, sel: { tipo: 'pedido', id: p.codigo }, t: `${p.codigo} ${holgura(p) < 0 ? 'fuera de plazo' : 'crítico'}`, d: `${esc(p.cliente)} · ${p.cantidad} paq. · ${estadoPedido(p).toLowerCase()}`, h: textoMin(holgura(p)) }));
+  activos().filter((p) => p.pendiente > 0 && p.salidaPlan !== null && p.salidaPlan < ahora - 20).forEach((p) => out.push({ g: 'pedidos', sev: 'warn', o: 2, sel: { tipo: 'pedido', id: p.codigo }, t: `${p.codigo} espera unidad`, d: `${p.pendiente} paq. en ${alm(p.origen).corto} desde ${hhmm(p.salidaPlan)}` }));
+  ALMACENES.filter((a) => stockBajo(a)).forEach((a) => out.push({ g: 'almacenes', sev: 'crit', o: 2, sel: { tipo: 'almacen', id: a.id }, t: `Stock bajo · ${a.nombre}`, d: `${fmt(a.stock)} de ${fmt(a.capacidad)} paquetes (${Math.round(a.stock / a.capacidad * 100)} %)` }));
+  ALMACENES.filter((a) => nivelA(a) === 'ROJO').forEach((a) => out.push({ g: 'almacenes', sev: 'warn', o: 2, sel: { tipo: 'almacen', id: a.id }, t: `Casi lleno · ${a.nombre}`, d: `${Math.round(a.stock / a.capacidad * 100)} % de ocupación` }));
+  BLOQUEOS.filter(vigente).forEach((b) => { const n = desviadas(b).length; if (n) out.push({ g: 'vias', sev: 'warn', o: 3, sel: { tipo: 'bloqueo', id: b.id }, t: `Bloqueo ${b.id} · ${n} ${n === 1 ? 'ruta desviada' : 'rutas desviadas'}`, d: `Vigente hasta ${hhmm(b.fin)}` }); });
+  return out.sort((a, b) => (a.sev === b.sev ? 0 : a.sev === 'crit' ? -1 : 1) || a.o - b.o);
+}
+
+/* =====================================================================
+   7. Barra superior: G01–G04 + resultados del día + relojes (C12–C16)
+   ===================================================================== */
+const FOCOS = {
+  flota: { etiqueta: 'Flota fuera del almacén', tab: 'flota' },
+  almacenes: { etiqueta: 'Almacenes', tab: 'almacenes' },
+  cumplimiento: { etiqueta: 'Pedidos críticos o ajustados', pedido: (p) => ['ROJO', 'AMBAR'].includes(nivelHolgura(p)), unidad: (u) => u.paradas.some((s) => !s.hecha && ['ROJO', 'AMBAR'].includes(nivelHolgura(pedidos[s.ped]))), tab: 'pedidos', fp: 'RIESGO' },
+  camino: { etiqueta: 'Pedidos en camino', pedido: (p) => p.fracciones.some((f) => f.estado === 'EN_CAMINO'), tab: 'pedidos', fp: 'EN_CAMINO' },
+  espera: { etiqueta: 'Pedidos en espera', pedido: (p) => !p.fracciones.length, unidad: () => false, tab: 'pedidos', fp: 'EN_ESPERA' },
+  entregados: { etiqueta: 'Entregados en las últimas 4 h', pedido: () => false, unidad: () => false, tab: 'pedidos', fp: 'ENTREGADOS_4H' },
+  'u-EN_RUTA': { etiqueta: 'Unidades en ruta', unidad: (u) => u.estado === 'EN_RUTA', tab: 'flota', fe: 'EN_RUTA' },
+  'u-EN_REFRIGERIO': { etiqueta: 'Unidades en refrigerio', unidad: (u) => u.estado === 'EN_REFRIGERIO', pedido: () => false, tab: 'flota', fe: 'EN_REFRIGERIO' },
+  'u-DISPONIBLE': { etiqueta: 'Unidades disponibles', unidad: () => false, pedido: () => false, tab: 'flota', fe: 'DISPONIBLE' },
+  'u-FUERA_DE_TURNO': { etiqueta: 'Fuera de turno', unidad: () => false, pedido: () => false, tab: 'flota', fe: 'FUERA_DE_TURNO' },
+  'u-AVERIADA': { etiqueta: 'Unidades averiadas', unidad: (u) => u.estado === 'AVERIADA', pedido: (p) => p.fracciones.some((f) => f.estado !== 'ENTREGADA' && uni(f.unidad).estado === 'AVERIADA'), tab: 'flota', fe: 'AVERIADA' },
+  vias: { etiqueta: 'Rutas desviadas por bloqueos', unidad: (u) => BLOQUEOS.filter(vigente).some((b) => desviadas(b).includes(u)), pedido: () => false, tab: 'vias' },
+};
+function aplicarFoco(id) {
+  if (ui.foco?.clave === id) return quitarFoco();
+  const f = FOCOS[id]; ui.foco = f.unidad || f.pedido ? { clave: id, ...f } : null;
+  if (f.tab) { ui.pestana = f.tab; if (f.fe) ui.estadoFlota = f.fe; if (f.fp) ui.filtroPed = f.fp; abrirRail('der'); }
+  todo();
+}
+function quitarFoco() { ui.foco = null; todo(); }
+$('#btnQuitarFoco').onclick = quitarFoco;
+function renderPulso() {
+  const f = conteoFlota(), oa = ocupacionAlmacenes(), ps = activos();
+  const nf = nivelCarga(f.carga, f.cap, CORTES.unidad), pf = f.cap ? Math.round(f.carga / f.cap * 100) : 0, pa = Math.round(oa.s / oa.c * 100);
+  const total = diario.aTiempo + diario.retraso, cumpl = diario.aTiempo / total * 100;
+  const cE = cumpl >= 95 ? ['ok', '✓'] : cumpl >= 90 ? ['warn', '⚠'] : ['crit', '✕'];
+  const rojo = ps.filter((p) => nivelHolgura(p) === 'ROJO').length, camino = ps.filter((p) => p.fracciones.some((x) => x.estado === 'EN_CAMINO')).length, espera = ps.filter((p) => !p.fracciones.length).length;
+  const b = (id, cls, et, va, tit) => `<button class="${cls}" data-foco="${id}" aria-pressed="${ui.foco?.clave === id || (!ui.foco && ui.pestana === FOCOS[id].tab && !document.body.classList.contains('der-cerrado') && (id === 'flota' || id === 'almacenes'))}" title="${tit}"><span class="et">${et}</span><span class="va num">${va}</span></button>`;
+  $('#pulso').innerHTML = [
+    b('flota', '', 'Ocupación flota', `${marcaSem(nf, NOMBRE_CARGA[nf])}${pf} %<small>${f.carga}/${f.cap}</small>`, `G01–G02 · Paquetes a bordo sobre la capacidad de las unidades fuera del almacén: ${NOMBRE_CARGA[nf].toLowerCase()}. Clic: lista de unidades`),
+    b('almacenes', '', 'Ocupación almacenes', `${marcaSem(oa.n, NOMBRE_CARGA[oa.n])}${pa} %<small>${fmt(oa.s)}/${fmt(oa.c)}</small>`, `G03–G04 · Stock de los almacenes intermedios sobre su capacidad: ${NOMBRE_CARGA[oa.n].toLowerCase()}. Clic: lista de almacenes`),
+    b('cumplimiento', 'p-baja', 'Cumplimiento · meta 95 %', `<span class="estado ${cE[0]}">${cE[1]}</span>${fmt(cumpl, 1)} %`, `${diario.aTiempo} a tiempo y ${diario.retraso} con retraso hoy. Clic: pedidos críticos o ajustados`),
+    b('camino', '', 'En camino', `${camino}${rojo ? ` <span class="estado crit">✕ ${rojo}</span>` : ''}`, `${rojo} pedidos críticos. Clic: resaltar en el mapa`),
+    b('espera', 'p-alta', 'En espera', `${espera}<small>sin unidad</small>`, 'Pedidos registrados que aún no salen. Clic: resaltar'),
+    b('entregados', 'p-media', 'Entregados hoy', `${fmt(total)}<small>${diario.retraso} tarde</small>`, 'Clic: entregados en las últimas 4 h'),
+  ].join('');
+}
+$('#pulso').addEventListener('click', (e) => { const b = e.target.closest('[data-foco]'); if (b) aplicarFoco(b.dataset.foco); });
+function renderRelojes() {
+  const op = fecha(ahora), real = new Date();
+  $('#fOp').textContent = fechaLarga(op); $('#hOp').textContent = op.toTimeString().slice(0, 8); $('#tOp').textContent = '+' + duracion(MIN0 + ahora);
+  $('#fReal').textContent = fechaLarga(real); $('#hReal').textContent = real.toTimeString().slice(0, 8); $('#tReal').textContent = '+' + duracion((Date.now() - REAL_INICIO) / 60000, true);
+}
+
+/* =====================================================================
+   8. Panel izquierdo: recursos + requiere atención
+   ===================================================================== */
+const COLOR_ESTADO = { EN_RUTA: '#1586D7', EN_REFRIGERIO: '#8190AA', DISPONIBLE: '#CBD1D9', FUERA_DE_TURNO: '#E2E5E9', AVERIADA: '#C81E3A' };
+const NOMBRE_ESTADO = { EN_RUTA: 'En ruta', EN_REFRIGERIO: 'Refrigerio', DISPONIBLE: 'Disponibles', FUERA_DE_TURNO: 'Fuera de turno', AVERIADA: 'Averiadas' };
+function renderRecursos() {
+  const f = conteoFlota(), est = Object.keys(NOMBRE_ESTADO);
+  const porTipo = ['A', 'M', 'B'].map((t) => { const us = unidades.filter((u) => u.tipo === t && enMapa(u)); const c = us.reduce((s, u) => s + u.carga, 0), cap = us.reduce((s, u) => s + u.cap, 0); return { t, n: us.length, tot: unidades.filter((u) => u.tipo === t).length, nivel: cap ? nivelCarga(c, cap, CORTES.unidad) : null, pct: cap ? Math.round(c / cap * 100) : null }; });
+  const vig = BLOQUEOS.filter(vigente), prox = BLOQUEOS.filter((b) => b.ini > ahora && b.ini - ahora <= 120);
+  $('#recursos').innerHTML = `
+    <div class="seccion-cab"><span class="overline">Flota · ${unidades.length} unidades</span><button class="link" data-foco="flota">Ver lista</button></div>
+    <div class="apilada" aria-hidden="true">${est.map((e) => f[e] ? `<i style="flex:${f[e]};background:${COLOR_ESTADO[e]}"></i>` : '').join('')}</div>
+    <div class="estados-flota num" role="group" aria-label="Unidades por estado">${est.map((e) => `<button data-foco="u-${e}" aria-pressed="${ui.foco?.clave === 'u-' + e}"><i class="cuadro" style="background:${COLOR_ESTADO[e]}"></i><b>${f[e]}</b>${NOMBRE_ESTADO[e]}</button>`).join('')}</div>
+    <div class="caption" style="margin-top:6px;display:flex;gap:10px;flex-wrap:wrap">${porTipo.map((x) => `<span title="${TIPOS[x.t].nombre}: ${x.n} de ${x.tot} fuera del almacén">${TIPOS[x.t].nombre} <b style="color:var(--texto);font-weight:600">${x.n}/${x.tot}</b> ${x.nivel ? marcaSem(x.nivel) + ' ' + x.pct + ' %' : ''}</span>`).join('')}</div>
+    <div class="seccion-cab" style="margin-top:12px"><span class="overline">Almacenes</span><button class="link" data-foco="almacenes">Ver envíos</button></div>
+    ${ALMACENES.map((a) => { const n = nivelA(a), pct = a.capacidad ? Math.round(a.stock / a.capacidad * 100) : null; return `<button class="fila-alm num" data-sel-tipo="almacen" data-sel-id="${a.id}"><span style="color:var(--texto-3)">${a.corto}</span>${a.capacidad ? `<span class="barra"><i style="width:${pct}%;background:${SEM[n]}"></i></span><span style="display:flex;align-items:center;gap:4px;justify-content:flex-end">${marcaSem(n, NOMBRE_CARGA[n])}<b style="font-weight:600">${pct} %</b>${stockBajo(a) ? '<span class="estado oscuro" title="Stock bajo" style="padding:0 4px">!</span>' : ''}</span>` : `<span class="caption">sin tope</span><span class="caption" style="text-align:right">${unidades.filter((u) => u.base === a.id && !enMapa(u)).length} en base</span>`}</button>`; }).join('')}
+    <div class="seccion-cab" style="margin-top:12px"><span class="overline">Red vial</span><button class="link" data-foco="vias">Ver bloqueos</button></div>
+    <div style="font-size:12px" class="num"><b style="font-weight:600">${vig.length}</b> bloqueos vigentes · <b style="font-weight:600">${vig.reduce((s, b) => s + desviadas(b).length, 0)}</b> rutas desviadas${prox.length ? `<br><span class="caption">Próximo: ${prox[0].id} a las ${hhmm(prox[0].ini)}</span>` : ''}</div>`;
+}
+$('#recursos').addEventListener('click', (e) => { const b = e.target.closest('[data-foco]'); if (b) aplicarFoco(b.dataset.foco); });
+const GRUPOS = [['todas', 'Todas'], ['pedidos', 'Pedidos'], ['flota', 'Flota'], ['almacenes', 'Almacenes'], ['vias', 'Vías']];
+const ICO = {
+  x: '<svg class="ico ico-12" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6M9 9l6 6"/></svg>',
+  reloj: '<svg class="ico ico-12" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>',
+  alm: '<svg class="ico ico-12" viewBox="0 0 24 24"><path d="M22 8.35V20a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8.35A2 2 0 0 1 3.26 6.5l8-3.2a2 2 0 0 1 1.48 0l8 3.2A2 2 0 0 1 22 8.35Z"/></svg>',
+  bloq: '<svg class="ico ico-12" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m4.9 4.9 14.2 14.2"/></svg>',
+  check: '<svg class="ico" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>',
+  caja: '<svg class="ico" viewBox="0 0 24 24"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5M12 22V12"/></svg>',
+};
+const icoGrupo = { flota: 'x', pedidos: 'reloj', almacenes: 'alm', vias: 'bloq' };
+function renderAtencion() {
+  const todas = alertas();
+  [$('#cntAtencion'), $('#cntAtencionMini')].forEach((n) => { n.textContent = todas.length; n.style.display = todas.length ? '' : 'none'; });
+  $('#gruposAlerta').innerHTML = GRUPOS.map(([id, et]) => { const n = id === 'todas' ? todas.length : todas.filter((a) => a.g === id).length; return n || id === 'todas' ? `<button class="chip" aria-pressed="${ui.grupoAlerta === id}" data-grupo="${id}">${et} <b class="num">${n}</b></button>` : ''; }).join('');
+  const lista = todas.filter((a) => ui.grupoAlerta === 'todas' || a.g === ui.grupoAlerta);
+  $('#listaAlertas').innerHTML = lista.length ? lista.map((a) => { const sel = ui.seleccion?.tipo === a.sel.tipo && ui.seleccion.id === a.sel.id; return `<li><button class="alerta ${a.sev}${sel ? ' sel' : ''}" data-sel-tipo="${a.sel.tipo}" data-sel-id="${a.sel.id}"><span class="franja"></span><span><span class="alerta-t"><span style="color:${a.sev === 'crit' ? 'var(--crit)' : 'var(--warn-700)'};display:flex">${ICO[icoGrupo[a.g]]}</span>${a.t}</span><span class="alerta-d">${a.d}</span></span><span class="alerta-h num">${a.h || ''}</span></button></li>`; }).join('') : `<li class="vacio">${ICO.check}Todo en orden: nada requiere acción.</li>`;
+}
+$('#gruposAlerta').addEventListener('click', (e) => { const b = e.target.closest('[data-grupo]'); if (b) { ui.grupoAlerta = b.dataset.grupo; renderAtencion(); } });
+
+/* =====================================================================
+   9. Panel derecho: pestañas, herramientas y listas
+   ===================================================================== */
+const PESTANAS = [['flota', 'Flota'], ['pedidos', 'Pedidos'], ['almacenes', 'Almacenes'], ['vias', 'Vías'], ['bitacora', 'Bitácora']];
+const ICO_TAB = { flota: '<path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2M15 18H9M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.62l-3.48-4.35A1 1 0 0 0 17.52 8H14"/><circle cx="17" cy="18" r="2"/><circle cx="7" cy="18" r="2"/>', pedidos: '<path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5M12 22V12"/>', almacenes: '<path d="M22 8.35V20a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8.35A2 2 0 0 1 3.26 6.5l8-3.2a2 2 0 0 1 1.48 0l8 3.2A2 2 0 0 1 22 8.35Z"/><path d="M6 18h12M6 14h12"/>', vias: '<circle cx="12" cy="12" r="10"/><path d="m4.9 4.9 14.2 14.2"/>', bitacora: '<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>' };
+function renderPestanas() {
+  const f = conteoFlota(), cnt = { flota: f.AVERIADA, pedidos: activos().filter((p) => nivelHolgura(p) === 'ROJO').length, almacenes: ALMACENES.filter(stockBajo).length, vias: BLOQUEOS.filter(vigente).length };
+  const badge = (id) => cnt[id] ? `<span class="contador" ${id === 'vias' ? 'style="background:var(--sutil);color:var(--texto-3);border:1px solid var(--borde)"' : ''}>${cnt[id]}</span>` : '';
+  $('#pestanas').innerHTML = PESTANAS.map(([id, et]) => `<button role="tab" aria-selected="${ui.pestana === id}" data-tab="${id}" aria-label="${et}${cnt[id] ? `, ${cnt[id]}` : ''}"><svg class="ico ico-16" viewBox="0 0 24 24" aria-hidden="true">${ICO_TAB[id]}</svg>${et}${badge(id)}</button>`).join('');
+  $('#miniDer').innerHTML = PESTANAS.map(([id, et]) => `<button data-expandir="der" data-tab="${id}" aria-label="Abrir ${et}" title="${et}"><svg class="ico ico-16" viewBox="0 0 24 24">${ICO_TAB[id]}</svg>${cnt[id] && id !== 'vias' ? `<span class="contador">${cnt[id]}</span>` : ''}</button>`).join('');
+}
+$('#pestanas').addEventListener('click', (e) => { const b = e.target.closest('[data-tab]'); if (b) { ui.pestana = b.dataset.tab; renderDer(true); } });
+
+/* --- Flota: E02–E17 --- */
+const ORDENES = [['CODIGO', 'Código'], ['OCUPACION', 'Ocupación'], ['SALIDA', 'Hora de salida'], ['LLEGADA', 'Hora de llegada'], ['KM_POR_RECORRER', 'Km por recorrer'], ['KM_RECORRIDOS', 'Km recorridos']];
+const RANGOS_KM = [['0-10', 0, 10], ['10-20', 10, 20], ['20-40', 20, 40], ['40-200', 40, 200]];
+function valorOrden(u, c) {
+  const t = tramo(u);
+  if (c === 'OCUPACION') return u.carga / u.cap;
+  if (c === 'SALIDA') return t ? t.salida : null;
+  if (c === 'LLEGADA') return t ? t.llegada : null;
+  if (c === 'KM_POR_RECORRER') return u.ruta.length && u.estado !== 'DISPONIBLE' ? u.largo - u.dist : null;
+  if (c === 'KM_RECORRIDOS') return u.ruta.length && u.estado !== 'DISPONIBLE' ? u.dist : null;
+  return null;
+}
+function listaFlota() {
+  let l = unidades.filter((u) => ui.estadoFlota === 'TODAS' || u.estado === ui.estadoFlota);
+  const lim = parseFloat(ui.busq.valor);
+  if (!isNaN(lim)) l = l.filter((u) => { const t = tramo(u); if (!t) return false; const v = ui.busq.mag === 'KM' ? (ui.busq.ref === 'LLEGADA' ? t.kmAl : t.kmDesde) : (ui.busq.ref === 'LLEGADA' ? t.llegada - ahora : ahora - t.salida); return v <= lim; });
+  if (ui.rangosKm.size) l = l.filter((u) => { const t = tramo(u); return t && RANGOS_KM.some(([id, a, b]) => ui.rangosKm.has(id) && t.kmAl >= a && t.kmAl < b); });
+  const s = ui.sentido === 'ASC' ? 1 : -1;
+  return l.sort((a, b) => { if (ui.orden === 'CODIGO') return s * a.codigo.localeCompare(b.codigo); const va = valorOrden(a, ui.orden), vb = valorOrden(b, ui.orden); if (va === null || vb === null) return va === vb ? a.codigo.localeCompare(b.codigo) : va === null ? 1 : -1; return s * (va - vb) || a.codigo.localeCompare(b.codigo); });
+}
+function herrFlota() {
+  const f = conteoFlota();
+  return `<div class="chips" role="group" aria-label="Estado">${[['TODAS', 'Todas', unidades.length], ...Object.keys(NOMBRE_ESTADO).map((e) => [e, NOMBRE_ESTADO[e], f[e]])].map(([v, et, n]) => `<button class="chip" data-fe="${v}" aria-pressed="${ui.estadoFlota === v}">${et} <b class="num">${n}</b></button>`).join('')}</div>
+    <div class="fila-h"><label for="selOrden" class="caption">Ordenar por</label><select id="selOrden">${ORDENES.map(([v, t]) => `<option value="${v}" ${ui.orden === v ? 'selected' : ''}>${t}</option>`).join('')}</select><button class="btn sm" id="btnSentido" aria-label="${ui.sentido === 'ASC' ? 'Ascendente; cambiar a descendente' : 'Descendente; cambiar a ascendente'}">${ui.sentido === 'ASC' ? '↑ Asc.' : '↓ Desc.'}</button></div>
+    <fieldset class="fila-h" style="border:0;margin:0;padding:0"><legend class="sr">Buscar por tiempo o distancia del tramo en curso</legend><label for="inpBusq" class="caption">A ≤</label><input id="inpBusq" type="number" min="0" placeholder="—" value="${esc(ui.busq.valor)}" aria-label="${ui.busq.mag === 'KM' ? 'Kilómetros como máximo' : 'Minutos como máximo'}">
+      <span class="seg" role="radiogroup" aria-label="Magnitud">${[['MIN', 'min'], ['KM', 'km']].map(([v, t]) => `<button data-mag="${v}" role="radio" aria-checked="${ui.busq.mag === v}" aria-pressed="${ui.busq.mag === v}">${t}</button>`).join('')}</span>
+      <span class="seg" role="radiogroup" aria-label="Referencia">${[['LLEGADA', 'de llegar al destino'], ['SALIDA', 'de salir del origen']].map(([v, t]) => `<button data-ref="${v}" role="radio" aria-checked="${ui.busq.ref === v}" aria-pressed="${ui.busq.ref === v}">${t}</button>`).join('')}</span></fieldset>
+    <div class="fila-h" role="group" aria-label="Distancia al destino"><span class="caption">Al destino:</span>${RANGOS_KM.map(([id]) => `<button class="chip" style="height:22px" data-rango="${id}" aria-pressed="${ui.rangosKm.has(id)}">${id.replace('-', '–')} km</button>`).join('')}</div>`;
+}
+function filaUnidad(u) {
+  const sel = ui.seleccion?.tipo === 'unidad' && ui.seleccion.id === u.codigo, n = nivelU(u), t = tramo(u), pct = Math.round(u.carga / u.cap * 100);
+  const cls = u.estado === 'AVERIADA' ? 'crit' : u.estado === 'EN_RUTA' ? 'info' : 'neutro';
+  const det = u.estado === 'AVERIADA' ? `Vuelve ${hhmm(u.averia.desde + DUR_AVERIA[u.averia.tipo])}` : t ? `${u.enServicio ? 'Entregando · ' : ''}→ ${t.destino.texto} · ${fmt(t.kmAl, 1)} km · llega ${hhmm(t.llegada)}` : u.estado === 'DISPONIBLE' ? `En ${alm(u.base).nombre}` : 'Sin tramo en curso';
+  const extra = ui.orden === 'KM_POR_RECORRER' || ui.orden === 'KM_RECORRIDOS' ? (valorOrden(u, ui.orden) !== null ? ` · ${fmt(valorOrden(u, ui.orden), 1)} km ${ui.orden === 'KM_RECORRIDOS' ? 'recorridos' : 'por recorrer'}` : '') : ui.orden === 'SALIDA' && t ? ` · salió ${hhmm(t.salida)}` : '';
+  return `<li role="option" aria-selected="${sel}"><button class="fila" data-sel-tipo="unidad" data-sel-id="${u.codigo}"><img class="ico-veh" alt="" src="${iconoVeh(u.tipo, colorU(u), huecoU(u))}"><span style="min-width:0"><span class="fila-t">${u.codigo} <span class="estado ${cls}">${u.estado === 'AVERIADA' ? `Avería ${u.averia.tipo}` : situacion(u)}</span></span><span class="fila-d">${det}${extra}</span></span><span class="fila-der num"><span style="display:flex;align-items:center;gap:4px;justify-content:flex-end">${u.estado === 'AVERIADA' ? '' : marcaSem(n, NOMBRE_CARGA[n])}<b>${u.carga}/${u.cap}</b></span>${pct} %</span></button></li>`;
+}
+
+/* --- Pedidos: E31–E33, F02, F03 --- */
+const FILTROS_PED = [['TODOS', 'Todos'], ['RIESGO', 'En riesgo'], ['EN_CAMINO', 'En camino'], ['EN_ESPERA', 'En espera'], ['POR_ENTREGAR_4H', `Por entregar · ${VENTANA_H} h`], ['ENTREGADOS_4H', `Entregados · ${VENTANA_H} h`]];
+function pasaFiltroPed(p, f) {
+  if (f === 'ENTREGADOS_4H') return p.entrega !== null && p.entrega >= ahora - VENTANA_H * 60;
+  if (p.entrega !== null) return false;
+  if (f === 'RIESGO') return ['ROJO', 'AMBAR'].includes(nivelHolgura(p));
+  if (f === 'EN_CAMINO') return p.fracciones.some((x) => x.estado === 'EN_CAMINO');
+  if (f === 'EN_ESPERA') return !p.fracciones.length;
+  if (f === 'POR_ENTREGAR_4H') return etaPedido(p) <= ahora + VENTANA_H * 60;
+  return true;
+}
+function listaPedidos() {
+  const q = ui.textoPed.trim().toLowerCase();
+  const l = Object.values(pedidos).filter((p) => pasaFiltroPed(p, ui.filtroPed) && (!q || p.codigo.toLowerCase().includes(q) || p.cliente.toLowerCase().includes(q)));
+  const v = (p) => ui.ordenPed === 'LIMITE' ? p.limite : ui.ordenPed === 'LLEGADA' ? (p.entrega ?? etaPedido(p)) : Math.min(...p.fracciones.map((f) => f.salida), p.salidaPlan ?? Infinity);
+  return l.sort((a, b) => ui.filtroPed === 'ENTREGADOS_4H' ? b.entrega - a.entrega : v(a) - v(b));
+}
+function herrPedidos() {
+  return `<div class="fila-h"><input type="search" id="inpPed" placeholder="Buscar pedido o cliente" value="${esc(ui.textoPed)}" aria-label="Buscar en la lista de pedidos"></div>
+    <div class="chips" role="group" aria-label="Filtrar pedidos">${FILTROS_PED.map(([v, t]) => `<button class="chip" data-fp="${v}" aria-pressed="${ui.filtroPed === v}">${t} <b class="num">${Object.values(pedidos).filter((p) => pasaFiltroPed(p, v)).length}</b></button>`).join('')}</div>
+    <div class="fila-h"><span class="caption">Ordenar por</span><span class="seg" role="radiogroup">${[['LIMITE', 'Hora límite'], ['LLEGADA', 'Llegada'], ['SALIDA', 'Salida']].map(([v, t]) => `<button data-op="${v}" aria-pressed="${ui.ordenPed === v}">${t}</button>`).join('')}</span></div>`;
+}
+const claseNivel = { ROJO: 'crit', AMBAR: 'warn', VERDE: 'ok', CERRADO: 'neutro' }, iconoNivel = { ROJO: '✕', AMBAR: '⚠', VERDE: '✓', CERRADO: '✓' };
+const NOMBRE_FR = { EN_CAMINO: 'En camino', ENTREGADA: 'Entregada', POR_REASIGNAR: 'Por reasignar' };
+function lineaFraccion(p, f, conBoton = true) {
+  const sel = ui.seleccion?.tipo === 'fraccion' && ui.seleccion.id === p.codigo && ui.seleccion.fi === f.indice;
+  const ll = llegadaFr(p, f);
+  const txt = `<span class="num" style="font-weight:600">${codFr(p, f)}</span> ${f.unidad} · ${f.cantidad} paq. <span class="der num">${alm(f.origen).corto} ${hhmm(f.salida)} → ${ll !== null ? hhmm(ll) : '—'} · ${NOMBRE_FR[f.estado]}</span>`;
+  return conBoton ? `<li><button class="fraccion${sel ? ' sel' : ''}" data-sel-tipo="fraccion" data-sel-id="${p.codigo}" data-fi="${f.indice}" title="Resalta solo la ruta de ${f.unidad}">${txt}</button></li>` : txt;
+}
+function filaPedido(p) {
+  const sel = (ui.seleccion?.tipo === 'pedido') && ui.seleccion.id === p.codigo, n = nivelHolgura(p);
+  const fr = p.fracciones.length ? p.fracciones.map((f) => lineaFraccion(p, f)).join('') : '';
+  const espera = p.pendiente > 0 ? `<li><span class="fraccion" style="cursor:default"><span class="num" style="font-weight:600">${p.pendiente} paq.</span> sin unidad <span class="der num">sale de ${alm(p.origen).corto} ~${hhmm(p.salidaPlan ?? ahora)}</span></span></li>` : '';
+  return `<li role="option" aria-selected="${sel}"><button class="fila" data-sel-tipo="pedido" data-sel-id="${p.codigo}" title="Resalta las rutas de todas sus fracciones"><span style="width:28px;height:28px;border-radius:6px;background:var(--sutil);display:flex;align-items:center;justify-content:center;color:var(--texto-2)">${ICO.caja}</span><span style="min-width:0"><span class="fila-t">${p.codigo} <span class="caption" style="font-weight:400">${p.cantidad} paq. · ${estadoPedido(p)}</span></span><span class="fila-d">${esc(p.cliente)} · destino (${p.destino.x}, ${p.destino.y}) · límite ${hhmm(p.limite)}</span></span><span class="fila-der"><span class="estado ${claseNivel[n]}">${iconoNivel[n]} ${p.entrega !== null ? `${p.entrega <= p.limite ? 'a tiempo' : 'tarde'} ${hhmm(p.entrega)}` : textoMin(holgura(p))}</span></span></button><ul class="fracciones" aria-label="Fracciones de ${p.codigo}">${fr}${espera}</ul></li>`;
+}
+
+/* --- Almacenes: E18–E22 --- */
+function enviosAlmacen(a) {
+  const fr = []; Object.values(pedidos).forEach((p) => p.fracciones.forEach((f) => f.origen === a.id && fr.push({ p, f })));
+  return {
+    enCamino: fr.filter(({ f }) => f.estado !== 'ENTREGADA').sort((x, y) => (llegadaFr(x.p, x.f) ?? 1e9) - (llegadaFr(y.p, y.f) ?? 1e9)),
+    porSalir: Object.values(pedidos).filter((p) => p.origen === a.id && p.pendiente > 0 && p.entrega === null && (p.salidaPlan ?? ahora) <= ahora + VENTANA_H * 60).sort((x, y) => x.salidaPlan - y.salidaPlan),
+    entregados: fr.filter(({ f }) => f.estado === 'ENTREGADA' && f.llegada >= ahora - VENTANA_H * 60).sort((x, y) => y.f.llegada - x.f.llegada),
+  };
+}
+function tarjetaAlmacen(a) {
+  const sel = ui.seleccion?.tipo === 'almacen' && ui.seleccion.id === a.id, n = nivelA(a), pct = a.capacidad ? Math.round(a.stock / a.capacidad * 100) : null;
+  const base = unidades.filter((u) => u.base === a.id), enBase = base.filter((u) => !enMapa(u)).length;
+  let det = '';
+  if (sel) {
+    const e = enviosAlmacen(a), paq = (l) => l.reduce((s, x) => s + (x.f ? x.f.cantidad : x.pendiente), 0);
+    const ops = [['enCamino', 'En camino', e.enCamino], ['porSalir', `Por salir · ${VENTANA_H} h`, e.porSalir], ['entregados', `Entregados · ${VENTANA_H} h`, e.entregados]];
+    const l = ops.find(([v]) => v === ui.subAlm)[2];
+    const filas = ui.subAlm === 'porSalir'
+      ? l.map((p) => `<li><button class="fraccion" data-sel-tipo="pedido" data-sel-id="${p.codigo}"><span class="num" style="font-weight:600">${p.codigo}</span> ${p.pendiente} paq. <span class="der num">sale ~${hhmm(p.salidaPlan)}</span></button></li>`).join('')
+      : l.map(({ p, f }) => `<li><button class="fraccion" data-sel-tipo="fraccion" data-sel-id="${p.codigo}" data-fi="${f.indice}"><span class="num" style="font-weight:600">${codFr(p, f)}</span> ${f.unidad} · ${f.cantidad} paq. <span class="der num">${f.estado === 'ENTREGADA' ? 'entregó ' + hhmm(f.llegada) : 'llega ' + (llegadaFr(p, f) !== null ? hhmm(llegadaFr(p, f)) : '—')}</span></button></li>`).join('');
+    det = `<div class="subpestanas" role="tablist" aria-label="Envíos del almacén">${ops.map(([v, t, x]) => `<button role="tab" data-sub="${v}" aria-selected="${ui.subAlm === v}">${t} (${x.length})</button>`).join('')}</div>
+      <div class="caption" style="padding:6px 12px 0">${l.length} envíos · ${paq(l)} paquetes</div>
+      <ul class="fracciones" style="padding:4px 6px 8px">${filas || '<li class="vacio">Sin envíos en esta ventana.</li>'}</ul>`;
+  }
+  return `<div class="tarjeta-alm${sel ? ' sel' : ''}"><button data-sel-tipo="almacen" data-sel-id="${a.id}" aria-expanded="${sel}"><span class="fila-t" style="justify-content:space-between;font-size:13px">${a.nombre}${n ? `<span class="estado ${n === 'ROJO' ? 'crit' : n === 'AMBAR' ? 'warn' : n === 'VACIO' ? 'neutro' : 'ok'}">${marcaSem(n)} ${NOMBRE_CARGA[n]}</span>` : '<span class="estado neutro">Sin tope</span>'}</span>
+    ${a.capacidad ? `<span class="barra" style="margin:6px 0 4px"><i style="width:${pct}%;background:${SEM[n]}"></i></span>` : ''}
+    <span class="fila-d num">${a.capacidad ? `<b style="color:var(--texto);font-weight:600">${fmt(a.stock)}/${fmt(a.capacidad)}</b> paq. · ${pct} % · ` : ''}${enBase} en base · ${base.length - enBase} fuera${stockBajo(a) ? ' · <span class="estado oscuro">! Stock bajo</span>' : ''}</span></button>${det}</div>`;
+}
+
+function renderDer(volverArriba) {
+  renderPestanas();
+  const herr = $('#herr'), c = $('#cuerpoDer');
+  if (ui.pestana === 'flota') {
+    if (!herr.contains(document.activeElement) || !herr.querySelector('#inpBusq')) herr.innerHTML = herrFlota(); else actualizarChipsFlota();
+    herr.style.display = '';
+    const l = listaFlota();
+    c.innerHTML = `<div class="caption" style="padding:6px 12px 0">${l.length} de ${unidades.length} unidades</div><ul class="lista" role="listbox" aria-label="Unidades">${l.map(filaUnidad).join('') || '<li class="vacio">Ninguna unidad cumple los filtros.</li>'}</ul>`;
+  } else if (ui.pestana === 'pedidos') {
+    if (!herr.contains(document.activeElement) || !herr.querySelector('#inpPed')) herr.innerHTML = herrPedidos();
+    herr.style.display = '';
+    const l = listaPedidos();
+    c.innerHTML = `<div class="caption" style="padding:6px 12px 0">${l.length} pedidos</div><ul class="lista" role="listbox" aria-label="Pedidos">${l.slice(0, 120).map(filaPedido).join('') || '<li class="vacio">No hay pedidos con este filtro.</li>'}</ul>`;
+  } else if (ui.pestana === 'almacenes') {
+    herr.style.display = 'none'; c.innerHTML = ALMACENES.map(tarjetaAlmacen).join('');
+  } else if (ui.pestana === 'vias') {
+    herr.style.display = 'none';
+    const fila = (b) => { const sel = ui.seleccion?.tipo === 'bloqueo' && ui.seleccion.id === b.id, v = vigente(b), d = v ? desviadas(b).length : 0; return `<li role="option" aria-selected="${sel}"><button class="fila" data-sel-tipo="bloqueo" data-sel-id="${b.id}" ${v ? '' : 'style="opacity:.75"'}><span style="width:28px;height:28px;border-radius:50%;background:${FONDO_BLOQUEO};color:${COLOR_BLOQUEO};display:flex;align-items:center;justify-content:center">${ICO.bloq}</span><span style="min-width:0"><span class="fila-t">${b.id}</span><span class="fila-d num">(${b.puntos[0]}) → (${b.puntos[b.puntos.length - 1]}) · ${hhmm(b.ini)}–${hhmm(b.fin)}</span></span><span class="fila-der">${v ? `<span class="estado ${d ? 'warn' : 'neutro'}">${d} desviadas</span>` : `<span class="estado neutro">desde ${hhmm(b.ini)}</span>`}</span></button></li>`; };
+    const vig = BLOQUEOS.filter(vigente), prox = BLOQUEOS.filter((b) => b.ini > ahora).sort((a, b) => a.ini - b.ini);
+    c.innerHTML = `<div class="overline" style="padding:8px 12px 0">Vigentes (${vig.length})</div><ul class="lista" role="listbox">${vig.map(fila).join('')}</ul>${prox.length ? `<div class="overline" style="padding:8px 12px 0">Programados (${prox.length})</div><ul class="lista">${prox.map(fila).join('')}</ul>` : ''}`;
+  } else {
+    herr.style.display = 'none';
+    const col = { incid: '#C81E3A', plan: '#1B4DD9', entrega: '#12805C', op: '#8190AA' };
+    c.innerHTML = `<div style="padding:4px 0">${eventos.map((e) => `<div class="evento"><span class="caption num">${hhmm(e.t)}</span><span class="pt" style="background:${col[e.tipo]}"></span><span><span class="fila-t">${esc(e.titulo)}</span><span class="fila-d" style="white-space:normal">${esc(e.detalle)}</span></span></div>`).join('')}</div>`;
+  }
+  c.setAttribute('aria-label', PESTANAS.find(([id]) => id === ui.pestana)[1]);
+  if (volverArriba) c.scrollTop = 0;
+  const s = c.querySelector('[aria-selected="true"] .fila, .tarjeta-alm.sel, .fraccion.sel'); if (s && !c.matches(':hover')) s.scrollIntoView({ block: 'nearest' });
+}
+function actualizarChipsFlota() { const f = conteoFlota(); $('#herr').querySelectorAll('[data-fe]').forEach((b) => { const v = b.dataset.fe; b.querySelector('b').textContent = v === 'TODAS' ? unidades.length : f[v]; }); }
+$('#herr').addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return; const d = b.dataset;
+  if (d.fe) ui.estadoFlota = d.fe;
+  if (b.id === 'btnSentido') ui.sentido = ui.sentido === 'ASC' ? 'DESC' : 'ASC';
+  if (d.mag) ui.busq.mag = d.mag; if (d.ref) ui.busq.ref = d.ref;
+  if (d.rango) { ui.rangosKm.has(d.rango) ? ui.rangosKm.delete(d.rango) : ui.rangosKm.add(d.rango); }
+  if (d.fp) ui.filtroPed = d.fp; if (d.op) ui.ordenPed = d.op;
+  guardar(); $('#herr').innerHTML = ui.pestana === 'flota' ? herrFlota() : herrPedidos(); renderDer(true);
+});
+$('#herr').addEventListener('change', (e) => { if (e.target.id === 'selOrden') { ui.orden = e.target.value; guardar(); renderDer(true); } });
+$('#herr').addEventListener('input', (e) => { if (e.target.id === 'inpBusq') { ui.busq.valor = e.target.value; renderDer(true); } if (e.target.id === 'inpPed') { ui.textoPed = e.target.value; renderDer(true); } });
+$('#cuerpoDer').addEventListener('click', (e) => { const b = e.target.closest('[data-sub]'); if (b) { ui.subAlm = b.dataset.sub; renderDer(); } });
+
+/* =====================================================================
+   10. Selección (arriba del panel derecho) y su sincronía con mapa y listas
+   ===================================================================== */
+function renderSeleccion() {
+  const box = $('#seleccion'), s = ui.seleccion;
+  if (!s) { box.classList.remove('abierta'); box.innerHTML = ''; return; }
+  const x = `<button class="btn-ico" data-cerrar-sel aria-label="Quitar selección (Esc)" title="Quitar selección (Esc)"><svg class="ico ico-16" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button>`;
+  const dato = (et, va) => `<div class="dato"><span class="caption">${et}</span><b>${va}</b></div>`;
+  let h = '';
+  if (s.tipo === 'unidad') {
+    const u = uni(s.id), t = tramo(u), n = nivelU(u), pend = pendientes(u);
+    h = `<div class="sel-cab"><img class="ico-veh" style="width:36px;height:24px" alt="" src="${iconoVeh(u.tipo, colorU(u), huecoU(u))}"><div><h3>${u.codigo} · ${TIPOS[u.tipo].nombre}</h3><span class="estado ${u.estado === 'AVERIADA' ? 'crit' : u.estado === 'EN_RUTA' ? 'info' : 'neutro'}">${u.estado === 'AVERIADA' ? `Avería tipo ${u.averia.tipo}` : situacion(u)}</span> <span class="caption">${u.conductor} · base ${alm(u.base).corto}</span></div>${x}</div>
+      <div class="datos num">${dato('Carga', `${marcaSem(n, NOMBRE_CARGA[n])} ${u.carga}/${u.cap} paq. · ${Math.round(u.carga / u.cap * 100)} %`)}
+      ${t ? dato('Destino inmediato', `${t.destino.texto} · ${fmt(t.kmAl, 1)} km · ${hhmm(t.llegada)}`) + dato('Desde el origen', `${fmt(t.kmDesde, 1)} km · salió ${hhmm(t.salida)}`) : dato('Tramo', u.estado === 'AVERIADA' ? `vuelve ${hhmm(u.averia.desde + DUR_AVERIA[u.averia.tipo])}` : 'Sin tramo en curso')}
+      ${u.ruta.length && u.estado !== 'DISPONIBLE' ? dato('Ruta', `${fmt(u.dist, 1)} recorridos · ${fmt(u.largo - u.dist, 1)} por recorrer km`) + dato('Regreso a ' + alm(u.base).corto, hhmm(regresoEstimado(u))) : ''}</div>
+      ${u.paradas.length && u.estado !== 'DISPONIBLE' ? `<div class="caption" style="margin-top:8px">Envíos que traslada (E04) y paquetes (E05)</div><div class="paradas">${u.paradas.map((p, i) => { const pe = pedidos[p.ped], f = fraccionDe(p); return `<button class="parada${p.hecha ? ' hecha' : p === (u.enServicio || pend[0]) ? ' actual' : ''}" data-sel-tipo="fraccion" data-sel-id="${p.ped}" data-fi="${p.fi}"><span class="num">${i + 1}.</span> ${codFr(pe, f)} · ${p.cant} paq.<span class="der num">${p.hecha ? '✓ ' + hhmm(f.llegada) : u.enServicio === p ? 'entregando' : f.estado === 'POR_REASIGNAR' ? 'por reasignar' : hhmm(etaParada(u, p))}</span></button>`; }).join('')}</div>` : ''}
+      <div class="acciones">${enMapa(u) ? `<button class="btn sm" data-seguir aria-pressed="${ui.seguir}">${ui.seguir ? 'Siguiendo' : 'Seguir en el mapa'}</button>` : ''}${u.estado === 'EN_RUTA' ? `<button class="btn sm" data-averia="${u.codigo}">Registrar avería</button>` : ''}</div>`;
+  } else if (s.tipo === 'pedido' || s.tipo === 'fraccion') {
+    const p = pedidos[s.id], n = nivelHolgura(p);
+    const f = s.tipo === 'fraccion' ? p.fracciones.find((z) => z.indice === s.fi) : null;
+    h = `${f ? `<div class="migas"><button class="link" data-sel-tipo="pedido" data-sel-id="${p.codigo}">Pedido ${p.codigo}</button> › Fracción ${f.indice}</div>` : ''}
+      <div class="sel-cab"><span style="width:32px;height:32px;border-radius:6px;background:var(--superficie);border:1px solid var(--borde);display:flex;align-items:center;justify-content:center">${ICO.caja}</span><div><h3>${f ? codFr(p, f) : 'Pedido ' + p.codigo}</h3><span class="estado ${claseNivel[n]}">${iconoNivel[n]} ${p.entrega !== null ? 'Entregado ' + hhmm(p.entrega) : `Holgura ${textoMin(holgura(p))} · ${NOMBRE_HOLGURA[n]}`}</span></div>${x}</div>
+      <div class="datos num">${f ? dato('Unidad', `${f.unidad} · ${f.cantidad} paq.`) + dato('Origen', alm(f.origen).nombre) + dato('Salida', hhmm(f.salida)) + dato(f.estado === 'ENTREGADA' ? 'Llegó' : 'Llegada estimada', llegadaFr(p, f) !== null ? hhmm(llegadaFr(p, f)) : '—')
+        : dato('Cliente', esc(p.cliente)) + dato('Cantidad', `${p.cantidad} paq. en ${p.fracciones.length || 0} ${p.fracciones.length === 1 ? 'unidad' : 'unidades'}`) + dato('Destino', `(${p.destino.x}, ${p.destino.y}) km`) + dato('Plazo · límite', `${p.plazo} h · ${hhmm(p.limite)}`)}</div>
+      ${!f && p.fracciones.length ? `<div class="caption" style="margin-top:8px">Fracciones · clic para ver solo su ruta</div><ul class="fracciones" style="padding:2px 0 0">${p.fracciones.map((z) => lineaFraccion(p, z)).join('')}</ul>` : ''}
+      <div class="acciones">${f ? `<button class="btn sm" data-sel-tipo="unidad" data-sel-id="${f.unidad}">Ver unidad ${f.unidad}</button>` : p.pendiente > 0 && p.entrega === null ? `<span class="caption">${p.pendiente} paq. salen de ${alm(p.origen).corto} ~${hhmm(p.salidaPlan ?? ahora)}</span>` : ''}</div>`;
+  } else if (s.tipo === 'almacen') {
+    const a = alm(s.id), n = nivelA(a), base = unidades.filter((u) => u.base === a.id);
+    h = `<div class="sel-cab"><span style="width:32px;height:32px;border-radius:6px;background:#0F172A;color:#fff;display:flex;align-items:center;justify-content:center">${ICO.alm}</span><div><h3>Almacén ${a.nombre}</h3>${n ? `<span class="estado ${n === 'ROJO' ? 'crit' : n === 'AMBAR' ? 'warn' : 'ok'}">${marcaSem(n)} ${NOMBRE_CARGA[n]}</span>${stockBajo(a) ? ' <span class="estado oscuro">! Stock bajo</span>' : ''}` : '<span class="estado neutro">Sin tope de capacidad</span>'}</div>${x}</div>
+      <div class="datos num">${dato('Stock', a.capacidad ? `${fmt(a.stock)}/${fmt(a.capacidad)} · ${Math.round(a.stock / a.capacidad * 100)} %` : '—')}${dato('Ubicación', `(${a.x}, ${a.y}) km`)}${dato('Unidades en base', `${base.filter((u) => !enMapa(u)).length} de ${base.length}`)}${dato('Unidades fuera', base.filter(enMapa).length)}</div>
+      <div class="caption" style="margin-top:8px">Sus envíos están abajo, en la pestaña Almacenes.</div>`;
+  } else if (s.tipo === 'bloqueo') {
+    const b = BLOQUEOS.find((c) => c.id === s.id), d = vigente(b) ? desviadas(b) : [];
+    h = `<div class="sel-cab"><span style="width:32px;height:32px;border-radius:50%;background:${FONDO_BLOQUEO};color:${COLOR_BLOQUEO};display:flex;align-items:center;justify-content:center">${ICO.bloq}</span><div><h3>Bloqueo ${b.id}</h3><span class="estado ${vigente(b) ? 'warn' : 'neutro'}">${vigente(b) ? 'Vigente' : 'Programado'} · ${hhmm(b.ini)}–${hhmm(b.fin)}</span></div>${x}</div>
+      <div class="datos num">${dato('Tramo', `(${b.puntos[0]}) → (${b.puntos[b.puntos.length - 1]})`)}${dato('Rutas desviadas', d.length)}</div>
+      ${d.length ? `<div class="acciones">${d.map((u) => `<button class="btn sm" data-sel-tipo="unidad" data-sel-id="${u.codigo}">${u.codigo}</button>`).join('')}</div>` : ''}`;
+  }
+  box.innerHTML = h; box.classList.add('abierta');
+}
+$('#seleccion').addEventListener('click', (e) => {
+  if (e.target.closest('[data-cerrar-sel]')) return seleccionar(null);
+  if (e.target.closest('[data-seguir]')) { ui.seguir = !ui.seguir; if (ui.seguir) { ui.vista.w = 28; ui.vista.h = 28 * RATIO; } renderSeleccion(); }
+  const av = e.target.closest('[data-averia]'); if (av) abrirAveria(av.dataset.averia);
+});
+function seleccionar(s, { centrar = true } = {}) {
+  ui.seleccion = s; ui.seguir = false;
+  if (s) {
+    abrirRail('der');
+    if (s.tipo === 'unidad') { ui.pestana = 'flota'; const u = uni(s.id); if (!listaFlota().includes(u)) { ui.estadoFlota = 'TODAS'; ui.busq.valor = ''; ui.rangosKm.clear(); $('#herr').innerHTML = ''; } if (centrar && enMapa(u)) centrarEn(u.x, u.y); }
+    if (s.tipo === 'pedido' || s.tipo === 'fraccion') { ui.pestana = 'pedidos'; const p = pedidos[s.id]; if (!pasaFiltroPed(p, ui.filtroPed)) { ui.filtroPed = p.entrega !== null ? 'ENTREGADOS_4H' : 'TODOS'; $('#herr').innerHTML = ''; } if (centrar) centrarEn(p.destino.x, p.destino.y); }
+    if (s.tipo === 'almacen') { ui.pestana = 'almacenes'; const a = alm(s.id); if (centrar) centrarEn(a.x, a.y); }
+    if (s.tipo === 'bloqueo') { ui.pestana = 'vias'; const b = BLOQUEOS.find((c) => c.id === s.id); if (centrar) centrarEn(b.puntos[0][0], b.puntos[0][1]); }
+  }
+  todo();
+}
+document.addEventListener('click', (e) => { const b = e.target.closest('[data-sel-tipo]'); if (b && !b.closest('svg')) seleccionar({ tipo: b.dataset.selTipo, id: b.dataset.selId, fi: b.dataset.fi ? +b.dataset.fi : undefined }); });
+
+/* =====================================================================
+   11. Filtros del mapa (D05–D07), capas y leyenda
+   ===================================================================== */
+function renderFiltros() {
+  const f = ui.filtros, us = unidades.filter(enMapa);
+  const chip = (grupo, v, et, n) => `<button class="chip" data-fgrupo="${grupo}" data-fv="${v}" aria-pressed="${f[grupo].has(v)}">${et} <b class="num">${n}</b></button>`;
+  $('#cuerpoFiltros').innerHTML = `
+    <div class="grupo-f"><span class="overline">Tipo de unidad</span><div class="chips">${['A', 'M', 'B'].map((t) => chip('tipos', t, `<img src="${iconoVeh(t, '#475569', false)}" alt="" style="width:18px;height:12px">${TIPOS[t].nombre}`, us.filter((u) => u.tipo === t).length)).join('')}</div></div>
+    <div class="grupo-f"><span class="overline">Carga de unidades</span><div class="chips">${Object.keys(SEM).map((n) => chip('nivU', n, `${marcaSem(n)}${NOMBRE_CARGA[n]}`, us.filter((u) => u.estado !== 'AVERIADA' && nivelU(u) === n).length)).join('')}</div></div>
+    <div class="grupo-f"><span class="overline">Stock de almacenes</span><div class="chips">${Object.keys(SEM).map((n) => chip('nivA', n, `${marcaSem(n)}${NOMBRE_CARGA[n]}`, ALMACENES.filter((a) => nivelA(a) === n).length)).join('')}</div></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px"><span class="caption">Las averiadas siempre se ven.</span><button class="link" id="btnLimpiarF">Mostrar todo</button></div>`;
+  const activos = 3 - f.tipos.size + 4 - f.nivU.size + 4 - f.nivA.size;
+  $('#cntFiltros').hidden = !activos; $('#cntFiltros').textContent = activos;
+  $('#pildoraFiltros').classList.toggle('visible', activos > 0); $('#txtFiltros').textContent = `${activos} ${activos === 1 ? 'filtro' : 'filtros'} en el mapa`;
+}
+$('#cuerpoFiltros').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-fgrupo]');
+  if (b) { const s = ui.filtros[b.dataset.fgrupo]; s.has(b.dataset.fv) ? s.delete(b.dataset.fv) : s.add(b.dataset.fv); }
+  if (e.target.id === 'btnLimpiarF') limpiarFiltros(); else { renderFiltros(); dibujarCapas(); }
+});
+function limpiarFiltros() { ui.filtros = { tipos: new Set(['A', 'M', 'B']), nivU: new Set(Object.keys(SEM)), nivA: new Set(Object.keys(SEM)) }; renderFiltros(); dibujarCapas(); }
+$('#btnQuitarFiltros').onclick = limpiarFiltros;
+const CAPAS = [['rutas', 'Rutas (recorrido y pendiente)'], ['destinos', 'Destinos de pedidos'], ['bloqueos', 'Bloqueos vigentes'], ['rotulos', 'Rótulos de carga']];
+function renderCapas() { $('#cuerpoCapas').innerHTML = CAPAS.map(([k, t]) => `<label><input type="checkbox" data-capa="${k}" ${ui.capas[k] ? 'checked' : ''}>${t}</label>`).join(''); }
+$('#cuerpoCapas').addEventListener('change', (e) => { ui.capas[e.target.dataset.capa] = e.target.checked; Object.values(nodos).forEach((n) => (n.clave = '')); dibujarCapas(); });
+function pop(id, btn) { $(btn).onclick = () => { const p = $(id), abierto = !p.classList.contains('abierto'); document.querySelectorAll('.pop').forEach((x) => x.classList.remove('abierto')); p.classList.toggle('abierto', abierto); $(btn).setAttribute('aria-expanded', abierto); }; }
+pop('#popFiltros', '#btnFiltros'); pop('#popCapas', '#btnCapas');
+document.addEventListener('pointerdown', (e) => { if (!e.target.closest('.pop')) document.querySelectorAll('.pop').forEach((x) => x.classList.remove('abierto')); if (!e.target.closest('#menuMod')) $('#menuMod').classList.remove('abierto'); });
+$('#btnMenuMod').onclick = () => { const m = $('#menuMod'); m.classList.toggle('abierto'); $('#btnMenuMod').setAttribute('aria-expanded', m.classList.contains('abierto')); };
+function renderLeyenda() {
+  const veh = (t, c, h) => `<img src="${iconoVeh(t, c, h)}" alt="" style="width:22px;height:15px">`;
+  const pin = (c, crit) => `<svg width="12" height="16" viewBox="-10 -25 20 26"><path d="${PIN}" fill="${c}" stroke="#fff" stroke-width="1.5"/>${crit ? '<rect x="-1" y="-20" width="2" height="5.5" rx="1" fill="#fff"/><circle cy="-11.6" r="1.2" fill="#fff"/>' : '<circle cy="-15" r="3" fill="#fff"/>'}</svg>`;
+  const av = (t) => `<svg width="16" height="16" viewBox="-8 -8 16 16">${t === 1 ? `<circle r="6.5" fill="${COLOR_AVERIA[1]}"/>` : t === 2 ? `<path d="M0 -7.5L7.5 0L0 7.5L-7.5 0Z" fill="${COLOR_AVERIA[2]}"/>` : `<path d="M-2.9 -7L2.9 -7L7 -2.9L7 2.9L2.9 7L-2.9 7L-7 2.9L-7 -2.9Z" fill="${COLOR_AVERIA[3]}"/>`}<text y="3.2" text-anchor="middle" font-size="9" font-weight="700" fill="#fff">${t}</text></svg>`;
+  $('#leyenda').innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center"><span class="overline">Leyenda</span><button class="btn-ico" style="width:24px;height:24px" id="btnCerrarLey" aria-label="Cerrar leyenda"><svg class="ico ico-12" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+    <h4>Unidades · color = carga (semáforo + vacío)</h4><div class="leyenda-grid">${Object.keys(SEM).map((n) => `<span>${veh('A', SEM[n], n === 'VACIO')}${marcaSem(n)} ${NOMBRE_CARGA[n]}</span>`).join('')}<span>${veh('A', '#475569')} Auto</span><span>${veh('M', '#475569')} Moto</span><span>${veh('B', '#475569')} Bicicleta</span><span class="caption">Cortes: 70 % y 90 %</span></div>
+    <h4>Averías · número + forma + color</h4><div class="leyenda-grid">${[1, 2, 3].map((t) => `<span>${av(t)} Tipo ${t}</span>`).join('')}<span class="caption">El anillo se vacía hasta que vuelve</span></div>
+    <h4>Almacenes · stock (rojo = lleno)</h4><div class="leyenda-grid"><span><svg width="16" height="16" viewBox="-15 -14 30 28"><path d="M0 -13L14 -4V13H-14V-4Z" fill="#0F172A"/></svg> Central (sin tope)</span><span><svg width="16" height="16" viewBox="-13 -12 26 24"><path d="M0 -11L12 -3V11H-12V-3Z" fill="#fff" stroke="${SEM.AMBAR}" stroke-width="2"/><rect x="-10" y="2" width="20" height="8" fill="${SEM.AMBAR}"/></svg> Intermedio</span><span><span class="estado oscuro" style="padding:0 5px">!</span> Stock bajo (&lt; 20 %)</span><span class="caption">Cortes: 50 % y 80 %</span></div>
+    <h4>Pedidos · pin = holgura</h4><div class="leyenda-grid"><span>${pin(SEM.VERDE)} Holgado</span><span>${pin(SEM.AMBAR)} Ajustado</span><span>${pin(SEM.ROJO, true)} Crítico</span><span>${pin(COLOR_EN_ENTREGA)} Entregando (60 min)</span><span><svg width="12" height="16" viewBox="-10 -25 20 26"><path d="${PIN}" fill="#fff" stroke="${SEM.VERDE}" stroke-width="2.5"/></svg> En espera de unidad</span></div>
+    <h4>Rutas y vías</h4><div class="leyenda-grid"><span><svg width="26" height="6"><path d="M0 3h26" stroke="#9EABBA" stroke-width="2"/></svg> Recorrido</span><span><svg width="26" height="6"><path d="M0 3h26" stroke="#94A3B8" stroke-width="2.5" stroke-dasharray="6 4"/></svg> Por recorrer</span><span><svg width="26" height="6"><path d="M0 3h26" stroke="${COLOR_DESTACADA}" stroke-width="3" stroke-dasharray="7 5"/></svg> Seleccionada</span><span><svg width="26" height="10"><path d="M0 5h26" stroke="${COLOR_BLOQUEO}" stroke-width="4" opacity=".75"/></svg> Bloqueo vigente</span></div>`;
+  $('#btnCerrarLey').onclick = alternarLeyenda;
+}
+function alternarLeyenda() { const l = $('#leyenda'); l.hidden = !l.hidden; if (!l.hidden) renderLeyenda(); $('#btnLeyenda').hidden = !l.hidden; $('#btnLeyenda').setAttribute('aria-expanded', !l.hidden); }
+$('#btnLeyenda').onclick = alternarLeyenda;
+
+/* =====================================================================
+   12. Diálogos: reporte de cierre (G09) y avería
+   ===================================================================== */
+let filasReporte = [];
+function abrirReporte() {
+  const plan = unidades.filter((u) => u.ruta.length && u.estado !== 'DISPONIBLE');
+  filasReporte = plan.map((u) => ({ u: u.codigo, tipo: TIPOS[u.tipo].nombre, origen: alm(u.base).nombre, paradas: u.paradas.map((p) => `${codFr(pedidos[p.ped], fraccionDe(p))} (${p.cant})`).join(' → ') + ` → ${alm(u.base).corto}`, carga: u.paradas.reduce((s, p) => s + p.cant, 0), cap: u.cap, salida: hhmm(u.salida ?? 0), regreso: hhmm(regresoEstimado(u)), km: fmt(u.largo, 1), estado: u.estado === 'AVERIADA' ? `Avería ${u.averia.tipo}` : situacion(u) }));
+  const f = conteoFlota(), total = diario.aTiempo + diario.retraso;
+  $('#metaReporte').textContent = `Generado ${fechaLarga(fecha(ahora))} ${hhmm(ahora)} · plan estable de las ${hhmm(diario.ultimoPlan)} · Ta ${fmt(diario.taMs / 1000, 1)} s · ${diario.replan} replanificaciones hoy`;
+  $('#cuerpoReporte').innerHTML = `<div class="kpis-rep num"><div><span class="caption">Unidades con ruta</span><b>${plan.length}</b></div><div><span class="caption">Paquetes planificados</span><b>${fmt(filasReporte.reduce((s, r) => s + r.carga, 0))}</b></div><div><span class="caption">Km planificados</span><b>${fmt(plan.reduce((s, u) => s + u.largo, 0), 1)}</b></div><div><span class="caption">Entregados hoy</span><b>${fmt(total)}</b></div><div><span class="caption">Cumplimiento</span><b>${fmt(diario.aTiempo / total * 100, 1)} %</b></div><div><span class="caption">Averiadas</span><b>${f.AVERIADA}</b></div></div>
+    <table><thead><tr><th>Unidad</th><th>Tipo</th><th>Origen</th><th>Secuencia (pedido · paquetes)</th><th>Carga</th><th>Salida</th><th>Regreso</th><th>Km</th><th>Estado</th></tr></thead><tbody>${filasReporte.map((r) => `<tr><td><b style="font-weight:600">${r.u}</b></td><td>${r.tipo}</td><td>${r.origen}</td><td class="num">${r.paradas}</td><td class="num">${r.carga}/${r.cap}</td><td class="num">${r.salida}</td><td class="num">${r.regreso}</td><td class="num">${r.km}</td><td>${r.estado}</td></tr>`).join('')}</tbody></table>`;
+  $('#dlgReporte').showModal();
+}
+$('#btnReporte').onclick = abrirReporte;
+$('#btnCsv').onclick = () => {
+  const cab = ['Unidad', 'Tipo', 'Origen', 'Secuencia', 'Carga', 'Capacidad', 'Salida', 'Regreso', 'Km', 'Estado'];
+  const csv = [cab, ...filasReporte.map((r) => [r.u, r.tipo, r.origen, r.paradas, r.carga, r.cap, r.salida, r.regreso, r.km, r.estado])].map((f) => f.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(';')).join('\n');
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['﻿' + csv], { type: 'text/csv' })); a.download = `reporte-cierre-${hhmm(ahora).replace(':', '')}.csv`; a.click();
+};
+let unidadAveria = null;
+function abrirAveria(c) {
+  unidadAveria = c; const u = uni(c);
+  $('#cuerpoAveria').innerHTML = `<p style="margin:0 0 10px">Unidad <b style="font-weight:600">${u.codigo}</b> · ${u.carga} paq. a bordo · ${pendientes(u).length} entregas pendientes.</p>${[1, 2, 3].map((t) => `<label class="opcion"><input type="radio" name="tipoAv" value="${t}" ${t === 1 ? 'checked' : ''}><span><b style="font-weight:600;color:${COLOR_AVERIA[t]}">Tipo ${t}</b><br><span class="caption">${NOMBRE_AVERIA[t]}${t > 1 ? ' · su carga se reasigna' : ''}</span></span></label>`).join('')}<p class="caption" style="margin:4px 0 0">La avería se difunde a todos los visualizadores conectados.</p>`;
+  $('#dlgAveria').showModal();
+}
+$('#dlgAveria').addEventListener('close', () => {
+  if ($('#dlgAveria').returnValue !== 'ok' || !unidadAveria) return;
+  const u = uni(unidadAveria), t = +document.querySelector('[name=tipoAv]:checked').value;
+  u.estado = 'AVERIADA'; u.averia = { tipo: t, desde: ahora }; u.servicioHasta = null; u.enServicio = null;
+  if (t > 1) pendientes(u).forEach((s) => (fraccionDe(s).estado = 'POR_REASIGNAR'));
+  registrar('incid', `Avería tipo ${t} · ${u.codigo}`, t > 1 ? 'Su carga queda por reasignar' : 'Sigue su ruta en 2 h'); diario.replan++;
+  $('#dlgAveria').returnValue = ''; todo();
+});
+document.addEventListener('click', (e) => { if (e.target.closest('[data-cerrar-dlg]')) e.target.closest('dialog').close(); });
+
+/* =====================================================================
+   13. Paneles, búsqueda, teclado y tema
+   ===================================================================== */
+const angosta = () => matchMedia('(max-width:1100px)').matches;
+function alternarRail(l) { if (angosta()) { document.body.classList.toggle(l + '-movil'); document.body.classList.remove((l === 'izq' ? 'der' : 'izq') + '-movil'); return; } document.body.classList.remove('enfoque'); document.body.classList.toggle(l + '-cerrado'); guardar(); renderPulso(); }
+function abrirRail(l) { if (angosta()) return; if (document.body.classList.contains(l + '-cerrado')) { document.body.classList.remove(l + '-cerrado'); guardar(); } }
+function alternarEnfoque() { document.body.classList.toggle('enfoque'); $('#btnEnfoque').setAttribute('aria-pressed', document.body.classList.contains('enfoque')); }
+document.addEventListener('click', (e) => {
+  const c = e.target.closest('[data-colapsar]'); if (c) return alternarRail(c.dataset.colapsar);
+  const x = e.target.closest('[data-expandir]'); if (x) { if (x.dataset.tab) { ui.pestana = x.dataset.tab; renderDer(true); } document.body.classList.remove('enfoque'); angosta() ? alternarRail(x.dataset.expandir) : abrirRail(x.dataset.expandir); renderPulso(); }
+});
+$('#btnEnfoque').onclick = alternarEnfoque;
+
+const inp = $('#inpBuscar'), sug = $('#sugerencias'); let sugA = 0, sugL = [];
+function buscar(q) {
+  q = q.trim().toLowerCase(); if (!q) return []; const r = [];
+  unidades.forEach((u) => (u.codigo.toLowerCase().includes(q) || u.conductor.toLowerCase().includes(q)) && r.push({ tipo: 'unidad', id: u.codigo, t: `${u.codigo} · ${TIPOS[u.tipo].nombre}`, d: situacion(u) }));
+  Object.values(pedidos).forEach((p) => (p.codigo.toLowerCase().includes(q) || p.cliente.toLowerCase().includes(q)) && r.push({ tipo: 'pedido', id: p.codigo, t: `${p.codigo} · ${p.cantidad} paq.`, d: estadoPedido(p) }));
+  ALMACENES.forEach((a) => a.nombre.toLowerCase().includes(q) && r.push({ tipo: 'almacen', id: a.id, t: `Almacén ${a.nombre}`, d: a.capacidad ? `${Math.round(a.stock / a.capacidad * 100)} %` : 'Central' }));
+  BLOQUEOS.forEach((b) => b.id.toLowerCase().includes(q) && r.push({ tipo: 'bloqueo', id: b.id, t: `Bloqueo ${b.id}`, d: vigente(b) ? 'vigente' : 'programado' }));
+  return r.slice(0, 8);
+}
+function renderSug() { sugL = buscar(inp.value); if (!inp.value.trim()) return sug.classList.remove('abierta'); sug.classList.add('abierta'); sug.innerHTML = sugL.length ? sugL.map((s, i) => `<button role="option" aria-selected="${i === sugA}" class="${i === sugA ? 'activa' : ''}" data-i="${i}"><b style="font-weight:500">${s.t}</b><span class="caption" style="margin-left:auto">${s.d}</span></button>`).join('') : `<div class="vacio" style="padding:8px">Sin resultados para «${esc(inp.value.trim())}». Prueba con A-04, P-4215 o BL-02.</div>`; }
+inp.addEventListener('input', () => { sugA = 0; renderSug(); });
+inp.addEventListener('keydown', (e) => { if (e.key === 'ArrowDown') { sugA = Math.min(sugA + 1, sugL.length - 1); renderSug(); e.preventDefault(); } if (e.key === 'ArrowUp') { sugA = Math.max(sugA - 1, 0); renderSug(); e.preventDefault(); } if (e.key === 'Enter' && sugL[sugA]) elegirSug(sugL[sugA]); if (e.key === 'Escape') { inp.value = ''; renderSug(); inp.blur(); e.stopPropagation(); } });
+sug.addEventListener('mousedown', (e) => { const b = e.target.closest('[data-i]'); if (b) { e.preventDefault(); elegirSug(sugL[+b.dataset.i]); } });
+inp.addEventListener('blur', () => setTimeout(() => sug.classList.remove('abierta'), 100));
+function elegirSug(s) { inp.value = ''; sug.classList.remove('abierta'); seleccionar({ tipo: s.tipo, id: s.id }, { centrar: false }); const p = s.tipo === 'unidad' ? uni(s.id) : s.tipo === 'pedido' ? pedidos[s.id].destino : s.tipo === 'almacen' ? alm(s.id) : { x: BLOQUEOS.find((b) => b.id === s.id).puntos[0][0], y: BLOQUEOS.find((b) => b.id === s.id).puntos[0][1] }; centrarEn(p.x, p.y, true); }
+
+document.addEventListener('keydown', (e) => {
+  if (e.target.matches('input,textarea,select') || e.ctrlKey || e.metaKey || e.altKey || document.querySelector('dialog[open]')) return;
+  const k = e.key;
+  if (k === '/') { e.preventDefault(); inp.focus(); } else if (k === '+' || k === '=') zoom(0.75); else if (k === '-') zoom(1 / 0.75); else if (k === '0') ajustar();
+  else if (k === 'f' || k === 'F') alternarEnfoque(); else if (k === 'l' || k === 'L') alternarLeyenda(); else if (k === '[') alternarRail('izq'); else if (k === ']') alternarRail('der'); else if (k === '?') $('#dlgAyuda').showModal();
+  else if (k === 'Escape') { if (ui.seleccion) seleccionar(null); else if (ui.foco) quitarFoco(); document.body.classList.remove('izq-movil', 'der-movil'); }
+});
+$('#btnAyuda').onclick = () => $('#dlgAyuda').showModal();
+$('#btnTema').onclick = () => { const r = document.documentElement, a = r.dataset.theme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'); r.dataset.theme = a === 'dark' ? 'light' : 'dark'; try { localStorage.setItem('paqtracker.proto.tema', r.dataset.theme); } catch (_) {} };
+try { const t = localStorage.getItem('paqtracker.proto.tema'); if (t) document.documentElement.dataset.theme = t; } catch (_) {}
+
+/* =====================================================================
+   14. Orquestación y bucle de la operación
+   ===================================================================== */
+function renderFoco() { $('#pildoraFoco').classList.toggle('visible', !!ui.foco); if (ui.foco) $('#txtFoco').textContent = 'Resaltado: ' + ui.foco.etiqueta; }
+function todo() { renderPulso(); renderRelojes(); renderRecursos(); renderAtencion(); renderSeleccion(); renderDer(); renderFoco(); renderFiltros(); renderCapas(); dibujarCapas(); }
+
+function entregar(u, s) {
+  s.hecha = true; u.carga = Math.max(0, u.carga - s.cant); u.enServicio = null; u.servicioHasta = null;
+  const p = pedidos[s.ped], f = fraccionDe(s); f.estado = 'ENTREGADA'; f.llegada = ahora - SERVICIO_MIN;
+  registrar('entrega', `${codFr(p, f)} entregado`, `${u.codigo} · ${f.cantidad} paq.`);
+  if (p.pendiente === 0 && p.fracciones.every((x) => x.estado === 'ENTREGADA')) { p.entrega = ahora; p.entrega <= p.limite ? diario.aTiempo++ : diario.retraso++; }
+}
+let ultimo = performance.now(), acum = 0, acumReal = 0;
+function paso(tms) {
+  const dt = Math.min(0.25, (tms - ultimo) / 1000); ultimo = tms; ahora += dt; acum += dt; acumReal += dt;
+  unidades.forEach((u) => {
+    if (u.estado === 'EN_REFRIGERIO' && ahora >= u.pausaHasta) { u.estado = 'EN_RUTA'; registrar('op', `${u.codigo} retoma su ruta`, 'Fin del refrigerio'); }
+    if (u.estado === 'AVERIADA' && ahora >= u.averia.desde + DUR_AVERIA[u.averia.tipo]) {
+      if (u.averia.tipo === 1) { u.estado = 'EN_RUTA'; } else { const c = alm('CENTRAL'); u.base = 'CENTRAL'; u.estado = 'DISPONIBLE'; u.ruta = []; u.paradas = []; u.carga = 0; u.x = c.x; u.y = c.y; }
+      registrar('op', `${u.codigo} reincorporada`, u.averia.tipo === 1 ? 'Sigue su ruta' : 'Disponible en el almacén central'); u.averia = null;
+    }
+    if (u.estado !== 'EN_RUTA') return;
+    if (u.servicioHasta) { if (ahora >= u.servicioHasta) entregar(u, u.enServicio); return; } // G05: 60 min en el cliente
+    u.dist += u.vel / 60 * dt;
+    const s = pendientes(u)[0];
+    if (s && u.dist >= s.km) { u.dist = s.km; u.enServicio = s; u.servicioHasta = ahora + SERVICIO_MIN; }
+    if (u.dist >= u.largo) { const b = alm(u.base); u.estado = 'DISPONIBLE'; u.ruta = []; u.paradas = []; u.carga = 0; u.x = b.x; u.y = b.y; registrar('op', `${u.codigo} llegó a ${b.nombre}`, 'Disponible para la siguiente salida'); return; }
+    posicionar(u);
+  });
+  if (ui.seguir && ui.seleccion?.tipo === 'unidad') { const u = uni(ui.seleccion.id), v = ui.vista; v.x = u.x - v.w / 2; v.y = Y(u.y) - v.h / 2; svg.setAttribute('viewBox', `${v.x} ${v.y} ${v.w} ${v.h}`); }
+  pintarUnidades(); if (ui.capas.rutas) pintarRutas();
+  if (acum >= 1) {
+    acum = 0;
+    // Despacho: unidades disponibles salen con los pedidos cuya salida ya llegó
+    ALMACENES.forEach((a) => {
+      const listos = Object.values(pedidos).filter((p) => p.origen === a.id && p.pendiente > 0 && p.entrega === null && (p.salidaPlan ?? 0) <= ahora).sort((x, y) => x.limite - y.limite);
+      if (!listos.length) return;
+      const u = unidades.find((v) => v.base === a.id && v.estado === 'DISPONIBLE' && listos.some((p) => manh(a, p.destino) <= TIPOS[v.tipo].rango));
+      if (u && asignar(u, listos)) { posicionar(u); registrar('plan', `${u.codigo} sale de ${a.nombre}`, `${u.paradas.length} entregas · ${u.carga} paq.`); }
+    });
+    // Reasignación de carga de averías graves
+    Object.values(pedidos).forEach((p) => [...p.fracciones].forEach((f) => { if (f.estado === 'POR_REASIGNAR' && rnd() < 0.01) { const u = uni(f.unidad); u.paradas = u.paradas.filter((s) => !(s.ped === p.codigo && s.fi === f.indice)); u.carga = Math.max(0, u.carga - f.cantidad); p.fracciones = p.fracciones.filter((x) => x !== f); p.pendiente += f.cantidad; p.origen = 'CENTRAL'; p.salidaPlan = ahora + 5; registrar('plan', `${p.codigo} reasignado`, `${f.cantidad} paq. saldrán del central`); } }));
+    if (rnd() < 0.12) { const a = elegir(ALMACENES), p = nuevoPedido(a.id, destinoCerca(a, elegir([8, 14, 24])), rnd() < 0.2 ? ent(12, 26) : ent(1, 9)); p.registrado = ahora; p.plazo = elegir([4, 8, 12]); p.limite = ahora + p.plazo * 60; p.salidaPlan = ahora + ent(10, 200); registrar('op', `Nuevo pedido ${p.codigo}`, `${p.cantidad} paq. · plazo ${p.plazo} h`); }
+    BLOQUEOS.forEach((b) => { if (Math.abs(ahora - b.ini) < 0.6) { registrar('incid', `Bloqueo iniciado ${b.id}`, `Hasta ${hhmm(b.fin)}`); diario.replan++; } if (Math.abs(ahora - b.fin) < 0.6) registrar('incid', `Bloqueo levantado ${b.id}`, ''); });
+    renderPulso(); renderRecursos(); renderSeleccion(); renderFoco();
+    if (!document.querySelector('#railIzq .rail-cuerpo:hover')) renderAtencion();
+    if (!document.querySelector('#cuerpoDer:hover') && !$('#herr').contains(document.activeElement)) renderDer(); // no mover la lista bajo el cursor
+    dibujarDestinos(); dibujarBloqueos(); dibujarAlmacenes();
+  }
+  if (acumReal >= 0.25) { acumReal = 0; renderRelojes(); }
+  requestAnimationFrame(paso);
+}
+aplicarVista(); todo(); requestAnimationFrame(paso);
+</script>
+</body>
+</html>
