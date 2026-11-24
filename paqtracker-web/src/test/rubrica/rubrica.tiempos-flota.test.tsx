@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { act, cleanup, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { RelojesBarra } from '../../components/layout/RelojesBarra';
 import { TopNavbar } from '../../components/layout/TopNavbar';
 import { EstadoFlota } from '../../components/operacion/EstadoFlota';
 import { ResumenOperacion } from '../../components/operacion/ResumenOperacion';
@@ -138,5 +139,34 @@ describe('Rúbrica · C16 · presentación de los tiempos', () => {
     expect(simulado.getByText('Fecha y hora simulada').className).toContain('text-[11px]');
     expect(simulado.getByText(/1 d 02 h/).className).toContain('text-[14px]');
     expect(real.getByText(/\d{4} · \d{2}:\d{2}:\d{2}/).className).toContain('text-[16px]');
+  });
+});
+
+describe('Rúbrica · C13 y C15 · tiempos transcurridos en Operación', () => {
+  it('C13 · el reloj de la operación muestra el tiempo transcurrido desde su inicio', () => {
+    const ms = ((1 * 1440 + 2 * 60 + 3) * 60 + 4) * 1000;
+    render(<RelojesBarra operacion="28 oct 2026 · 15:04:05" transcurridoOperacionMs={ms} />);
+    expect(screen.getByRole('group', { name: 'Reloj de la operación día a día' }).textContent).toContain('+1 d 02 h 03 m');
+  });
+  it('C15 · el reloj real muestra el tiempo real transcurrido y avanza cada segundo', () => {
+    vi.useFakeTimers({ toFake: ['Date', 'setInterval', 'clearInterval'] });
+    vi.setSystemTime(new Date(2026, 9, 28, 15, 4, 5));
+    try {
+      render(<RelojesBarra operacion="28 oct 2026 · 15:04:05" inicioReal={new Date(2026, 9, 28, 14, 0, 0)} />);
+      const real = () => screen.getByRole('group', { name: 'Fecha y hora real' }).textContent;
+      expect(real()).toContain('+1:04:05');
+      act(() => vi.advanceTimersByTime(1000));
+      expect(real()).toContain('+1:04:06');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+  it('sin datos de inicio no muestra transcurridos', () => {
+    render(<RelojesBarra operacion="28 oct 2026 · 15:04:05" />);
+    expect(screen.getByRole('group', { name: 'Reloj de la operación día a día' }).textContent).not.toContain('+');
+  });
+  it('en celular la fecha y el transcurrido de la operación se ocultan (sm)', () => {
+    render(<RelojesBarra operacion="28 oct 2026 · 15:04:05" transcurridoOperacionMs={60_000} />);
+    expect(screen.getByText('+0 d 00 h 01 m').className).toContain('hidden sm:inline');
   });
 });
