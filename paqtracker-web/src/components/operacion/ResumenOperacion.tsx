@@ -1,12 +1,11 @@
-import React, { useState } from 'react';
-import { ArrowRight, ClipboardList } from 'lucide-react';
-import { DialogoReporteCierre } from '../reporte/DialogoReporteCierre';
+import React from 'react';
+import { ArrowRight } from 'lucide-react';
+import { BotonReporteCierre } from '../reporte/BotonReporteCierre';
 import { useDatosOperacion } from '../../hooks/useDatosOperacion';
 import { formatearMiles } from '../../lib/formato';
 import { estadoFlota, resumenRiesgo } from '../../lib/operacion';
 import type { SeleccionPanel } from '../../types/operacion';
 import { PuntoHolgura } from '../pedidos/iconos';
-import { Boton } from '../ui';
 import { TituloSeccion } from './comunes';
 import trianguloAmbar from '../../assets/figma/pedidos/holgura-ambar-triangulo.svg';
 
@@ -59,21 +58,16 @@ export const ResumenOperacion: React.FC<{ onSeleccionar: (seleccion: SeleccionPa
   const porcentaje = (resumen.total === 0 ? 0 : (resumen.entregados / resumen.total) * 100).toFixed(1).replace('.', ',');
   const enRutaDe = (tipo: string) => flota.porTipo.find((t) => t.tipo === tipo)?.enRuta ?? 0;
   const diaADia = datos.tipoEscenario === 'DIA_A_DIA';
-  // Instante del reloj en que se generó el reporte; null con el diálogo cerrado.
-  const [generadoEn, setGeneradoEn] = useState<Date | null>(null);
 
   return (
     <div className="flex-1 min-h-0 overflow-y-auto">
       {/* G09: la última planificación estable como reporte de cierre; no detiene la operación. */}
       <div className="px-3 pt-3">
-        <Boton icono={ClipboardList} onClick={() => setGeneradoEn(datos.reloj)} className="w-full">
-          {diaADia ? 'Generar reporte de cierre' : 'Ver la última planificación'}
-        </Boton>
+        <BotonReporteCierre />
         <p className="mt-1 text-caption text-neutral-600">
           Rutas y paradas de la última planificación estable. {diaADia ? 'No detiene la operación.' : 'No detiene la simulación.'}
         </p>
       </div>
-      {generadoEn && <DialogoReporteCierre ejecucionId={datos.ejecucionId} diaADia={diaADia} reloj={generadoEn} onCerrar={() => setGeneradoEn(null)} />}
       <section className="p-3 flex flex-col gap-2">
         <TituloSeccion>Entregas</TituloSeccion>
         <Ficha

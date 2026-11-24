@@ -11,6 +11,7 @@ import {
   formatearHora,
   formatearHoraRelativa,
   formatearMiles,
+  formatearPorcentaje,
   formatearMomento,
   sumarMinutos,
   unirAlternativas,
@@ -77,5 +78,10 @@ describe('formato', () => {
     expect(unirAlternativas(['moto'])).toBe('moto');
     expect(unirAlternativas(['bicicleta', 'moto'])).toBe('bicicleta o moto');
     expect(unirAlternativas(['a', 'b', 'c'], 'y')).toBe('a, b y c');
+  });
+
+  it('formatea un porcentaje de 0 a 100 con coma decimal', () => {
+    expect(formatearPorcentaje(100)).toBe('100,0 %');
+    expect(formatearPorcentaje(94.25)).toBe('94,3 %');
   });
 });

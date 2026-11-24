@@ -1,14 +1,12 @@
 import React from 'react';
 import { ClipboardList, Package, Truck, Warehouse } from 'lucide-react';
 import { ALMACENES, CORTE_INVENTARIO, UNIDADES } from '../../config/dominio';
-import { capitalizar, formatearMiles } from '../../lib/formato';
+import { capitalizar, formatearMiles, formatearPorcentaje } from '../../lib/formato';
 import { cn } from '../../lib/clases';
 import { estadoFlota } from '../../lib/operacion';
 import type { DatosOperacion } from '../../types/operacion';
 import type { NivelHolgura } from '../../types/pedidos';
 import { EncabezadoPagina, Indicador, Tarjeta, TituloGrupo } from '../ui';
-
-const formatoPorcentaje = (valor: number) => `${valor.toFixed(1).replace('.', ',')} %`;
 
 const NOMBRE_NIVEL: Record<NivelHolgura, string> = { ROJO: 'Crítico', AMBAR: 'Ajustado', VERDE: 'Holgado', CERRADO: 'Resuelto' };
 const COLOR_BARRA_NIVEL: Record<NivelHolgura, string> = {
@@ -58,14 +56,14 @@ export const ModuloMetricas: React.FC<{ datos: DatosOperacion }> = ({ datos }) =
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                   <Indicador
                     etiqueta="Entregas en plazo"
-                    valor={formatoPorcentaje(indicadores.porcentajeCumplimiento)}
+                    valor={formatearPorcentaje(indicadores.porcentajeCumplimiento)}
                     detalle={`${resumen.enPlazo} de ${resumen.entregados} entregados`}
                     tono="ok"
                   />
                   <Indicador
                     etiqueta="Unidades en ruta"
                     valor={`${enRuta} / ${flota.length}`}
-                    detalle={formatoPorcentaje(flota.length === 0 ? 0 : (enRuta / flota.length) * 100)}
+                    detalle={formatearPorcentaje(flota.length === 0 ? 0 : (enRuta / flota.length) * 100)}
                     tono="primary"
                   />
                   <Indicador etiqueta="Tiempo promedio de entrega" valor={`${Math.round(indicadores.tiempoPromedioEntregaMinutos)} min`} />
@@ -103,7 +101,7 @@ export const ModuloMetricas: React.FC<{ datos: DatosOperacion }> = ({ datos }) =
                     <td className="py-1.5 font-medium text-neutral-900">{capitalizar(UNIDADES[t.tipo].nombre)}</td>
                     <td className="py-1.5 text-right tabular-nums">{t.enRuta}</td>
                     <td className="py-1.5 text-right tabular-nums">{t.total}</td>
-                    <td className="py-1.5 text-right tabular-nums">{t.cargaABordo === null ? '—' : formatoPorcentaje(t.cargaABordo * 100)}</td>
+                    <td className="py-1.5 text-right tabular-nums">{t.cargaABordo === null ? '—' : formatearPorcentaje(t.cargaABordo * 100)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -141,7 +139,7 @@ export const ModuloMetricas: React.FC<{ datos: DatosOperacion }> = ({ datos }) =
                     key={a.id}
                     etiqueta={ALMACENES.find((x) => x.id === a.id)?.nombreCorto ?? a.id}
                     pct={a.porcentajeStock ?? 0}
-                    detalle={formatoPorcentaje(a.porcentajeStock ?? 0)}
+                    detalle={formatearPorcentaje(a.porcentajeStock ?? 0)}
                     color={COLOR_BARRA_STOCK(a.porcentajeStock ?? 0)}
                   />
                 ))}

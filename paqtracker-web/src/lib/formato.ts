@@ -3,6 +3,9 @@ const dosDigitos = (n: number) => String(n).padStart(2, '0');
 /** 1305 → "1 305" (separador de miles con espacio, como en el diseño). */
 export const formatearMiles = (n: number) => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
 
+/** 94.25 → "94,3 %"; recibe un porcentaje de 0 a 100. */
+export const formatearPorcentaje = (valor: number) => `${valor.toFixed(1).replace('.', ',')} %`;
+
 /** "HH:MM" de una fecha. */
 export const formatearHora = (fecha: Date) => `${dosDigitos(fecha.getHours())}:${dosDigitos(fecha.getMinutes())}`;
 
