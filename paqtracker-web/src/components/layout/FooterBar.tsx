@@ -17,7 +17,7 @@ export interface FooterBarProps {
   estadoAlerta?: string;
 }
 
-const SEGUNDOS_SIN_ACTUALIZAR = 10;
+export const SEGUNDOS_SIN_ACTUALIZAR = 10;
 
 const formatearAntiguedad = (segundos: number) => (segundos < 60 ? `${segundos} s` : `${Math.floor(segundos / 60)} min`);
 
