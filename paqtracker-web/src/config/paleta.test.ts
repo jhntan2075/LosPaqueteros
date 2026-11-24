@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { paleta, paletaOscura, semanticos } from '../../tailwind.config.js'
+import { COLOR_SEMAFORO } from '../lib/semaforo'
+import { COLOR_AVERIA } from '../components/map/iconosVehiculo'
+import { COLOR_BLOQUEO } from '../components/map/simbolos'
 
 const canal = (c: number) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4)
 
@@ -111,6 +114,14 @@ describe('paleta oscura: contraste WCAG', () => {
     ['rótulo del mapa (#DCE1EA) sobre la malla', '#DCE1EA', '#0F1729'],
   ])('gráfico: %s ≥ 3', (_n, fg, bg) => {
     expect(contraste(fg, bg)).toBeGreaterThanOrEqual(3)
+  })
+
+  it('el lienzo del mapa es claro también en el tema oscuro y los símbolos contrastan ≥ 3:1', () => {
+    const lienzo = semanticos.oscuro['lienzo-mapa']
+    expect(lienzo).toBeDefined()
+    ;[...Object.values(COLOR_SEMAFORO), ...Object.values(COLOR_AVERIA), COLOR_BLOQUEO, '#0F172A'].forEach((color) =>
+      expect(contraste(color, lienzo)).toBeGreaterThanOrEqual(3),
+    )
   })
 
   it('cada tono claro tiene su par oscuro (mismas claves)', () => {

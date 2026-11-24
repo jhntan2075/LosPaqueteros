@@ -55,6 +55,7 @@ export const paletaOscura = {
 // Colores por función, para lo que no es un tono de la escala:
 //  fondo          lienzo de la aplicación.
 //  superficie     tarjetas, paneles y diálogos (antes `bg-white`).
+//  lienzo-mapa    fondo del mapa; claro en los dos temas porque los símbolos tienen colores fijos.
 //  inverso        avisos y descripciones emergentes: contrastan con la superficie en los dos temas.
 //  sobre-inverso  texto sobre `inverso`.
 //  sobre-color    texto sobre un relleno de color (botón primario, contador, banda de la corrida).
@@ -64,6 +65,7 @@ export const semanticos = {
   claro: {
     fondo: '#FFFFFF',
     superficie: '#FFFFFF',
+    'lienzo-mapa': '#FFFFFF',
     inverso: '#0D152E',
     'sobre-inverso': '#FFFFFF',
     'sobre-color': '#FFFFFF',
@@ -73,6 +75,7 @@ export const semanticos = {
   oscuro: {
     fondo: '#0B1120',
     superficie: '#111A2C',
+    'lienzo-mapa': '#EEF1F5',
     inverso: '#E8ECF3',
     'sobre-inverso': '#0D152E',
     'sobre-color': '#0B1120',

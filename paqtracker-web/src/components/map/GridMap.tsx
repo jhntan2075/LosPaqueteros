@@ -445,7 +445,7 @@ export const GridMap = forwardRef<GridMapHandle, GridMapProps>(function GridMap(
         setHover(null);
         setCursorEnMapa(false);
       }}
-      className={`relative flex-1 w-full h-full bg-superficie overflow-hidden select-none touch-none outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-600 ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+      className={`relative flex-1 w-full h-full bg-lienzo-mapa overflow-hidden select-none touch-none outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-600 ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
     >
       {/* 1. Barra flotante: búsqueda, riesgo, bloqueos y averías a la izquierda; ocupación global a la
           derecha. En pantallas angostas los indicadores bajan a una segunda fila en lugar de tapar las
