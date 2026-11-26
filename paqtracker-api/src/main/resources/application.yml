@@ -45,7 +45,7 @@ paqtracker:
   datos:
     # Ventas: semilla de la base. Al arrancar se cargan a la tabla pedido los meses que aun no tiene; despues el
     # sistema lee los pedidos de la base. Los archivos subidos (CU-02) van a la base como lote de una corrida.
-    ventas: ${APP_DATOS_VENTAS:datos/ventas.v20260909}
+    ventas: ${APP_DATOS_VENTAS:datos/ventas.v20261126}
     bloqueos: ${APP_DATOS_BLOQUEOS:datos/bloqueos.v20260909}
   ejecucion:
     zona-horaria: ${APP_ZONA_HORARIA:America/Lima}

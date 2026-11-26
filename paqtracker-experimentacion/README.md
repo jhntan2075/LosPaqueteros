@@ -28,9 +28,9 @@ classpath `paqtracker-experimentacion/target/classes;paqtracker-planificador-nuc
 ## Simulación dinámica (GA o IACO adaptado)
 
 ```
-powershell -ExecutionPolicy Bypass -File scripts\ga.ps1 datos\ventas.v20260909 datos\bloqueos.v20260909 7 202601
-powershell -ExecutionPolicy Bypass -File scripts\ga.ps1 datos\ventas.v20260909 datos\bloqueos.v20260909 01-01-2026 28-02-2026
-powershell -ExecutionPolicy Bypass -File scripts\ga.ps1 datos\ventas.v20260909 datos\bloqueos.v20260909 7 202601 --algoritmo iaco
+powershell -ExecutionPolicy Bypass -File scripts\ga.ps1 datos\ventas.v20261126 datos\bloqueos.v20260909 7 202601
+powershell -ExecutionPolicy Bypass -File scripts\ga.ps1 datos\ventas.v20261126 datos\bloqueos.v20260909 01-01-2026 28-02-2026
+powershell -ExecutionPolicy Bypass -File scripts\ga.ps1 datos\ventas.v20261126 datos\bloqueos.v20260909 7 202601 --algoritmo iaco
 ```
 
 Argumentos: `ventas bloqueos dias [mes]` o `ventas bloqueos dd-MM-yyyy dd-MM-yyyy`,
