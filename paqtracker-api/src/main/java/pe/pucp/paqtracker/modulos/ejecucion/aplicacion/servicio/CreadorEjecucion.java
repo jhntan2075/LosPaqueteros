@@ -57,6 +57,21 @@ public class CreadorEjecucion {
                                 LocalDate fechaInicio, LocalTime horaInicio, int dias, double factorAceleracion,
                                 DatosEscenario datos,
                                 ComposicionFlota flota) {
+        return crear(id, nombre, tipo, algoritmo, fechaInicio, horaInicio, dias, factorAceleracion, datos, flota, null);
+    }
+
+    /**
+     * Igual que el alta comun, pero sin horizonte fijo si se da de donde salen los tramos siguientes: la
+     * ejecucion carga un tramo de {@code dias} dias cada vez que se acerca a su fin.
+     *
+     * @param tramos de donde salen los tramos siguientes; null para un horizonte fijo
+     * @return motor registrado y preparado, en estado CONFIGURADA
+     * @see #crear(String, String, TipoEscenario, AlgoritmoPlanificacion, LocalDate, LocalTime, int, double,
+     *      DatosEscenario, ComposicionFlota)
+     */
+    public MotorEjecucion crear(String id, String nombre, TipoEscenario tipo, AlgoritmoPlanificacion algoritmo,
+                                LocalDate fechaInicio, LocalTime horaInicio, int dias, double factorAceleracion,
+                                DatosEscenario datos, ComposicionFlota flota, FuenteTramos tramos) {
         validarFlota(flota);
         if (tipo != TipoEscenario.DIA_A_DIA && registro.contarSimulacionesActivas() >= parametros.maxSimultaneas()) {
             throw new OperacionNoPermitidaException("Ya hay " + parametros.maxSimultaneas()
@@ -65,7 +80,7 @@ public class CreadorEjecucion {
         ConfiguracionMotor configuracion = new ConfiguracionMotor(id, nombre, tipo, algoritmo, fechaInicio, horaInicio, dias,
                 factorAceleracion, parametros.scSegundos(), parametros.saMinutos(), parametros.maxPasosPorTick(),
                 relojPared.instant(), flota);
-        MotorEjecucion motor = fabrica.crear(configuracion, datos, tipo == TipoEscenario.COLAPSO_LOGISTICO);
+        MotorEjecucion motor = fabrica.crear(configuracion, datos, tipo == TipoEscenario.COLAPSO_LOGISTICO, tramos);
         motor.preparar();
         registro.agregar(motor);
         return motor;

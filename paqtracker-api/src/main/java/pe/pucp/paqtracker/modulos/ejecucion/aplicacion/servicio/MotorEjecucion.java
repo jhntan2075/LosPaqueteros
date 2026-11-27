@@ -77,9 +77,15 @@ public final class MotorEjecucion {
     /** Cada cuanto tiempo real se guarda el resultado parcial, para no perderlo si la API se cae. */
     private static final Duration INTERVALO_GUARDADO = Duration.ofMinutes(1);
 
+    /** Antes de que el reloj llegue a menos de un dia del horizonte se carga el tramo siguiente, si lo hay. */
+    private static final int MARGEN_AMPLIACION_MINUTOS = 1440;
+
     private final ConfiguracionMotor configuracion;
     private final LineaTiempo lineaTiempo;
-    private final int horizonte;
+    /** Minuto en que termina la ejecucion; crece si un ampliador carga mas datos. */
+    private int horizonte;
+    /** Carga el tramo siguiente en la simulacion hasta el colapso; null si el horizonte es fijo o ya no hay datos. */
+    private AmpliadorHorizonte ampliador;
     private final SimulacionEnCurso simulacion;
     private final SeguimientoPedidos seguimiento;
     private final RelojEjecucion reloj;
@@ -131,6 +137,16 @@ public final class MotorEjecucion {
         this.minutoInicial = minutoInicial;
         this.siguientePaso = minutoInicial;
         this.codigosFlota = CodigosFlota.de(simulacion.getFlota());
+    }
+
+    /**
+     * Le quita el horizonte fijo a la ejecucion: cerca de su fin, el ampliador carga el tramo siguiente de
+     * datos, y la ejecucion termina solo al colapsar o cuando ya no hay mas datos. Se llama antes de iniciar.
+     *
+     * @param ampliador carga de los tramos siguientes
+     */
+    public void fijarAmpliador(AmpliadorHorizonte ampliador) {
+        this.ampliador = ampliador;
     }
 
     /**
@@ -438,6 +454,7 @@ public final class MotorEjecucion {
         if (estado != EstadoEjecucion.EN_CURSO) {
             return;
         }
+        ampliarSiHaceFalta();
         double minuto = minutoVisible();
         aplicarEventosAgendados(minuto);
         int pasos = 0;
@@ -445,6 +462,9 @@ public final class MotorEjecucion {
             ejecutarPaso(siguientePaso);
             siguientePaso += configuracion.saMinutos();
             pasos++;
+            if (ampliarSiHaceFalta()) {
+                minuto = minutoVisible();
+            }
         }
         if (simulacion.estaDetenida()) {
             terminar(EstadoEjecucion.COLAPSADA);
@@ -456,6 +476,31 @@ public final class MotorEjecucion {
             difundirEstado();
             guardarSiCorresponde();
         }
+    }
+
+    /**
+     * Si la ejecucion no tiene horizonte fijo y el reloj se acerca a su fin, carga el tramo siguiente de datos.
+     * Cuando ya no quedan datos, la ejecucion vuelve a tener horizonte fijo y termina al llegar a el.
+     *
+     * @return verdadero si el horizonte crecio
+     */
+    private boolean ampliarSiHaceFalta() {
+        boolean amplio = false;
+        while (ampliador != null && siguientePaso + MARGEN_AMPLIACION_MINUTOS > horizonte) {
+            Optional<AmpliadorHorizonte.Ampliacion> ampliacion = ampliador.ampliar(horizonte);
+            if (ampliacion.isEmpty() || ampliacion.get().horizonte() <= horizonte) {
+                LOGGER.info("Ejecucion {}: no hay mas datos despues de {}; termina ahi si no colapsa antes",
+                        configuracion.id(), lineaTiempo.formatear(horizonte));
+                ampliador = null;
+                break;
+            }
+            ampliacion.get().pedidos().forEach(seguimiento::registrar);
+            horizonte = ampliacion.get().horizonte();
+            amplio = true;
+            LOGGER.info("Ejecucion {}: {} pedidos mas, ahora hasta {}", configuracion.id(),
+                    ampliacion.get().pedidos().size(), lineaTiempo.formatear(horizonte));
+        }
+        return amplio;
     }
 
     /**

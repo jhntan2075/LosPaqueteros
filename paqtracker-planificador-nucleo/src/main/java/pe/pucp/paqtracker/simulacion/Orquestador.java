@@ -103,6 +103,30 @@ public final class Orquestador {
         this.mantenimientos = Map.copyOf(porUnidad);
     }
 
+    /**
+     * Suma ventanas de mantenimiento a las ya programadas, por ejemplo las del siguiente tramo de una
+     * simulacion sin horizonte fijo.
+     *
+     * @param programados ventanas nuevas
+     * @throws IllegalArgumentException si alguna ventana es de una unidad que no existe
+     */
+    void agregarMantenimientos(List<MantenimientoProgramado> programados) {
+        if (programados.isEmpty()) {
+            return;
+        }
+        List<MantenimientoProgramado> todos = new ArrayList<>();
+        mantenimientos.values().forEach(todos::addAll);
+        todos.addAll(programados);
+        fijarMantenimientos(todos);
+    }
+
+    /**
+     * @param nuevos bloqueos programados que se suman a los de la malla
+     */
+    void agregarBloqueos(List<Bloqueo> nuevos) {
+        malla.agregarBloqueos(nuevos);
+    }
+
     private boolean enMantenimiento(Vehiculo vehiculo, int instante) {
         List<MantenimientoProgramado> ventanas = mantenimientos.get(vehiculo.getId());
         return ventanas != null && ventanas.stream().anyMatch(ventana -> ventana.vigenteEn(instante));

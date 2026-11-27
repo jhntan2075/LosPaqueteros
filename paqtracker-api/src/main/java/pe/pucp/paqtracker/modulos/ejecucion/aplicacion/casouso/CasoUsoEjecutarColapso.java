@@ -15,7 +15,9 @@ import java.util.UUID;
 
 /**
  * Implementa CU-17 Ejecutar la simulacion hasta el colapso: crea la ejecucion con reloj acelerado que
- * se detiene en el primer pedido que no se puede entregar a tiempo. Queda CONFIGURADA.
+ * se detiene en el primer pedido que no se puede entregar a tiempo. No tiene horizonte fijo: arranca con los
+ * dias configurados de datos y, al acercarse a su fin, carga otro tramo igual, hasta colapsar o hasta que se
+ * acaben los pedidos. Queda CONFIGURADA.
  */
 @Service
 public class CasoUsoEjecutarColapso {
@@ -59,7 +61,9 @@ public class CasoUsoEjecutarColapso {
                 solicitud.horaInicioOMedianoche(), dias,
                 propiedades.ejecucion().factorColapso(), cargadorDatos.cargarRango(solicitud.fechaInicio(),
                         solicitud.horaInicioOMedianoche(), dias, solicitud.lotePedidos()),
-                solicitud.flotaOPorDefecto());
+                solicitud.flotaOPorDefecto(),
+                (lineaTiempo, desde, hasta, primerDia, ultimoDia) -> cargadorDatos.cargarTramo(lineaTiempo, desde,
+                        hasta, primerDia, ultimoDia, solicitud.lotePedidos()));
         if (solicitud.lotePedidos() != null) {
             pedidos.vincularLote(solicitud.lotePedidos(), id);
         }

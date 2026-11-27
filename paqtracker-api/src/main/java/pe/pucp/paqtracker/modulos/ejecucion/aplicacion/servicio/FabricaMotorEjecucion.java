@@ -28,6 +28,7 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 
@@ -39,6 +40,7 @@ import java.util.concurrent.ScheduledExecutorService;
 public class FabricaMotorEjecucion {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(FabricaMotorEjecucion.class);
+    private static final int MINUTOS_DIA = 1440;
 
     private final ServicioPlanificacion servicioPlanificacion;
     private final ServicioDifusion servicioDifusion;
@@ -87,10 +89,25 @@ public class FabricaMotorEjecucion {
      * @return motor configurado, aun sin preparar ni iniciar
      */
     public MotorEjecucion crear(ConfiguracionMotor configuracion, DatosEscenario datos, boolean detenerEnColapso) {
+        return crear(configuracion, datos, detenerEnColapso, null);
+    }
+
+    /**
+     * @param configuracion    parametros fijos de la ejecucion
+     * @param datos            pedidos, bloqueos y linea de tiempo del primer tramo
+     * @param detenerEnColapso verdadero para la simulacion hasta el colapso
+     * @param tramos           de donde salen los tramos siguientes, en tramos del largo del primero; null para
+     *                         un horizonte fijo
+     * @return motor configurado, aun sin preparar ni iniciar
+     */
+    public MotorEjecucion crear(ConfiguracionMotor configuracion, DatosEscenario datos, boolean detenerEnColapso,
+                                FuenteTramos tramos) {
+        LineaTiempo lineaTiempo = datos.lineaTiempo();
         SimulacionEnCurso simulacion = servicioPlanificacion.prepararSimulacion(new SolicitudPreparacionSimulacion(
                 datos.pedidos(), datos.bloqueos(), configuracion.algoritmo(), propiedades.planificador().semilla(),
                 configuracion.saMinutos(), detenerEnColapso, configuracion.flota(), parametros.vigentes(),
-                mantenimientosDelHorizonte(datos)));
+                mantenimientosEntre(lineaTiempo, lineaTiempo.aFecha(0).toLocalDate(),
+                        lineaTiempo.aFecha(datos.horizonte()).toLocalDate())));
         int primerIdLibre = datos.pedidos().stream().mapToInt(Pedido::getId).max().orElse(-1) + 1;
         SeguimientoPedidos seguimiento = new SeguimientoPedidos(datos.lineaTiempo(), semaforo,
                 CodigosFlota.de(simulacion.getFlota()), primerIdLibre, datos.entregadasPrevias());
@@ -100,20 +117,46 @@ public class FabricaMotorEjecucion {
                 propiedades.planificador().semilla(), parametrosVigentes(), datos.resultadoPrevio());
         RelojEjecucion reloj = new RelojEjecucion(relojPared, datos.minutoInicial(),
                 configuracion.factorAceleracion());
-        return new MotorEjecucion(configuracion, datos.lineaTiempo(), datos.minutoInicial(), datos.horizonte(),
-                simulacion, seguimiento, reloj, relojPared, servicioDifusion, persistencia,
+        MotorEjecucion motor = new MotorEjecucion(configuracion, lineaTiempo, datos.minutoInicial(),
+                datos.horizonte(), simulacion, seguimiento, reloj, relojPared, servicioDifusion, persistencia,
                 crearEjecutor(configuracion.id()));
+        if (tramos != null) {
+            motor.fijarAmpliador(ampliadorPorTramos(simulacion, lineaTiempo, datos.horizonte(),
+                    configuracion.dias(), tramos));
+        }
+        return motor;
     }
 
     /**
-     * Mantenimientos preventivos guardados de los dias que toca la ejecucion, en su linea de tiempo: cada
-     * unidad pasa en el taller su dia completo, de una medianoche a la siguiente.
+     * Ampliador que carga tramos de {@code diasPorTramo} dias: pedidos y bloqueos de la fuente, mantenimientos
+     * del plan guardado. Se detiene en el primer tramo sin pedidos, que marca el fin de los datos.
      */
-    private List<VentanaMantenimiento> mantenimientosDelHorizonte(DatosEscenario datos) {
-        LineaTiempo lineaTiempo = datos.lineaTiempo();
+    private AmpliadorHorizonte ampliadorPorTramos(SimulacionEnCurso simulacion, LineaTiempo lineaTiempo,
+                                                  int horizonteInicial, int diasPorTramo, FuenteTramos tramos) {
+        LocalDate[] ultimoCubierto = {lineaTiempo.aFecha(horizonteInicial - 1).toLocalDate()};
+        return horizonteActual -> {
+            int nuevoHorizonte = horizonteActual + Math.max(1, diasPorTramo) * MINUTOS_DIA;
+            LocalDate primerDia = ultimoCubierto[0].plusDays(1);
+            LocalDate ultimoDia = lineaTiempo.aFecha(nuevoHorizonte - 1).toLocalDate();
+            CargadorDatosEscenario.TramoDatos tramo = tramos.cargar(lineaTiempo, horizonteActual, nuevoHorizonte,
+                    primerDia, ultimoDia);
+            if (tramo.pedidos().isEmpty()) {
+                return Optional.empty();
+            }
+            servicioPlanificacion.ampliarSimulacion(simulacion, tramo.pedidos(), tramo.bloqueos(),
+                    mantenimientosEntre(lineaTiempo, primerDia, ultimoDia));
+            ultimoCubierto[0] = ultimoDia;
+            return Optional.of(new AmpliadorHorizonte.Ampliacion(nuevoHorizonte, tramo.pedidos()));
+        };
+    }
+
+    /**
+     * Mantenimientos preventivos guardados entre dos dias, en la linea de tiempo de la ejecucion: cada unidad
+     * pasa en el taller su dia completo, de una medianoche a la siguiente.
+     */
+    private List<VentanaMantenimiento> mantenimientosEntre(LineaTiempo lineaTiempo, LocalDate desde,
+                                                           LocalDate hasta) {
         ZoneId zona = lineaTiempo.getMinutoCero().getZone();
-        LocalDate desde = lineaTiempo.aFecha(0).toLocalDate();
-        LocalDate hasta = lineaTiempo.aFecha(datos.horizonte()).toLocalDate();
         return mantenimiento.entre(desde, hasta).stream().map(m -> new VentanaMantenimiento(m.tipo(),
                 m.correlativo(), (int) Math.floor(lineaTiempo.aMinuto(m.fecha().atStartOfDay(zona))),
                 (int) Math.floor(lineaTiempo.aMinuto(m.fecha().plusDays(1).atStartOfDay(zona))))).toList();

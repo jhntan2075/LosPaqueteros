@@ -3,6 +3,7 @@ package pe.pucp.paqtracker.simulacion;
 import pe.pucp.paqtracker.modelo.Almacen;
 import pe.pucp.paqtracker.modelo.Averia;
 import pe.pucp.paqtracker.modelo.Bloqueo;
+import pe.pucp.paqtracker.modelo.MantenimientoProgramado;
 import pe.pucp.paqtracker.modelo.Pedido;
 import pe.pucp.paqtracker.modelo.SolucionRuteo;
 import pe.pucp.paqtracker.modelo.Tramo;
@@ -184,6 +185,29 @@ public final class SimulacionEnCurso {
             }
         }
         iterador.add(pedido);
+    }
+
+    /**
+     * Amplia el horizonte de datos de la simulacion con el tramo siguiente: sus pedidos, bloqueos y
+     * mantenimientos. Lo usa la simulacion hasta el colapso, que no tiene horizonte fijo y carga los datos
+     * por tramos para no tenerlos todos en memoria desde el inicio.
+     *
+     * @param pedidos         pedidos del tramo
+     * @param bloqueos        bloqueos del tramo que la simulacion aun no tiene
+     * @param mantenimientos  ventanas de mantenimiento del tramo
+     * @throws IllegalArgumentException si un mantenimiento es de una unidad que no existe
+     */
+    public void ampliar(List<Pedido> pedidos, List<Bloqueo> bloqueos, List<MantenimientoProgramado> mantenimientos) {
+        List<Pedido> ordenados = new ArrayList<>(pedidos);
+        ordenados.sort(Comparator.comparingInt(Pedido::getInstanteRegistro));
+        if (porLlegar.isEmpty() || ordenados.isEmpty()
+                || porLlegar.getLast().getInstanteRegistro() <= ordenados.get(0).getInstanteRegistro()) {
+            porLlegar.addAll(ordenados);
+        } else {
+            ordenados.forEach(this::agregarPedido);
+        }
+        orquestador.agregarBloqueos(bloqueos);
+        orquestador.agregarMantenimientos(mantenimientos);
     }
 
     /**

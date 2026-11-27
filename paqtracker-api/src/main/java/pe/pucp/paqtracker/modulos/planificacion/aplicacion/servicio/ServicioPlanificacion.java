@@ -2,8 +2,10 @@ package pe.pucp.paqtracker.modulos.planificacion.aplicacion.servicio;
 
 import org.springframework.stereotype.Service;
 import pe.pucp.paqtracker.modelo.Almacen;
+import pe.pucp.paqtracker.modelo.Bloqueo;
 import pe.pucp.paqtracker.modelo.ConfiguracionDominio;
 import pe.pucp.paqtracker.modelo.MantenimientoProgramado;
+import pe.pucp.paqtracker.modelo.Pedido;
 import pe.pucp.paqtracker.modelo.TipoVehiculo;
 import pe.pucp.paqtracker.modelo.Vehiculo;
 import pe.pucp.paqtracker.modulos.planificacion.aplicacion.dto.SolicitudPreparacionSimulacion;
@@ -54,6 +56,19 @@ public class ServicioPlanificacion {
                 solicitud.parametros().averias());
         orquestador.fijarMantenimientos(enLaFlota(solicitud.mantenimientos(), flota));
         return orquestador.iniciar(solicitud.detenerEnColapso());
+    }
+
+    /**
+     * Suma a una simulacion en curso el tramo siguiente de datos (simulacion hasta el colapso).
+     *
+     * @param simulacion     simulacion preparada con {@link #prepararSimulacion}
+     * @param pedidos        pedidos del tramo
+     * @param bloqueos       bloqueos del tramo que la simulacion aun no tiene
+     * @param mantenimientos mantenimientos del tramo, por tipo y numero de unidad
+     */
+    public void ampliarSimulacion(SimulacionEnCurso simulacion, List<Pedido> pedidos, List<Bloqueo> bloqueos,
+                                  List<VentanaMantenimiento> mantenimientos) {
+        simulacion.ampliar(pedidos, bloqueos, enLaFlota(mantenimientos, simulacion.getFlota()));
     }
 
     /**
