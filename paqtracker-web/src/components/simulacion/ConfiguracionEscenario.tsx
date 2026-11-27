@@ -15,7 +15,6 @@ import type { ArchivoCargado, EscenarioSimulacion, TipoArchivo } from '../../typ
 // simulación en paqtracker-api o abre una existente: cualquier dispositivo puede ver cualquier corrida.
 
 const DIAS_PERIODO = 5;
-const MAXIMO_POR_TIPO = 50;
 
 const ESCENARIOS: { valor: EscenarioSimulacion; titulo: string; descripcion: string }[] = [
   { valor: 'SIMULACION_PERIODO', titulo: 'Simulación 5 días', descripcion: 'Comprime 5 días de operación en 30–60 min de ejecución.' },
@@ -198,20 +197,31 @@ export const ConfiguracionEscenario: React.FC<ConfiguracionEscenarioProps> = ({ 
   const [hora, setHora] = useState('00:00');
   const [archivos, setArchivos] = useState<Partial<Record<TipoArchivo, ArchivoCargado>>>({});
   const [subiendo, setSubiendo] = useState<TipoArchivo | null>(null);
-  const [flota, setFlota] = useState<ComposicionFlotaApi>({ autos: UNIDADES.AUTO.cantidad, motos: UNIDADES.MOTO.cantidad, bicicletas: UNIDADES.BICICLETA.cantidad });
+  // Texto de cada entrada tal como se escribe (sin ceros a la izquierda): un input numérico controlado
+  // con valor 0 mostraba "01" al teclear 1, porque el número no cambiaba de 1 a 1 y React no lo reescribía.
+  const [textoFlota, setTextoFlota] = useState<Record<keyof ComposicionFlotaApi, string>>({
+    autos: String(UNIDADES.AUTO.cantidad),
+    motos: String(UNIDADES.MOTO.cantidad),
+    bicicletas: String(UNIDADES.BICICLETA.cantidad),
+  });
+  const flota: ComposicionFlotaApi = {
+    autos: Number(textoFlota.autos) || 0,
+    motos: Number(textoFlota.motos) || 0,
+    bicicletas: Number(textoFlota.bicicletas) || 0,
+  };
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const inicio = fecha && hora ? new Date(`${fecha}T${hora}`) : null;
   const inicioValido = inicio !== null && !Number.isNaN(inicio.getTime());
   const totalFlota = flota.autos + flota.motos + flota.bicicletas;
-  const flotaValida = totalFlota > 0 && [flota.autos, flota.motos, flota.bicicletas].every((n) => n >= 0 && n <= MAXIMO_POR_TIPO);
+  const flotaValida = totalFlota > 0;
   const archivosValidos = Object.values(archivos).every((a) => a.guardado);
   const listo = inicioValido && flotaValida && archivosValidos && subiendo === null && !enviando;
 
   const faltantes = [
     !inicioValido && 'la fecha de inicio',
-    !flotaValida && `una flota de 1 a ${MAXIMO_POR_TIPO} unidades por tipo`,
+    !flotaValida && 'una flota de al menos 1 unidad',
     !archivosValidos && 'archivos sin errores',
   ].filter(Boolean) as string[];
 
@@ -254,7 +264,7 @@ export const ConfiguracionEscenario: React.FC<ConfiguracionEscenarioProps> = ({ 
   };
 
   const cambiarFlota = (clave: keyof ComposicionFlotaApi, valor: string) =>
-    setFlota((previa) => ({ ...previa, [clave]: Math.max(0, Math.round(Number(valor)) || 0) }));
+    setTextoFlota((previa) => ({ ...previa, [clave]: valor.replace(/\D/g, '').replace(/^0+(?=\d)/, '') }));
 
   const resumenArchivo = (tipo: TipoArchivo) => {
     const a = archivos[tipo];
@@ -360,10 +370,8 @@ export const ConfiguracionEscenario: React.FC<ConfiguracionEscenarioProps> = ({ 
                       <Campo key={clave} htmlFor={`flota-${clave}`} etiqueta={etiqueta}>
                         <Entrada
                           id={`flota-${clave}`}
-                          type="number"
-                          min={0}
-                          max={MAXIMO_POR_TIPO}
-                          value={flota[clave]}
+                          inputMode="numeric"
+                          value={textoFlota[clave]}
                           onChange={(e) => cambiarFlota(clave, e.target.value)}
                           className="w-24 tabular-nums"
                         />

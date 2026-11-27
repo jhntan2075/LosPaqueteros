@@ -51,7 +51,7 @@ public class CreadorEjecucion {
      * @param flota             composicion de la flota
      * @return motor registrado y preparado, en estado CONFIGURADA
      * @throws OperacionNoPermitidaException si ya se alcanzo el maximo de simulaciones simultaneas
-     * @throws SolicitudInvalidaException    si la flota esta vacia o excede el tope por tipo
+     * @throws SolicitudInvalidaException    si la flota esta vacia
      */
     public MotorEjecucion crear(String id, String nombre, TipoEscenario tipo, AlgoritmoPlanificacion algoritmo,
                                 LocalDate fechaInicio, LocalTime horaInicio, int dias, double factorAceleracion,
@@ -72,11 +72,9 @@ public class CreadorEjecucion {
     }
 
     private void validarFlota(ComposicionFlota flota) {
-        int tope = parametros.maxUnidadesPorTipo();
-        if (flota.total() == 0 || flota.autos() > tope || flota.motos() > tope || flota.bicicletas() > tope) {
-            throw new SolicitudInvalidaException("La flota debe tener al menos una unidad y hasta " + tope
-                    + " por tipo: autos=" + flota.autos() + ", motos=" + flota.motos()
-                    + ", bicicletas=" + flota.bicicletas());
+        if (flota.total() == 0) {
+            throw new SolicitudInvalidaException("La flota debe tener al menos una unidad: autos=" + flota.autos()
+                    + ", motos=" + flota.motos() + ", bicicletas=" + flota.bicicletas());
         }
     }
 }

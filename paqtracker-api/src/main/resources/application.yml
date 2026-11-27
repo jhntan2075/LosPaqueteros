@@ -60,7 +60,6 @@ paqtracker:
     dias-colapso: ${APP_DIAS_COLAPSO:30}
     max-pasos-por-tick: ${APP_MAX_PASOS_POR_TICK:4}
     max-simultaneas: ${APP_MAX_SIMULACIONES:3}
-    max-unidades-por-tipo: ${APP_MAX_UNIDADES_POR_TIPO:50}
     dia-a-dia-activo: ${APP_DIA_A_DIA_ACTIVO:true}
   planificador:
     algoritmo: ${PLANIFICADOR_ALGORITMO:GA}

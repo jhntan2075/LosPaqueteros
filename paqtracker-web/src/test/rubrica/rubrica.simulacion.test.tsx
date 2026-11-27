@@ -131,12 +131,30 @@ describe('Rúbrica · carga de datos por GUI', () => {
     );
   });
 
-  it('G13 · una flota fuera de rango (más de 50 por tipo) no se acepta', () => {
+  it('G13 · la flota no tiene tope por tipo y se envía tal cual', async () => {
     render(<ConfiguracionEscenario onAbrir={() => {}} />);
     fireEvent.change(screen.getByLabelText(/Fecha de inicio/), { target: { value: '2026-03-03' } });
-    fireEvent.change(screen.getByLabelText('Autos'), { target: { value: '51' } });
+    fireEvent.change(screen.getByLabelText('Autos'), { target: { value: '120' } });
+    fireEvent.click(botonEjecutar());
+    await waitFor(() => expect(clienteApi.crearEjecucion).toHaveBeenCalledWith(expect.objectContaining({ flota: expect.objectContaining({ autos: 120 }) })));
+  });
+
+  it('G13 · la cantidad no se muestra con ceros a la izquierda (0 → 1 se ve "1", no "01")', () => {
+    render(<ConfiguracionEscenario onAbrir={() => {}} />);
+    const autos = screen.getByLabelText('Autos') as HTMLInputElement;
+    fireEvent.change(autos, { target: { value: '0' } });
+    fireEvent.change(autos, { target: { value: '01' } });
+    expect(autos.value).toBe('1');
+    fireEvent.change(autos, { target: { value: '025' } });
+    expect(autos.value).toBe('25');
+  });
+
+  it('G13 · una flota sin unidades no se acepta', () => {
+    render(<ConfiguracionEscenario onAbrir={() => {}} />);
+    fireEvent.change(screen.getByLabelText(/Fecha de inicio/), { target: { value: '2026-03-03' } });
+    for (const tipo of ['Autos', 'Motos', 'Bicicletas']) fireEvent.change(screen.getByLabelText(tipo), { target: { value: '0' } });
     expect(botonEjecutar().disabled).toBe(true);
-    expect(screen.getByText(/una flota de 1 a 50 unidades por tipo/)).toBeTruthy();
+    expect(screen.getByText(/una flota de al menos 1 unidad/)).toBeTruthy();
   });
 });
 
