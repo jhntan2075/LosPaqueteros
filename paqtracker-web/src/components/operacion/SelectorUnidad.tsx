@@ -109,6 +109,7 @@ export const SelectorUnidad = forwardRef<HTMLInputElement, SelectorUnidadProps>(
   const nombre = (u: UnidadOperacion) => `${u.codigo} · ${capitalizar(UNIDADES[u.tipo].nombre)}`;
   const detalle = (u: UnidadOperacion) => {
     if (u.estado === 'AVERIADA') return u.averia ? `Averiada · vuelve ${formatearMomento(u.averia.vuelve, reloj)}` : 'Averiada';
+    if (u.estado === 'EN_MANTENIMIENTO') return 'En mantenimiento preventivo · vuelve mañana';
     if (esBloqueada(u)) return 'Avería registrada, por aplicarse';
     if (u.estado === 'DISPONIBLE' || u.estado === 'FUERA_DE_TURNO') return ESTADO_UNIDAD[u.estado];
     const pedidos = u.paradas.length;

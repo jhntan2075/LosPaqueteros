@@ -26,9 +26,9 @@ export interface ParametrosUnidad {
 
 /** Capacidad (LE-020), velocidad (LE-021), costo por km (LE-022) y unidades en la flota de cada tipo. */
 export const UNIDADES: Record<TipoUnidad, ParametrosUnidad> = {
-  AUTO: { nombre: 'auto', prefijoCodigo: 'A', capacidad: 24, velocidadKmH: 40, costoKm: 1.2, cantidad: 10 },
-  MOTO: { nombre: 'moto', prefijoCodigo: 'M', capacidad: 8, velocidadKmH: 25, costoKm: 0.6, cantidad: 15 },
-  BICICLETA: { nombre: 'bicicleta', prefijoCodigo: 'B', capacidad: 4, velocidadKmH: 12, costoKm: 0.15, cantidad: 12 },
+  AUTO: { nombre: 'auto', prefijoCodigo: 'A', capacidad: 24, velocidadKmH: 40, costoKm: 1.2, cantidad: 28 },
+  MOTO: { nombre: 'moto', prefijoCodigo: 'M', capacidad: 8, velocidadKmH: 25, costoKm: 0.6, cantidad: 52 },
+  BICICLETA: { nombre: 'bicicleta', prefijoCodigo: 'B', capacidad: 4, velocidadKmH: 12, costoKm: 0.15, cantidad: 64 },
 };
 
 /** Turnos de 8 h (LE-023), en minutos del día. */

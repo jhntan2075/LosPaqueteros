@@ -3,13 +3,19 @@ package pe.pucp.paqtracker.modulos.planificacion.aplicacion.servicio;
 import org.springframework.stereotype.Service;
 import pe.pucp.paqtracker.modelo.Almacen;
 import pe.pucp.paqtracker.modelo.ConfiguracionDominio;
+import pe.pucp.paqtracker.modelo.MantenimientoProgramado;
+import pe.pucp.paqtracker.modelo.TipoVehiculo;
 import pe.pucp.paqtracker.modelo.Vehiculo;
 import pe.pucp.paqtracker.modulos.planificacion.aplicacion.dto.SolicitudPreparacionSimulacion;
+import pe.pucp.paqtracker.modulos.planificacion.aplicacion.dto.VentanaMantenimiento;
 import pe.pucp.paqtracker.planificador.comun.ContadorEvaluaciones;
 import pe.pucp.paqtracker.simulacion.Orquestador;
 import pe.pucp.paqtracker.simulacion.SimulacionEnCurso;
 import pe.pucp.paqtracker.util.Malla;
+import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Fachada del modulo de planificacion (CU-06, CU-07, CU-12). Arma la simulacion de una ejecucion con
@@ -30,7 +36,7 @@ public class ServicioPlanificacion {
 
     /**
      * Prepara una simulacion lista para su primer paso, con los parametros del dominio que la ejecucion
-     * copio al crearse. Cada llamada crea almacenes, flota y malla
+     * copio al crearse y su plan de mantenimiento preventivo. Cada llamada crea almacenes, flota y malla
      * nuevos: las ejecuciones corren en hilos distintos y no deben compartir estado mutable.
      *
      * @param solicitud datos de la simulacion
@@ -46,6 +52,28 @@ public class ServicioPlanificacion {
                 ConfiguracionDominio.PLAZO_DESPACHO_DIRECTO_MINUTOS, solicitud.semilla(),
                 fabricaAlgoritmo.crear(solicitud.algoritmo(), new ContadorEvaluaciones()),
                 solicitud.parametros().averias());
+        orquestador.fijarMantenimientos(enLaFlota(solicitud.mantenimientos(), flota));
         return orquestador.iniciar(solicitud.detenerEnColapso());
+    }
+
+    /**
+     * Ubica cada mantenimiento en su unidad: la numero n de un tipo es la n-esima de ese tipo en el orden de
+     * creacion de la flota, el mismo orden que da sus codigos visibles (A-01, M-03, B-12). Los de unidades
+     * que la flota elegida no tiene se descartan.
+     */
+    static List<MantenimientoProgramado> enLaFlota(List<VentanaMantenimiento> ventanas, List<Vehiculo> flota) {
+        Map<TipoVehiculo, List<Vehiculo>> porTipo = new EnumMap<>(TipoVehiculo.class);
+        for (Vehiculo vehiculo : flota) {
+            porTipo.computeIfAbsent(vehiculo.getTipo(), tipo -> new ArrayList<>()).add(vehiculo);
+        }
+        List<MantenimientoProgramado> programados = new ArrayList<>();
+        for (VentanaMantenimiento ventana : ventanas) {
+            List<Vehiculo> delTipo = porTipo.getOrDefault(ventana.tipo(), List.of());
+            if (ventana.correlativo() >= 1 && ventana.correlativo() <= delTipo.size()) {
+                programados.add(new MantenimientoProgramado(delTipo.get(ventana.correlativo() - 1).getId(),
+                        ventana.inicio(), ventana.fin()));
+            }
+        }
+        return programados;
     }
 }

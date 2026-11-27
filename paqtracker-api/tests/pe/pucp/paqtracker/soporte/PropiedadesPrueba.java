@@ -15,7 +15,8 @@ public final class PropiedadesPrueba {
      */
     public static PropiedadesDominio crear() {
         return new PropiedadesDominio(
-                new PropiedadesDominio.Datos("tests-resources/datos/ventas", "tests-resources/datos/bloqueos"),
+                new PropiedadesDominio.Datos("tests-resources/datos/ventas", "tests-resources/datos/bloqueos",
+                        "tests-resources/datos/mant.preventivo.test.txt"),
                 new PropiedadesDominio.Ejecucion("America/Lima", 1, 30, 180, 180, 7, 30, 4, 3, false),
                 new PropiedadesDominio.Planificador("GA", 1L),
                 new PropiedadesDominio.Semaforo(0.15, 0.40, 0.20, 0.50));

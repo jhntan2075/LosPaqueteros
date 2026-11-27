@@ -47,6 +47,9 @@ paqtracker:
     # sistema lee los pedidos de la base. Los archivos subidos (CU-02) van a la base como lote de una corrida.
     ventas: ${APP_DATOS_VENTAS:datos/ventas.v20261126}
     bloqueos: ${APP_DATOS_BLOQUEOS:datos/bloqueos.v20260909}
+    # Mantenimiento preventivo (aaaammdd:TA01): semilla de la tabla mantenimiento. Al arrancar la tabla se
+    # iguala al archivo (o a los mant.preventivo*.txt de la carpeta); las ejecuciones lo leen de la base.
+    mantenimiento: ${APP_DATOS_MANTENIMIENTO:datos/mant.preventivo.09.10.txt}
   ejecucion:
     zona-horaria: ${APP_ZONA_HORARIA:America/Lima}
     # Sc: segundos reales entre dos difusiones del estado

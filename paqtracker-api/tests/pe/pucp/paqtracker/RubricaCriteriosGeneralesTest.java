@@ -1,5 +1,6 @@
 package pe.pucp.paqtracker;
 
+import pe.pucp.paqtracker.modulos.planificacion.aplicacion.dto.ComposicionFlota;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
@@ -67,7 +68,8 @@ class RubricaCriteriosGeneralesTest {
 
         // Cada ejecucion tiene su propia flota y su propio estado.
         assertEquals(6, ((List<?>) estado(cliente, periodo).get("unidades")).size());
-        assertEquals(37, ((List<?>) estado(cliente, colapso).get("unidades")).size());
+        assertEquals(ComposicionFlota.porDefecto().total(),
+                ((List<?>) estado(cliente, colapso).get("unidades")).size());
 
         cliente.post().uri("/api/ejecuciones/{id}/iniciar", periodo).retrieve().toBodilessEntity();
         assertEquals("EN_CURSO", estado(cliente, periodo).get("estado"));

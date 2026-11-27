@@ -87,6 +87,7 @@ export function estadoFlota(datos: DatosOperacion) {
     enRefrigerio: porEstado('EN_REFRIGERIO'),
     fueraDeTurno: porEstado('FUERA_DE_TURNO').length,
     averiadas: porEstado('AVERIADA'),
+    enMantenimiento: porEstado('EN_MANTENIMIENTO'),
     porTipo,
     llenas: enRuta.filter((u) => u.carga >= u.capacidad),
   };

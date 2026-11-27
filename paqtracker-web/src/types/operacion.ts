@@ -33,7 +33,7 @@ export type PestanaLista = Extract<PestanaPanel, 'pedidos' | 'flota' | 'almacene
  * Estado de una unidad, a partir de EstadoVehiculo del planificador. EN_RUTA agrupa EN_RUTA y EN_ENTREGA
  * (la unidad está haciendo su ruta); DISPONIBLE es DISPONIBLE_EN_ALMACEN.
  */
-export type EstadoUnidad = 'EN_RUTA' | 'EN_REFRIGERIO' | 'DISPONIBLE' | 'FUERA_DE_TURNO' | 'AVERIADA';
+export type EstadoUnidad = 'EN_RUTA' | 'EN_REFRIGERIO' | 'DISPONIBLE' | 'FUERA_DE_TURNO' | 'AVERIADA' | 'EN_MANTENIMIENTO';
 
 /**
  * Qué está haciendo una unidad, a partir de su estado y del tramo que recorre: detalla el "en ruta" del
@@ -49,7 +49,8 @@ export type SituacionUnidad =
   | 'EN_ALMACEN'
   | 'EN_REFRIGERIO'
   | 'FUERA_DE_TURNO'
-  | 'AVERIADA';
+  | 'AVERIADA'
+  | 'EN_MANTENIMIENTO';
 
 export interface Parada {
   pedido: string; // "#1088"

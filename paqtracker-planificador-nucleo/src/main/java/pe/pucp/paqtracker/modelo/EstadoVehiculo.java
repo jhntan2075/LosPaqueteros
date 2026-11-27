@@ -26,5 +26,11 @@ public enum EstadoVehiculo {
     FUERA_DE_TURNO,
 
     /** Averiada; inmovilizada en su posicion hasta reincorporarse. */
-    AVERIADA
+    AVERIADA,
+
+    /**
+     * En el taller por su mantenimiento preventivo programado: no se planifica en todo el dia de su fecha.
+     * Si a la medianoche estaba en ruta, termina su ruta y entra al taller al volver al almacen.
+     */
+    EN_MANTENIMIENTO
 }

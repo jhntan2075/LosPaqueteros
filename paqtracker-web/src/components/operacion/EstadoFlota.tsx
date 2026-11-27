@@ -46,6 +46,7 @@ const FILTROS_UNIDAD: { valor: FiltroUnidad; etiqueta: string }[] = [
   { valor: 'EN_REFRIGERIO', etiqueta: 'En refrigerio' },
   { valor: 'FUERA_DE_TURNO', etiqueta: 'Fuera de turno' },
   { valor: 'AVERIADA', etiqueta: 'Averiadas' },
+  { valor: 'EN_MANTENIMIENTO', etiqueta: 'En mantenimiento' },
 ];
 
 /** Sentido con que arranca cada criterio: lo más útil primero (más ocupadas, salidas y llegadas más próximas). */
@@ -119,6 +120,7 @@ export const EstadoFlota: React.FC<EstadoFlotaProps> = ({ onSeleccionar, resalta
     { clave: 'disp', etiqueta: 'disponibles', valor: flota.disponibles, color: 'bg-neutral-300' },
     { clave: 'turno', etiqueta: 'fuera de turno', valor: flota.fueraDeTurno, color: 'bg-neutral-200' },
     { clave: 'aver', etiqueta: 'averiadas', valor: flota.averiadas.length, color: 'bg-critical-600' },
+    { clave: 'mant', etiqueta: 'en mantenimiento', valor: flota.enMantenimiento.length, color: 'bg-warn-500' },
   ];
   const visibles = segmentos.filter((s) => s.valor > 0 || s.clave === 'ruta' || s.clave === 'disp');
 
@@ -139,6 +141,11 @@ export const EstadoFlota: React.FC<EstadoFlotaProps> = ({ onSeleccionar, resalta
       color: 'ambar' as const,
       titulo: `${unidades(flota.enRefrigerio.length)} en refrigerio`,
       detalle: flota.enRefrigerio.map((u) => `${capitalizar(UNIDADES[u.tipo].nombre)} ${u.codigo}`).join(' · '),
+    },
+    flota.enMantenimiento.length > 0 && {
+      color: 'ambar' as const,
+      titulo: `${unidades(flota.enMantenimiento.length)} en mantenimiento preventivo`,
+      detalle: `${flota.enMantenimiento.map((u) => `${capitalizar(UNIDADES[u.tipo].nombre)} ${u.codigo}`).join(' · ')} · vuelven mañana`,
     },
   ].filter(Boolean) as { color: 'rojo' | 'ambar'; titulo: string; detalle: string }[];
 

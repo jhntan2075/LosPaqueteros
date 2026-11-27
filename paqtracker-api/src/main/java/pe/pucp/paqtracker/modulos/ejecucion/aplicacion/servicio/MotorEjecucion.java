@@ -258,6 +258,10 @@ public final class MotorEjecucion {
                     || simulacion.tieneAveriaPendiente(idVehiculo)) {
                 throw new OperacionNoPermitidaException("La unidad " + codigo + " ya está averiada");
             }
+            if (vehiculo.getEstado() == EstadoVehiculo.EN_MANTENIMIENTO) {
+                throw new OperacionNoPermitidaException("La unidad " + codigo
+                        + " está en mantenimiento preventivo: no opera hoy");
+            }
             int instante = instanteSolicitado(solicitud.instanteMs());
             agenda.encolar(new GestorEventos.EventoAveria(idVehiculo, solicitud.tipo(), instante));
             Averia averia = new Averia(instante, idVehiculo, solicitud.tipo(), simulacion.getDuracionesAveria());

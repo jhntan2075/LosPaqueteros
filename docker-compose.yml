@@ -48,6 +48,7 @@ services:
       DB_PASSWORD: ${DB_PASSWORD}
       APP_DATOS_VENTAS: /app/datos/ventas.v20261126
       APP_DATOS_BLOQUEOS: /app/datos/bloqueos.v20260909
+      APP_DATOS_MANTENIMIENTO: /app/datos/mant.preventivo.09.10.txt
     ports:
       - "${APP_PORT:-3000}:3000"
     networks:

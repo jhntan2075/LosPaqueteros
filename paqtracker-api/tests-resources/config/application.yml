@@ -18,5 +18,6 @@ paqtracker:
   datos:
     ventas: tests-resources/datos/ventas
     bloqueos: tests-resources/datos/bloqueos
+    mantenimiento: tests-resources/datos/mant.preventivo.test.txt
   ejecucion:
     dia-a-dia-activo: false
