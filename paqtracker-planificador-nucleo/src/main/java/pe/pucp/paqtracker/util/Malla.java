@@ -67,7 +67,7 @@ public final class Malla {
     private final List<Bloqueo> bloqueos;
 
     /** Instantes en que el conjunto de bloqueos vigentes cambia, ordenados. */
-    private final int[] cambios;
+    private int[] cambios;
 
     /** Conjunto de nodos bloqueados de cada tramo, calculado al pedirlo. */
     private final Map<Integer, Set<Long>> cachePorTramo;
@@ -79,18 +79,37 @@ public final class Malla {
     private final long[] sinBloqueos;
 
     /** Distancias ya calculadas de los tramos recorridos por una unidad. */
-    private final MemoDistancias memo;
+    private MemoDistancias memo;
 
     /**
      * @param bloqueos lista de bloqueos programados que afectan la malla
      */
     public Malla(List<Bloqueo> bloqueos) {
-        this.bloqueos = bloqueos;
-        this.cambios = calcularCambios(bloqueos);
+        this.bloqueos = new ArrayList<>(bloqueos);
+        this.cambios = calcularCambios(this.bloqueos);
         this.cachePorTramo = new HashMap<>();
         this.mascaraPorTramo = new HashMap<>();
         this.sinBloqueos = nuevaMascara();
         this.memo = new MemoDistancias();
+    }
+
+    /**
+     * Suma bloqueos programados a los que ya tiene la malla, por ejemplo los del siguiente tramo de una
+     * simulacion que no tiene horizonte fijo. Los bloqueos existentes conservan su posicion en
+     * {@link #getBloqueos()}; los nuevos van al final. Las caches se descartan, porque los tramos de
+     * tiempo cambian.
+     *
+     * @param nuevos bloqueos a agregar
+     */
+    public void agregarBloqueos(List<Bloqueo> nuevos) {
+        if (nuevos.isEmpty()) {
+            return;
+        }
+        bloqueos.addAll(nuevos);
+        cambios = calcularCambios(bloqueos);
+        cachePorTramo.clear();
+        mascaraPorTramo.clear();
+        memo = new MemoDistancias();
     }
 
     /**

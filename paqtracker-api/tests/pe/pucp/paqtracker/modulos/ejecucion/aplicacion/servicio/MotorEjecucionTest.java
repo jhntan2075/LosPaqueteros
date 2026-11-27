@@ -80,6 +80,8 @@ class MotorEjecucionTest {
     private final RelojControlable pared = new RelojControlable(Instant.parse("2026-01-01T05:00:00Z"), ZONA);
     private final List<MensajeEventoEjecucion> eventos = new CopyOnWriteArrayList<>();
     private final Map<String, RegistroEjecucion> guardados = new ConcurrentHashMap<>();
+    /** Simulacion del ultimo motor creado, para que una prueba le agregue datos. */
+    private SimulacionEnCurso ultimaSimulacion;
 
     @Test
     void preparar_ejecucionNueva_quedaConfiguradaConTodaLaFlota() {
@@ -147,6 +149,38 @@ class MotorEjecucionTest {
         assertEquals(pedidos().size(), guardados.get("prueba").resultado().entregas());
         assertTrue(hayEvento("EJECUCION_FINALIZADA"));
         assertThrows(OperacionNoPermitidaException.class, motor::iniciar);
+    }
+
+    /**
+     * Simulacion hasta el colapso: no termina en el horizonte de su primer tramo. Cerca del fin carga el tramo
+     * siguiente y sigue; termina solo cuando ya no hay mas datos (o al colapsar).
+     */
+    @Test
+    void procesarTick_sinHorizonteFijo_cargaElTramoSiguienteYTerminaCuandoNoHayMasDatos() {
+        MotorEjecucion motor = crearMotor(pedidos(), true);
+        SimulacionEnCurso simulacion = ultimaSimulacion;
+        int[] llamadas = {0};
+        Pedido delSegundoTramo = new Pedido(6, new Nodo(40, 20), 3, HORIZONTE + 60, PLAZO_REGULAR);
+        motor.fijarAmpliador(horizonte -> {
+            if (llamadas[0]++ > 0) {
+                return Optional.empty();
+            }
+            simulacion.ampliar(List.of(delSegundoTramo), List.of(), List.of());
+            return Optional.of(new AmpliadorHorizonte.Ampliacion(horizonte + HORIZONTE, List.of(delSegundoTramo)));
+        });
+        motor.preparar();
+        motor.iniciar();
+
+        pared.avanzar(Duration.ofHours(1));
+        motor.procesarTickAhora();
+        assertEquals(EstadoEjecucion.EN_CURSO, motor.getEstado());
+        assertTrue(motor.consultarPedido(6).isPresent());
+
+        pared.avanzar(Duration.ofHours(1));
+        motor.procesarTickAhora();
+        assertEquals(EstadoEjecucion.FINALIZADA, motor.getEstado());
+        assertEquals(2, llamadas[0]);
+        assertEquals(pedidos().size() + 1, guardados.get("prueba").resultado().entregas());
     }
 
     @Test
@@ -637,6 +671,7 @@ class MotorEjecucionTest {
         SimulacionEnCurso simulacion = new ServicioPlanificacion(new FabricaAlgoritmo()).prepararSimulacion(
                 new SolicitudPreparacionSimulacion(pedidos, bloqueos, AlgoritmoPlanificacion.GA, 1L, SA,
                         detenerEnColapso, flota));
+        ultimaSimulacion = simulacion;
         SeguimientoPedidos seguimiento = new SeguimientoPedidos(lineaTiempo, semaforo,
                 CodigosFlota.de(simulacion.getFlota()), 100);
         ConfiguracionMotor configuracion = new ConfiguracionMotor("prueba", "Prueba",

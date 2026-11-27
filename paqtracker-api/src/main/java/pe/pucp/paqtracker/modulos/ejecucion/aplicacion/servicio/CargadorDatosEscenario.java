@@ -104,15 +104,7 @@ public class CargadorDatosEscenario {
         ZonedDateTime desde = lineaTiempo.aFecha(minutoInicial);
         ZonedDateTime hasta = lineaTiempo.aFecha(horizonte);
         Set<YearMonth> mesesLote = mesesDelLote(lote, desde, hasta);
-        List<Pedido> elegidos = new ArrayList<>();
-        for (YearMonth mes = YearMonth.from(desde); mes.atDay(1).atStartOfDay(zona).isBefore(hasta);
-             mes = mes.plusMonths(1)) {
-            Instant inicio = max(desde, mes.atDay(1).atStartOfDay(zona)).toInstant();
-            Instant fin = min(hasta, mes.plusMonths(1).atDay(1).atStartOfDay(zona)).toInstant();
-            List<PedidoFuente> delMes = mesesLote.contains(mes) ? pedidos.delLote(lote, inicio, fin)
-                    : pedidos.delSistema(inicio, fin);
-            delMes.forEach(fuente -> elegidos.add(aPedido(fuente, fuente.cantidad(), lineaTiempo, zona)));
-        }
+        List<Pedido> elegidos = pedidosEntre(lineaTiempo, desde, hasta, lote, mesesLote);
         if (elegidos.isEmpty()) {
             throw new SolicitudInvalidaException("No hay pedidos entre " + fechaInicio + " " + horaInicio
                     + " y " + hasta.toLocalDate() + "; cargue el archivo de ventas del periodo");
@@ -122,6 +114,59 @@ public class CargadorDatosEscenario {
                 fechaInicio.toString());
         return DatosEscenario.nuevos(lineaTiempo, minutoInicial, horizonte, elegidos, bloqueos,
                 lote == null ? DatosEscenario.ORIGEN_SISTEMA : DatosEscenario.ORIGEN_ARCHIVO);
+    }
+
+    /**
+     * Datos del tramo siguiente de una simulacion sin horizonte fijo (hasta el colapso), en la misma linea de
+     * tiempo que el primer tramo. Los pedidos son los registrados entre los dos minutos; los bloqueos, los que
+     * empiezan desde el primer dia nuevo, porque los que empezaron antes ya se cargaron con su tramo.
+     *
+     * @param lineaTiempo     linea de tiempo de la ejecucion
+     * @param desdeMinuto     inicio del tramo (inclusive): el horizonte vigente
+     * @param hastaMinuto     fin del tramo (exclusive): el horizonte nuevo
+     * @param primerDiaNuevo  primer dia que el tramo anterior no cubria
+     * @param ultimoDiaNuevo  ultimo dia que cubre el tramo
+     * @param lote            lote de pedidos subido para la corrida, o null
+     * @return pedidos y bloqueos del tramo; sin pedidos si los datos se acabaron
+     */
+    public TramoDatos cargarTramo(LineaTiempo lineaTiempo, int desdeMinuto, int hastaMinuto, LocalDate primerDiaNuevo,
+                                  LocalDate ultimoDiaNuevo, String lote) {
+        Set<YearMonth> mesesLote = lote == null ? Set.of() : pedidos.mesesDelLote(lote);
+        List<Pedido> elegidos = pedidosEntre(lineaTiempo, lineaTiempo.aFecha(desdeMinuto),
+                lineaTiempo.aFecha(hastaMinuto), lote, mesesLote);
+        LocalDate primerDia = lineaTiempo.aFecha(0).toLocalDate();
+        RangoFechas rango = RangoFechas.de(primerDia, ultimoDiaNuevo);
+        int inicioNuevos = rango.minutoDe(primerDiaNuevo);
+        List<Bloqueo> bloqueos = leerBloqueos(() -> CargadorBloqueos.cargarEnRango(carpetaBloqueos, rango),
+                primerDiaNuevo.toString()).stream().filter(b -> b.getInstanteInicio() >= inicioNuevos).toList();
+        return new TramoDatos(elegidos, bloqueos);
+    }
+
+    /**
+     * Pedidos y bloqueos de un tramo adicional.
+     *
+     * @param pedidos  pedidos registrados en el tramo
+     * @param bloqueos bloqueos que empiezan en el tramo
+     */
+    public record TramoDatos(List<Pedido> pedidos, List<Bloqueo> bloqueos) {
+    }
+
+    /**
+     * Pedidos registrados entre dos instantes, mes por mes: del lote de la corrida en los meses que trae y del
+     * sistema en los demas.
+     */
+    private List<Pedido> pedidosEntre(LineaTiempo lineaTiempo, ZonedDateTime desde, ZonedDateTime hasta, String lote,
+                                      Set<YearMonth> mesesLote) {
+        List<Pedido> elegidos = new ArrayList<>();
+        for (YearMonth mes = YearMonth.from(desde); mes.atDay(1).atStartOfDay(zona).isBefore(hasta);
+             mes = mes.plusMonths(1)) {
+            Instant inicio = max(desde, mes.atDay(1).atStartOfDay(zona)).toInstant();
+            Instant fin = min(hasta, mes.plusMonths(1).atDay(1).atStartOfDay(zona)).toInstant();
+            List<PedidoFuente> delMes = mesesLote.contains(mes) ? pedidos.delLote(lote, inicio, fin)
+                    : pedidos.delSistema(inicio, fin);
+            delMes.forEach(fuente -> elegidos.add(aPedido(fuente, fuente.cantidad(), lineaTiempo, zona)));
+        }
+        return elegidos;
     }
 
     /**

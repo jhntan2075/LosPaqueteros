@@ -74,6 +74,22 @@ class MallaTest {
         assertEquals(10, malla.distancia(origen, destino, FIN + 1));
     }
 
+    /** Un tramo nuevo de bloqueos (simulacion hasta el colapso) se respeta aunque ya hubiera consultas. */
+    @Test
+    void agregarBloqueos_trasConsultar_losNuevosSeRodeanYLosAnterioresConservanSuPosicion() {
+        Bloqueo previo = new Bloqueo(0, 10, Malla.nodosDeTramo(1, 1, 1, 1));
+        Malla malla = new Malla(List.of(previo));
+        Nodo origen = new Nodo(25, 20);
+        Nodo destino = new Nodo(35, 20);
+        assertEquals(10, malla.distancia(origen, destino, INICIO));
+
+        malla.agregarBloqueos(List.of(bloqueoVertical(30)));
+
+        assertTrue(malla.distancia(origen, destino, INICIO) > 10);
+        assertEquals(List.of(previo, bloqueoVertical(30)).size(), malla.getBloqueos().size());
+        assertEquals(previo, malla.getBloqueos().get(0));
+    }
+
     @Test
     void camino_sinBloqueos_esEnLConLongitudManhattan() {
         Malla malla = new Malla();
