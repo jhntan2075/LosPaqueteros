@@ -47,6 +47,7 @@ const ESTADO_UNIDAD: Record<string, UnidadOperacion['estado']> = {
   DISPONIBLE_EN_ALMACEN: 'DISPONIBLE',
   FUERA_DE_TURNO: 'FUERA_DE_TURNO',
   AVERIADA: 'AVERIADA',
+  EN_MANTENIMIENTO: 'EN_MANTENIMIENTO',
 };
 
 /** Situación de una unidad en ruta según el tramo que recorre. */
@@ -61,7 +62,7 @@ const SITUACION_POR_TRAMO: Record<NonNullable<UnidadEnMapaApi['tramoEnCurso']>['
 
 /** Qué hace la unidad: su estado fuera de ruta o, en ruta, el tramo en curso; sin tramo, espera su salida. */
 function situacionDe(unidad: UnidadEnMapaApi, estado: UnidadOperacion['estado']): SituacionUnidad {
-  if (estado === 'AVERIADA' || estado === 'EN_REFRIGERIO' || estado === 'FUERA_DE_TURNO') return estado;
+  if (estado === 'AVERIADA' || estado === 'EN_REFRIGERIO' || estado === 'FUERA_DE_TURNO' || estado === 'EN_MANTENIMIENTO') return estado;
   if (estado === 'DISPONIBLE') return 'EN_ALMACEN';
   if (unidad.estado === 'EN_ENTREGA') return 'ENTREGANDO';
   return unidad.tramoEnCurso ? (SITUACION_POR_TRAMO[unidad.tramoEnCurso.tipo] ?? 'EN_ESPERA') : 'EN_ESPERA';

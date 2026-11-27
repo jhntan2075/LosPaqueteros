@@ -140,6 +140,7 @@ export const ESTADO_UNIDAD: Record<EstadoUnidad, string> = {
   DISPONIBLE: 'Disponible',
   FUERA_DE_TURNO: 'Fuera de turno',
   AVERIADA: 'Averiada',
+  EN_MANTENIMIENTO: 'En mantenimiento',
 };
 
 /** Qué está haciendo una unidad; detalla el "En ruta" de ESTADO_UNIDAD. */
@@ -154,6 +155,7 @@ export const SITUACION_UNIDAD: Record<SituacionUnidad, string> = {
   EN_REFRIGERIO: 'En refrigerio',
   FUERA_DE_TURNO: 'Fuera de turno',
   AVERIADA: 'Averiada',
+  EN_MANTENIMIENTO: 'En mantenimiento preventivo',
 };
 
 /** Pedido registrado que aún no sale a ruta (estado REGISTRADO del servidor). */

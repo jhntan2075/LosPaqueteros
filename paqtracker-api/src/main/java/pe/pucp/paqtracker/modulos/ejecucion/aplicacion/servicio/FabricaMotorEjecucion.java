@@ -4,6 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import pe.pucp.paqtracker.comun.configuracion.PropiedadesDominio;
+import pe.pucp.paqtracker.comun.tiempo.LineaTiempo;
 import pe.pucp.paqtracker.modelo.Pedido;
 import pe.pucp.paqtracker.modulos.configuracion.aplicacion.dto.ParametrosDominioApi;
 import pe.pucp.paqtracker.modulos.configuracion.aplicacion.dto.RangosSemaforoApi;
@@ -12,15 +13,20 @@ import pe.pucp.paqtracker.modulos.configuracion.dominio.FuenteRangosSemaforo;
 import pe.pucp.paqtracker.modulos.difusion.aplicacion.servicio.CodigosFlota;
 import pe.pucp.paqtracker.modulos.difusion.aplicacion.servicio.ServicioDifusion;
 import pe.pucp.paqtracker.modulos.ejecucion.aplicacion.dto.DatosEscenario;
+import pe.pucp.paqtracker.modulos.ejecucion.dominio.PuertoMantenimiento;
 import pe.pucp.paqtracker.modulos.ejecucion.dominio.PuertoPedidos;
 import pe.pucp.paqtracker.modulos.ejecucion.dominio.RepositorioEjecucion;
 import pe.pucp.paqtracker.modulos.ejecucion.dominio.TipoEscenario;
 import pe.pucp.paqtracker.modulos.planificacion.aplicacion.dto.SolicitudPreparacionSimulacion;
+import pe.pucp.paqtracker.modulos.planificacion.aplicacion.dto.VentanaMantenimiento;
 import pe.pucp.paqtracker.modulos.planificacion.aplicacion.servicio.ServicioPlanificacion;
 import pe.pucp.paqtracker.simulacion.SimulacionEnCurso;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.json.JsonMapper;
 import java.time.Clock;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -41,6 +47,7 @@ public class FabricaMotorEjecucion {
     private final FuenteRangosSemaforo semaforo;
     private final FuenteParametrosDominio parametros;
     private final PuertoPedidos pedidos;
+    private final PuertoMantenimiento mantenimiento;
     private final JsonMapper json;
     private final Clock relojPared;
 
@@ -52,13 +59,15 @@ public class FabricaMotorEjecucion {
      * @param semaforo              rangos del semaforo vigentes, que cada motor consulta en vivo
      * @param parametros            parametros del dominio vigentes, que cada ejecucion copia al crearse
      * @param pedidos               pedidos guardados, donde el dia a dia escribe su avance
+     * @param mantenimiento         plan de mantenimiento preventivo guardado
      * @param json                  serializacion de los parametros que se guardan con cada ejecucion
      * @param relojPared            reloj real
      */
     public FabricaMotorEjecucion(ServicioPlanificacion servicioPlanificacion, ServicioDifusion servicioDifusion,
                                  RepositorioEjecucion repositorio, PropiedadesDominio propiedades,
                                  FuenteRangosSemaforo semaforo, FuenteParametrosDominio parametros,
-                                 PuertoPedidos pedidos, JsonMapper json, Clock relojPared) {
+                                 PuertoPedidos pedidos, PuertoMantenimiento mantenimiento, JsonMapper json,
+                                 Clock relojPared) {
         this.servicioPlanificacion = servicioPlanificacion;
         this.servicioDifusion = servicioDifusion;
         this.repositorio = repositorio;
@@ -66,6 +75,7 @@ public class FabricaMotorEjecucion {
         this.semaforo = semaforo;
         this.parametros = parametros;
         this.pedidos = pedidos;
+        this.mantenimiento = mantenimiento;
         this.json = json;
         this.relojPared = relojPared;
     }
@@ -79,7 +89,8 @@ public class FabricaMotorEjecucion {
     public MotorEjecucion crear(ConfiguracionMotor configuracion, DatosEscenario datos, boolean detenerEnColapso) {
         SimulacionEnCurso simulacion = servicioPlanificacion.prepararSimulacion(new SolicitudPreparacionSimulacion(
                 datos.pedidos(), datos.bloqueos(), configuracion.algoritmo(), propiedades.planificador().semilla(),
-                configuracion.saMinutos(), detenerEnColapso, configuracion.flota(), parametros.vigentes()));
+                configuracion.saMinutos(), detenerEnColapso, configuracion.flota(), parametros.vigentes(),
+                mantenimientosDelHorizonte(datos)));
         int primerIdLibre = datos.pedidos().stream().mapToInt(Pedido::getId).max().orElse(-1) + 1;
         SeguimientoPedidos seguimiento = new SeguimientoPedidos(datos.lineaTiempo(), semaforo,
                 CodigosFlota.de(simulacion.getFlota()), primerIdLibre, datos.entregadasPrevias());
@@ -92,6 +103,20 @@ public class FabricaMotorEjecucion {
         return new MotorEjecucion(configuracion, datos.lineaTiempo(), datos.minutoInicial(), datos.horizonte(),
                 simulacion, seguimiento, reloj, relojPared, servicioDifusion, persistencia,
                 crearEjecutor(configuracion.id()));
+    }
+
+    /**
+     * Mantenimientos preventivos guardados de los dias que toca la ejecucion, en su linea de tiempo: cada
+     * unidad pasa en el taller su dia completo, de una medianoche a la siguiente.
+     */
+    private List<VentanaMantenimiento> mantenimientosDelHorizonte(DatosEscenario datos) {
+        LineaTiempo lineaTiempo = datos.lineaTiempo();
+        ZoneId zona = lineaTiempo.getMinutoCero().getZone();
+        LocalDate desde = lineaTiempo.aFecha(0).toLocalDate();
+        LocalDate hasta = lineaTiempo.aFecha(datos.horizonte()).toLocalDate();
+        return mantenimiento.entre(desde, hasta).stream().map(m -> new VentanaMantenimiento(m.tipo(),
+                m.correlativo(), (int) Math.floor(lineaTiempo.aMinuto(m.fecha().atStartOfDay(zona))),
+                (int) Math.floor(lineaTiempo.aMinuto(m.fecha().plusDays(1).atStartOfDay(zona))))).toList();
     }
 
     /**

@@ -59,10 +59,13 @@ public final class ConfiguracionDominio {
     public static final double COSTO_KM_MOTOCICLETA = 0.60;
     public static final double COSTO_KM_BICICLETA = 0.15;
 
-    /** Cantidad de unidades de cada tipo en la flota. */
-    public static final int CANTIDAD_AUTOS = 10;
-    public static final int CANTIDAD_MOTOS = 15;
-    public static final int CANTIDAD_BICICLETAS = 12;
+    /**
+     * Cantidad de unidades de cada tipo en la flota: las del plan de mantenimiento preventivo vigente
+     * (datos/mant.preventivo.09.10.txt, TA01-TA28, TM01-TM52, TB01-TB64). Hasta el 27-11-2026 eran 10, 15 y 12.
+     */
+    public static final int CANTIDAD_AUTOS = 28;
+    public static final int CANTIDAD_MOTOS = 52;
+    public static final int CANTIDAD_BICICLETAS = 64;
 
     /** Minuto del dia en que inicia cada turno de 8 horas (LE-023). */
     private static final int[] INICIOS_TURNO_MINUTOS = {7 * 60, 15 * 60, 23 * 60};

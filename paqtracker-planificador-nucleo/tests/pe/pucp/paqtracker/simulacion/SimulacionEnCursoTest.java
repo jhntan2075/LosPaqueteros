@@ -33,8 +33,10 @@ class SimulacionEnCursoTest {
     private static final long SEMILLA = 7L;
     private static final int PLAZO_REGULAR = 2160;
     private static final int HORIZONTE = 2 * 1440;
-    /** La flota por defecto carga 408 paquetes (10 autos de 24, 15 motocicletas de 8 y 12 bicicletas de 4). */
-    private static final int CARGA_MAYOR_QUE_LA_FLOTA = 500;
+    /** Un paquete mas de lo que carga la flota por defecto entera (1344 con 28 autos, 52 motos y 64 bicicletas). */
+    private static final int CARGA_MAYOR_QUE_LA_FLOTA = ConfiguracionDominio.CANTIDAD_AUTOS * ConfiguracionDominio.CAPACIDAD_AUTO
+            + ConfiguracionDominio.CANTIDAD_MOTOS * ConfiguracionDominio.CAPACIDAD_MOTOCICLETA
+            + ConfiguracionDominio.CANTIDAD_BICICLETAS * ConfiguracionDominio.CAPACIDAD_BICICLETA + 1;
 
     @Test
     void avanzar_pasosDeSa_igualaLaSimulacionCompleta() {

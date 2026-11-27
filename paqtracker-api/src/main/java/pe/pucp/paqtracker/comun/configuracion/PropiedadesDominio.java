@@ -15,10 +15,12 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public record PropiedadesDominio(Datos datos, Ejecucion ejecucion, Planificador planificador, Semaforo semaforo) {
 
     /**
-     * @param ventas   carpeta con los archivos ventas.YYYYMM.txt
-     * @param bloqueos carpeta con los archivos bloqueo.YYMM.txt
+     * @param ventas        carpeta con los archivos ventas.YYYYMM.txt
+     * @param bloqueos      carpeta con los archivos bloqueo.YYMM.txt
+     * @param mantenimiento archivo mant.preventivo.*.txt, o carpeta que los contiene, con el plan de
+     *                      mantenimiento preventivo; vacio para operar sin mantenimientos
      */
-    public record Datos(String ventas, String bloqueos) {
+    public record Datos(String ventas, String bloqueos, String mantenimiento) {
     }
 
     /**

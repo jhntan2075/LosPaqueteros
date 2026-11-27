@@ -6,6 +6,7 @@ import pe.pucp.paqtracker.modelo.Bloqueo;
 import pe.pucp.paqtracker.modelo.Entrega;
 import pe.pucp.paqtracker.modelo.EscenarioOperativo;
 import pe.pucp.paqtracker.modelo.EstadoVehiculo;
+import pe.pucp.paqtracker.modelo.MantenimientoProgramado;
 import pe.pucp.paqtracker.modelo.Nodo;
 import pe.pucp.paqtracker.modelo.ParametrosDominio;
 import pe.pucp.paqtracker.modelo.Pedido;
@@ -79,6 +80,33 @@ public final class Orquestador {
     /** Revisa cada ruta del plan antes de que salga y retiene lo que no conviene despachar. */
     private final FiltroDespacho filtroDespacho;
     private ObservadorSimulacion observador;
+
+    /** Ventanas de mantenimiento preventivo de cada unidad, por su identificador. */
+    private Map<Integer, List<MantenimientoProgramado>> mantenimientos = Map.of();
+
+    /**
+     * Programa el mantenimiento preventivo de la flota: en cada ventana la unidad queda en el taller y no
+     * se planifica. Una unidad en ruta al empezar su ventana termina la ruta y entra al taller al volver.
+     * Sin llamar a este metodo no hay mantenimientos, que es el comportamiento por defecto.
+     *
+     * @param programados ventanas de mantenimiento
+     * @throws IllegalArgumentException si alguna ventana es de una unidad que no existe
+     */
+    public void fijarMantenimientos(List<MantenimientoProgramado> programados) {
+        Map<Integer, List<MantenimientoProgramado>> porUnidad = new HashMap<>();
+        for (MantenimientoProgramado mantenimiento : programados) {
+            if (buscarVehiculo(mantenimiento.idVehiculo()) == null) {
+                throw new IllegalArgumentException("Mantenimiento de una unidad que no existe: " + mantenimiento);
+            }
+            porUnidad.computeIfAbsent(mantenimiento.idVehiculo(), id -> new ArrayList<>()).add(mantenimiento);
+        }
+        this.mantenimientos = Map.copyOf(porUnidad);
+    }
+
+    private boolean enMantenimiento(Vehiculo vehiculo, int instante) {
+        List<MantenimientoProgramado> ventanas = mantenimientos.get(vehiculo.getId());
+        return ventanas != null && ventanas.stream().anyMatch(ventana -> ventana.vigenteEn(instante));
+    }
 
     /**
      * Instala un observador que recibe el cierre de cada dia simulado. Sirve
@@ -771,19 +799,25 @@ public final class Orquestador {
     }
 
     /**
-     * Pone en refrigerio a las unidades ociosas cuya ventana de refrigerio
-     * esta vigente, y las devuelve a disponible cuando termina (LE-024). Solo
-     * toca unidades que ya estaban disponibles o en refrigerio: nunca una que
-     * este en ruta, averiada o fuera de turno.
+     * Pone en el taller a las unidades ociosas con su mantenimiento preventivo vigente y en refrigerio a
+     * las que tienen su ventana de refrigerio vigente (LE-024); las devuelve a disponible cuando termina.
+     * El mantenimiento manda sobre el refrigerio. Solo toca unidades que estaban disponibles, en
+     * refrigerio o en el taller: nunca una que este en ruta, averiada o fuera de turno, asi que una unidad
+     * en ruta entra al taller cuando vuelve al almacen.
      *
      * @param instante instante actual del reloj
      */
     void actualizarEstadosPorTurno(int instante) {
         for (Vehiculo vehiculo : flota) {
-            if (vehiculo.getEstado() == EstadoVehiculo.DISPONIBLE_EN_ALMACEN
-                    || vehiculo.getEstado() == EstadoVehiculo.EN_REFRIGERIO) {
-                vehiculo.setEstado(CalendarioTurnos.enRefrigerio(vehiculo.getId(), instante)
-                        ? EstadoVehiculo.EN_REFRIGERIO : EstadoVehiculo.DISPONIBLE_EN_ALMACEN);
+            EstadoVehiculo estado = vehiculo.getEstado();
+            if (estado == EstadoVehiculo.DISPONIBLE_EN_ALMACEN || estado == EstadoVehiculo.EN_REFRIGERIO
+                    || estado == EstadoVehiculo.EN_MANTENIMIENTO) {
+                if (enMantenimiento(vehiculo, instante)) {
+                    vehiculo.setEstado(EstadoVehiculo.EN_MANTENIMIENTO);
+                } else {
+                    vehiculo.setEstado(CalendarioTurnos.enRefrigerio(vehiculo.getId(), instante)
+                            ? EstadoVehiculo.EN_REFRIGERIO : EstadoVehiculo.DISPONIBLE_EN_ALMACEN);
+                }
             }
         }
     }

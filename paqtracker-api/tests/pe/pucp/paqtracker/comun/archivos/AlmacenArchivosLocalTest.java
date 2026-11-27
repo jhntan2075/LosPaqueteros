@@ -48,7 +48,7 @@ class AlmacenArchivosLocalTest {
 
     private AlmacenArchivosLocal crearAlmacen() {
         PropiedadesDominio.Datos datos = new PropiedadesDominio.Datos(carpeta.resolve("ventas").toString(),
-                carpeta.resolve("bloqueos").toString());
+                carpeta.resolve("bloqueos").toString(), null);
         return new AlmacenArchivosLocal(new PropiedadesDominio(datos, null, null, null));
     }
 

@@ -89,7 +89,7 @@ class MotorEjecucionTest {
 
         MensajeEstadoEjecucion instantanea = motor.getUltimaInstantanea();
         assertEquals("CONFIGURADA", instantanea.estado());
-        assertEquals(37, instantanea.unidades().size());
+        assertEquals(ComposicionFlota.porDefecto().total(), instantanea.unidades().size());
         assertEquals(3, instantanea.almacenes().size());
         assertEquals(EstadoEjecucion.CONFIGURADA, guardados.get("prueba").estado());
     }

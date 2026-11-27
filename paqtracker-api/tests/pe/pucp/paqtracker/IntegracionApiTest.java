@@ -1,5 +1,6 @@
 package pe.pucp.paqtracker;
 
+import pe.pucp.paqtracker.modulos.planificacion.aplicacion.dto.ComposicionFlota;
 import jakarta.websocket.ContainerProvider;
 import jakarta.websocket.WebSocketContainer;
 import org.junit.jupiter.api.Test;
@@ -36,7 +37,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 class IntegracionApiTest {
 
     private static final long ESPERA_SEGUNDOS = 10;
-    private static final int UNIDADES_FLOTA = 37;
+    private static final int UNIDADES_FLOTA = ComposicionFlota.porDefecto().total();
     private static final int BUFFER_MENSAJE_BYTES = 1024 * 1024;
 
     @LocalServerPort

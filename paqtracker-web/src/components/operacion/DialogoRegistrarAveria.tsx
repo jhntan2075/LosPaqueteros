@@ -100,7 +100,8 @@ export const DialogoRegistrarAveria: React.FC<DialogoRegistrarAveriaProps> = ({ 
   }, [ejecucionId]);
 
   const unidad = datos.flota.find((u) => u.codigo === codigo);
-  const esBloqueada = (u: UnidadOperacion) => u.estado === 'AVERIADA' || averiaPendiente(datos, pendientes, u.codigo) !== null;
+  const esBloqueada = (u: UnidadOperacion) =>
+    u.estado === 'AVERIADA' || u.estado === 'EN_MANTENIMIENTO' || averiaPendiente(datos, pendientes, u.codigo) !== null;
   const enSimulacion = datos.tipoEscenario !== 'DIA_A_DIA';
   const corriendo = datos.estadoEjecucion === 'EN_CURSO';
   const instanteMs = cuando === 'programar' ? new Date(instanteTexto).getTime() : undefined;
