@@ -31,12 +31,11 @@ public record PropiedadesDominio(Datos datos, Ejecucion ejecucion, Planificador 
      * @param diasColapso      dias de datos que se cargan para buscar el colapso
      * @param maxPasosPorTick  pasos Sa como maximo por cada Sc, para no dejar de difundir si se atrasa
      * @param maxSimultaneas   simulaciones no terminadas que pueden existir a la vez, ademas del dia a dia
-     * @param maxUnidadesPorTipo unidades de un mismo tipo que admite una flota configurada (LE-019)
      * @param diaADiaActivo    verdadero para arrancar la operacion dia a dia al iniciar la API
      */
     public record Ejecucion(String zonaHoraria, int scSegundos, int saMinutos, double factorPeriodo,
                             double factorColapso, int diasPeriodoMax, int diasColapso, int maxPasosPorTick,
-                            int maxSimultaneas, int maxUnidadesPorTipo, boolean diaADiaActivo) {
+                            int maxSimultaneas, boolean diaADiaActivo) {
     }
 
     /**
