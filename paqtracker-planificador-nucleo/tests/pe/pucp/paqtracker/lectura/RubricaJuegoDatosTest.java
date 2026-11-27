@@ -11,19 +11,20 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * Rubrica c.1inf54.26-2, criterio general 21: el juego de datos proporcionado se usa completo. Los 36
- * meses de ventas y de bloqueos de datos/ se leen con el mismo lector del planificador sin una sola
- * linea rechazada.
+ * Rubrica c.1inf54.26-2, criterio general 21: el juego de datos proporcionado se usa completo. Los 60
+ * meses de ventas y los 36 de bloqueos de datos/ se leen con el mismo lector del planificador sin una
+ * sola linea rechazada.
  */
 class RubricaJuegoDatosTest {
 
     private static final Path DATOS = Path.of("..", "datos");
+    private static final int MESES_VENTAS = 60;
     private static final int MESES = 36;
 
     @Test
-    void ventas_los36Meses_seLeenCompletosSinLineasInvalidas() throws IOException {
-        List<Path> archivos = archivos(DATOS.resolve("ventas.v20260909"), "ventas.");
-        assertEquals(MESES, archivos.size());
+    void ventas_los60Meses_seLeenCompletosSinLineasInvalidas() throws IOException {
+        List<Path> archivos = archivos(DATOS.resolve("ventas.v20261126"), "ventas.");
+        assertEquals(MESES_VENTAS, archivos.size());
         int total = 0;
         for (Path archivo : archivos) {
             ResultadoValidacion resultado = CargadorPedidos.validar(Files.readAllLines(archivo, StandardCharsets.UTF_8));
@@ -31,7 +32,7 @@ class RubricaJuegoDatosTest {
             assertTrue(resultado.getRegistrosValidos() > 0, archivo + " sin pedidos");
             total += resultado.getRegistrosValidos();
         }
-        assertTrue(total > MESES * 100, "Se esperaban miles de pedidos y se leyeron " + total);
+        assertTrue(total > MESES_VENTAS * 100, "Se esperaban miles de pedidos y se leyeron " + total);
     }
 
     @Test

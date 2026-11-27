@@ -1,6 +1,6 @@
 # Simulacion dinamica del algoritmo genetico (GA).
 # Uso (argumentos posicionales: <ventas> <bloqueos> <dias> [mes]):
-#   powershell -ExecutionPolicy Bypass -File scripts\ga.ps1 datos\ventas.v20260909 datos\bloqueos.v20260909 7 202601
+#   powershell -ExecutionPolicy Bypass -File scripts\ga.ps1 datos\ventas.v20261126 datos\bloqueos.v20260909 7 202601
 #
 # Sin argumentos corre enero de 2026 sobre los datos del repositorio.
 
@@ -13,7 +13,7 @@ try {
     }
     $argumentos = @($args)
     if ($argumentos.Count -eq 0) {
-        $argumentos = @("datos\ventas.v20260909", "datos\bloqueos.v20260909", "7", "202601")
+        $argumentos = @("datos\ventas.v20261126", "datos\bloqueos.v20260909", "7", "202601")
     }
     [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
     java -Xmx4g -cp "paqtracker-experimentacion\target\classes;paqtracker-planificador-nucleo\target\classes" pe.pucp.paqtracker.experimentacion.SimulacionDinamica @argumentos

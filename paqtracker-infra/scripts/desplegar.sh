@@ -94,7 +94,7 @@ id -u "$USUARIO" >/dev/null 2>&1 || useradd --system --home "$DESTINO_API" --she
 install -d -o "$USUARIO" -g "$USUARIO" "$DESTINO_API" "$DESTINO_API/datos"
 install -o "$USUARIO" -g "$USUARIO" -m 0644 "$JAR_API" "$DESTINO_API/paqtracker-api.jar"
 # Los datos se copian sin pisar los archivos que los usuarios ya subieron por la API (CU-02).
-cp -rn datos/ventas.v20260909 datos/bloqueos.v20260909 "$DESTINO_API/datos/"
+cp -rn datos/ventas.v20261126 datos/bloqueos.v20260909 "$DESTINO_API/datos/"
 chown -R "$USUARIO:$USUARIO" "$DESTINO_API/datos"
 # Sin index.html el dist esta vacio o incompleto: se conserva la SPA publicada en vez de borrarla.
 if [ -f paqtracker-web/dist/index.html ]; then
